@@ -321,7 +321,7 @@ const Headlines = () => {
             <TabsTrigger
               key={category.key}
               value={category.key}
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
             >
               {category.name}
             </TabsTrigger>
