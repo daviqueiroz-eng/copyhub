@@ -207,13 +207,18 @@ const Headlines = () => {
     }
 
     const lines = pasteText.split('\n').filter(line => line.trim() !== '');
-    const newHeadlines: Headline[] = lines.map(line => ({
-      id: Date.now() + Math.random(),
-      headline: line.trim(),
-      referencia: "",
-      gatilhos: "",
-      estrutura: "",
-    }));
+    const newHeadlines: Headline[] = lines.map(line => {
+      // Detecta se há tabulação ou múltiplos espaços (indicando colunas)
+      const parts = line.split(/\t+/).map(p => p.trim());
+      
+      return {
+        id: Date.now() + Math.random(),
+        headline: parts[0] || "",
+        referencia: parts[1] || "",
+        gatilhos: "",
+        estrutura: "",
+      };
+    });
 
     setHeadlines({
       ...headlines,
