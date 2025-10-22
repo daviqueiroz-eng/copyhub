@@ -158,49 +158,73 @@ const Headlines = () => {
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
-
+        
         let importedCount = 0;
         const updatedHeadlines = { ...headlines };
 
-        jsonData.forEach((row: any) => {
-          const headline = row.headline || row.Headline || row.HEADLINE || "";
-          const nicho = row.nicho || row.Nicho || row.NICHO || row.categoria || row.Categoria || "";
-          const referencia = row.referencia || row.Referencia || row.REFERENCIA || row.link || row.Link || "";
+        const sheetMapping: Record<string, string> = {
+          'Comunicação': 'comunicacao',
+          'Cristão': 'cristao',
+          'Ginecologista / Obstetro': 'gineocologista',
+          'Ginecologista/Obstetro': 'gineocologista',
+          'Espiritualidade': 'espiritualidade',
+          'Medicina': 'medicina',
+          'Psicologia': 'psicologia',
+          'Saúde e emagrecimento': 'saude',
+          'Criação de filhos': 'filhos',
+          'Corredor de imóveis': 'imoveis',
+          'Arquitetura': 'arquitetura',
+          'Fisioterapia': 'fisioterapia',
+          'Advogado imobiliário': 'advogadoimobiliario',
+          'Advogado (LGPD)': 'advogadolgpd',
+          'Estética / cirurgia plástica': 'estetica',
+          'Estética/cirurgia plástica': 'estetica',
+          'Dermatologista': 'dermatologista',
+          'Empreendedor': 'empreendedor'
+        };
 
-          if (headline && nicho) {
-            const nichoKey = nicho.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "");
-            
-            if (!updatedHeadlines[nichoKey]) {
-              updatedHeadlines[nichoKey] = [];
-            }
+        workbook.SheetNames.forEach((sheetName) => {
+          const sheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
 
-            const newHeadline: Headline = {
-              id: Date.now() + Math.random(),
-              headline: headline,
-              referencia: referencia || "",
-              gatilhos: "",
-              estrutura: ""
-            };
+          const categoriaKey = sheetMapping[sheetName] || 
+            sheetName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "").replace(/\//g, "");
 
-            updatedHeadlines[nichoKey].push(newHeadline);
-            importedCount++;
+          if (!updatedHeadlines[categoriaKey]) {
+            updatedHeadlines[categoriaKey] = [];
           }
+
+          jsonData.forEach((row: any) => {
+            const headline = row.Headline || row.headline || row.HEADLINE || "";
+            const referencia = row.Referência || row.referencia || row.Referencia || row.REFERENCIA || row.link || row.Link || "";
+
+            if (headline && headline.trim() !== "") {
+              const newHeadline: Headline = {
+                id: Date.now() + Math.random(),
+                headline: headline.trim(),
+                referencia: referencia ? referencia.trim() : "",
+                gatilhos: "",
+                estrutura: ""
+              };
+
+              updatedHeadlines[categoriaKey].push(newHeadline);
+              importedCount++;
+            }
+          });
         });
 
         setHeadlines(updatedHeadlines);
         
         toast({
           title: "Importação concluída!",
-          description: `${importedCount} headlines importadas com sucesso.`,
+          description: `${importedCount} headlines importadas de ${workbook.SheetNames.length} categorias.`,
         });
 
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
       } catch (error) {
+        console.error("Erro ao importar:", error);
         toast({
           title: "Erro na importação",
           description: "Não foi possível ler o arquivo. Verifique se é um Excel válido.",
