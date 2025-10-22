@@ -1,8 +1,11 @@
 import { useState, useRef } from "react";
-import { Plus, Search, Edit2, Trash2, ExternalLink, Upload } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ExternalLink, Upload, FolderPlus, ClipboardPaste } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -118,6 +121,10 @@ const Headlines = () => {
   const [activeTab, setActiveTab] = useState("comunicacao");
   const [searchTerm, setSearchTerm] = useState("");
   const [headlines, setHeadlines] = useState(categoriasData);
+  const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
+  const [showPasteDialog, setShowPasteDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [pasteText, setPasteText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -146,6 +153,79 @@ const Headlines = () => {
     setHeadlines({
       ...headlines,
       [activeTab]: headlines[activeTab].filter((h) => h.id !== id),
+    });
+  };
+
+  const handleCreateCategory = () => {
+    if (!newCategoryName.trim()) {
+      toast({
+        title: "Nome inválido",
+        description: "Digite um nome para a nova categoria.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const categoryKey = newCategoryName
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "");
+
+    if (headlines[categoryKey]) {
+      toast({
+        title: "Categoria já existe",
+        description: "Uma categoria com este nome já foi criada.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setHeadlines({
+      ...headlines,
+      [categoryKey]: [],
+    });
+
+    setActiveTab(categoryKey);
+    setNewCategoryName("");
+    setShowNewCategoryDialog(false);
+
+    toast({
+      title: "Categoria criada!",
+      description: `A categoria "${newCategoryName}" foi adicionada com sucesso.`,
+    });
+  };
+
+  const handlePasteMultiple = () => {
+    if (!pasteText.trim()) {
+      toast({
+        title: "Nenhum conteúdo",
+        description: "Cole o texto com as headlines antes de importar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const lines = pasteText.split('\n').filter(line => line.trim() !== '');
+    const newHeadlines: Headline[] = lines.map(line => ({
+      id: Date.now() + Math.random(),
+      headline: line.trim(),
+      referencia: "",
+      gatilhos: "",
+      estrutura: "",
+    }));
+
+    setHeadlines({
+      ...headlines,
+      [activeTab]: [...(headlines[activeTab] || []), ...newHeadlines],
+    });
+
+    setPasteText("");
+    setShowPasteDialog(false);
+
+    toast({
+      title: "Headlines adicionadas!",
+      description: `${newHeadlines.length} linhas foram importadas com sucesso.`,
     });
   };
 
@@ -246,10 +326,28 @@ const Headlines = () => {
             Biblioteca organizada por categorias
           </p>
         </div>
-        <Button className="gap-2" onClick={addNewRow}>
-          <Plus className="h-4 w-4" />
-          Nova Linha
-        </Button>
+        <div className="flex gap-2">
+          <Button className="gap-2" onClick={addNewRow}>
+            <Plus className="h-4 w-4" />
+            Nova Linha
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setShowPasteDialog(true)}
+          >
+            <ClipboardPaste className="h-4 w-4" />
+            Colar Múltiplas
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setShowNewCategoryDialog(true)}
+          >
+            <FolderPlus className="h-4 w-4" />
+            Novo Nicho
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
@@ -450,6 +548,73 @@ const Headlines = () => {
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Dialog para criar nova categoria */}
+      <Dialog open={showNewCategoryDialog} onOpenChange={setShowNewCategoryDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Novo Nicho</DialogTitle>
+            <DialogDescription>
+              Digite o nome da nova categoria/nicho para organizar suas headlines.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="category-name">Nome do Nicho</Label>
+              <Input
+                id="category-name"
+                placeholder="Ex: Marketing Digital, Advocacia..."
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewCategoryDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateCategory}>
+              Criar Nicho
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para colar múltiplas linhas */}
+      <Dialog open={showPasteDialog} onOpenChange={setShowPasteDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Colar Múltiplas Headlines</DialogTitle>
+            <DialogDescription>
+              Cole suas headlines abaixo. Cada linha será uma nova entrada na categoria atual.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="paste-text">Cole aqui (Ctrl+V)</Label>
+              <Textarea
+                id="paste-text"
+                placeholder="Cole suas headlines aqui, uma por linha..."
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                className="min-h-[300px] font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Categoria atual: <strong>{activeTab}</strong>
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPasteDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handlePasteMultiple}>
+              Importar {pasteText.split('\n').filter(l => l.trim()).length} linhas
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
