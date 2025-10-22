@@ -384,30 +384,30 @@ const Headlines = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex-wrap h-auto gap-2 bg-muted/50 p-2">
-          <TabsTrigger value="comunicacao" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Comunicação
-          </TabsTrigger>
-          <TabsTrigger value="cristao" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Cristão
-          </TabsTrigger>
-          <TabsTrigger value="gineocologista" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Ginecologista/Obstetro
-          </TabsTrigger>
-          <TabsTrigger value="espiritualidade" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Espiritualidade
-          </TabsTrigger>
-          <TabsTrigger value="medicina" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Medicina
-          </TabsTrigger>
-          <TabsTrigger value="psicologia" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Psicologia
-          </TabsTrigger>
-          <TabsTrigger value="saude" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Saúde e emagrecimento
-          </TabsTrigger>
-          <TabsTrigger value="filhos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            Criação de filhos
-          </TabsTrigger>
+          {Object.keys(headlines).map((categoria) => {
+            const categoryLabels: Record<string, string> = {
+              comunicacao: "Comunicação",
+              cristao: "Cristão",
+              gineocologista: "Ginecologista/Obstetro",
+              espiritualidade: "Espiritualidade",
+              medicina: "Medicina",
+              psicologia: "Psicologia",
+              saude: "Saúde e emagrecimento",
+              filhos: "Criação de filhos",
+            };
+
+            const label = categoryLabels[categoria] || categoria.charAt(0).toUpperCase() + categoria.slice(1);
+
+            return (
+              <TabsTrigger
+                key={categoria}
+                value={categoria}
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                {label}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
         {Object.keys(headlines).map((categoria) => (
