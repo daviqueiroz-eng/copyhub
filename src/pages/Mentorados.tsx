@@ -23,68 +23,23 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-
-type Mentorado = {
-  id: number;
-  nome: string;
-  iniciais: string;
-  avatar: string;
-  dores: string;
-  desejos: string;
-  objecoes: string;
-  crencas: string;
-  plano: string;
-  estiloComum: string;
-  roteiros: string;
-  observacoes: string;
-  linksChats: string;
-  linkDrive: string;
-  referencias: string;
-};
+import { 
+  useMentorados, 
+  useCreateMentorado, 
+  useUpdateMentorado,
+  type Mentorado 
+} from "@/hooks/useMentorados";
 
 const Mentorados = () => {
-  const [mentorados, setMentorados] = useState<Mentorado[]>([
-    {
-      id: 1,
-      nome: "João Silva",
-      iniciais: "JS",
-      avatar: "",
-      dores: "Dificuldade em criar headlines que convertem",
-      desejos: "Dominar copywriting persuasivo",
-      objecoes: "Medo de não ter criatividade suficiente",
-      crencas: "Acredita que precisa de dom natural",
-      plano: "Plano Pro - 3 meses",
-      estiloComum: "Direto, objetivo, gosta de exemplos práticos",
-      roteiros: "Roteiro de stories sobre transformação - CTR 12%",
-      observacoes: "Progresso excelente, implementa rapidamente",
-      linksChats: "https://chat.example.com/joao-silva",
-      linkDrive: "https://drive.google.com/folder/joao-silva",
-      referencias: "Swipe file de headlines testadas",
-    },
-    {
-      id: 2,
-      nome: "Maria Santos",
-      iniciais: "MS",
-      avatar: "",
-      dores: "Baixa conversão em vendas",
-      desejos: "Aumentar ticket médio",
-      objecoes: "Preço alto demais",
-      crencas: "Precisa de mais prova social",
-      plano: "Plano Premium - 6 meses",
-      estiloComum: "Analítica, gosta de dados e métricas",
-      roteiros: "VSL de lançamento - 8.5% conversão",
-      observacoes: "Perfeccionista, precisa de validação constante",
-      linksChats: "https://chat.example.com/maria-santos",
-      linkDrive: "https://drive.google.com/folder/maria-santos",
-      referencias: "Cases de sucesso do nicho",
-    },
-  ]);
-
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newMentoradoName, setNewMentoradoName] = useState("");
   const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+
+  const { data: mentorados = [] } = useMentorados();
+  const createMentorado = useCreateMentorado();
+  const updateMentorado = useUpdateMentorado();
 
   const filteredMentorados = mentorados.filter((m) =>
     m.nome.toLowerCase().includes(searchTerm.toLowerCase())
@@ -106,32 +61,30 @@ const Mentorados = () => {
       return;
     }
 
-    const novoMentorado: Mentorado = {
-      id: Date.now(),
-      nome: newMentoradoName,
-      iniciais: getIniciais(newMentoradoName),
-      avatar: "",
-      dores: "",
-      desejos: "",
-      objecoes: "",
-      crencas: "",
-      plano: "",
-      estiloComum: "",
-      roteiros: "",
-      observacoes: "",
-      linksChats: "",
-      linkDrive: "",
-      referencias: "",
-    };
-
-    setMentorados([...mentorados, novoMentorado]);
-    setIsAddDialogOpen(false);
-    setNewMentoradoName("");
-    
-    toast({
-      title: "Mentorado adicionado!",
-      description: `${newMentoradoName} foi adicionado com sucesso.`,
-    });
+    createMentorado.mutate(
+      {
+        nome: newMentoradoName,
+        iniciais: getIniciais(newMentoradoName),
+        avatar: null,
+        dores: null,
+        desejos: null,
+        objecoes: null,
+        crencas: null,
+        plano: null,
+        estilo_comum: null,
+        roteiros: null,
+        observacoes: null,
+        links_chats: null,
+        link_drive: null,
+        referencias: null,
+      },
+      {
+        onSuccess: () => {
+          setIsAddDialogOpen(false);
+          setNewMentoradoName("");
+        },
+      }
+    );
   };
 
   const handleOpenDetail = (mentorado: Mentorado) => {
@@ -145,9 +98,11 @@ const Mentorados = () => {
     const updated = { ...selectedMentorado, [field]: value };
     setSelectedMentorado(updated);
     
-    setMentorados(mentorados.map(m => 
-      m.id === selectedMentorado.id ? updated : m
-    ));
+    // Salva automaticamente no banco
+    updateMentorado.mutate({
+      id: selectedMentorado.id,
+      [field]: value,
+    });
   };
 
   return (
@@ -319,8 +274,8 @@ const Mentorados = () => {
                 <Label htmlFor="estilo">Estilo de Comunicação</Label>
                 <Textarea
                   id="estilo"
-                  value={selectedMentorado?.estiloComum || ""}
-                  onChange={(e) => handleUpdateMentorado("estiloComum", e.target.value)}
+                  value={selectedMentorado?.estilo_comum || ""}
+                  onChange={(e) => handleUpdateMentorado("estilo_comum", e.target.value)}
                   placeholder="Como se comunicar melhor com este mentorado..."
                   rows={4}
                 />
@@ -353,9 +308,9 @@ const Mentorados = () => {
               <div className="space-y-2">
                 <Label htmlFor="chats" className="flex items-center gap-2">
                   Links dos Chats
-                  {selectedMentorado?.linksChats && (
+                  {selectedMentorado?.links_chats && (
                     <a
-                      href={selectedMentorado.linksChats}
+                      href={selectedMentorado.links_chats}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:text-primary/80"
@@ -367,8 +322,8 @@ const Mentorados = () => {
                 </Label>
                 <Textarea
                   id="chats"
-                  value={selectedMentorado?.linksChats || ""}
-                  onChange={(e) => handleUpdateMentorado("linksChats", e.target.value)}
+                  value={selectedMentorado?.links_chats || ""}
+                  onChange={(e) => handleUpdateMentorado("links_chats", e.target.value)}
                   placeholder="Cole os links dos chats usados..."
                   rows={3}
                 />
@@ -377,9 +332,9 @@ const Mentorados = () => {
               <div className="space-y-2">
                 <Label htmlFor="drive" className="flex items-center gap-2">
                   Link do Drive Geral
-                  {selectedMentorado?.linkDrive && (
+                  {selectedMentorado?.link_drive && (
                     <a
-                      href={selectedMentorado.linkDrive}
+                      href={selectedMentorado.link_drive}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:text-primary/80"
@@ -391,8 +346,8 @@ const Mentorados = () => {
                 </Label>
                 <Input
                   id="drive"
-                  value={selectedMentorado?.linkDrive || ""}
-                  onChange={(e) => handleUpdateMentorado("linkDrive", e.target.value)}
+                  value={selectedMentorado?.link_drive || ""}
+                  onChange={(e) => handleUpdateMentorado("link_drive", e.target.value)}
                   placeholder="https://drive.google.com/..."
                 />
               </div>
@@ -414,14 +369,10 @@ const Mentorados = () => {
             <Button 
               className="w-full" 
               onClick={() => {
-                toast({
-                  title: "Alterações salvas!",
-                  description: "As informações foram atualizadas com sucesso.",
-                });
                 setIsDetailSheetOpen(false);
               }}
             >
-              Salvar Alterações
+              Fechar
             </Button>
           </div>
         </SheetContent>

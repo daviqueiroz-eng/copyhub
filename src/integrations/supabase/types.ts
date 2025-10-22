@@ -76,6 +76,66 @@ export type Database = {
           },
         ]
       }
+      mentorados: {
+        Row: {
+          avatar: string | null
+          created_at: string
+          crencas: string | null
+          desejos: string | null
+          dores: string | null
+          estilo_comum: string | null
+          id: string
+          iniciais: string
+          link_drive: string | null
+          links_chats: string | null
+          nome: string
+          objecoes: string | null
+          observacoes: string | null
+          plano: string | null
+          referencias: string | null
+          roteiros: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string
+          crencas?: string | null
+          desejos?: string | null
+          dores?: string | null
+          estilo_comum?: string | null
+          id?: string
+          iniciais: string
+          link_drive?: string | null
+          links_chats?: string | null
+          nome: string
+          objecoes?: string | null
+          observacoes?: string | null
+          plano?: string | null
+          referencias?: string | null
+          roteiros?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string
+          crencas?: string | null
+          desejos?: string | null
+          dores?: string | null
+          estilo_comum?: string | null
+          id?: string
+          iniciais?: string
+          link_drive?: string | null
+          links_chats?: string | null
+          nome?: string
+          objecoes?: string | null
+          observacoes?: string | null
+          plano?: string | null
+          referencias?: string | null
+          roteiros?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
