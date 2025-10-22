@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Plus, Search, Edit2, Trash2, ExternalLink, Upload, FolderPlus, ClipboardPaste } from "lucide-react";
+import { Plus, Search, Trash2, ExternalLink, Upload, FolderPlus, ClipboardPaste } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,74 +25,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-
-type Headline = {
-  id: number;
-  headline: string;
-  referencia: string;
-  gatilhos: string;
-  estrutura: string;
-};
-
-const categoriasData: Record<string, Headline[]> = {
-  comunicacao: [
-    {
-      id: 1,
-      headline: "Nunca peça desculpas ou comunique se você está nervoso ou nervosa...",
-      referencia: "https://www.instagram.com/reel/C8TD2UEvii9/",
-      gatilhos: "Autoridade",
-      estrutura: "Comando + Benefício",
-    },
-    {
-      id: 2,
-      headline: "Jamais entre numa sala sem saber quais os argumentos principais",
-      referencia: "https://www.instagram.com/reel/DFXXqdOOVrw/",
-      gatilhos: "Medo/Perda",
-      estrutura: "Nunca faça X sem Y",
-    },
-    {
-      id: 3,
-      headline: "Se você precisa que sua voz traga segurança, esse exercício é para você.",
-      referencia: "https://www.instagram.com/reel/DEOTNq0uAF0/",
-      gatilhos: "Solução",
-      estrutura: "Se você quer X, faça Y",
-    },
-  ],
-  cristao: [
-    {
-      id: 1,
-      headline: "Bora melhorar a sua dicção comigo e sua comunicação muda da Água p",
-      referencia: "https://www.instagram.com/reel/C2AXdeiRlU/",
-      gatilhos: "Transformação",
-      estrutura: "Convite + Resultado",
-    },
-    {
-      id: 2,
-      headline: "X coisas que fazem você ser ouvida e ninguém te fala",
-      referencia: "https://www.instagram.com/kathy.betrz/reel/DE7t5PAVJz/",
-      gatilhos: "Segredo",
-      estrutura: "X coisas que ninguém conta",
-    },
-  ],
-  gineocologista: [
-    {
-      id: 1,
-      headline: "Como reagir quando alguém te interrompe? Todos já passamos pela situa",
-      referencia: "https://www.tiktok.com/@davilacavalcante/video/...",
-      gatilhos: "Problema comum",
-      estrutura: "Como fazer X?",
-    },
-  ],
-  espiritualidade: [
-    {
-      id: 1,
-      headline: "Vamos analisar a comunicação da posse do Donald Trump.",
-      referencia: "https://www.instagram.com/cristianmagalhaes/reel/C2zxKT6q4RQ/",
-      gatilhos: "Curiosidade",
-      estrutura: "Vamos analisar X",
-    },
-  ],
-};
+import { 
+  useCategories, 
+  useHeadlines, 
+  useCreateCategory, 
+  useCreateHeadline,
+  useUpdateHeadline,
+  useDeleteHeadline,
+  useCreateMultipleHeadlines
+} from "@/hooks/useHeadlines";
 
 const gatilhosOptions = [
   "Autoridade",
@@ -118,9 +59,7 @@ const estruturaOptions = [
 ];
 
 const Headlines = () => {
-  const [activeTab, setActiveTab] = useState("comunicacao");
   const [searchTerm, setSearchTerm] = useState("");
-  const [headlines, setHeadlines] = useState(categoriasData);
   const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
   const [showPasteDialog, setShowPasteDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -128,32 +67,34 @@ const Headlines = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const currentHeadlines = headlines[activeTab] || [];
-  const filteredHeadlines = currentHeadlines.filter(
+  const { data: categories = [] } = useCategories();
+  const [activeTab, setActiveTab] = useState(categories[0]?.key || "comunicacao");
+  const { data: headlines = [] } = useHeadlines(activeTab);
+  
+  const createCategory = useCreateCategory();
+  const createHeadline = useCreateHeadline();
+  const updateHeadline = useUpdateHeadline();
+  const deleteHeadline = useDeleteHeadline();
+  const createMultipleHeadlines = useCreateMultipleHeadlines();
+
+  const filteredHeadlines = headlines.filter(
     (h) =>
       h.headline.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      h.gatilhos.toLowerCase().includes(searchTerm.toLowerCase())
+      (h.gatilhos?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
 
   const addNewRow = () => {
-    const newHeadline: Headline = {
-      id: Date.now(),
+    createHeadline.mutate({
+      category_key: activeTab,
       headline: "",
-      referencia: "",
-      gatilhos: "",
-      estrutura: "",
-    };
-    setHeadlines({
-      ...headlines,
-      [activeTab]: [...(headlines[activeTab] || []), newHeadline],
+      referencia: null,
+      gatilhos: null,
+      estrutura: null,
     });
   };
 
-  const deleteRow = (id: number) => {
-    setHeadlines({
-      ...headlines,
-      [activeTab]: headlines[activeTab].filter((h) => h.id !== id),
-    });
+  const deleteRow = (id: string) => {
+    deleteHeadline.mutate({ id, categoryKey: activeTab });
   };
 
   const handleCreateCategory = () => {
@@ -172,7 +113,7 @@ const Headlines = () => {
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\s+/g, "");
 
-    if (headlines[categoryKey]) {
+    if (categories.find(c => c.key === categoryKey)) {
       toast({
         title: "Categoria já existe",
         description: "Uma categoria com este nome já foi criada.",
@@ -181,19 +122,16 @@ const Headlines = () => {
       return;
     }
 
-    setHeadlines({
-      ...headlines,
-      [categoryKey]: [],
-    });
-
-    setActiveTab(categoryKey);
-    setNewCategoryName("");
-    setShowNewCategoryDialog(false);
-
-    toast({
-      title: "Categoria criada!",
-      description: `A categoria "${newCategoryName}" foi adicionada com sucesso.`,
-    });
+    createCategory.mutate(
+      { name: newCategoryName, key: categoryKey },
+      {
+        onSuccess: () => {
+          setActiveTab(categoryKey);
+          setNewCategoryName("");
+          setShowNewCategoryDialog(false);
+        },
+      }
+    );
   };
 
   const handlePasteMultiple = () => {
@@ -207,46 +145,39 @@ const Headlines = () => {
     }
 
     const lines = pasteText.split('\n').filter(line => line.trim() !== '');
-    const newHeadlines: Headline[] = lines.map(line => {
-      // Detecta se há tabulação ou múltiplos espaços (indicando colunas)
+    const newHeadlines = lines.map(line => {
       const parts = line.split(/\t+/).map(p => p.trim());
       
       return {
-        id: Date.now() + Math.random(),
+        category_key: activeTab,
         headline: parts[0] || "",
-        referencia: parts[1] || "",
-        gatilhos: "",
-        estrutura: "",
+        referencia: parts[1] || null,
+        gatilhos: null,
+        estrutura: null,
       };
     });
 
-    setHeadlines({
-      ...headlines,
-      [activeTab]: [...(headlines[activeTab] || []), ...newHeadlines],
-    });
-
-    setPasteText("");
-    setShowPasteDialog(false);
-
-    toast({
-      title: "Headlines adicionadas!",
-      description: `${newHeadlines.length} linhas foram importadas com sucesso.`,
-    });
+    createMultipleHeadlines.mutate(
+      { headlines: newHeadlines, categoryKey: activeTab },
+      {
+        onSuccess: () => {
+          setPasteText("");
+          setShowPasteDialog(false);
+        },
+      }
+    );
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
         
-        let importedCount = 0;
-        const updatedHeadlines = { ...headlines };
-
         const sheetMapping: Record<string, string> = {
           'Comunicação': 'comunicacao',
           'Cristão': 'cristao',
@@ -268,6 +199,8 @@ const Headlines = () => {
           'Empreendedor': 'empreendedor'
         };
 
+        const allHeadlines: any[] = [];
+
         workbook.SheetNames.forEach((sheetName) => {
           const sheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
@@ -275,35 +208,35 @@ const Headlines = () => {
           const categoriaKey = sheetMapping[sheetName] || 
             sheetName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "").replace(/\//g, "");
 
-          if (!updatedHeadlines[categoriaKey]) {
-            updatedHeadlines[categoriaKey] = [];
-          }
-
           jsonData.forEach((row: any) => {
-            const headline = row.Headline || row.headline || row.HEADLINE || "";
+            const headlineText = row.Headline || row.headline || row.HEADLINE || "";
             const referencia = row.Referência || row.referencia || row.Referencia || row.REFERENCIA || row.link || row.Link || "";
 
-            if (headline && headline.trim() !== "") {
-              const newHeadline: Headline = {
-                id: Date.now() + Math.random(),
-                headline: headline.trim(),
-                referencia: referencia ? referencia.trim() : "",
-                gatilhos: "",
-                estrutura: ""
-              };
-
-              updatedHeadlines[categoriaKey].push(newHeadline);
-              importedCount++;
+            if (headlineText && headlineText.trim() !== "") {
+              allHeadlines.push({
+                category_key: categoriaKey,
+                headline: headlineText.trim(),
+                referencia: referencia ? referencia.trim() : null,
+                gatilhos: null,
+                estrutura: null,
+              });
             }
           });
         });
 
-        setHeadlines(updatedHeadlines);
-        
-        toast({
-          title: "Importação concluída!",
-          description: `${importedCount} headlines importadas de ${workbook.SheetNames.length} categorias.`,
-        });
+        if (allHeadlines.length > 0) {
+          createMultipleHeadlines.mutate(
+            { headlines: allHeadlines, categoryKey: activeTab },
+            {
+              onSuccess: () => {
+                toast({
+                  title: "Importação concluída!",
+                  description: `${allHeadlines.length} headlines importadas de ${workbook.SheetNames.length} categorias.`,
+                });
+              },
+            }
+          );
+        }
 
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
@@ -384,34 +317,19 @@ const Headlines = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex-wrap h-auto gap-2 bg-muted/50 p-2">
-          {Object.keys(headlines).map((categoria) => {
-            const categoryLabels: Record<string, string> = {
-              comunicacao: "Comunicação",
-              cristao: "Cristão",
-              gineocologista: "Ginecologista/Obstetro",
-              espiritualidade: "Espiritualidade",
-              medicina: "Medicina",
-              psicologia: "Psicologia",
-              saude: "Saúde e emagrecimento",
-              filhos: "Criação de filhos",
-            };
-
-            const label = categoryLabels[categoria] || categoria.charAt(0).toUpperCase() + categoria.slice(1);
-
-            return (
-              <TabsTrigger
-                key={categoria}
-                value={categoria}
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                {label}
-              </TabsTrigger>
-            );
-          })}
+          {categories.map((category) => (
+            <TabsTrigger
+              key={category.key}
+              value={category.key}
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              {category.name}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        {Object.keys(headlines).map((categoria) => (
-          <TabsContent key={categoria} value={categoria} className="mt-6">
+        {categories.map((categoria) => (
+          <TabsContent key={categoria.key} value={categoria.key} className="mt-6">
             <Card className="overflow-hidden">
               <div className="overflow-x-auto">
                 <Table>
@@ -459,14 +377,30 @@ const Headlines = () => {
                               defaultValue={headline.headline}
                               placeholder="Digite a headline..."
                               className="border-0 focus-visible:ring-1 bg-transparent"
+                              onBlur={(e) => {
+                                if (e.target.value !== headline.headline) {
+                                  updateHeadline.mutate({
+                                    id: headline.id,
+                                    headline: e.target.value,
+                                  });
+                                }
+                              }}
                             />
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Input
-                                defaultValue={headline.referencia}
+                                defaultValue={headline.referencia || ""}
                                 placeholder="Cole o link..."
                                 className="border-0 focus-visible:ring-1 bg-transparent"
+                                onBlur={(e) => {
+                                  if (e.target.value !== (headline.referencia || "")) {
+                                    updateHeadline.mutate({
+                                      id: headline.id,
+                                      referencia: e.target.value || null,
+                                    });
+                                  }
+                                }}
                               />
                               {headline.referencia && (
                                 <a
@@ -481,7 +415,15 @@ const Headlines = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Select defaultValue={headline.gatilhos}>
+                            <Select 
+                              defaultValue={headline.gatilhos || undefined}
+                              onValueChange={(value) => {
+                                updateHeadline.mutate({
+                                  id: headline.id,
+                                  gatilhos: value,
+                                });
+                              }}
+                            >
                               <SelectTrigger className="border-0 focus:ring-1 bg-transparent">
                                 <SelectValue placeholder="Selecione..." />
                               </SelectTrigger>
@@ -495,7 +437,15 @@ const Headlines = () => {
                             </Select>
                           </TableCell>
                           <TableCell>
-                            <Select defaultValue={headline.estrutura}>
+                            <Select 
+                              defaultValue={headline.estrutura || undefined}
+                              onValueChange={(value) => {
+                                updateHeadline.mutate({
+                                  id: headline.id,
+                                  estrutura: value,
+                                });
+                              }}
+                            >
                               <SelectTrigger className="border-0 focus:ring-1 bg-transparent">
                                 <SelectValue placeholder="Selecione..." />
                               </SelectTrigger>
@@ -510,13 +460,6 @@ const Headlines = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                              >
-                                <Edit2 className="h-3.5 w-3.5" />
-                              </Button>
                               <Button
                                 size="icon"
                                 variant="ghost"

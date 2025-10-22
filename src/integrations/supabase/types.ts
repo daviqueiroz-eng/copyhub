@@ -14,7 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      headlines: {
+        Row: {
+          category_key: string
+          created_at: string
+          estrutura: string | null
+          gatilhos: string | null
+          headline: string
+          id: string
+          referencia: string | null
+          updated_at: string
+        }
+        Insert: {
+          category_key: string
+          created_at?: string
+          estrutura?: string | null
+          gatilhos?: string | null
+          headline: string
+          id?: string
+          referencia?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category_key?: string
+          created_at?: string
+          estrutura?: string | null
+          gatilhos?: string | null
+          headline?: string
+          id?: string
+          referencia?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "headlines_category_key_fkey"
+            columns: ["category_key"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
