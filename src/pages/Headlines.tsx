@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Plus, Search, Edit2, Trash2, ExternalLink } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, Search, Edit2, Trash2, ExternalLink, Upload } from "lucide-react";
+import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,6 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 type Headline = {
   id: number;
@@ -116,6 +118,8 @@ const Headlines = () => {
   const [activeTab, setActiveTab] = useState("comunicacao");
   const [searchTerm, setSearchTerm] = useState("");
   const [headlines, setHeadlines] = useState(categoriasData);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const currentHeadlines = headlines[activeTab] || [];
   const filteredHeadlines = currentHeadlines.filter(
@@ -145,6 +149,68 @@ const Headlines = () => {
     });
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
+
+        let importedCount = 0;
+        const updatedHeadlines = { ...headlines };
+
+        jsonData.forEach((row: any) => {
+          const headline = row.headline || row.Headline || row.HEADLINE || "";
+          const nicho = row.nicho || row.Nicho || row.NICHO || row.categoria || row.Categoria || "";
+          const referencia = row.referencia || row.Referencia || row.REFERENCIA || row.link || row.Link || "";
+
+          if (headline && nicho) {
+            const nichoKey = nicho.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "");
+            
+            if (!updatedHeadlines[nichoKey]) {
+              updatedHeadlines[nichoKey] = [];
+            }
+
+            const newHeadline: Headline = {
+              id: Date.now() + Math.random(),
+              headline: headline,
+              referencia: referencia || "",
+              gatilhos: "",
+              estrutura: ""
+            };
+
+            updatedHeadlines[nichoKey].push(newHeadline);
+            importedCount++;
+          }
+        });
+
+        setHeadlines(updatedHeadlines);
+        
+        toast({
+          title: "Importação concluída!",
+          description: `${importedCount} headlines importadas com sucesso.`,
+        });
+
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      } catch (error) {
+        toast({
+          title: "Erro na importação",
+          description: "Não foi possível ler o arquivo. Verifique se é um Excel válido.",
+          variant: "destructive",
+        });
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   return (
     <div className="space-y-6 max-w-full">
       <div className="flex items-center justify-between">
@@ -162,14 +228,31 @@ const Headlines = () => {
         </Button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar headline ou gatilho..."
-          className="pl-9"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar headline ou gatilho..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          onChange={handleFileUpload}
+          className="hidden"
         />
+        <Button
+          onClick={() => fileInputRef.current?.click()}
+          variant="outline"
+          className="gap-2"
+        >
+          <Upload className="h-4 w-4" />
+          Importar Excel
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
