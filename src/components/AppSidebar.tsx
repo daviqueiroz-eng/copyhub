@@ -24,7 +24,7 @@ const menuItems = [
   { title: "Mural", url: "/", icon: MessageSquare },
   { title: "Meus Mentorados", url: "/mentorados", icon: Users },
   { title: "Banco de Prompts", url: "/prompts", icon: Sparkles },
-  { title: "Modelos de Headline", url: "/headlines", icon: FileText },
+  { title: "Planilhas Importantes", url: "/headlines", icon: FileText },
   { title: "Base de Intensificadores", url: "/intensificadores", icon: Zap },
   { title: "Teste de Conhecimento", url: "/testes", icon: ClipboardCheck },
   { title: "Treinamentos", url: "/treinamentos", icon: GraduationCap },
