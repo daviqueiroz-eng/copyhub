@@ -144,8 +144,9 @@ const Testes = () => {
   };
 
   const handleConfigTime = () => {
-    setTimeRemaining(timeLimit);
-    setIsTimerActive(false);
+    if (!isTimerActive) {
+      setTimeRemaining(timeLimit);
+    }
     setIsConfigOpen(false);
   };
 
@@ -444,11 +445,11 @@ const Testes = () => {
           </div>
 
           <Button
-            variant="outline"
+            variant={canProceed ? "default" : "outline"}
             size="icon"
             onClick={handleNext}
             disabled={currentIndex === shuffledNichos.length - 1 || !canProceed}
-            className="h-12 w-12"
+            className={`h-12 w-12 transition-colors ${canProceed ? 'bg-green-600 hover:bg-green-700 border-green-600' : ''}`}
           >
             <ChevronRight className="h-6 w-6" />
           </Button>
