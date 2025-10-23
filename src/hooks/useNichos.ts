@@ -56,6 +56,32 @@ export const useCreateNicho = () => {
   });
 };
 
+export const useUpdateNicho = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, nome }: { id: string; nome: string }) => {
+      const { data, error } = await supabase
+        .from("nichos")
+        .update({ nome })
+        .eq("id", id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["nichos"] });
+      toast({
+        title: "Nicho atualizado",
+        description: "O nicho foi atualizado com sucesso.",
+      });
+    },
+  });
+};
+
 export const useDeleteNicho = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();

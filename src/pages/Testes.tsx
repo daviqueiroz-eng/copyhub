@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Plus, ChevronLeft, ChevronRight, Settings, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,7 +12,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useNichos, useCreateNicho } from "@/hooks/useNichos";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useNichos, useCreateNicho, useUpdateNicho, useDeleteNicho } from "@/hooks/useNichos";
 import { useToast } from "@/hooks/use-toast";
 
 const Testes = () => {
@@ -20,6 +28,9 @@ const Testes = () => {
   const [userResponse, setUserResponse] = useState("");
   const [novoNicho, setNovoNicho] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isManageOpen, setIsManageOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingNome, setEditingNome] = useState("");
   const [dragStartX, setDragStartX] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -27,12 +38,24 @@ const Testes = () => {
 
   const { data: nichos = [], isLoading } = useNichos();
   const createNicho = useCreateNicho();
+  const updateNicho = useUpdateNicho();
+  const deleteNicho = useDeleteNicho();
   const { toast } = useToast();
 
-  const currentNicho = nichos[currentIndex];
+  // Embaralha os nichos aleatoriamente
+  const shuffledNichos = useMemo(() => {
+    const shuffled = [...nichos];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, [nichos]);
+
+  const currentNicho = shuffledNichos[currentIndex];
 
   const handleNext = () => {
-    if (currentIndex < nichos.length - 1) {
+    if (currentIndex < shuffledNichos.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setUserResponse("");
       setDragOffset(0);
@@ -50,6 +73,29 @@ const Testes = () => {
       setUserResponse("");
       setDragOffset(0);
     }
+  };
+
+  const handleEditNicho = (id: string, nome: string) => {
+    setEditingId(id);
+    setEditingNome(nome);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingId || !editingNome.trim()) return;
+
+    updateNicho.mutate(
+      { id: editingId, nome: editingNome },
+      {
+        onSuccess: () => {
+          setEditingId(null);
+          setEditingNome("");
+        },
+      }
+    );
+  };
+
+  const handleDeleteNicho = (id: string) => {
+    deleteNicho.mutate(id);
   };
 
   const handleCreateNicho = () => {
@@ -98,7 +144,7 @@ const Testes = () => {
     );
   }
 
-  if (nichos.length === 0) {
+  if (shuffledNichos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <p className="text-muted-foreground">Nenhum nicho cadastrado ainda.</p>
@@ -143,8 +189,76 @@ const Testes = () => {
           Arraste para o lado ou use as setas para navegar
         </p>
         <p className="text-sm text-muted-foreground mt-1">
-          {currentIndex + 1} de {nichos.length}
+          {currentIndex + 1} de {shuffledNichos.length}
         </p>
+      </div>
+
+      <div className="absolute top-8 right-8">
+        <Dialog open={isManageOpen} onOpenChange={setIsManageOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="icon">
+              <Settings className="h-5 w-5" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Gerenciar Nichos</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome do Nicho</TableHead>
+                    <TableHead className="w-[100px]">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {nichos.map((nicho) => (
+                    <TableRow key={nicho.id}>
+                      <TableCell>
+                        {editingId === nicho.id ? (
+                          <Input
+                            value={editingNome}
+                            onChange={(e) => setEditingNome(e.target.value)}
+                            onBlur={handleSaveEdit}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleSaveEdit();
+                              if (e.key === "Escape") {
+                                setEditingId(null);
+                                setEditingNome("");
+                              }
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <span>{nicho.nome}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditNicho(nicho.id, nicho.nome)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteNicho(nicho.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="relative w-full max-w-2xl mb-6">
@@ -207,7 +321,7 @@ const Testes = () => {
             variant="outline"
             size="icon"
             onClick={handleNext}
-            disabled={currentIndex === nichos.length - 1}
+            disabled={currentIndex === shuffledNichos.length - 1}
             className="h-12 w-12"
           >
             <ChevronRight className="h-6 w-6" />
