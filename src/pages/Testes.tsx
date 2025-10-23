@@ -103,7 +103,7 @@ const Testes = () => {
   };
 
   const ideasCount = countIdeas(userResponse);
-  const canProceed = ideasCount >= 3;
+  const canProceed = ideasCount >= 4;
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -114,8 +114,8 @@ const Testes = () => {
   const handleNext = () => {
     if (!canProceed) {
       toast({
-        title: "Mínimo de 3 ideias!",
-        description: "Escreva pelo menos 3 ideias (uma por linha) para continuar.",
+        title: "Mínimo de 4 ideias!",
+        description: "Escreva pelo menos 4 ideias (uma por linha) para continuar.",
         variant: "destructive",
       });
       return;
@@ -293,7 +293,7 @@ const Testes = () => {
           </div>
         </div>
         <p className="text-sm text-muted-foreground mt-2">
-          {currentIndex + 1} de {shuffledNichos.length} | {ideasCount} ideias (mín. 3)
+          {currentIndex + 1} de {shuffledNichos.length} | {ideasCount} ideias (mín. 4)
         </p>
       </div>
 
@@ -442,7 +442,7 @@ const Testes = () => {
                     id="resposta"
                     value={userResponse}
                     onChange={(e) => setUserResponse(e.target.value)}
-                    placeholder="Escreva uma ideia por linha:&#10;1. Ideia 1&#10;2. Ideia 2&#10;3. Ideia 3"
+                    placeholder="Escreva uma ideia por linha:&#10;1. Ideia 1&#10;2. Ideia 2&#10;3. Ideia 3&#10;4. Ideia 4"
                     className="min-h-[150px] text-base resize-none"
                     disabled={!isTimerActive && timeRemaining !== timeLimit}
                   />
