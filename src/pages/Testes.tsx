@@ -115,7 +115,7 @@ const Testes = () => {
     if (!canProceed) {
       toast({
         title: "Mínimo de 3 ideias!",
-        description: "Você precisa ter pelo menos 3 ideias para avançar.",
+        description: "Escreva pelo menos 3 ideias (uma por linha) para continuar.",
         variant: "destructive",
       });
       return;
@@ -144,9 +144,8 @@ const Testes = () => {
   };
 
   const handleConfigTime = () => {
-    if (!isTimerActive) {
-      setTimeRemaining(timeLimit);
-    }
+    setTimeRemaining(timeLimit);
+    setIsTimerActive(false);
     setIsConfigOpen(false);
   };
 
@@ -435,7 +434,7 @@ const Testes = () => {
                     id="resposta"
                     value={userResponse}
                     onChange={(e) => setUserResponse(e.target.value)}
-                    placeholder="Ex: 3 investimentos para fazer em 2025&#10;Cada linha é uma ideia"
+                    placeholder="Escreva uma ideia por linha:&#10;1. Ideia 1&#10;2. Ideia 2&#10;3. Ideia 3"
                     className="min-h-[150px] text-base resize-none"
                     disabled={!isTimerActive && timeRemaining !== timeLimit}
                   />
