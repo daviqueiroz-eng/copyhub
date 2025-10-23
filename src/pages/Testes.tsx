@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Plus, ChevronLeft, ChevronRight, Settings, Pencil, Trash2 } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Settings, Pencil, Trash2, Clock, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +34,13 @@ const Testes = () => {
   const [dragStartX, setDragStartX] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [timeLimit, setTimeLimit] = useState(120); // 2 minutes in seconds
+  const [timeRemaining, setTimeRemaining] = useState(120);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isResultOpen, setIsResultOpen] = useState(false);
+  const [sessionIdeas, setSessionIdeas] = useState(0);
+  const [record, setRecord] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const { data: nichos = [], isLoading } = useNichos();
@@ -54,8 +61,68 @@ const Testes = () => {
 
   const currentNicho = shuffledNichos[currentIndex];
 
+  // Load record from localStorage
+  useEffect(() => {
+    const savedRecord = localStorage.getItem("nichos_record");
+    if (savedRecord) {
+      setRecord(parseInt(savedRecord));
+    }
+  }, []);
+
+  // Timer effect
+  useEffect(() => {
+    if (!isTimerActive) return;
+
+    if (timeRemaining <= 0) {
+      setIsTimerActive(false);
+      setIsResultOpen(true);
+      if (sessionIdeas > record) {
+        setRecord(sessionIdeas);
+        localStorage.setItem("nichos_record", sessionIdeas.toString());
+      }
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isTimerActive, timeRemaining, sessionIdeas, record]);
+
+  // Start timer on first interaction
+  useEffect(() => {
+    if (userResponse.trim() && !isTimerActive && timeRemaining === timeLimit) {
+      setIsTimerActive(true);
+    }
+  }, [userResponse, isTimerActive, timeRemaining, timeLimit]);
+
+  const countIdeas = (text: string): number => {
+    const lines = text.split("\n").filter((line) => line.trim().length > 0);
+    return lines.length;
+  };
+
+  const ideasCount = countIdeas(userResponse);
+  const canProceed = ideasCount >= 3;
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
   const handleNext = () => {
+    if (!canProceed) {
+      toast({
+        title: "Mínimo de 3 ideias!",
+        description: "Você precisa ter pelo menos 3 ideias para avançar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (currentIndex < shuffledNichos.length - 1) {
+      setSessionIdeas((prev) => prev + ideasCount);
       setCurrentIndex(currentIndex + 1);
       setUserResponse("");
       setDragOffset(0);
@@ -65,6 +132,21 @@ const Testes = () => {
         description: "Você chegou ao último nicho.",
       });
     }
+  };
+
+  const handleRestart = () => {
+    setTimeRemaining(timeLimit);
+    setIsTimerActive(false);
+    setSessionIdeas(0);
+    setCurrentIndex(0);
+    setUserResponse("");
+    setIsResultOpen(false);
+  };
+
+  const handleConfigTime = () => {
+    setTimeRemaining(timeLimit);
+    setIsTimerActive(false);
+    setIsConfigOpen(false);
   };
 
   const handlePrevious = () => {
@@ -188,12 +270,55 @@ const Testes = () => {
         <p className="text-muted-foreground">
           Arraste para o lado ou use as setas para navegar
         </p>
-        <p className="text-sm text-muted-foreground mt-1">
-          {currentIndex + 1} de {shuffledNichos.length}
+        <div className="flex items-center justify-center gap-4 mt-4">
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary" />
+            <span className="text-2xl font-bold text-primary">
+              {formatTime(timeRemaining)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-yellow-500" />
+            <span className="text-sm text-muted-foreground">
+              Recorde: {record} ideias
+            </span>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground mt-2">
+          {currentIndex + 1} de {shuffledNichos.length} | {ideasCount} ideias (mín. 3)
         </p>
       </div>
 
-      <div className="absolute top-8 right-8">
+      <div className="absolute top-8 right-8 flex gap-2">
+        <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="icon">
+              <Clock className="h-5 w-5" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Configurar Tempo</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div>
+                <Label htmlFor="time">Tempo (minutos)</Label>
+                <Input
+                  id="time"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={timeLimit / 60}
+                  onChange={(e) => setTimeLimit(parseInt(e.target.value) * 60)}
+                />
+              </div>
+              <Button onClick={handleConfigTime} className="w-full">
+                Aplicar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={isManageOpen} onOpenChange={setIsManageOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="icon">
@@ -309,8 +434,9 @@ const Testes = () => {
                     id="resposta"
                     value={userResponse}
                     onChange={(e) => setUserResponse(e.target.value)}
-                    placeholder="Ex: 3 investimentos para fazer em 2025"
+                    placeholder="Ex: 3 investimentos para fazer em 2025&#10;Cada linha é uma ideia"
                     className="min-h-[150px] text-base resize-none"
+                    disabled={!isTimerActive && timeRemaining !== timeLimit}
                   />
                 </div>
               </CardContent>
@@ -321,7 +447,7 @@ const Testes = () => {
             variant="outline"
             size="icon"
             onClick={handleNext}
-            disabled={currentIndex === shuffledNichos.length - 1}
+            disabled={currentIndex === shuffledNichos.length - 1 || !canProceed}
             className="h-12 w-12"
           >
             <ChevronRight className="h-6 w-6" />
@@ -352,6 +478,30 @@ const Testes = () => {
             </div>
             <Button onClick={handleCreateNicho} className="w-full">
               Registrar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl">Tempo Esgotado!</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 mt-4 text-center">
+            <div className="space-y-2">
+              <p className="text-muted-foreground">Você trouxe:</p>
+              <p className="text-4xl font-bold text-primary">{sessionIdeas} ideias</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-muted-foreground">Seu recorde:</p>
+              <div className="flex items-center justify-center gap-2">
+                <Trophy className="h-6 w-6 text-yellow-500" />
+                <p className="text-3xl font-bold text-yellow-500">{record} ideias</p>
+              </div>
+            </div>
+            <Button onClick={handleRestart} className="w-full">
+              Começar Novamente
             </Button>
           </div>
         </DialogContent>
