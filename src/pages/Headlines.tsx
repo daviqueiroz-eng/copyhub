@@ -13,8 +13,9 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import { Plus, ExternalLink, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, Copy } from "lucide-react";
 import { usePlanilhas, useCreatePlanilha, useUpdatePlanilha, useDeletePlanilha } from "@/hooks/usePlanilhas";
+import { useToast } from "@/hooks/use-toast";
 
 const Headlines = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -26,6 +27,15 @@ const Headlines = () => {
   const createPlanilha = useCreatePlanilha();
   const updatePlanilha = useUpdatePlanilha();
   const deletePlanilha = useDeletePlanilha();
+  const { toast } = useToast();
+
+  const handleCopyLink = (link: string, nome: string) => {
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Link copiado!",
+      description: `O link de "${nome}" foi copiado para a área de transferência.`,
+    });
+  };
 
   const handleCreate = () => {
     if (!nome || !link) return;
@@ -138,15 +148,15 @@ const Headlines = () => {
                   </span>
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold">{planilha.nome}</h3>
-                    <a
-                      href={planilha.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0 text-sm text-primary hover:underline"
+                      onClick={() => handleCopyLink(planilha.link, planilha.nome)}
                     >
-                      Acessar planilha
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copiar link
+                    </Button>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
