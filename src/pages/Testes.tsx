@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Plus, ChevronLeft, ChevronRight, Settings, Pencil, Trash2, Clock, Trophy } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Settings, Pencil, Trash2, Clock, Trophy, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -276,6 +276,14 @@ const Testes = () => {
             <span className="text-2xl font-bold text-primary">
               {formatTime(timeRemaining)}
             </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setIsConfigOpen(true)}
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
           </div>
           <div className="flex items-center gap-2">
             <Trophy className="h-5 w-5 text-yellow-500" />
