@@ -13,8 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useRoteiros, useCreateRoteiro, useUpdateRoteiro, useDeleteRoteiro } from "@/hooks/useRoteiros";
 import { useCoresAnalise, useCreateCorAnalise, useUpdateCorAnalise, useDeleteCorAnalise } from "@/hooks/useCoresAnalise";
 import { useMedalhas, useCreateMedalha } from "@/hooks/useMedalhas";
+import { useNichos } from "@/hooks/useNichos";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Pencil, Trash2, ArrowLeft } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -24,12 +26,19 @@ const Admin = () => {
 
   // Roteiros state
   const { data: roteiros = [], isLoading: loadingRoteiros } = useRoteiros();
+  const { data: nichos = [] } = useNichos();
   const createRoteiro = useCreateRoteiro();
   const updateRoteiro = useUpdateRoteiro();
   const deleteRoteiro = useDeleteRoteiro();
   const [isRoteiroDialogOpen, setIsRoteiroDialogOpen] = useState(false);
   const [editingRoteiro, setEditingRoteiro] = useState<any>(null);
-  const [roteiroForm, setRoteiroForm] = useState({ titulo: "", conteudo: "", ordem: 0 });
+  const [roteiroForm, setRoteiroForm] = useState({ 
+    titulo: "", 
+    conteudo: "", 
+    ordem: 0, 
+    nicho_id: "", 
+    link_video: "" 
+  });
 
   // Cores state
   const { data: cores = [], isLoading: loadingCores } = useCoresAnalise();
@@ -81,22 +90,28 @@ const Admin = () => {
       return;
     }
 
+    const roteiroData = {
+      ...roteiroForm,
+      nicho_id: roteiroForm.nicho_id || null,
+      link_video: roteiroForm.link_video || null,
+    };
+
     if (editingRoteiro) {
       updateRoteiro.mutate(
-        { id: editingRoteiro.id, ...roteiroForm },
+        { id: editingRoteiro.id, ...roteiroData },
         {
           onSuccess: () => {
             setIsRoteiroDialogOpen(false);
             setEditingRoteiro(null);
-            setRoteiroForm({ titulo: "", conteudo: "", ordem: 0 });
+            setRoteiroForm({ titulo: "", conteudo: "", ordem: 0, nicho_id: "", link_video: "" });
           },
         }
       );
     } else {
-      createRoteiro.mutate(roteiroForm, {
+      createRoteiro.mutate(roteiroData, {
         onSuccess: () => {
           setIsRoteiroDialogOpen(false);
-          setRoteiroForm({ titulo: "", conteudo: "", ordem: 0 });
+          setRoteiroForm({ titulo: "", conteudo: "", ordem: 0, nicho_id: "", link_video: "" });
         },
       });
     }
@@ -108,6 +123,8 @@ const Admin = () => {
       titulo: roteiro.titulo,
       conteudo: roteiro.conteudo,
       ordem: roteiro.ordem,
+      nicho_id: roteiro.nicho_id || "",
+      link_video: roteiro.link_video || "",
     });
     setIsRoteiroDialogOpen(true);
   };
@@ -224,7 +241,7 @@ const Admin = () => {
                   <DialogTrigger asChild>
                     <Button onClick={() => {
                       setEditingRoteiro(null);
-                      setRoteiroForm({ titulo: "", conteudo: "", ordem: 0 });
+                      setRoteiroForm({ titulo: "", conteudo: "", ordem: 0, nicho_id: "", link_video: "" });
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
                       Novo Roteiro
@@ -252,6 +269,33 @@ const Admin = () => {
                           onChange={(e) => setRoteiroForm({ ...roteiroForm, conteudo: e.target.value })}
                           placeholder="Cole o roteiro completo aqui..."
                           className="min-h-[300px] font-mono text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="nicho">Nicho</Label>
+                        <Select
+                          value={roteiroForm.nicho_id}
+                          onValueChange={(value) => setRoteiroForm({ ...roteiroForm, nicho_id: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um nicho (opcional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {nichos.map((nicho) => (
+                              <SelectItem key={nicho.id} value={nicho.id}>
+                                {nicho.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="link_video">Link do Vídeo</Label>
+                        <Input
+                          id="link_video"
+                          value={roteiroForm.link_video}
+                          onChange={(e) => setRoteiroForm({ ...roteiroForm, link_video: e.target.value })}
+                          placeholder="https://youtube.com/..."
                         />
                       </div>
                       <div>

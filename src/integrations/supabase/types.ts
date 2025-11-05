@@ -340,6 +340,8 @@ export type Database = {
           conteudo: string
           created_at: string
           id: string
+          link_video: string | null
+          nicho_id: string | null
           ordem: number
           titulo: string
           updated_at: string
@@ -348,6 +350,8 @@ export type Database = {
           conteudo: string
           created_at?: string
           id?: string
+          link_video?: string | null
+          nicho_id?: string | null
           ordem?: number
           titulo: string
           updated_at?: string
@@ -356,11 +360,21 @@ export type Database = {
           conteudo?: string
           created_at?: string
           id?: string
+          link_video?: string | null
+          nicho_id?: string | null
           ordem?: number
           titulo?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "roteiros_nicho_id_fkey"
+            columns: ["nicho_id"]
+            isOneToOne: false
+            referencedRelation: "nichos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sublinhados_corretos: {
         Row: {

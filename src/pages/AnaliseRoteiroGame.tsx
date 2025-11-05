@@ -3,131 +3,172 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRoteiros } from "@/hooks/useRoteiros";
 import { useProgressoRoteiros, useCompletarRoteiro } from "@/hooks/useProgressoRoteiros";
 import { useCoresAnalise } from "@/hooks/useCoresAnalise";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+
+type Highlight = {
+  text: string;
+  color: string;
+  startPos: number;
+  endPos: number;
+};
 
 const AnaliseRoteiroGame = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { data: roteiros = [], isLoading: loadingRoteiros } = useRoteiros();
-  const { data: progresso = [], isLoading: loadingProgresso } = useProgressoRoteiros();
+  const { data: progressoData = [], isLoading: loadingProgresso } = useProgressoRoteiros();
   const { data: cores = [], isLoading: loadingCores } = useCoresAnalise();
   const completarRoteiro = useCompletarRoteiro();
-  const { toast } = useToast();
 
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [selectedRoteiroId, setSelectedRoteiroId] = useState<string | null>(null);
-  const [highlights, setHighlights] = useState<Array<{
-    text: string;
-    color: string;
-    start: number;
-    end: number;
-  }>>([]);
-
-  // Selecionar primeiro roteiro não completado automaticamente
-  useEffect(() => {
-    if (roteiros.length > 0 && !selectedRoteiroId) {
-      const primeiroNaoCompletado = roteiros.find(r => 
-        !progresso.some(p => p.roteiro_id === r.id && p.completado)
-      );
-      setSelectedRoteiroId(primeiroNaoCompletado?.id || roteiros[0].id);
-    }
-  }, [roteiros, progresso, selectedRoteiroId]);
-
-  const roteiroAtual = roteiros.find(r => r.id === selectedRoteiroId);
+  const [selectedColor, setSelectedColor] = useState<string>("");
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [currentRoteiroId, setCurrentRoteiroId] = useState<string | null>(null);
   
-  // Check if current roteiro is completed
-  const isCompleted = roteiroAtual 
-    ? progresso.some(p => p.roteiro_id === roteiroAtual.id && p.completado)
-    : false;
+  // Campos de análise
+  const [estruturaInvisivel, setEstruturaInvisivel] = useState("");
+  const [gatilhosAtencao, setGatilhosAtencao] = useState("");
+  const [estruturaRoteiro, setEstruturaRoteiro] = useState("");
+
+  // Selecionar automaticamente o primeiro roteiro não completado
+  useEffect(() => {
+    if (roteiros.length > 0 && progressoData.length >= 0) {
+      const roteiroNaoCompletado = roteiros.find(
+        (r) => !progressoData.some((p) => p.roteiro_id === r.id && p.completado)
+      );
+      
+      if (roteiroNaoCompletado) {
+        setCurrentRoteiroId(roteiroNaoCompletado.id);
+      } else if (roteiros.length > 0) {
+        // Se todos completados, mostra o primeiro
+        setCurrentRoteiroId(roteiros[0].id);
+      }
+    }
+  }, [roteiros, progressoData]);
+
+  // Selecionar primeira cor automaticamente
+  useEffect(() => {
+    if (cores.length > 0 && !selectedColor) {
+      setSelectedColor(cores[0].cor);
+    }
+  }, [cores, selectedColor]);
+
+  const currentRoteiro = roteiros.find((r) => r.id === currentRoteiroId);
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
-    if (!selection || !selectedColor || selection.toString().trim() === "") return;
+    if (!selection || selection.rangeCount === 0 || !selectedColor) return;
+
+    const selectedText = selection.toString().trim();
+    if (!selectedText) return;
 
     const range = selection.getRangeAt(0);
-    const text = selection.toString();
-    
-    // Get the position relative to the content
-    const preSelectionRange = range.cloneRange();
+    const preCaretRange = range.cloneRange();
     const container = document.getElementById("roteiro-content");
     if (!container) return;
-    
-    preSelectionRange.selectNodeContents(container);
-    preSelectionRange.setEnd(range.startContainer, range.startOffset);
-    const start = preSelectionRange.toString().length;
-    const end = start + text.length;
 
-    setHighlights([...highlights, {
-      text,
-      color: selectedColor,
-      start,
-      end,
-    }]);
+    preCaretRange.selectNodeContents(container);
+    preCaretRange.setEnd(range.startContainer, range.startOffset);
+    const startPos = preCaretRange.toString().length;
+    const endPos = startPos + selectedText.length;
+
+    setHighlights([
+      ...highlights,
+      {
+        text: selectedText,
+        color: selectedColor,
+        startPos,
+        endPos,
+      },
+    ]);
 
     selection.removeAllRanges();
   };
 
   const handleVerify = () => {
-    // TODO: Implement verification logic against sublinhados_corretos
-    // For now, just mark as completed
-    if (roteiroAtual) {
-      completarRoteiro.mutate(roteiroAtual.id);
-      setHighlights([]);
+    if (!currentRoteiroId) return;
+
+    // Validar se os campos foram preenchidos
+    if (!estruturaInvisivel.trim() || !gatilhosAtencao.trim() || !estruturaRoteiro.trim()) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos de análise antes de completar.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    completarRoteiro.mutate(currentRoteiroId, {
+      onSuccess: () => {
+        // Limpar campos e highlights
+        setHighlights([]);
+        setEstruturaInvisivel("");
+        setGatilhosAtencao("");
+        setEstruturaRoteiro("");
+        
+        // Buscar próximo roteiro não completado
+        const proximoRoteiro = roteiros.find(
+          (r) =>
+            r.id !== currentRoteiroId &&
+            !progressoData.some((p) => p.roteiro_id === r.id && p.completado)
+        );
+        
+        if (proximoRoteiro) {
+          setCurrentRoteiroId(proximoRoteiro.id);
+          toast({
+            title: "Roteiro completado!",
+            description: "Carregando próximo roteiro...",
+          });
+        } else {
+          toast({
+            title: "Parabéns!",
+            description: "Você completou todos os roteiros disponíveis!",
+          });
+        }
+      },
+    });
   };
 
-  const renderHighlightedText = () => {
-    if (!roteiroAtual) return null;
+  const renderHighlightedText = (text: string) => {
+    if (highlights.length === 0) return text;
 
+    const sortedHighlights = [...highlights].sort((a, b) => a.startPos - b.startPos);
+    const parts: JSX.Element[] = [];
     let lastIndex = 0;
-    const parts: React.ReactNode[] = [];
-    const sortedHighlights = [...highlights].sort((a, b) => a.start - b.start);
 
-    sortedHighlights.forEach((highlight, i) => {
-      // Add text before highlight
-      if (highlight.start > lastIndex) {
+    sortedHighlights.forEach((highlight, idx) => {
+      if (highlight.startPos > lastIndex) {
         parts.push(
-          <span key={`text-${i}`}>
-            {roteiroAtual.conteudo.substring(lastIndex, highlight.start)}
-          </span>
+          <span key={`text-${idx}`}>{text.slice(lastIndex, highlight.startPos)}</span>
         );
       }
 
-      // Add highlighted text
       parts.push(
         <mark
-          key={`highlight-${i}`}
-          style={{ backgroundColor: highlight.color }}
-          className="px-1 rounded"
+          key={`highlight-${idx}`}
+          style={{
+            backgroundColor: highlight.color,
+            padding: "2px 0",
+            borderRadius: "2px",
+          }}
         >
-          {highlight.text}
+          {text.slice(highlight.startPos, highlight.endPos)}
         </mark>
       );
 
-      lastIndex = highlight.end;
+      lastIndex = highlight.endPos;
     });
 
-    // Add remaining text
-    if (lastIndex < roteiroAtual.conteudo.length) {
-      parts.push(
-        <span key="text-end">
-          {roteiroAtual.conteudo.substring(lastIndex)}
-        </span>
-      );
+    if (lastIndex < text.length) {
+      parts.push(<span key="text-end">{text.slice(lastIndex)}</span>);
     }
 
     return parts;
   };
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Você precisa estar logado para jogar.</p>
-      </div>
-    );
-  }
 
   if (loadingRoteiros || loadingProgresso || loadingCores) {
     return (
@@ -137,150 +178,136 @@ const AnaliseRoteiroGame = () => {
     );
   }
 
-  if (roteiros.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-muted-foreground">Nenhum roteiro disponível ainda.</p>
-        <p className="text-sm text-muted-foreground">
-          Entre em contato com o administrador.
-        </p>
-      </div>
-    );
-  }
-
-  if (!roteiroAtual) {
+  if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Card className="p-8">
+          <p className="text-lg">Por favor, faça login para acessar o jogo.</p>
+        </Card>
       </div>
     );
   }
 
-  const roteirosCompletados = progresso.filter(p => p.completado).length;
-  const roteirosDisponiveis = roteiros.length;
+  if (!currentRoteiro) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="p-8">
+          <p className="text-lg">Nenhum roteiro disponível no momento.</p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-3xl font-bold text-foreground mb-2">
-              Análise de Roteiro
-            </h2>
-            <p className="text-muted-foreground">
-              {roteirosCompletados} de {roteirosDisponiveis} roteiros completados
-            </p>
-          </div>
-          {isCompleted && (
-            <CheckCircle2 className="h-8 w-8 text-green-500" />
-          )}
-        </div>
-
-        {/* Seletor de Roteiros */}
-        <div className="flex flex-wrap gap-2">
-          {roteiros.map((roteiro) => {
-            const completo = progresso.some(p => p.roteiro_id === roteiro.id && p.completado);
-            return (
-              <Button
-                key={roteiro.id}
-                variant={selectedRoteiroId === roteiro.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setSelectedRoteiroId(roteiro.id);
-                  setHighlights([]);
-                }}
-                className="relative"
-              >
-                {completo && (
-                  <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-                )}
-                {roteiro.titulo}
-              </Button>
-            );
-          })}
-        </div>
+    <div className="container max-w-7xl mx-auto px-4 py-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-foreground">Roteiro</h1>
       </div>
 
-      {/* Color Palette */}
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <p className="text-sm font-medium mb-3">Selecione uma cor:</p>
-          <div className="flex flex-wrap gap-2">
-            {cores.map((cor) => (
-              <button
-                key={cor.id}
-                onClick={() => setSelectedColor(cor.cor)}
-                className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                  selectedColor === cor.cor
-                    ? "border-primary scale-105"
-                    : "border-transparent hover:border-border"
-                }`}
-                style={{ backgroundColor: cor.cor }}
-              >
-                <span className="text-sm font-medium text-white mix-blend-difference">
-                  {cor.nome}
-                </span>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Roteiro Content */}
-      <Card className="mb-6">
-        <CardContent className="p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Coluna Esquerda - Conteúdo do Roteiro */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">{currentRoteiro.titulo}</h2>
           <div
             id="roteiro-content"
-            className="prose dark:prose-invert max-w-none"
+            className="prose prose-sm max-w-none whitespace-pre-wrap text-foreground leading-relaxed select-text cursor-text"
             onMouseUp={handleTextSelection}
-            style={{ userSelect: "text", cursor: selectedColor ? "text" : "default" }}
           >
-            <div className="whitespace-pre-wrap leading-relaxed">
-              {highlights.length === 0 ? roteiroAtual.conteudo : renderHighlightedText()}
-            </div>
+            {renderHighlightedText(currentRoteiro.conteudo)}
           </div>
-        </CardContent>
-      </Card>
+          
+          <div className="mt-6 flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setHighlights([]);
+                setEstruturaInvisivel("");
+                setGatilhosAtencao("");
+                setEstruturaRoteiro("");
+              }}
+            >
+              Limpar Tudo
+            </Button>
+            <Button onClick={handleVerify} disabled={completarRoteiro.isPending}>
+              {completarRoteiro.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Completar Roteiro"
+              )}
+            </Button>
+          </div>
+        </Card>
 
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-        <Button
-          variant="outline"
-          onClick={() => setHighlights([])}
-          disabled={highlights.length === 0}
-        >
-          Limpar Sublinhados
-        </Button>
-        <div className="flex gap-4 items-center">
-          <span className="text-sm text-muted-foreground">
-            {highlights.length} sublinhados
-          </span>
-          <Button
-            onClick={handleVerify}
-            disabled={highlights.length === 0 || completarRoteiro.isPending}
-          >
-            {completarRoteiro.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Verificando...
-              </>
-            ) : (
-              "Verificar e Completar"
-            )}
-          </Button>
+        {/* Coluna Direita - Análise e Legenda */}
+        <div className="space-y-4">
+          {/* Campo 1: Estrutura Invisível */}
+          <Card className="p-4">
+            <Label htmlFor="estrutura-invisivel" className="text-sm font-medium mb-2 block">
+              Retire a estrutura invisível
+            </Label>
+            <Textarea
+              id="estrutura-invisivel"
+              value={estruturaInvisivel}
+              onChange={(e) => setEstruturaInvisivel(e.target.value)}
+              placeholder="Descreva a estrutura invisível do roteiro..."
+              className="min-h-[150px] resize-none"
+            />
+          </Card>
+
+          {/* Campo 2: 7 Gatilhos da Atenção */}
+          <Card className="p-4">
+            <Label htmlFor="gatilhos-atencao" className="text-sm font-medium mb-2 block">
+              Quais os 7 gatilhos da atenção presente na headline?
+            </Label>
+            <Textarea
+              id="gatilhos-atencao"
+              value={gatilhosAtencao}
+              onChange={(e) => setGatilhosAtencao(e.target.value)}
+              placeholder="Liste os 7 gatilhos da atenção..."
+              className="min-h-[120px] resize-none"
+            />
+          </Card>
+
+          {/* Campo 3: Estrutura do Roteiro */}
+          <Card className="p-4">
+            <Label htmlFor="estrutura-roteiro" className="text-sm font-medium mb-2 block">
+              Estrutura do roteiro
+            </Label>
+            <Textarea
+              id="estrutura-roteiro"
+              value={estruturaRoteiro}
+              onChange={(e) => setEstruturaRoteiro(e.target.value)}
+              placeholder="Descreva a estrutura do roteiro..."
+              className="min-h-[150px] resize-none"
+            />
+          </Card>
+
+          {/* Legenda de Cores */}
+          <Card className="p-4">
+            <h3 className="text-sm font-semibold mb-3">Legenda de Cores</h3>
+            <div className="space-y-2">
+              {cores.map((cor) => (
+                <button
+                  key={cor.id}
+                  onClick={() => setSelectedColor(cor.cor)}
+                  className={`w-full flex items-center gap-3 p-2 rounded-lg transition-all hover:bg-accent ${
+                    selectedColor === cor.cor ? "bg-accent ring-2 ring-primary" : ""
+                  }`}
+                >
+                  <div
+                    className="w-6 h-6 rounded border-2 border-border flex-shrink-0"
+                    style={{ backgroundColor: cor.cor }}
+                  />
+                  <span className="text-sm font-medium text-left">{cor.nome}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
         </div>
       </div>
-
-      {/* Instructions */}
-      <Card className="mt-8 bg-muted/50">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">
-            <strong>Como jogar:</strong> Selecione uma cor da paleta acima e sublinha o texto
-            do roteiro de acordo com as categorias indicadas. Quando terminar, clique em
-            "Verificar e Completar" para validar suas escolhas.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 };
