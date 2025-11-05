@@ -35,6 +35,33 @@ export type Database = {
         }
         Relationships: []
       }
+      cores_analise: {
+        Row: {
+          cor: string
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          cor: string
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          cor?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       headlines: {
         Row: {
           category_key: string
@@ -73,6 +100,68 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "categories"
             referencedColumns: ["key"]
+          },
+        ]
+      }
+      medalhas: {
+        Row: {
+          created_at: string
+          descricao: string
+          icone: string
+          id: string
+          nome: string
+          ordem: number
+          roteiros_necessarios: number
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          icone: string
+          id?: string
+          nome: string
+          ordem?: number
+          roteiros_necessarios: number
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          icone?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          roteiros_necessarios?: number
+        }
+        Relationships: []
+      }
+      medalhas_usuarios: {
+        Row: {
+          created_at: string
+          desbloqueada_em: string
+          id: string
+          medalha_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          desbloqueada_em?: string
+          id?: string
+          medalha_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          desbloqueada_em?: string
+          id?: string
+          medalha_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medalhas_usuarios_medalha_id_fkey"
+            columns: ["medalha_id"]
+            isOneToOne: false
+            referencedRelation: "medalhas"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -184,15 +273,176 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          avatar: string | null
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string
+          id: string
+          nome: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      progresso_roteiros: {
+        Row: {
+          completado: boolean
+          created_at: string
+          data_completado: string | null
+          id: string
+          roteiro_id: string
+          user_id: string
+        }
+        Insert: {
+          completado?: boolean
+          created_at?: string
+          data_completado?: string | null
+          id?: string
+          roteiro_id: string
+          user_id: string
+        }
+        Update: {
+          completado?: boolean
+          created_at?: string
+          data_completado?: string | null
+          id?: string
+          roteiro_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progresso_roteiros_roteiro_id_fkey"
+            columns: ["roteiro_id"]
+            isOneToOne: false
+            referencedRelation: "roteiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roteiros: {
+        Row: {
+          conteudo: string
+          created_at: string
+          id: string
+          ordem: number
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sublinhados_corretos: {
+        Row: {
+          cor_id: string
+          created_at: string
+          id: string
+          posicao_fim: number
+          posicao_inicio: number
+          roteiro_id: string
+          texto_sublinhado: string
+        }
+        Insert: {
+          cor_id: string
+          created_at?: string
+          id?: string
+          posicao_fim: number
+          posicao_inicio: number
+          roteiro_id: string
+          texto_sublinhado: string
+        }
+        Update: {
+          cor_id?: string
+          created_at?: string
+          id?: string
+          posicao_fim?: number
+          posicao_inicio?: number
+          roteiro_id?: string
+          texto_sublinhado?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sublinhados_corretos_cor_id_fkey"
+            columns: ["cor_id"]
+            isOneToOne: false
+            referencedRelation: "cores_analise"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sublinhados_corretos_roteiro_id_fkey"
+            columns: ["roteiro_id"]
+            isOneToOne: false
+            referencedRelation: "roteiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -319,6 +569,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
