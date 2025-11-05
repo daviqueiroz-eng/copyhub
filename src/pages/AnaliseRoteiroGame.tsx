@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useAuth";
 import { useRoteiros, useCreateRoteiro, useDeleteRoteiro } from "@/hooks/useRoteiros";
 import { useProgressoRoteiros, useCompletarRoteiro } from "@/hooks/useProgressoRoteiros";
 import { useCoresAnalise } from "@/hooks/useCoresAnalise";
 import { useNichos } from "@/hooks/useNichos";
+import { useAnalysisStreak } from "@/hooks/useAnalysisStreak";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +30,6 @@ type Highlight = {
 
 const AnaliseRoteiroGame = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const { data: userRole } = useUserRole();
@@ -40,7 +40,7 @@ const AnaliseRoteiroGame = () => {
   const completarRoteiro = useCompletarRoteiro();
   const createRoteiro = useCreateRoteiro();
   const deleteRoteiro = useDeleteRoteiro();
-  const autoStart = location.state?.autoStart;
+  const { updateStreak } = useAnalysisStreak();
 
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -85,17 +85,6 @@ const AnaliseRoteiroGame = () => {
       setSelectedColor(cores[0].cor);
     }
   }, [cores, selectedColor]);
-
-  // Auto-start: selecionar roteiro aleatório e ativar modo foco ao vir da página Testes
-  useEffect(() => {
-    if (autoStart && roteiros.length > 0 && !currentRoteiroId) {
-      const randomIndex = Math.floor(Math.random() * roteiros.length);
-      setIsFocusMode(true);
-      setCurrentRoteiroId(roteiros[randomIndex].id);
-      // Limpar o state para não repetir ao voltar
-      window.history.replaceState({}, document.title);
-    }
-  }, [autoStart, roteiros, currentRoteiroId]);
 
   const currentRoteiro = isAnalysingAvulso && roteiroAvulso
     ? { id: "avulso", titulo: roteiroAvulso.titulo, conteudo: roteiroAvulso.conteudo }
@@ -284,6 +273,9 @@ const AnaliseRoteiroGame = () => {
       sublinhados: highlights,
     }, {
       onSuccess: () => {
+        // Atualizar streak
+        updateStreak();
+        
         // Limpar campos e highlights
         setHighlights([]);
         setHighlightsHistory([]);

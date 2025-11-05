@@ -104,7 +104,7 @@ const Testes = () => {
           </Card>
 
           {/* Análise de Roteiro Card */}
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => navigate("/testes/analise-roteiro", { state: { autoStart: true } })}>
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => navigate("/testes/analise-roteiro")}>
             <CardHeader>
               <div className="flex items-center gap-4 mb-4">
                 <div className="p-4 bg-secondary/10 rounded-lg group-hover:bg-secondary/20 transition-colors">
@@ -120,7 +120,7 @@ const Testes = () => {
               <p className="text-muted-foreground mb-4">
                 Analise roteiros sublinhando elementos como gatilhos, CTAs e outros componentes importantes.
               </p>
-              <Button variant="secondary" className="w-full" onClick={() => navigate("/testes/analise-roteiro", { state: { autoStart: true } })}>
+              <Button variant="secondary" className="w-full" onClick={() => navigate("/testes/analise-roteiro")}>
                 Jogar Análise de Roteiro
               </Button>
             </CardContent>
