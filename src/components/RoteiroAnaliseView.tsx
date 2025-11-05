@@ -16,8 +16,8 @@ interface RoteiroAnaliseViewProps {
 interface Highlight {
   text: string;
   color: string;
-  start: number;
-  end: number;
+  startPos: number;
+  endPos: number;
 }
 
 export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewProps) => {
@@ -29,16 +29,16 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
     }
 
     const highlights = progresso.sublinhados as Highlight[];
-    const sortedHighlights = [...highlights].sort((a, b) => a.start - b.start);
+    const sortedHighlights = [...highlights].sort((a, b) => a.startPos - b.startPos);
     
     const elements: JSX.Element[] = [];
     let lastIndex = 0;
 
     sortedHighlights.forEach((highlight, idx) => {
-      if (highlight.start > lastIndex) {
+      if (highlight.startPos > lastIndex) {
         elements.push(
           <span key={`text-${idx}`}>
-            {roteiro.conteudo.substring(lastIndex, highlight.start)}
+            {roteiro.conteudo.substring(lastIndex, highlight.startPos)}
           </span>
         );
       }
@@ -53,7 +53,7 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
         </mark>
       );
 
-      lastIndex = highlight.end;
+      lastIndex = highlight.endPos;
     });
 
     if (lastIndex < roteiro.conteudo.length) {

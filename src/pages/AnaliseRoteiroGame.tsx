@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRoteiros } from "@/hooks/useRoteiros";
+import { useUserRole } from "@/hooks/useAuth";
+import { useRoteiros, useCreateRoteiro } from "@/hooks/useRoteiros";
 import { useProgressoRoteiros, useCompletarRoteiro } from "@/hooks/useProgressoRoteiros";
 import { useCoresAnalise } from "@/hooks/useCoresAnalise";
+import { useNichos } from "@/hooks/useNichos";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, BookOpen, ExternalLink } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink, FileUp, FileEdit, ArrowLeft } from "lucide-react";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,10 +29,13 @@ type Highlight = {
 const AnaliseRoteiroGame = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { data: userRole } = useUserRole();
   const { data: roteiros = [], isLoading: loadingRoteiros } = useRoteiros();
   const { data: progressoData = [], isLoading: loadingProgresso } = useProgressoRoteiros();
   const { data: cores = [], isLoading: loadingCores } = useCoresAnalise();
+  const { data: nichos = [] } = useNichos();
   const completarRoteiro = useCompletarRoteiro();
+  const createRoteiro = useCreateRoteiro();
 
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -37,6 +44,24 @@ const AnaliseRoteiroGame = () => {
   const [showCompletedDialog, setShowCompletedDialog] = useState(false);
   const [showAnalysesDialog, setShowAnalysesDialog] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState<string | null>(null);
+  
+  // Modo avulso
+  const [isAnalysingAvulso, setIsAnalysingAvulso] = useState(false);
+  const [roteiroAvulso, setRoteiroAvulso] = useState<{ titulo: string; conteudo: string } | null>(null);
+  
+  // Dialog novo roteiro (admin)
+  const [showNovoRoteiroDialog, setShowNovoRoteiroDialog] = useState(false);
+  const [novoRoteiroForm, setNovoRoteiroForm] = useState({
+    titulo: "",
+    conteudo: "",
+    nicho_id: "",
+    link_video: "",
+    ordem: 0,
+  });
+  
+  // Dialog roteiro avulso
+  const [showAvulsoDialog, setShowAvulsoDialog] = useState(false);
+  const [avulsoForm, setAvulsoForm] = useState({ titulo: "", conteudo: "" });
   
   // Campos de análise
   const [estruturaInvisivel, setEstruturaInvisivel] = useState("");
@@ -66,10 +91,15 @@ const AnaliseRoteiroGame = () => {
     }
   }, [cores, selectedColor]);
 
-  const currentRoteiro = roteiros.find((r) => r.id === currentRoteiroId);
+  const currentRoteiro = isAnalysingAvulso && roteiroAvulso
+    ? { id: "avulso", titulo: roteiroAvulso.titulo, conteudo: roteiroAvulso.conteudo }
+    : roteiros.find((r) => r.id === currentRoteiroId);
+  
   const completedRoteiros = roteiros.filter((r) => 
     progressoData.some((p) => p.roteiro_id === r.id && p.completado)
   );
+
+  const isAdmin = userRole === "admin";
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
@@ -109,8 +139,66 @@ const AnaliseRoteiroGame = () => {
     }
   };
 
+  const handleCreateRoteiro = () => {
+    if (!novoRoteiroForm.titulo.trim() || !novoRoteiroForm.conteudo.trim()) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Título e conteúdo são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createRoteiro.mutate({
+      titulo: novoRoteiroForm.titulo,
+      conteudo: novoRoteiroForm.conteudo,
+      nicho_id: novoRoteiroForm.nicho_id || undefined,
+      link_video: novoRoteiroForm.link_video || undefined,
+      ordem: novoRoteiroForm.ordem,
+    }, {
+      onSuccess: () => {
+        setShowNovoRoteiroDialog(false);
+        setNovoRoteiroForm({ titulo: "", conteudo: "", nicho_id: "", link_video: "", ordem: 0 });
+        toast({
+          title: "Roteiro criado",
+          description: "O novo roteiro foi adicionado com sucesso.",
+        });
+      },
+    });
+  };
+
+  const handleStartAvulso = () => {
+    if (!avulsoForm.titulo.trim() || !avulsoForm.conteudo.trim()) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Título e conteúdo são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setRoteiroAvulso(avulsoForm);
+    setIsAnalysingAvulso(true);
+    setShowAvulsoDialog(false);
+    setHighlights([]);
+    setHighlightsHistory([]);
+    setEstruturaInvisivel("");
+    setGatilhosAtencao("");
+    setEstruturaRoteiro("");
+  };
+
+  const handleVoltarRoteiros = () => {
+    setIsAnalysingAvulso(false);
+    setRoteiroAvulso(null);
+    setHighlights([]);
+    setHighlightsHistory([]);
+    setEstruturaInvisivel("");
+    setGatilhosAtencao("");
+    setEstruturaRoteiro("");
+  };
+
   const handleVerify = () => {
-    if (!currentRoteiroId) return;
+    if (!currentRoteiroId || isAnalysingAvulso) return;
 
     // Validar se os campos foram preenchidos
     if (!estruturaInvisivel.trim() || !gatilhosAtencao.trim() || !estruturaRoteiro.trim()) {
@@ -229,16 +317,57 @@ const AnaliseRoteiroGame = () => {
 
   return (
     <div className="container max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-foreground">Roteiro</h1>
-        <Button
-          onClick={() => setShowAnalysesDialog(true)}
-          variant="outline"
-          className="gap-2"
-        >
-          <BookOpen className="w-4 h-4" />
-          Ver Roteiros Analisados ({completedRoteirosWithData.length})
-        </Button>
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-foreground">
+            {isAnalysingAvulso ? "Análise Avulsa" : "Roteiro"}
+          </h1>
+          {isAnalysingAvulso && (
+            <Button
+              onClick={handleVoltarRoteiros}
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar aos Roteiros
+            </Button>
+          )}
+        </div>
+        
+        {!isAnalysingAvulso && (
+          <div className="flex flex-wrap gap-2">
+            {isAdmin && (
+              <Button
+                onClick={() => setShowNovoRoteiroDialog(true)}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <FileUp className="w-4 h-4" />
+                Novo Roteiro
+              </Button>
+            )}
+            <Button
+              onClick={() => setShowAvulsoDialog(true)}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <FileEdit className="w-4 h-4" />
+              Analisar Avulso
+            </Button>
+            <Button
+              onClick={() => setShowAnalysesDialog(true)}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <BookOpen className="w-4 h-4" />
+              Ver Analisados ({completedRoteirosWithData.length})
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_1fr] gap-6">
@@ -296,16 +425,18 @@ const AnaliseRoteiroGame = () => {
             >
               Limpar Tudo
             </Button>
-            <Button onClick={handleVerify} disabled={completarRoteiro.isPending}>
-              {completarRoteiro.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                "Completar Roteiro"
-              )}
-            </Button>
+            {!isAnalysingAvulso && (
+              <Button onClick={handleVerify} disabled={completarRoteiro.isPending}>
+                {completarRoteiro.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Completar Roteiro"
+                )}
+              </Button>
+            )}
           </div>
         </Card>
 
@@ -363,7 +494,7 @@ const AnaliseRoteiroGame = () => {
           </DialogHeader>
           <div className="space-y-4">
             <p>Parabéns! Você completou a análise do roteiro.</p>
-            {currentRoteiro?.link_video && (
+            {currentRoteiro && 'link_video' in currentRoteiro && currentRoteiro.link_video && (
               <Button variant="outline" size="sm" asChild className="w-full">
                 <a href={currentRoteiro.link_video} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
                   <ExternalLink className="w-4 h-4" />
@@ -371,6 +502,133 @@ const AnaliseRoteiroGame = () => {
                 </a>
               </Button>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Novo Roteiro (Admin) */}
+      <Dialog open={showNovoRoteiroDialog} onOpenChange={setShowNovoRoteiroDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Criar Novo Roteiro</DialogTitle>
+            <DialogDescription>
+              Adicione um novo roteiro ao banco de dados.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="novo-titulo">Título *</Label>
+              <Input
+                id="novo-titulo"
+                value={novoRoteiroForm.titulo}
+                onChange={(e) => setNovoRoteiroForm({ ...novoRoteiroForm, titulo: e.target.value })}
+                placeholder="Título do roteiro"
+              />
+            </div>
+            <div>
+              <Label htmlFor="novo-conteudo">Conteúdo *</Label>
+              <Textarea
+                id="novo-conteudo"
+                value={novoRoteiroForm.conteudo}
+                onChange={(e) => setNovoRoteiroForm({ ...novoRoteiroForm, conteudo: e.target.value })}
+                placeholder="Cole o conteúdo do roteiro aqui..."
+                className="min-h-[300px]"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="novo-nicho">Nicho</Label>
+                <Select
+                  value={novoRoteiroForm.nicho_id}
+                  onValueChange={(value) => setNovoRoteiroForm({ ...novoRoteiroForm, nicho_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um nicho" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nichos.map((nicho) => (
+                      <SelectItem key={nicho.id} value={nicho.id}>
+                        {nicho.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="novo-ordem">Ordem</Label>
+                <Input
+                  id="novo-ordem"
+                  type="number"
+                  value={novoRoteiroForm.ordem}
+                  onChange={(e) => setNovoRoteiroForm({ ...novoRoteiroForm, ordem: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="novo-link">Link do Vídeo</Label>
+              <Input
+                id="novo-link"
+                value={novoRoteiroForm.link_video}
+                onChange={(e) => setNovoRoteiroForm({ ...novoRoteiroForm, link_video: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowNovoRoteiroDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleCreateRoteiro} disabled={createRoteiro.isPending}>
+                {createRoteiro.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Criando...
+                  </>
+                ) : (
+                  "Criar Roteiro"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Analisar Roteiro Avulso */}
+      <Dialog open={showAvulsoDialog} onOpenChange={setShowAvulsoDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Analisar Roteiro Avulso</DialogTitle>
+            <DialogDescription>
+              Cole um roteiro para análise temporária. Não será salvo no banco de dados.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="avulso-titulo">Título *</Label>
+              <Input
+                id="avulso-titulo"
+                value={avulsoForm.titulo}
+                onChange={(e) => setAvulsoForm({ ...avulsoForm, titulo: e.target.value })}
+                placeholder="Título do roteiro"
+              />
+            </div>
+            <div>
+              <Label htmlFor="avulso-conteudo">Conteúdo *</Label>
+              <Textarea
+                id="avulso-conteudo"
+                value={avulsoForm.conteudo}
+                onChange={(e) => setAvulsoForm({ ...avulsoForm, conteudo: e.target.value })}
+                placeholder="Cole o conteúdo do roteiro aqui..."
+                className="min-h-[300px]"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAvulsoDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleStartAvulso}>
+                Iniciar Análise
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
