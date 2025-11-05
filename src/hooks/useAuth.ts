@@ -34,11 +34,12 @@ export const useUserRole = () => {
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .single();
+        .eq("user_id", user.id);
 
       if (error) throw error;
-      return data?.role;
+      const roles = (data ?? []).map((r: { role: string }) => r.role);
+      if (roles.includes("admin")) return "admin";
+      return roles[0] ?? "user";
     },
     enabled: !!user,
   });

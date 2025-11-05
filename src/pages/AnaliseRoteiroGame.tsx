@@ -67,6 +67,9 @@ const AnaliseRoteiroGame = () => {
   const [estruturaInvisivel, setEstruturaInvisivel] = useState("");
   const [gatilhosAtencao, setGatilhosAtencao] = useState("");
   const [estruturaRoteiro, setEstruturaRoteiro] = useState("");
+  // Filtros
+  const [selectedNicho, setSelectedNicho] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Selecionar automaticamente o primeiro roteiro não completado
   useEffect(() => {
@@ -100,6 +103,17 @@ const AnaliseRoteiroGame = () => {
   );
 
   const isAdmin = userRole === "admin";
+  const filteredRoteiros = roteiros.filter((r) =>
+    (!selectedNicho || r.nicho_id === selectedNicho) &&
+    (!searchTerm || r.titulo.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  useEffect(() => {
+    if (isAnalysingAvulso) return;
+    if (!filteredRoteiros.some((r) => r.id === currentRoteiroId || "")) {
+      setCurrentRoteiroId(filteredRoteiros[0]?.id ?? null);
+    }
+  }, [selectedNicho, searchTerm, roteiros, isAnalysingAvulso]);
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
@@ -336,7 +350,48 @@ const AnaliseRoteiroGame = () => {
         </div>
         
         {!isAnalysingAvulso && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Filtro por nicho */}
+            <Select value={selectedNicho} onValueChange={setSelectedNicho}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Todos os nichos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todos os nichos</SelectItem>
+                {nichos.map((nicho) => (
+                  <SelectItem key={nicho.id} value={nicho.id}>
+                    {nicho.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Busca por título */}
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar roteiro..."
+              className="w-[220px]"
+            />
+
+            {/* Selecionar roteiro filtrado */}
+            <Select
+              value={currentRoteiroId ?? ""}
+              onValueChange={(value) => setCurrentRoteiroId(value)}
+              disabled={filteredRoteiros.length === 0}
+            >
+              <SelectTrigger className="w-[260px]">
+                <SelectValue placeholder="Selecione um roteiro" />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredRoteiros.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.titulo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             {isAdmin && (
               <Button
                 onClick={() => setShowNovoRoteiroDialog(true)}
