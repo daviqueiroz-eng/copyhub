@@ -5,12 +5,13 @@ import { useMedalhasUsuario } from "@/hooks/useMedalhas";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Brain, FileText, LogOut, Loader2 } from "lucide-react";
+import { Brain, FileText, LogOut, Loader2, Settings } from "lucide-react";
 
 const Testes = () => {
   const navigate = useNavigate();
   const { user, signOut, loading } = useAuth();
   const { data: profile, isLoading: loadingProfile } = useProfile();
+  const { data: userRole } = useUserRole();
   const { data: medalhas = [], isLoading: loadingMedalhas } = useMedalhasUsuario();
 
   if (loading || loadingProfile) {
@@ -37,6 +38,11 @@ const Testes = () => {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative">
       {/* User Info - Top Right */}
       <div className="absolute top-8 right-8 flex items-center gap-4">
+        {userRole === "admin" && (
+          <Button variant="outline" size="icon" onClick={() => navigate("/admin")}>
+            <Settings className="h-5 w-5" />
+          </Button>
+        )}
         <div className="text-right">
           <p className="font-medium text-foreground">{profile?.nome || "Usuário"}</p>
           {!loadingMedalhas && medalhas.length > 0 && (

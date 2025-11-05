@@ -13,6 +13,7 @@ import Intensificadores from "./pages/Intensificadores";
 import Testes from "./pages/Testes";
 import TrinkaGame from "./pages/TrinkaGame";
 import AnaliseRoteiroGame from "./pages/AnaliseRoteiroGame";
+import Admin from "./pages/Admin";
 import Treinamentos from "./pages/Treinamentos";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/testes" element={<Testes />} />
               <Route path="/testes/trinka" element={<TrinkaGame />} />
               <Route path="/testes/analise-roteiro" element={<AnaliseRoteiroGame />} />
+              <Route path="/admin" element={<Admin />} />
               <Route path="/treinamentos" element={<Treinamentos />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
