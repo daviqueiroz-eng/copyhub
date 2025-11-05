@@ -68,8 +68,9 @@ const AnaliseRoteiroGame = () => {
   const [gatilhosAtencao, setGatilhosAtencao] = useState("");
   const [estruturaRoteiro, setEstruturaRoteiro] = useState("");
   // Filtros
-  const [selectedNicho, setSelectedNicho] = useState<string>("");
+  const [selectedNicho, setSelectedNicho] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   // Não selecionar automaticamente - usuário escolhe manualmente
 
@@ -115,10 +116,12 @@ const AnaliseRoteiroGame = () => {
   const handleRandomRoteiro = () => {
     if (filteredRoteiros.length === 0) return;
     const randomIndex = Math.floor(Math.random() * filteredRoteiros.length);
+    setIsFocusMode(true);
     handleSelectRoteiro(filteredRoteiros[randomIndex].id);
   };
 
   const handleVoltarSelecao = () => {
+    setIsFocusMode(false);
     setCurrentRoteiroId(null);
     setHighlights([]);
     setHighlightsHistory([]);
@@ -426,7 +429,10 @@ const AnaliseRoteiroGame = () => {
                   <Card
                     key={roteiro.id}
                     className="p-4 hover:bg-accent transition-colors cursor-pointer"
-                    onClick={() => handleSelectRoteiro(roteiro.id)}
+                    onClick={() => {
+                      setIsFocusMode(false);
+                      handleSelectRoteiro(roteiro.id);
+                    }}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -470,6 +476,11 @@ const AnaliseRoteiroGame = () => {
           <h1 className="text-3xl font-bold text-foreground">
             {isAnalysingAvulso ? "Análise Avulsa" : "Roteiro"}
           </h1>
+          {isFocusMode && !isAnalysingAvulso && (
+            <span className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full font-medium">
+              🎯 Modo Foco
+            </span>
+          )}
           {isAnalysingAvulso ? (
             <Button
               onClick={handleVoltarRoteiros}
@@ -493,7 +504,7 @@ const AnaliseRoteiroGame = () => {
           )}
         </div>
         
-        {!isAnalysingAvulso && (
+        {!isAnalysingAvulso && !isFocusMode && (
           <div className="flex flex-wrap items-center gap-2">
             {/* Filtro por nicho */}
             <Select value={selectedNicho || "all"} onValueChange={setSelectedNicho}>
