@@ -17,6 +17,7 @@ const AnaliseRoteiroGame = () => {
   const { toast } = useToast();
 
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedRoteiroId, setSelectedRoteiroId] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<Array<{
     text: string;
     color: string;
@@ -24,25 +25,21 @@ const AnaliseRoteiroGame = () => {
     end: number;
   }>>([]);
 
-  // Get today's roteiro based on day of year
-  const getTodayRoteiro = () => {
-    if (roteiros.length === 0) return null;
-    
-    const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 0);
-    const diff = now.getTime() - start.getTime();
-    const oneDay = 1000 * 60 * 60 * 24;
-    const dayOfYear = Math.floor(diff / oneDay);
-    
-    const index = dayOfYear % roteiros.length;
-    return roteiros[index];
-  };
+  // Selecionar primeiro roteiro não completado automaticamente
+  useEffect(() => {
+    if (roteiros.length > 0 && !selectedRoteiroId) {
+      const primeiroNaoCompletado = roteiros.find(r => 
+        !progresso.some(p => p.roteiro_id === r.id && p.completado)
+      );
+      setSelectedRoteiroId(primeiroNaoCompletado?.id || roteiros[0].id);
+    }
+  }, [roteiros, progresso, selectedRoteiroId]);
 
-  const todayRoteiro = getTodayRoteiro();
+  const roteiroAtual = roteiros.find(r => r.id === selectedRoteiroId);
   
-  // Check if today's roteiro is completed
-  const isCompletedToday = todayRoteiro 
-    ? progresso.some(p => p.roteiro_id === todayRoteiro.id && p.completado)
+  // Check if current roteiro is completed
+  const isCompleted = roteiroAtual 
+    ? progresso.some(p => p.roteiro_id === roteiroAtual.id && p.completado)
     : false;
 
   const handleTextSelection = () => {
@@ -75,13 +72,14 @@ const AnaliseRoteiroGame = () => {
   const handleVerify = () => {
     // TODO: Implement verification logic against sublinhados_corretos
     // For now, just mark as completed
-    if (todayRoteiro) {
-      completarRoteiro.mutate(todayRoteiro.id);
+    if (roteiroAtual) {
+      completarRoteiro.mutate(roteiroAtual.id);
+      setHighlights([]);
     }
   };
 
   const renderHighlightedText = () => {
-    if (!todayRoteiro) return null;
+    if (!roteiroAtual) return null;
 
     let lastIndex = 0;
     const parts: React.ReactNode[] = [];
@@ -92,7 +90,7 @@ const AnaliseRoteiroGame = () => {
       if (highlight.start > lastIndex) {
         parts.push(
           <span key={`text-${i}`}>
-            {todayRoteiro.conteudo.substring(lastIndex, highlight.start)}
+            {roteiroAtual.conteudo.substring(lastIndex, highlight.start)}
           </span>
         );
       }
@@ -112,10 +110,10 @@ const AnaliseRoteiroGame = () => {
     });
 
     // Add remaining text
-    if (lastIndex < todayRoteiro.conteudo.length) {
+    if (lastIndex < roteiroAtual.conteudo.length) {
       parts.push(
         <span key="text-end">
-          {todayRoteiro.conteudo.substring(lastIndex)}
+          {roteiroAtual.conteudo.substring(lastIndex)}
         </span>
       );
     }
@@ -150,38 +148,57 @@ const AnaliseRoteiroGame = () => {
     );
   }
 
-  if (isCompletedToday) {
+  if (!roteiroAtual) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4">
-        <CheckCircle2 className="h-24 w-24 text-green-500" />
-        <h2 className="text-3xl font-bold text-foreground">Parabéns!</h2>
-        <p className="text-muted-foreground text-center">
-          Você já completou o roteiro de hoje.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Volte amanhã para um novo desafio!
-        </p>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!todayRoteiro) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Erro ao carregar roteiro do dia.</p>
-      </div>
-    );
-  }
+  const roteirosCompletados = progresso.filter(p => p.completado).length;
+  const roteirosDisponiveis = roteiros.length;
 
   return (
     <div className="container max-w-4xl mx-auto px-4 py-8">
-      <div className="mb-8 text-center">
-        <h2 className="text-3xl font-bold text-foreground mb-2">
-          Análise de Roteiro
-        </h2>
-        <p className="text-muted-foreground">
-          Roteiro de hoje: {todayRoteiro.titulo}
-        </p>
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-3xl font-bold text-foreground mb-2">
+              Análise de Roteiro
+            </h2>
+            <p className="text-muted-foreground">
+              {roteirosCompletados} de {roteirosDisponiveis} roteiros completados
+            </p>
+          </div>
+          {isCompleted && (
+            <CheckCircle2 className="h-8 w-8 text-green-500" />
+          )}
+        </div>
+
+        {/* Seletor de Roteiros */}
+        <div className="flex flex-wrap gap-2">
+          {roteiros.map((roteiro) => {
+            const completo = progresso.some(p => p.roteiro_id === roteiro.id && p.completado);
+            return (
+              <Button
+                key={roteiro.id}
+                variant={selectedRoteiroId === roteiro.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setSelectedRoteiroId(roteiro.id);
+                  setHighlights([]);
+                }}
+                className="relative"
+              >
+                {completo && (
+                  <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
+                )}
+                {roteiro.titulo}
+              </Button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Color Palette */}
@@ -219,7 +236,7 @@ const AnaliseRoteiroGame = () => {
             style={{ userSelect: "text", cursor: selectedColor ? "text" : "default" }}
           >
             <div className="whitespace-pre-wrap leading-relaxed">
-              {highlights.length === 0 ? todayRoteiro.conteudo : renderHighlightedText()}
+              {highlights.length === 0 ? roteiroAtual.conteudo : renderHighlightedText()}
             </div>
           </div>
         </CardContent>

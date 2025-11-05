@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Brain, FileText, LogOut, Loader2, Settings } from "lucide-react";
+import { MedalhasSection } from "@/components/MedalhasSection";
 
 const Testes = () => {
   const navigate = useNavigate();
@@ -78,7 +79,7 @@ const Testes = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-8 mb-12">
           {/* Trinka Card */}
           <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => navigate("/testes/trinka")}>
             <CardHeader>
@@ -125,6 +126,9 @@ const Testes = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Medalhas Section */}
+        <MedalhasSection />
       </div>
     </div>
   );

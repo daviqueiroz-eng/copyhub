@@ -55,9 +55,57 @@ export const useCompletarRoteiro = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["progresso-roteiros"] });
+      
+      // Verificar e desbloquear medalhas automaticamente
+      if (!user) return;
+      
+      // Buscar total de roteiros completados
+      const { data: totalProgresso } = await supabase
+        .from("progresso_roteiros")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("completado", true);
+      
+      const totalCompletados = totalProgresso?.length || 0;
+      
+      // Buscar medalhas disponíveis
+      const { data: medalhas } = await supabase
+        .from("medalhas")
+        .select("*")
+        .lte("roteiros_necessarios", totalCompletados)
+        .order("roteiros_necessarios", { ascending: false });
+      
+      // Buscar medalhas já desbloqueadas
+      const { data: medalhasDesbloqueadas } = await supabase
+        .from("medalhas_usuarios")
+        .select("medalha_id")
+        .eq("user_id", user.id);
+      
+      const idsDesbloqueados = medalhasDesbloqueadas?.map(m => m.medalha_id) || [];
+      
+      // Desbloquear novas medalhas
+      if (medalhas) {
+        for (const medalha of medalhas) {
+          if (!idsDesbloqueados.includes(medalha.id)) {
+            await supabase
+              .from("medalhas_usuarios")
+              .insert({
+                user_id: user.id,
+                medalha_id: medalha.id,
+              });
+            
+            toast({
+              title: `🏆 Nova medalha: ${medalha.icone} ${medalha.nome}!`,
+              description: medalha.descricao,
+            });
+          }
+        }
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["medalhas-usuario"] });
+      
       toast({
         title: "Roteiro completado!",
         description: "Parabéns por concluir este roteiro!",
