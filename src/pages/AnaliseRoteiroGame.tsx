@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -27,7 +28,9 @@ const AnaliseRoteiroGame = () => {
 
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [highlightsHistory, setHighlightsHistory] = useState<Highlight[][]>([]);
   const [currentRoteiroId, setCurrentRoteiroId] = useState<string | null>(null);
+  const [showCompletedDialog, setShowCompletedDialog] = useState(false);
   
   // Campos de análise
   const [estruturaInvisivel, setEstruturaInvisivel] = useState("");
@@ -58,6 +61,9 @@ const AnaliseRoteiroGame = () => {
   }, [cores, selectedColor]);
 
   const currentRoteiro = roteiros.find((r) => r.id === currentRoteiroId);
+  const completedRoteiros = roteiros.filter((r) => 
+    progressoData.some((p) => p.roteiro_id === r.id && p.completado)
+  );
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
@@ -76,17 +82,25 @@ const AnaliseRoteiroGame = () => {
     const startPos = preCaretRange.toString().length;
     const endPos = startPos + selectedText.length;
 
-    setHighlights([
-      ...highlights,
-      {
-        text: selectedText,
-        color: selectedColor,
-        startPos,
-        endPos,
-      },
-    ]);
+    const newHighlight = {
+      text: selectedText,
+      color: selectedColor,
+      startPos,
+      endPos,
+    };
+
+    setHighlightsHistory([...highlightsHistory, highlights]);
+    setHighlights([...highlights, newHighlight]);
 
     selection.removeAllRanges();
+  };
+
+  const handleUndo = () => {
+    if (highlightsHistory.length > 0) {
+      const previousState = highlightsHistory[highlightsHistory.length - 1];
+      setHighlights(previousState);
+      setHighlightsHistory(highlightsHistory.slice(0, -1));
+    }
   };
 
   const handleVerify = () => {
@@ -106,9 +120,13 @@ const AnaliseRoteiroGame = () => {
       onSuccess: () => {
         // Limpar campos e highlights
         setHighlights([]);
+        setHighlightsHistory([]);
         setEstruturaInvisivel("");
         setGatilhosAtencao("");
         setEstruturaRoteiro("");
+        
+        // Mostrar banco de roteiros analisados
+        setShowCompletedDialog(true);
         
         // Buscar próximo roteiro não completado
         const proximoRoteiro = roteiros.find(
@@ -119,15 +137,6 @@ const AnaliseRoteiroGame = () => {
         
         if (proximoRoteiro) {
           setCurrentRoteiroId(proximoRoteiro.id);
-          toast({
-            title: "Roteiro completado!",
-            description: "Carregando próximo roteiro...",
-          });
-        } else {
-          toast({
-            title: "Parabéns!",
-            description: "Você completou todos os roteiros disponíveis!",
-          });
         }
       },
     });
@@ -204,8 +213,30 @@ const AnaliseRoteiroGame = () => {
         <h1 className="text-3xl font-bold text-foreground">Roteiro</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Coluna Esquerda - Conteúdo do Roteiro */}
+      <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_1fr] gap-6">
+        {/* Coluna Esquerda - Legenda de Cores */}
+        <Card className="p-4 h-fit">
+          <h3 className="text-sm font-semibold mb-3">Legenda</h3>
+          <div className="space-y-2">
+            {cores.map((cor) => (
+              <button
+                key={cor.id}
+                onClick={() => setSelectedColor(cor.cor)}
+                className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all hover:bg-accent ${
+                  selectedColor === cor.cor ? "bg-accent ring-2 ring-primary" : ""
+                }`}
+              >
+                <div
+                  className="w-5 h-5 rounded border-2 border-border flex-shrink-0"
+                  style={{ backgroundColor: cor.cor }}
+                />
+                <span className="text-xs font-medium text-left">{cor.nome}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* Coluna Central - Conteúdo do Roteiro */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">{currentRoteiro.titulo}</h2>
           <div
@@ -219,8 +250,17 @@ const AnaliseRoteiroGame = () => {
           <div className="mt-6 flex gap-3">
             <Button
               variant="outline"
+              onClick={handleUndo}
+              disabled={highlightsHistory.length === 0}
+              title="Desfazer último sublinhado (Ctrl+Z)"
+            >
+              Desfazer
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => {
                 setHighlights([]);
+                setHighlightsHistory([]);
                 setEstruturaInvisivel("");
                 setGatilhosAtencao("");
                 setEstruturaRoteiro("");
@@ -241,7 +281,7 @@ const AnaliseRoteiroGame = () => {
           </div>
         </Card>
 
-        {/* Coluna Direita - Análise e Legenda */}
+        {/* Coluna Direita - Análise */}
         <div className="space-y-4">
           {/* Campo 1: Estrutura Invisível */}
           <Card className="p-4">
@@ -284,30 +324,51 @@ const AnaliseRoteiroGame = () => {
               className="min-h-[150px] resize-none"
             />
           </Card>
-
-          {/* Legenda de Cores */}
-          <Card className="p-4">
-            <h3 className="text-sm font-semibold mb-3">Legenda de Cores</h3>
-            <div className="space-y-2">
-              {cores.map((cor) => (
-                <button
-                  key={cor.id}
-                  onClick={() => setSelectedColor(cor.cor)}
-                  className={`w-full flex items-center gap-3 p-2 rounded-lg transition-all hover:bg-accent ${
-                    selectedColor === cor.cor ? "bg-accent ring-2 ring-primary" : ""
-                  }`}
-                >
-                  <div
-                    className="w-6 h-6 rounded border-2 border-border flex-shrink-0"
-                    style={{ backgroundColor: cor.cor }}
-                  />
-                  <span className="text-sm font-medium text-left">{cor.nome}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
         </div>
       </div>
+
+      {/* Dialog de Roteiros Completados */}
+      <Dialog open={showCompletedDialog} onOpenChange={setShowCompletedDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Banco de Roteiros Analisados</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {completedRoteiros.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                Nenhum roteiro completado ainda.
+              </p>
+            ) : (
+              completedRoteiros.map((roteiro) => {
+                const progresso = progressoData.find(
+                  (p) => p.roteiro_id === roteiro.id && p.completado
+                );
+                return (
+                  <Card key={roteiro.id} className="p-4">
+                    <h3 className="font-semibold text-lg mb-2">{roteiro.titulo}</h3>
+                    {progresso?.data_completado && (
+                      <p className="text-sm text-muted-foreground">
+                        Completado em:{" "}
+                        {new Date(progresso.data_completado).toLocaleDateString("pt-BR")}
+                      </p>
+                    )}
+                    {roteiro.link_video && (
+                      <a
+                        href={roteiro.link_video}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline mt-2 inline-block"
+                      >
+                        Ver vídeo
+                      </a>
+                    )}
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
