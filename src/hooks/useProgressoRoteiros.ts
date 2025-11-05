@@ -10,6 +10,10 @@ export type ProgressoRoteiro = {
   completado: boolean;
   data_completado: string | null;
   created_at: string;
+  estrutura_invisivel?: string | null;
+  gatilhos_atencao?: string | null;
+  estrutura_roteiro?: string | null;
+  sublinhados?: any | null;
 };
 
 export const useProgressoRoteiros = () => {
@@ -38,7 +42,19 @@ export const useCompletarRoteiro = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (roteiro_id: string) => {
+    mutationFn: async ({
+      roteiro_id,
+      estrutura_invisivel,
+      gatilhos_atencao,
+      estrutura_roteiro,
+      sublinhados,
+    }: {
+      roteiro_id: string;
+      estrutura_invisivel?: string;
+      gatilhos_atencao?: string;
+      estrutura_roteiro?: string;
+      sublinhados?: any[];
+    }) => {
       if (!user) throw new Error("Usuário não autenticado");
 
       const { data, error } = await supabase
@@ -48,6 +64,10 @@ export const useCompletarRoteiro = () => {
           roteiro_id,
           completado: true,
           data_completado: new Date().toISOString(),
+          estrutura_invisivel,
+          gatilhos_atencao,
+          estrutura_roteiro,
+          sublinhados,
         })
         .select()
         .single();

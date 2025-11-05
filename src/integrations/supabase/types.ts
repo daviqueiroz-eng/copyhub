@@ -305,24 +305,36 @@ export type Database = {
           completado: boolean
           created_at: string
           data_completado: string | null
+          estrutura_invisivel: string | null
+          estrutura_roteiro: string | null
+          gatilhos_atencao: string | null
           id: string
           roteiro_id: string
+          sublinhados: Json | null
           user_id: string
         }
         Insert: {
           completado?: boolean
           created_at?: string
           data_completado?: string | null
+          estrutura_invisivel?: string | null
+          estrutura_roteiro?: string | null
+          gatilhos_atencao?: string | null
           id?: string
           roteiro_id: string
+          sublinhados?: Json | null
           user_id: string
         }
         Update: {
           completado?: boolean
           created_at?: string
           data_completado?: string | null
+          estrutura_invisivel?: string | null
+          estrutura_roteiro?: string | null
+          gatilhos_atencao?: string | null
           id?: string
           roteiro_id?: string
+          sublinhados?: Json | null
           user_id?: string
         }
         Relationships: [

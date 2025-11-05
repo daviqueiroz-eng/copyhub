@@ -8,8 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink } from "lucide-react";
+import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type Highlight = {
   text: string;
@@ -31,6 +35,8 @@ const AnaliseRoteiroGame = () => {
   const [highlightsHistory, setHighlightsHistory] = useState<Highlight[][]>([]);
   const [currentRoteiroId, setCurrentRoteiroId] = useState<string | null>(null);
   const [showCompletedDialog, setShowCompletedDialog] = useState(false);
+  const [showAnalysesDialog, setShowAnalysesDialog] = useState(false);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<string | null>(null);
   
   // Campos de análise
   const [estruturaInvisivel, setEstruturaInvisivel] = useState("");
@@ -116,7 +122,13 @@ const AnaliseRoteiroGame = () => {
       return;
     }
 
-    completarRoteiro.mutate(currentRoteiroId, {
+    completarRoteiro.mutate({
+      roteiro_id: currentRoteiroId,
+      estrutura_invisivel: estruturaInvisivel,
+      gatilhos_atencao: gatilhosAtencao,
+      estrutura_roteiro: estruturaRoteiro,
+      sublinhados: highlights,
+    }, {
       onSuccess: () => {
         // Limpar campos e highlights
         setHighlights([]);
@@ -207,10 +219,26 @@ const AnaliseRoteiroGame = () => {
     );
   }
 
+  const completedRoteirosWithData = progressoData?.filter(p => p.completado) || [];
+  const selectedProgressoItem = selectedAnalysis 
+    ? completedRoteirosWithData.find(p => p.id === selectedAnalysis)
+    : null;
+  const selectedRoteiroForView = selectedProgressoItem
+    ? roteiros?.find(r => r.id === selectedProgressoItem.roteiro_id)
+    : null;
+
   return (
     <div className="container max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Roteiro</h1>
+        <Button
+          onClick={() => setShowAnalysesDialog(true)}
+          variant="outline"
+          className="gap-2"
+        >
+          <BookOpen className="w-4 h-4" />
+          Ver Roteiros Analisados ({completedRoteirosWithData.length})
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_1fr] gap-6">
@@ -327,46 +355,86 @@ const AnaliseRoteiroGame = () => {
         </div>
       </div>
 
-      {/* Dialog de Roteiros Completados */}
+      {/* Dialog de Conclusão */}
       <Dialog open={showCompletedDialog} onOpenChange={setShowCompletedDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Banco de Roteiros Analisados</DialogTitle>
+            <DialogTitle>🎉 Roteiro Completado!</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            {completedRoteiros.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                Nenhum roteiro completado ainda.
-              </p>
-            ) : (
-              completedRoteiros.map((roteiro) => {
-                const progresso = progressoData.find(
-                  (p) => p.roteiro_id === roteiro.id && p.completado
-                );
-                return (
-                  <Card key={roteiro.id} className="p-4">
-                    <h3 className="font-semibold text-lg mb-2">{roteiro.titulo}</h3>
-                    {progresso?.data_completado && (
-                      <p className="text-sm text-muted-foreground">
-                        Completado em:{" "}
-                        {new Date(progresso.data_completado).toLocaleDateString("pt-BR")}
-                      </p>
-                    )}
-                    {roteiro.link_video && (
-                      <a
-                        href={roteiro.link_video}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-primary hover:underline mt-2 inline-block"
-                      >
-                        Ver vídeo
-                      </a>
-                    )}
-                  </Card>
-                );
-              })
+          <div className="space-y-4">
+            <p>Parabéns! Você completou a análise do roteiro.</p>
+            {currentRoteiro?.link_video && (
+              <Button variant="outline" size="sm" asChild className="w-full">
+                <a href={currentRoteiro.link_video} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                  <ExternalLink className="w-4 h-4" />
+                  Assistir vídeo do roteiro
+                </a>
+              </Button>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Roteiros Analisados */}
+      <Dialog open={showAnalysesDialog} onOpenChange={(open) => {
+        setShowAnalysesDialog(open);
+        if (!open) setSelectedAnalysis(null);
+      }}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] h-[95vh]">
+          <DialogHeader>
+            <DialogTitle>📚 Roteiros Analisados</DialogTitle>
+          </DialogHeader>
+          
+          {!selectedAnalysis ? (
+            <ScrollArea className="h-full pr-4">
+              <div className="space-y-3">
+                {completedRoteirosWithData.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    Você ainda não completou nenhum roteiro.
+                  </p>
+                ) : (
+                  completedRoteirosWithData.map((progresso) => {
+                    const roteiro = roteiros?.find(r => r.id === progresso.roteiro_id);
+                    if (!roteiro) return null;
+                    
+                    return (
+                      <Card
+                        key={progresso.id}
+                        className="p-4 cursor-pointer hover:bg-accent transition-colors"
+                        onClick={() => setSelectedAnalysis(progresso.id)}
+                      >
+                        <div className="space-y-2">
+                          <h3 className="font-semibold">{roteiro.titulo}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Completado em: {progresso.data_completado 
+                              ? format(new Date(progresso.data_completado), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                              : "N/A"}
+                          </p>
+                        </div>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="h-full flex flex-col gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedAnalysis(null)}
+                className="w-fit"
+              >
+                ← Voltar para lista
+              </Button>
+              {selectedProgressoItem && selectedRoteiroForView && (
+                <RoteiroAnaliseView
+                  progresso={selectedProgressoItem}
+                  roteiro={selectedRoteiroForView}
+                />
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
