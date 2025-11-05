@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUserRole } from "@/hooks/useAuth";
+import { useProfile, useUserRole } from "@/hooks/useAuth";
 import { useRoteiros, useCreateRoteiro, useDeleteRoteiro } from "@/hooks/useRoteiros";
 import { useProgressoRoteiros, useCompletarRoteiro } from "@/hooks/useProgressoRoteiros";
 import { useCoresAnalise } from "@/hooks/useCoresAnalise";
 import { useNichos } from "@/hooks/useNichos";
 import { useAnalysisStreak } from "@/hooks/useAnalysisStreak";
+import { useMedalhasUsuario } from "@/hooks/useMedalhas";
+import { MedalhasSection } from "@/components/MedalhasSection";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,8 +17,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, BookOpen, ExternalLink, FileUp, FileEdit, ArrowLeft, Trash2 } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink, FileUp, FileEdit, ArrowLeft, Trash2, Flame } from "lucide-react";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -32,6 +35,7 @@ const AnaliseRoteiroGame = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { data: profile } = useProfile();
   const { data: userRole } = useUserRole();
   const { data: roteiros = [], isLoading: loadingRoteiros } = useRoteiros();
   const { data: progressoData = [], isLoading: loadingProgresso } = useProgressoRoteiros();
@@ -40,7 +44,8 @@ const AnaliseRoteiroGame = () => {
   const completarRoteiro = useCompletarRoteiro();
   const createRoteiro = useCreateRoteiro();
   const deleteRoteiro = useDeleteRoteiro();
-  const { updateStreak } = useAnalysisStreak();
+  const { streak, updateStreak } = useAnalysisStreak();
+  const { data: medalhasUsuario = [] } = useMedalhasUsuario();
 
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -281,16 +286,8 @@ const AnaliseRoteiroGame = () => {
         // Mostrar banco de roteiros analisados
         setShowCompletedDialog(true);
         
-        // Buscar próximo roteiro não completado
-        const proximoRoteiro = roteiros.find(
-          (r) =>
-            r.id !== currentRoteiroId &&
-            !progressoData.some((p) => p.roteiro_id === r.id && p.completado)
-        );
-        
-        if (proximoRoteiro) {
-          setCurrentRoteiroId(proximoRoteiro.id);
-        }
+        // Redirecionar para home
+        navigate('/');
       },
     });
   };
@@ -399,6 +396,61 @@ const AnaliseRoteiroGame = () => {
                 <BookOpen className="w-4 h-4" />
                 Ver Analisados ({completedRoteirosWithData.length})
               </Button>
+            </div>
+          </div>
+
+          {/* Seção de Perfil e Medalhas */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Card de Perfil e Estatísticas */}
+            <Card className="p-6">
+              <div className="flex items-start gap-4 mb-6">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={profile?.avatar || undefined} />
+                  <AvatarFallback className="text-lg">
+                    {profile?.nome?.substring(0, 2).toUpperCase() || "??"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg">{profile?.nome || "Usuário"}</h3>
+                  <p className="text-sm text-muted-foreground">{user?.email}</p>
+                </div>
+              </div>
+              
+              {/* Indicador de Streak */}
+              {streak > 0 && (
+                <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-orange-500" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Sequência Atual</p>
+                      <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                        {streak} {streak === 1 ? 'dia' : 'dias'} consecutivos
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Estatísticas */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <p className="text-2xl font-bold text-primary">
+                    {progressoData.filter(p => p.completado).length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Roteiros Completados</p>
+                </div>
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <p className="text-2xl font-bold text-primary">
+                    {medalhasUsuario.length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Medalhas Conquistadas</p>
+                </div>
+              </div>
+            </Card>
+            
+            {/* Card de Medalhas */}
+            <div>
+              <MedalhasSection />
             </div>
           </div>
 
