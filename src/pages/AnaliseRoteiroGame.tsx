@@ -71,21 +71,7 @@ const AnaliseRoteiroGame = () => {
   const [selectedNicho, setSelectedNicho] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Selecionar automaticamente o primeiro roteiro não completado
-  useEffect(() => {
-    if (roteiros.length > 0 && progressoData.length >= 0) {
-      const roteiroNaoCompletado = roteiros.find(
-        (r) => !progressoData.some((p) => p.roteiro_id === r.id && p.completado)
-      );
-      
-      if (roteiroNaoCompletado) {
-        setCurrentRoteiroId(roteiroNaoCompletado.id);
-      } else if (roteiros.length > 0) {
-        // Se todos completados, mostra o primeiro
-        setCurrentRoteiroId(roteiros[0].id);
-      }
-    }
-  }, [roteiros, progressoData]);
+  // Não selecionar automaticamente - usuário escolhe manualmente
 
   // Selecionar primeira cor automaticamente
   useEffect(() => {
@@ -107,13 +93,39 @@ const AnaliseRoteiroGame = () => {
     (selectedNicho === "all" || !selectedNicho || r.nicho_id === selectedNicho) &&
     (!searchTerm || r.titulo.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+  const completedRoteirosWithData = progressoData?.filter(p => p.completado) || [];
 
+  // Resetar roteiro selecionado se não estiver mais na lista filtrada
   useEffect(() => {
     if (isAnalysingAvulso) return;
-    if (!filteredRoteiros.some((r) => r.id === currentRoteiroId || "")) {
-      setCurrentRoteiroId(filteredRoteiros[0]?.id ?? null);
+    if (currentRoteiroId && !filteredRoteiros.some((r) => r.id === currentRoteiroId)) {
+      setCurrentRoteiroId(null);
     }
-  }, [selectedNicho, searchTerm, roteiros, isAnalysingAvulso]);
+  }, [selectedNicho, searchTerm, roteiros, isAnalysingAvulso, currentRoteiroId]);
+
+  const handleSelectRoteiro = (roteiroId: string) => {
+    setCurrentRoteiroId(roteiroId);
+    setHighlights([]);
+    setHighlightsHistory([]);
+    setEstruturaInvisivel("");
+    setGatilhosAtencao("");
+    setEstruturaRoteiro("");
+  };
+
+  const handleRandomRoteiro = () => {
+    if (filteredRoteiros.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * filteredRoteiros.length);
+    handleSelectRoteiro(filteredRoteiros[randomIndex].id);
+  };
+
+  const handleVoltarSelecao = () => {
+    setCurrentRoteiroId(null);
+    setHighlights([]);
+    setHighlightsHistory([]);
+    setEstruturaInvisivel("");
+    setGatilhosAtencao("");
+    setEstruturaRoteiro("");
+  };
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
@@ -311,18 +323,140 @@ const AnaliseRoteiroGame = () => {
     );
   }
 
-  if (!currentRoteiro) {
+  // Tela de seleção de roteiro
+  if (!currentRoteiro && !isAnalysingAvulso) {
+    const availableCount = filteredRoteiros.length;
+    const completedCount = filteredRoteiros.filter((r) => 
+      progressoData.some((p) => p.roteiro_id === r.id && p.completado)
+    ).length;
+    
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="p-8">
-          <p className="text-lg">Nenhum roteiro disponível no momento.</p>
+      <div className="container max-w-7xl mx-auto px-4 py-8">
+        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <h1 className="text-3xl font-bold text-foreground">Análise de Roteiro</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            {isAdmin && (
+              <Button
+                onClick={() => setShowNovoRoteiroDialog(true)}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <FileUp className="w-4 h-4" />
+                Novo Roteiro
+              </Button>
+            )}
+            <Button
+              onClick={() => setShowAvulsoDialog(true)}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <FileEdit className="w-4 h-4" />
+              Analisar Avulso
+            </Button>
+            <Button
+              onClick={() => setShowAnalysesDialog(true)}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <BookOpen className="w-4 h-4" />
+              Ver Analisados ({completedRoteirosWithData.length})
+            </Button>
+          </div>
+        </div>
+
+        <Card className="p-8 max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold mb-2">Escolha um Roteiro para Analisar</h2>
+            <p className="text-muted-foreground">
+              {availableCount} roteiros disponíveis • {completedCount} completados
+            </p>
+          </div>
+
+          {/* Filtros */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <Select value={selectedNicho || "all"} onValueChange={setSelectedNicho}>
+              <SelectTrigger className="sm:w-[200px]">
+                <SelectValue placeholder="Todos os nichos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os nichos</SelectItem>
+                {nichos.map((nicho) => (
+                  <SelectItem key={nicho.id} value={nicho.id}>
+                    {nicho.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por título..."
+              className="flex-1"
+            />
+          </div>
+
+          {/* Botão de seleção aleatória */}
+          <Button
+            onClick={handleRandomRoteiro}
+            size="lg"
+            className="w-full mb-6 text-lg h-14"
+            disabled={filteredRoteiros.length === 0}
+          >
+            🎲 Roteiro Aleatório
+          </Button>
+
+          {/* Lista de roteiros */}
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+            {filteredRoteiros.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Nenhum roteiro encontrado com os filtros atuais.
+              </p>
+            ) : (
+              filteredRoteiros.map((roteiro) => {
+                const isCompleted = progressoData.some(
+                  (p) => p.roteiro_id === roteiro.id && p.completado
+                );
+                const nicho = nichos.find((n) => n.id === roteiro.nicho_id);
+                
+                return (
+                  <Card
+                    key={roteiro.id}
+                    className="p-4 hover:bg-accent transition-colors cursor-pointer"
+                    onClick={() => handleSelectRoteiro(roteiro.id)}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold mb-1 truncate">{roteiro.titulo}</h3>
+                        {nicho && (
+                          <p className="text-sm text-muted-foreground">{nicho.nome}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {isCompleted && (
+                          <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-1 rounded-full">
+                            ✓ Completado
+                          </span>
+                        )}
+                        <Button size="sm" variant="outline">
+                          Analisar
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
+            )}
+          </div>
         </Card>
       </div>
     );
   }
 
-  const completedRoteirosWithData = progressoData?.filter(p => p.completado) || [];
-  const selectedProgressoItem = selectedAnalysis 
+  const selectedProgressoItem = selectedAnalysis
     ? completedRoteirosWithData.find(p => p.id === selectedAnalysis)
     : null;
   const selectedRoteiroForView = selectedProgressoItem
@@ -336,7 +470,7 @@ const AnaliseRoteiroGame = () => {
           <h1 className="text-3xl font-bold text-foreground">
             {isAnalysingAvulso ? "Análise Avulsa" : "Roteiro"}
           </h1>
-          {isAnalysingAvulso && (
+          {isAnalysingAvulso ? (
             <Button
               onClick={handleVoltarRoteiros}
               variant="ghost"
@@ -345,6 +479,16 @@ const AnaliseRoteiroGame = () => {
             >
               <ArrowLeft className="w-4 h-4" />
               Voltar aos Roteiros
+            </Button>
+          ) : (
+            <Button
+              onClick={handleVoltarSelecao}
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar
             </Button>
           )}
         </div>
