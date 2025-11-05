@@ -50,10 +50,6 @@ const AnaliseRoteiroGame = () => {
   const [showAnalysesDialog, setShowAnalysesDialog] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState<string | null>(null);
   
-  // Modo avulso
-  const [isAnalysingAvulso, setIsAnalysingAvulso] = useState(false);
-  const [roteiroAvulso, setRoteiroAvulso] = useState<{ titulo: string; conteudo: string } | null>(null);
-  
   // Dialog novo roteiro (admin)
   const [showNovoRoteiroDialog, setShowNovoRoteiroDialog] = useState(false);
   const [novoRoteiroForm, setNovoRoteiroForm] = useState({
@@ -86,9 +82,7 @@ const AnaliseRoteiroGame = () => {
     }
   }, [cores, selectedColor]);
 
-  const currentRoteiro = isAnalysingAvulso && roteiroAvulso
-    ? { id: "avulso", titulo: roteiroAvulso.titulo, conteudo: roteiroAvulso.conteudo }
-    : roteiros.find((r) => r.id === currentRoteiroId);
+  const currentRoteiro = roteiros.find((r) => r.id === currentRoteiroId);
   
   const completedRoteiros = roteiros.filter((r) => 
     progressoData.some((p) => p.roteiro_id === r.id && p.completado)
@@ -103,11 +97,10 @@ const AnaliseRoteiroGame = () => {
 
   // Resetar roteiro selecionado se não estiver mais na lista filtrada
   useEffect(() => {
-    if (isAnalysingAvulso) return;
     if (currentRoteiroId && !filteredRoteiros.some((r) => r.id === currentRoteiroId)) {
       setCurrentRoteiroId(null);
     }
-  }, [selectedNicho, searchTerm, roteiros, isAnalysingAvulso, currentRoteiroId]);
+  }, [selectedNicho, searchTerm, roteiros, currentRoteiroId]);
 
   const handleSelectRoteiro = (roteiroId: string) => {
     setCurrentRoteiroId(roteiroId);
@@ -210,13 +203,15 @@ const AnaliseRoteiroGame = () => {
       nicho_id: novoRoteiroForm.nicho_id || undefined,
       link_video: novoRoteiroForm.link_video || undefined,
       ordem: novoRoteiroForm.ordem,
+      is_private: false,
+      user_id: undefined,
     }, {
       onSuccess: () => {
         setShowNovoRoteiroDialog(false);
         setNovoRoteiroForm({ titulo: "", conteudo: "", nicho_id: "", link_video: "", ordem: 0 });
         toast({
           title: "Roteiro criado",
-          description: "O novo roteiro foi adicionado com sucesso.",
+          description: "O novo roteiro foi adicionado e está visível para todos.",
         });
       },
     });
@@ -232,28 +227,28 @@ const AnaliseRoteiroGame = () => {
       return;
     }
 
-    setRoteiroAvulso(avulsoForm);
-    setIsAnalysingAvulso(true);
-    setShowAvulsoDialog(false);
-    setHighlights([]);
-    setHighlightsHistory([]);
-    setEstruturaInvisivel("");
-    setGatilhosAtencao("");
-    setEstruturaRoteiro("");
-  };
-
-  const handleVoltarRoteiros = () => {
-    setIsAnalysingAvulso(false);
-    setRoteiroAvulso(null);
-    setHighlights([]);
-    setHighlightsHistory([]);
-    setEstruturaInvisivel("");
-    setGatilhosAtencao("");
-    setEstruturaRoteiro("");
+    createRoteiro.mutate({
+      titulo: avulsoForm.titulo,
+      conteudo: avulsoForm.conteudo,
+      ordem: 999,
+      is_private: true,
+      user_id: user?.id,
+    }, {
+      onSuccess: (data) => {
+        setShowAvulsoDialog(false);
+        setAvulsoForm({ titulo: "", conteudo: "" });
+        setIsFocusMode(true);
+        handleSelectRoteiro(data.id);
+        toast({
+          title: "Roteiro carregado",
+          description: "Seu roteiro está pronto para análise e foi salvo na sua lista.",
+        });
+      },
+    });
   };
 
   const handleVerify = () => {
-    if (!currentRoteiroId || isAnalysingAvulso) return;
+    if (!currentRoteiroId) return;
 
     // Validar se os campos foram preenchidos
     if (!estruturaInvisivel.trim() || !gatilhosAtencao.trim() || !estruturaRoteiro.trim()) {
@@ -370,7 +365,7 @@ const AnaliseRoteiroGame = () => {
 
   return (
     <>
-      {!currentRoteiro && !isAnalysingAvulso ? (
+      {!currentRoteiro ? (
         <div className="container max-w-7xl mx-auto px-4 py-8">
           <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <h1 className="text-3xl font-bold text-foreground">Análise de Roteiro</h1>
@@ -465,19 +460,26 @@ const AnaliseRoteiroGame = () => {
                   return (
                     <Card
                       key={roteiro.id}
-                      className="p-4 hover:bg-accent transition-colors cursor-pointer"
-                      onClick={() => {
-                        setIsFocusMode(false);
-                        handleSelectRoteiro(roteiro.id);
-                      }}
+                  className="p-4 hover:bg-accent transition-colors cursor-pointer"
+                  onClick={() => {
+                    setIsFocusMode(true);
+                    handleSelectRoteiro(roteiro.id);
+                  }}
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold mb-1 truncate">{roteiro.titulo}</h3>
-                          {nicho && (
-                            <p className="text-sm text-muted-foreground">{nicho.nome}</p>
-                          )}
-                        </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold truncate">{roteiro.titulo}</h3>
+                        {roteiro.is_private && (
+                          <span className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full">
+                            Privado
+                          </span>
+                        )}
+                      </div>
+                      {nicho && (
+                        <p className="text-sm text-muted-foreground">{nicho.nome}</p>
+                      )}
+                    </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {isCompleted && (
                             <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-1 rounded-full">
@@ -513,36 +515,22 @@ const AnaliseRoteiroGame = () => {
         <div className="container max-w-7xl mx-auto px-4 py-8">
       <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-foreground">
-            {isAnalysingAvulso ? "Análise Avulsa" : "Roteiro"}
-          </h1>
-          {isFocusMode && !isAnalysingAvulso && (
+          <h1 className="text-3xl font-bold text-foreground">Roteiro</h1>
+          {isFocusMode && (
             <span className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full font-medium">
               🎯 Modo Foco
             </span>
           )}
-          {isAnalysingAvulso ? (
-            <Button
-              onClick={handleVoltarRoteiros}
-              variant="ghost"
-              size="sm"
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Voltar aos Roteiros
-            </Button>
-          ) : (
-            <Button
-              onClick={handleVoltarSelecao}
-              variant="ghost"
-              size="sm"
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Voltar
-            </Button>
-          )}
-          {!isAnalysingAvulso && isAdmin && currentRoteiro && (
+          <Button
+            onClick={handleVoltarSelecao}
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Voltar
+          </Button>
+          {isAdmin && currentRoteiro && (
             <Button
               variant="ghost"
               size="sm"
@@ -555,7 +543,7 @@ const AnaliseRoteiroGame = () => {
           )}
         </div>
         
-        {!isAnalysingAvulso && !isFocusMode && (
+        {!isFocusMode && (
           <div className="flex flex-wrap items-center gap-2">
             {/* Filtro por nicho */}
             <Select value={selectedNicho || "all"} onValueChange={setSelectedNicho}>
@@ -657,7 +645,7 @@ const AnaliseRoteiroGame = () => {
         {/* Coluna Central - Conteúdo do Roteiro */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">{currentRoteiro.titulo}</h2>
-          {!isAnalysingAvulso && 'link_video' in currentRoteiro && currentRoteiro.link_video && (
+          {currentRoteiro.link_video && (
             <div className="mb-4">
               <Button
                 variant="outline"
@@ -699,9 +687,8 @@ const AnaliseRoteiroGame = () => {
             >
               Limpar Tudo
             </Button>
-            {!isAnalysingAvulso && (
-              <Button onClick={handleVerify} disabled={completarRoteiro.isPending}>
-                {completarRoteiro.isPending ? (
+            <Button onClick={handleVerify} disabled={completarRoteiro.isPending}>
+                 {completarRoteiro.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Salvando...
@@ -710,7 +697,6 @@ const AnaliseRoteiroGame = () => {
                   "Completar Roteiro"
                 )}
               </Button>
-            )}
           </div>
         </Card>
 

@@ -352,31 +352,37 @@ export type Database = {
           conteudo: string
           created_at: string
           id: string
+          is_private: boolean
           link_video: string | null
           nicho_id: string | null
           ordem: number
           titulo: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           conteudo: string
           created_at?: string
           id?: string
+          is_private?: boolean
           link_video?: string | null
           nicho_id?: string | null
           ordem?: number
           titulo: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           conteudo?: string
           created_at?: string
           id?: string
+          is_private?: boolean
           link_video?: string | null
           nicho_id?: string | null
           ordem?: number
           titulo?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
