@@ -104,7 +104,7 @@ const AnaliseRoteiroGame = () => {
 
   const isAdmin = userRole === "admin";
   const filteredRoteiros = roteiros.filter((r) =>
-    (!selectedNicho || r.nicho_id === selectedNicho) &&
+    (selectedNicho === "all" || !selectedNicho || r.nicho_id === selectedNicho) &&
     (!searchTerm || r.titulo.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -352,12 +352,12 @@ const AnaliseRoteiroGame = () => {
         {!isAnalysingAvulso && (
           <div className="flex flex-wrap items-center gap-2">
             {/* Filtro por nicho */}
-            <Select value={selectedNicho} onValueChange={setSelectedNicho}>
+            <Select value={selectedNicho || "all"} onValueChange={setSelectedNicho}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Todos os nichos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os nichos</SelectItem>
+                <SelectItem value="all">Todos os nichos</SelectItem>
                 {nichos.map((nicho) => (
                   <SelectItem key={nicho.id} value={nicho.id}>
                     {nicho.nome}
