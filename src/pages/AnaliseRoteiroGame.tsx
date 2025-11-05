@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useAuth";
-import { useRoteiros, useCreateRoteiro } from "@/hooks/useRoteiros";
+import { useRoteiros, useCreateRoteiro, useDeleteRoteiro } from "@/hooks/useRoteiros";
 import { useProgressoRoteiros, useCompletarRoteiro } from "@/hooks/useProgressoRoteiros";
 import { useCoresAnalise } from "@/hooks/useCoresAnalise";
 import { useNichos } from "@/hooks/useNichos";
@@ -14,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, BookOpen, ExternalLink, FileUp, FileEdit, ArrowLeft } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink, FileUp, FileEdit, ArrowLeft, Trash2 } from "lucide-react";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -27,6 +28,8 @@ type Highlight = {
 };
 
 const AnaliseRoteiroGame = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const { data: userRole } = useUserRole();
@@ -36,6 +39,8 @@ const AnaliseRoteiroGame = () => {
   const { data: nichos = [] } = useNichos();
   const completarRoteiro = useCompletarRoteiro();
   const createRoteiro = useCreateRoteiro();
+  const deleteRoteiro = useDeleteRoteiro();
+  const autoStart = location.state?.autoStart;
 
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -80,6 +85,17 @@ const AnaliseRoteiroGame = () => {
       setSelectedColor(cores[0].cor);
     }
   }, [cores, selectedColor]);
+
+  // Auto-start: selecionar roteiro aleatório e ativar modo foco ao vir da página Testes
+  useEffect(() => {
+    if (autoStart && roteiros.length > 0 && !currentRoteiroId) {
+      const randomIndex = Math.floor(Math.random() * roteiros.length);
+      setIsFocusMode(true);
+      setCurrentRoteiroId(roteiros[randomIndex].id);
+      // Limpar o state para não repetir ao voltar
+      window.history.replaceState({}, document.title);
+    }
+  }, [autoStart, roteiros, currentRoteiroId]);
 
   const currentRoteiro = isAnalysingAvulso && roteiroAvulso
     ? { id: "avulso", titulo: roteiroAvulso.titulo, conteudo: roteiroAvulso.conteudo }
@@ -128,6 +144,27 @@ const AnaliseRoteiroGame = () => {
     setEstruturaInvisivel("");
     setGatilhosAtencao("");
     setEstruturaRoteiro("");
+  };
+
+  const handleDeleteRoteiro = async (roteiroId: string, titulo: string) => {
+    if (window.confirm(`Tem certeza que deseja deletar o roteiro "${titulo}"?`)) {
+      try {
+        await deleteRoteiro.mutateAsync(roteiroId);
+        if (currentRoteiroId === roteiroId) {
+          handleVoltarSelecao();
+        }
+        toast({
+          title: "Roteiro deletado",
+          description: "O roteiro foi removido com sucesso.",
+        });
+      } catch (error) {
+        toast({
+          title: "Erro ao deletar",
+          description: "Não foi possível deletar o roteiro.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const handleTextSelection = () => {
@@ -455,6 +492,19 @@ const AnaliseRoteiroGame = () => {
                               ✓ Completado
                             </span>
                           )}
+                          {isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteRoteiro(roteiro.id, roteiro.titulo);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button size="sm" variant="outline">
                             Analisar
                           </Button>
@@ -498,6 +548,17 @@ const AnaliseRoteiroGame = () => {
             >
               <ArrowLeft className="w-4 h-4" />
               Voltar
+            </Button>
+          )}
+          {!isAnalysingAvulso && isAdmin && currentRoteiro && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive gap-2 ml-2"
+              onClick={() => handleDeleteRoteiro(currentRoteiro.id, currentRoteiro.titulo)}
+            >
+              <Trash2 className="w-4 h-4" />
+              Deletar
             </Button>
           )}
         </div>
@@ -604,6 +665,19 @@ const AnaliseRoteiroGame = () => {
         {/* Coluna Central - Conteúdo do Roteiro */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">{currentRoteiro.titulo}</h2>
+          {!isAnalysingAvulso && 'link_video' in currentRoteiro && currentRoteiro.link_video && (
+            <div className="mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => window.open(currentRoteiro.link_video!, '_blank')}
+              >
+                <ExternalLink className="w-4 h-4" />
+                Assistir Vídeo do Roteiro
+              </Button>
+            </div>
+          )}
           <div
             id="roteiro-content"
             className="prose prose-sm max-w-none whitespace-pre-wrap text-foreground leading-relaxed select-text cursor-text"
