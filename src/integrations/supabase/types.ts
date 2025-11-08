@@ -23,6 +23,7 @@ export type Database = {
           id: string
           modulo_id: string
           ordem: number
+          thumbnail_url: string | null
           titulo: string
           updated_at: string
           youtube_url: string
@@ -35,6 +36,7 @@ export type Database = {
           id?: string
           modulo_id: string
           ordem?: number
+          thumbnail_url?: string | null
           titulo: string
           updated_at?: string
           youtube_url: string
@@ -47,6 +49,7 @@ export type Database = {
           id?: string
           modulo_id?: string
           ordem?: number
+          thumbnail_url?: string | null
           titulo?: string
           updated_at?: string
           youtube_url?: string
