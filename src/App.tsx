@@ -15,6 +15,7 @@ import TrinkaGame from "./pages/TrinkaGame";
 import AnaliseRoteiroGame from "./pages/AnaliseRoteiroGame";
 import Admin from "./pages/Admin";
 import Treinamentos from "./pages/Treinamentos";
+import Calendario from "./pages/Calendario";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/testes/analise-roteiro" element={<AnaliseRoteiroGame />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/treinamentos" element={<Treinamentos />} />
+              <Route path="/calendario" element={<Calendario />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

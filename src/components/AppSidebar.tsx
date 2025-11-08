@@ -7,6 +7,7 @@ import {
   Zap,
   ClipboardCheck,
   GraduationCap,
+  Calendar,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,6 +29,7 @@ const menuItems = [
   { title: "Base de Intensificadores", url: "/intensificadores", icon: Zap },
   { title: "Teste de Conhecimento", url: "/testes", icon: ClipboardCheck },
   { title: "Treinamentos", url: "/treinamentos", icon: GraduationCap },
+  { title: "Calendário", url: "/calendario", icon: Calendar },
 ];
 
 export function AppSidebar() {
