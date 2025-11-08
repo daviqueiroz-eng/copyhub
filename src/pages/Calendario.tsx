@@ -1,94 +1,166 @@
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useGoogleCalendarEvents } from "@/hooks/useGoogleCalendar";
+import { Calendar, Link as LinkIcon, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Calendario() {
-  const [calendarUrl, setCalendarUrl] = useState(
-    localStorage.getItem("googleCalendarUrl") || ""
-  );
-  const [tempUrl, setTempUrl] = useState(calendarUrl);
+  const { user, signInWithGoogle } = useAuth();
+  const { data: events, isLoading, error } = useGoogleCalendarEvents();
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const handleSaveUrl = () => {
-    localStorage.setItem("googleCalendarUrl", tempUrl);
-    setCalendarUrl(tempUrl);
-    toast.success("URL do calendário salva com sucesso!");
+  const handleConnectGoogle = async () => {
+    setIsConnecting(true);
+    const { error } = await signInWithGoogle();
+    if (error) {
+      console.error('Erro ao conectar Google:', error);
+    }
+    setIsConnecting(false);
   };
+
+  // Verificar se tem provider_token do Google
+  const hasGoogleConnected = user?.app_metadata?.providers?.includes('google');
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Calendário da Equipe</h1>
         <p className="text-muted-foreground mt-2">
-          Visualize e acompanhe os eventos e compromissos da equipe
+          Visualize e gerencie eventos e compromissos da equipe
         </p>
       </div>
 
-      {!calendarUrl ? (
-        <Card className="p-6">
-          <div className="space-y-4 max-w-2xl">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Configure seu Google Calendar</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Para exibir seu calendário, siga os passos abaixo:
-              </p>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground mb-6">
-                <li>Acesse o Google Calendar</li>
-                <li>Vá em Configurações → Configurações do calendário</li>
-                <li>Selecione o calendário desejado</li>
-                <li>Role até "Integrar calendário"</li>
-                <li>Copie a URL pública do calendário (formato iframe ou URL de incorporação)</li>
-                <li>Cole a URL abaixo</li>
-              </ol>
+      {!hasGoogleConnected ? (
+        <Card className="p-8">
+          <div className="flex flex-col items-center text-center space-y-6 max-w-2xl mx-auto">
+            <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center">
+              <Calendar className="h-12 w-12 text-primary" />
             </div>
-
+            
             <div className="space-y-2">
-              <Label htmlFor="calendar-url">URL do Google Calendar</Label>
-              <Input
-                id="calendar-url"
-                placeholder="https://calendar.google.com/calendar/embed?src=..."
-                value={tempUrl}
-                onChange={(e) => setTempUrl(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Exemplo: https://calendar.google.com/calendar/embed?src=seu_calendario_id
+              <h3 className="text-2xl font-semibold">Conecte seu Google Calendar</h3>
+              <p className="text-muted-foreground">
+                Conecte sua conta do Google para sincronizar eventos automaticamente 
+                quando você criar entregas para os mentorados.
               </p>
             </div>
 
-            <Button onClick={handleSaveUrl} disabled={!tempUrl}>
-              Salvar e Exibir Calendário
+            <div className="space-y-3 w-full">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">✓</div>
+                  <div>
+                    <div className="font-medium">Sincronização automática</div>
+                    <div className="text-muted-foreground">Entregas viram eventos</div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">✓</div>
+                  <div>
+                    <div className="font-medium">Totalmente seguro</div>
+                    <div className="text-muted-foreground">OAuth 2.0 do Google</div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">✓</div>
+                  <div>
+                    <div className="font-medium">Controle total</div>
+                    <div className="text-muted-foreground">Revogue a qualquer momento</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              size="lg" 
+              onClick={handleConnectGoogle}
+              disabled={isConnecting}
+              className="w-full max-w-xs"
+            >
+              {isConnecting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Conectando...
+                </>
+              ) : (
+                <>
+                  <LinkIcon className="mr-2 h-5 w-5" />
+                  Conectar Google Calendar
+                </>
+              )}
             </Button>
+
+            <p className="text-xs text-muted-foreground">
+              Ao conectar, você autoriza este aplicativo a acessar e gerenciar 
+              eventos no seu Google Calendar
+            </p>
           </div>
         </Card>
       ) : (
-        <>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setCalendarUrl("");
-                setTempUrl("");
-                localStorage.removeItem("googleCalendarUrl");
-                toast.info("URL do calendário removida");
-              }}
-            >
-              Alterar URL
-            </Button>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Badge variant="outline" className="gap-2">
+              <div className="h-2 w-2 rounded-full bg-green-500" />
+              Google Calendar Conectado
+            </Badge>
           </div>
 
-          <Card className="w-full overflow-hidden">
-            <iframe
-              src={calendarUrl}
-              className="w-full h-[800px] border-0"
-              title="Google Calendar"
-              frameBorder="0"
-              scrolling="no"
-            />
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                Erro ao carregar eventos: {error.message}
+                <br />
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto" 
+                  onClick={handleConnectGoogle}
+                >
+                  Reconectar Google Calendar
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Card className="p-6">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : events && events.length > 0 ? (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Próximos Eventos</h3>
+                <div className="space-y-2">
+                  {events.slice(0, 10).map((event: any) => (
+                    <div 
+                      key={event.id}
+                      className="flex items-start gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
+                    >
+                      <div className="h-10 w-1 rounded-full" style={{ backgroundColor: `var(--chart-${event.colorId || 1})` }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{event.summary}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {event.start?.dateTime && format(new Date(event.start.dateTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </div>
+                        {event.description && (
+                          <div className="text-xs text-muted-foreground mt-1">{event.description}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                Nenhum evento encontrado
+              </div>
+            )}
           </Card>
-        </>
+        </div>
       )}
     </div>
   );

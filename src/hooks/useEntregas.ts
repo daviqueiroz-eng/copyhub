@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCreateCalendarEvent, formatEntregaToEvent } from "./useGoogleCalendar";
 
 export type Entrega = {
   id: string;
@@ -34,6 +35,7 @@ export const useEntregas = (mentoradoId?: string) => {
 export const useCreateEntrega = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { mutate: createCalendarEvent } = useCreateCalendarEvent();
 
   return useMutation({
     mutationFn: async (entrega: Omit<Entrega, "id" | "created_at" | "updated_at">) => {
@@ -46,12 +48,32 @@ export const useCreateEntrega = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["entregas"] });
       toast({
         title: "Entrega criada!",
         description: "A entrega foi criada com sucesso.",
       });
+
+      // Buscar dados do mentorado para criar evento no calendário
+      if (data.data_entrega) {
+        const { data: mentorado } = await supabase
+          .from("mentorados")
+          .select("id, nome")
+          .eq("id", variables.mentorado_id)
+          .single();
+
+        if (mentorado) {
+          // Criar evento no Google Calendar
+          const event = formatEntregaToEvent(mentorado, {
+            id: data.id,
+            numero_leva: data.numero_leva,
+            data_entrega: data.data_entrega,
+          });
+          
+          createCalendarEvent(event);
+        }
+      }
     },
     onError: (error: any) => {
       toast({
