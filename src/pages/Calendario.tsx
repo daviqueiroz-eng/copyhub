@@ -6,9 +6,8 @@ import { useGoogleCalendarEvents } from "@/hooks/useGoogleCalendar";
 import { Calendar, Link as LinkIcon, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import GoogleLikeCalendar from "@/components/calendar/GoogleLikeCalendar";
 
 export default function Calendario() {
   const { user, session, signOut } = useAuth();
@@ -141,40 +140,13 @@ export default function Calendario() {
             </Alert>
           )}
 
-          <Card className="p-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : events && events.length > 0 ? (
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Próximos Eventos</h3>
-                <div className="space-y-2">
-                  {events.slice(0, 10).map((event: any) => (
-                    <div 
-                      key={event.id}
-                      className="flex items-start gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
-                    >
-                      <div className="h-10 w-1 rounded-full" style={{ backgroundColor: `var(--chart-${event.colorId || 1})` }} />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{event.summary}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {event.start?.dateTime && format(new Date(event.start.dateTime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </div>
-                        {event.description && (
-                          <div className="text-xs text-muted-foreground mt-1">{event.description}</div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                Nenhum evento encontrado
-              </div>
-            )}
-          </Card>
+{isLoading ? (
+  <div className="flex items-center justify-center py-12">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+) : (
+  <GoogleLikeCalendar events={(events as any) || []} initialView="timeGridWeek" />
+)}
         </div>
       )}
     </div>
