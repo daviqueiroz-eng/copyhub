@@ -147,6 +147,47 @@ export type Database = {
         }
         Relationships: []
       }
+      entregas_mentorados: {
+        Row: {
+          concluida: boolean
+          created_at: string
+          data_entrega: string | null
+          id: string
+          mentorado_id: string
+          numero_leva: number
+          observacoes: string | null
+          updated_at: string
+        }
+        Insert: {
+          concluida?: boolean
+          created_at?: string
+          data_entrega?: string | null
+          id?: string
+          mentorado_id: string
+          numero_leva: number
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          concluida?: boolean
+          created_at?: string
+          data_entrega?: string | null
+          id?: string
+          mentorado_id?: string
+          numero_leva?: number
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entregas_mentorados_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       headlines: {
         Row: {
           category_key: string

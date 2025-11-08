@@ -29,6 +29,8 @@ import {
   useUpdateMentorado,
   type Mentorado 
 } from "@/hooks/useMentorados";
+import { GeralView } from "@/components/mentorados/GeralView";
+import { CalendarioView } from "@/components/mentorados/CalendarioView";
 
 const Mentorados = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,10 +42,6 @@ const Mentorados = () => {
   const { data: mentorados = [] } = useMentorados();
   const createMentorado = useCreateMentorado();
   const updateMentorado = useUpdateMentorado();
-
-  const filteredMentorados = mentorados.filter((m) =>
-    m.nome.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const getIniciais = (nome: string) => {
     const parts = nome.trim().split(" ");
@@ -106,7 +104,7 @@ const Mentorados = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 w-full">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-foreground">Meus Mentorados</h2>
@@ -130,34 +128,24 @@ const Mentorados = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredMentorados.map((mentorado) => (
-          <Card
-            key={mentorado.id}
-            className="transition-all hover:shadow-lg cursor-pointer hover:border-primary/50"
-            onClick={() => handleOpenDetail(mentorado)}
-          >
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <Avatar className="h-12 w-12">
-                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                    {mentorado.iniciais}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{mentorado.nome}</CardTitle>
-                  <CardDescription>{mentorado.plano || "Sem plano definido"}</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {mentorado.dores || "Clique para adicionar informações"}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Tabs defaultValue="geral" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="geral">Geral</TabsTrigger>
+          <TabsTrigger value="calendario">Calendário</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="geral" className="mt-6">
+          <GeralView 
+            mentorados={mentorados}
+            searchTerm={searchTerm}
+            onMentoradoClick={handleOpenDetail}
+          />
+        </TabsContent>
+
+        <TabsContent value="calendario" className="mt-6">
+          <CalendarioView mentorados={mentorados} />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialog para adicionar novo mentorado */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
