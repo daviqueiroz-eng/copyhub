@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { MentoradoCard } from "./MentoradoCard";
-import { LevaColumn } from "./LevaColumn";
+import { LevaCircle } from "./LevaCircle";
 import { EntregaDialog } from "./EntregaDialog";
 import { Mentorado } from "@/hooks/useMentorados";
 import { useEntregas, useMoveEntrega } from "@/hooks/useEntregas";
@@ -61,41 +61,63 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
   return (
     <>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 h-[calc(100vh-12rem)]">
-          {/* Coluna de Mentorados */}
-          <div className="w-64 flex-shrink-0">
-            <h2 className="text-sm font-semibold mb-3 sticky top-0 bg-background py-2">
-              Mentorados
-            </h2>
-            <ScrollArea className="h-full">
-              <div className="space-y-2 pr-4">
-                {filteredMentorados.map((mentorado) => (
-                  <MentoradoCard
-                    key={mentorado.id}
-                    mentorado={mentorado}
-                    onClick={() => onMentoradoClick(mentorado)}
-                  />
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-
-          {/* Colunas de Levas */}
-          <ScrollArea className="flex-1">
-            <div className="flex h-full">
-              {[1, 2, 3, 4, 5, 6].map((numeroLeva) => (
-                <LevaColumn
-                  key={numeroLeva}
-                  numeroLeva={numeroLeva}
-                  mentorados={filteredMentorados}
-                  entregas={entregas}
-                  onCircleClick={handleCircleClick}
-                />
+        <ScrollArea className="h-[calc(100vh-12rem)]">
+          <div className="min-w-max">
+            {/* Header */}
+            <div className="grid grid-cols-[300px_repeat(6,120px)] gap-4 mb-4 pb-2 border-b sticky top-0 bg-background z-10">
+              <div className="font-semibold text-sm">Mentorado</div>
+              {[1, 2, 3, 4, 5, 6].map((num) => (
+                <div key={num} className="text-center font-semibold text-sm">
+                  {num}ª Leva
+                </div>
               ))}
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </div>
+
+            {/* Grid de Mentorados e Levas */}
+            <div className="space-y-3">
+              {filteredMentorados.map((mentorado) => {
+                const entregasMentorado = entregas.filter(
+                  (e) => e.mentorado_id === mentorado.id
+                );
+
+                return (
+                  <div
+                    key={mentorado.id}
+                    className="grid grid-cols-[300px_repeat(6,120px)] gap-4 items-center"
+                  >
+                    {/* Card do Mentorado */}
+                    <div>
+                      <MentoradoCard
+                        mentorado={mentorado}
+                        onClick={() => onMentoradoClick(mentorado)}
+                      />
+                    </div>
+
+                    {/* Círculos das Levas */}
+                    {[1, 2, 3, 4, 5, 6].map((numeroLeva) => {
+                      const entrega = entregasMentorado.find(
+                        (e) => e.numero_leva === numeroLeva
+                      );
+
+                      return (
+                        <div key={numeroLeva} className="flex justify-center">
+                          <LevaCircle
+                            mentoradoId={mentorado.id}
+                            numeroLeva={numeroLeva}
+                            dataEntrega={entrega?.data_entrega}
+                            concluida={entrega?.concluida}
+                            onClick={() => handleCircleClick(mentorado.id, numeroLeva)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </DndContext>
 
       <EntregaDialog
