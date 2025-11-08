@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      aulas: {
+        Row: {
+          conteudo: string | null
+          created_at: string
+          descricao: string
+          duracao: string | null
+          id: string
+          modulo_id: string
+          ordem: number
+          titulo: string
+          updated_at: string
+          youtube_url: string
+        }
+        Insert: {
+          conteudo?: string | null
+          created_at?: string
+          descricao: string
+          duracao?: string | null
+          id?: string
+          modulo_id: string
+          ordem?: number
+          titulo: string
+          updated_at?: string
+          youtube_url: string
+        }
+        Update: {
+          conteudo?: string | null
+          created_at?: string
+          descricao?: string
+          duracao?: string | null
+          id?: string
+          modulo_id?: string
+          ordem?: number
+          titulo?: string
+          updated_at?: string
+          youtube_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aulas_modulo_id_fkey"
+            columns: ["modulo_id"]
+            isOneToOne: false
+            referencedRelation: "modulos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
@@ -34,6 +81,41 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      comentarios_aulas: {
+        Row: {
+          aula_id: string
+          comentario: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aula_id: string
+          comentario: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aula_id?: string
+          comentario?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comentarios_aulas_aula_id_fkey"
+            columns: ["aula_id"]
+            isOneToOne: false
+            referencedRelation: "aulas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cores_analise: {
         Row: {
@@ -225,6 +307,41 @@ export type Database = {
         }
         Relationships: []
       }
+      modulos: {
+        Row: {
+          created_at: string
+          id: string
+          ordem: number
+          titulo: string
+          treinamento_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          titulo: string
+          treinamento_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          titulo?: string
+          treinamento_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modulos_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "treinamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nichos: {
         Row: {
           created_at: string
@@ -299,6 +416,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      progresso_aulas: {
+        Row: {
+          aula_id: string
+          concluido: boolean
+          created_at: string
+          data_conclusao: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aula_id: string
+          concluido?: boolean
+          created_at?: string
+          data_conclusao?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aula_id?: string
+          concluido?: boolean
+          created_at?: string
+          data_conclusao?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progresso_aulas_aula_id_fkey"
+            columns: ["aula_id"]
+            isOneToOne: false
+            referencedRelation: "aulas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       progresso_roteiros: {
         Row: {
@@ -477,6 +632,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      treinamentos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          descricao: string
+          id: string
+          ordem: number
+          thumbnail_url: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          descricao: string
+          id?: string
+          ordem?: number
+          thumbnail_url?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          descricao?: string
+          id?: string
+          ordem?: number
+          thumbnail_url?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
