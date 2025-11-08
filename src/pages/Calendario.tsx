@@ -11,8 +11,13 @@ import { ptBR } from "date-fns/locale";
 
 export default function Calendario() {
   const { user, signInWithGoogle } = useAuth();
-  const { data: events, isLoading, error } = useGoogleCalendarEvents();
   const [isConnecting, setIsConnecting] = useState(false);
+  
+  // Verificar se tem provider_token do Google
+  const hasGoogleConnected = user?.app_metadata?.providers?.includes('google');
+  
+  // Só buscar eventos se estiver conectado
+  const { data: events, isLoading, error } = useGoogleCalendarEvents(hasGoogleConnected);
 
   const handleConnectGoogle = async () => {
     setIsConnecting(true);
@@ -22,9 +27,6 @@ export default function Calendario() {
     }
     setIsConnecting(false);
   };
-
-  // Verificar se tem provider_token do Google
-  const hasGoogleConnected = user?.app_metadata?.providers?.includes('google');
 
   return (
     <div className="space-y-6">

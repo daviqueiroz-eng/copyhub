@@ -25,7 +25,7 @@ export type CalendarEvent = {
 };
 
 // Buscar eventos do calendário
-export const useGoogleCalendarEvents = () => {
+export const useGoogleCalendarEvents = (enabled: boolean = true) => {
   return useQuery({
     queryKey: ["google-calendar-events"],
     queryFn: async () => {
@@ -37,6 +37,7 @@ export const useGoogleCalendarEvents = () => {
       return data.items || [];
     },
     retry: 1,
+    enabled: enabled, // Só executa quando habilitado
   });
 };
 
