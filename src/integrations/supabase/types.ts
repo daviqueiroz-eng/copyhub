@@ -347,6 +347,45 @@ export type Database = {
           },
         ]
       }
+      prompts: {
+        Row: {
+          comentarios: string | null
+          conteudo: string
+          created_at: string
+          created_by: string | null
+          descricao: string
+          id: string
+          nicho: string
+          titulo: string
+          updated_at: string
+          youtube_url: string
+        }
+        Insert: {
+          comentarios?: string | null
+          conteudo: string
+          created_at?: string
+          created_by?: string | null
+          descricao: string
+          id?: string
+          nicho: string
+          titulo: string
+          updated_at?: string
+          youtube_url: string
+        }
+        Update: {
+          comentarios?: string | null
+          conteudo?: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string
+          id?: string
+          nicho?: string
+          titulo?: string
+          updated_at?: string
+          youtube_url?: string
+        }
+        Relationships: []
+      }
       roteiros: {
         Row: {
           conteudo: string
