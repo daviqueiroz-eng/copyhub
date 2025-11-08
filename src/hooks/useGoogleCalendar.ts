@@ -27,7 +27,7 @@ export type CalendarEvent = {
 // Buscar eventos do calendário
 export const useGoogleCalendarEvents = (enabled: boolean = true) => {
   return useQuery({
-    queryKey: ["google-calendar-events"],
+    queryKey: ["google-calendar-events", { enabled }],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('google-calendar', {
         body: { method: 'GET' }
@@ -37,7 +37,7 @@ export const useGoogleCalendarEvents = (enabled: boolean = true) => {
       return data.items || [];
     },
     retry: 1,
-    enabled: enabled, // Só executa quando habilitado
+    enabled,
   });
 };
 

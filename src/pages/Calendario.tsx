@@ -11,7 +11,7 @@ import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 
 export default function Calendario() {
-  const { user, signOut } = useAuth();
+  const { user, session, signOut } = useAuth();
   const navigate = useNavigate();
   const [isConnecting, setIsConnecting] = useState(false);
   
@@ -21,10 +21,11 @@ export default function Calendario() {
   
   // Verificar se tem provider_token do Google
   const hasGoogleConnected = user?.app_metadata?.providers?.includes('google');
-  console.log('hasGoogleConnected:', hasGoogleConnected);
+  const canFetch = !!session && !!hasGoogleConnected;
+  console.log('hasGoogleConnected:', hasGoogleConnected, 'session?', !!session, 'canFetch:', canFetch);
   
-  // Só buscar eventos se estiver conectado
-  const { data: events, isLoading, error } = useGoogleCalendarEvents(hasGoogleConnected);
+  // Só buscar eventos se estiver conectado e com sessão válida
+  const { data: events, isLoading, error } = useGoogleCalendarEvents(canFetch);
 
   const handleConnectGoogle = async () => {
     setIsConnecting(true);
