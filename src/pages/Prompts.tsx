@@ -17,6 +17,30 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// Função para extrair ID do vídeo do YouTube
+const getYouTubeVideoId = (url: string): string => {
+  let videoId = "";
+  
+  if (url.includes("youtube.com/watch?v=")) {
+    videoId = url.split("v=")[1]?.split("&")[0];
+  } else if (url.includes("youtu.be/")) {
+    videoId = url.split("youtu.be/")[1]?.split("?")[0];
+  } else if (url.includes("youtube.com/embed/")) {
+    videoId = url.split("embed/")[1]?.split("?")[0];
+  }
+  
+  return videoId;
+};
+
+// Função para gerar URL da thumbnail
+const getYouTubeThumbnail = (url: string): string => {
+  const videoId = getYouTubeVideoId(url);
+  if (!videoId) return "";
+  
+  // maxresdefault.jpg = 1280x720 (melhor qualidade)
+  return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+};
+
 const Prompts = () => {
   const { data: prompts = [], isLoading } = usePrompts();
   const { data: userRole } = useUserRole();
@@ -110,13 +134,30 @@ const Prompts = () => {
               onClick={() => handleViewPrompt(prompt)}
             >
               <CardHeader>
-                <div className="aspect-video bg-muted rounded-lg flex items-center justify-center mb-4 relative overflow-hidden">
-                  <PlayCircle className="h-12 w-12 text-primary group-hover:scale-110 transition-transform" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                <div className="aspect-video bg-muted rounded-lg mb-4 relative overflow-hidden">
+                  {/* Thumbnail do YouTube */}
+                  <img
+                    src={getYouTubeThumbnail(prompt.youtube_url)}
+                    alt={prompt.titulo}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  
+                  {/* Overlay escuro para destacar o ícone de play */}
+                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
+                  
+                  {/* Ícone de Play centralizado */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-primary/90 rounded-full p-4 group-hover:scale-110 transition-transform">
+                      <PlayCircle className="h-10 w-10 text-primary-foreground" />
+                    </div>
+                  </div>
                   
                   {/* Botões de Admin */}
                   {isAdmin && (
-                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                       <Button
                         size="icon"
                         variant="secondary"
