@@ -83,6 +83,22 @@ serve(async (req) => {
       );
     }
     
+    // PATCH - Atualizar evento
+    else if (method === 'PATCH' && eventData?.id) {
+      const { id, ...updateData } = eventData;
+      response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${providerToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData),
+        }
+      );
+    }
+    
     // DELETE - Deletar evento
     else if (method === 'DELETE' && eventData?.eventId) {
       response = await fetch(

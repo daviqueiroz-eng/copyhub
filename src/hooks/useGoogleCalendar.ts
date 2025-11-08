@@ -79,6 +79,39 @@ export const useCreateCalendarEvent = () => {
   });
 };
 
+// Atualizar evento do calendário
+export const useUpdateCalendarEvent = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (event: CalendarEvent & { id: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const providerToken = (session as any)?.provider_token;
+      if (!providerToken) {
+        throw new Error('Sem token do Google. Faça login com Google e conceda acesso ao Calendar.');
+      }
+      const { data, error } = await supabase.functions.invoke('google-calendar', {
+        body: {
+          method: 'PATCH',
+          eventData: event,
+          providerToken,
+        }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["google-calendar-events"] });
+      toast.success("Evento atualizado no Google Calendar!");
+    },
+    onError: (error: any) => {
+      console.error('Error updating event:', error);
+      toast.error("Erro ao atualizar evento: " + error.message);
+    },
+  });
+};
+
 // Deletar evento do calendário
 export const useDeleteCalendarEvent = () => {
   const queryClient = useQueryClient();
