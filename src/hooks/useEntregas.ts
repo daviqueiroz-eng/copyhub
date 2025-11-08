@@ -32,6 +32,22 @@ export const useEntregas = (mentoradoId?: string) => {
   });
 };
 
+export const useEntregasPendentes = () => {
+  return useQuery({
+    queryKey: ["entregas", "pendentes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("entregas_mentorados")
+        .select("*")
+        .is("data_entrega", null)
+        .order("numero_leva", { ascending: true });
+
+      if (error) throw error;
+      return data as Entrega[];
+    },
+  });
+};
+
 export const useCreateEntrega = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();

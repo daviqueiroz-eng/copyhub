@@ -1,7 +1,6 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mentorado } from "@/hooks/useMentorados";
-import { DistribuicaoSemanal } from "./DistribuicaoSemanal";
 import { EntregasCalendar } from "./EntregasCalendar";
+import { EntregasPendentesPanel } from "./EntregasPendentesPanel";
 
 interface CalendarioViewProps {
   mentorados: Mentorado[];
@@ -9,19 +8,16 @@ interface CalendarioViewProps {
 
 export function CalendarioView({ mentorados }: CalendarioViewProps) {
   return (
-    <Tabs defaultValue="calendario" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 max-w-md mb-6">
-        <TabsTrigger value="calendario">Calendário</TabsTrigger>
-        <TabsTrigger value="distribuicao">Distribuição Semanal</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="calendario">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+      {/* Calendário principal à esquerda */}
+      <div className="min-w-0">
         <EntregasCalendar mentorados={mentorados} />
-      </TabsContent>
+      </div>
 
-      <TabsContent value="distribuicao">
-        <DistribuicaoSemanal mentorados={mentorados} />
-      </TabsContent>
-    </Tabs>
+      {/* Painel de entregas pendentes à direita */}
+      <div className="lg:sticky lg:top-4 h-fit">
+        <EntregasPendentesPanel mentorados={mentorados} />
+      </div>
+    </div>
   );
 }

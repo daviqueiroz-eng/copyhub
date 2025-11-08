@@ -3,7 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
-import interactionPlugin from "@fullcalendar/interaction";
+import interactionPlugin, { type DropArg } from "@fullcalendar/interaction";
 import type { DateSelectArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
 import { differenceInDays } from "date-fns";
 
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useEntregas, useUpdateEntrega } from "@/hooks/useEntregas";
 import { Mentorado } from "@/hooks/useMentorados";
 import { EntregaDialog } from "./EntregaDialog";
+import { useToast } from "@/hooks/use-toast";
 
 export interface EntregasCalendarProps {
   mentorados: Mentorado[];
@@ -56,6 +57,7 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
 
   const { data: entregas = [] } = useEntregas();
   const updateMutation = useUpdateEntrega();
+  const { toast } = useToast();
 
   // Mapear entregas para eventos do FullCalendar
   const fcEvents = useMemo(() => {
@@ -106,7 +108,7 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
     setDialogOpen(true);
   };
 
-  // Drag & Drop de entrega
+  // Drag & Drop de entrega no calendário
   const handleEventDrop = (dropInfo: EventDropArg) => {
     const evt = dropInfo.event;
     const entrega = entregas.find((e) => e.id === evt.id);
@@ -127,6 +129,37 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
       {
         onError: () => {
           dropInfo.revert();
+        },
+      }
+    );
+  };
+
+  // Drop de elemento externo (do painel lateral) no calendário
+  const handleDrop = (dropInfo: DropArg) => {
+    const entregaId = dropInfo.draggedEl.getAttribute("data-entrega-id");
+    if (!entregaId) return;
+
+    const entrega = entregas.find((e) => e.id === entregaId);
+    if (!entrega) return;
+
+    const dataStr = dropInfo.dateStr;
+
+    // Atualizar a data da entrega
+    updateMutation.mutate(
+      {
+        id: entrega.id,
+        mentorado_id: entrega.mentorado_id,
+        numero_leva: entrega.numero_leva,
+        data_entrega: dataStr,
+        concluida: entrega.concluida,
+        observacoes: entrega.observacoes,
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Entrega agendada!",
+            description: `Data definida para ${new Date(dataStr).toLocaleDateString("pt-BR")}`,
+          });
         },
       }
     );
@@ -181,6 +214,8 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
               eventDisplay="block"
               selectable={true}
               editable={true}
+              droppable={true}
+              drop={handleDrop}
               select={handleDateSelect}
               eventClick={handleEventClick}
               eventDrop={handleEventDrop}
@@ -225,6 +260,8 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
               events={fcEvents}
               selectable={true}
               editable={true}
+              droppable={true}
+              drop={handleDrop}
               select={handleDateSelect}
               eventClick={handleEventClick}
               eventDrop={handleEventDrop}
