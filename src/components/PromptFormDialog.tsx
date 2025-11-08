@@ -113,12 +113,12 @@ export const PromptFormDialog = ({ prompt, open, onOpenChange }: PromptFormDialo
           </div>
 
           <div>
-            <Label htmlFor="youtube_url">Link do YouTube *</Label>
+            <Label htmlFor="youtube_url">URL do Vídeo (YouTube ou Google Drive) *</Label>
             <Input
               id="youtube_url"
               value={formData.youtube_url}
               onChange={(e) => setFormData({ ...formData, youtube_url: e.target.value })}
-              placeholder="https://www.youtube.com/watch?v=..."
+              placeholder="YouTube ou Google Drive"
             />
           </div>
 

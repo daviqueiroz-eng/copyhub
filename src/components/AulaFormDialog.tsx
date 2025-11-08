@@ -95,12 +95,12 @@ const AulaFormDialog = ({ open, onOpenChange, moduloId, aula }: AulaFormDialogPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="youtube">URL do YouTube</Label>
+            <Label htmlFor="youtube">URL do Vídeo (YouTube ou Google Drive)</Label>
             <Input
               id="youtube"
               value={youtubeUrl}
               onChange={(e) => setYoutubeUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
+              placeholder="YouTube ou Google Drive"
               required
             />
           </div>

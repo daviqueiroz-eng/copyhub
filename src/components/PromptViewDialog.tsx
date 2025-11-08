@@ -3,6 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { type Prompt } from "@/hooks/usePrompts";
+import { getVideoEmbedUrl } from "@/lib/videoUtils";
 
 interface PromptViewDialogProps {
   prompt: Prompt | null;
@@ -10,25 +11,11 @@ interface PromptViewDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Função para extrair ID do vídeo do YouTube de diferentes formatos de URL
-const getYouTubeEmbedUrl = (url: string): string => {
-  let videoId = "";
-  
-  if (url.includes("youtube.com/watch?v=")) {
-    videoId = url.split("v=")[1]?.split("&")[0];
-  } else if (url.includes("youtu.be/")) {
-    videoId = url.split("youtu.be/")[1]?.split("?")[0];
-  } else if (url.includes("youtube.com/embed/")) {
-    videoId = url.split("embed/")[1]?.split("?")[0];
-  }
-  
-  return `https://www.youtube.com/embed/${videoId}`;
-};
 
 export const PromptViewDialog = ({ prompt, open, onOpenChange }: PromptViewDialogProps) => {
   if (!prompt) return null;
 
-  const embedUrl = getYouTubeEmbedUrl(prompt.youtube_url);
+  const embedUrl = getVideoEmbedUrl(prompt.youtube_url);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

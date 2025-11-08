@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getVideoEmbedUrl } from "@/lib/videoUtils";
 
 interface AulaViewDialogProps {
   open: boolean;
@@ -21,19 +22,6 @@ interface AulaViewDialogProps {
   concluida: boolean;
 }
 
-const getYouTubeEmbedUrl = (url: string): string => {
-  let videoId = "";
-  
-  if (url.includes("youtube.com/watch?v=")) {
-    videoId = url.split("v=")[1]?.split("&")[0];
-  } else if (url.includes("youtu.be/")) {
-    videoId = url.split("youtu.be/")[1]?.split("?")[0];
-  } else if (url.includes("youtube.com/embed/")) {
-    videoId = url.split("embed/")[1]?.split("?")[0];
-  }
-  
-  return `https://www.youtube.com/embed/${videoId}`;
-};
 
 const AulaViewDialog = ({ open, onOpenChange, aula, concluida }: AulaViewDialogProps) => {
   const [novoComentario, setNovoComentario] = useState("");
@@ -81,7 +69,7 @@ const AulaViewDialog = ({ open, onOpenChange, aula, concluida }: AulaViewDialogP
           {/* Coluna Esquerda - Vídeo */}
           <div className="bg-black flex items-center justify-center p-4">
             <iframe
-              src={getYouTubeEmbedUrl(aula.youtube_url)}
+              src={getVideoEmbedUrl(aula.youtube_url)}
               className="w-full aspect-video rounded"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
