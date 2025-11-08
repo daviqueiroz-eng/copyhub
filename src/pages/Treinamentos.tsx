@@ -199,38 +199,18 @@ const Treinamentos = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {treinamentos.map((treinamento) => {
-            // Hook calls para calcular progresso
-            const TreinamentoWithProgress = () => {
-              const { data: modulos = [] } = useModulos(treinamento.id);
-              
-              // Buscar todas as aulas de todos os módulos
-              const allAulas = modulos.flatMap(modulo => {
-                const { data: aulas = [] } = useAulas(modulo.id);
-                return aulas;
-              });
-
-              const totalAulas = allAulas.length;
-              const aulasConcluidas = progresso.filter(p => 
-                allAulas.some(a => a.id === p.aula_id) && p.concluido
-              ).length;
-              const progressoGeral = totalAulas > 0 ? (aulasConcluidas / totalAulas) * 100 : 0;
-
-              return (
-                <TreinamentoCard
-                  treinamento={treinamento}
-                  onView={() => handleViewTreinamento(treinamento)}
-                  onEdit={() => handleEditTreinamento(treinamento)}
-                  onDelete={() => setDeleteTreinamentoId(treinamento.id)}
-                  isAdmin={isAdmin}
-                  progressoGeral={progressoGeral}
-                  totalModulos={modulos.length}
-                />
-              );
-            };
-
-            return <TreinamentoWithProgress key={treinamento.id} />;
-          })}
+          {treinamentos.map((treinamento) => (
+            <TreinamentoCard
+              key={treinamento.id}
+              treinamento={treinamento}
+              onView={() => handleViewTreinamento(treinamento)}
+              onEdit={() => handleEditTreinamento(treinamento)}
+              onDelete={() => setDeleteTreinamentoId(treinamento.id)}
+              isAdmin={isAdmin}
+              progressoGeral={0}
+              totalModulos={0}
+            />
+          ))}
         </div>
       )}
 

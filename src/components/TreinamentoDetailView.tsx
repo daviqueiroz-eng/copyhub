@@ -55,10 +55,14 @@ const TreinamentoDetailView = ({ treinamento, onBack }: TreinamentoDetailViewPro
   const deleteModuloMutation = useDeleteModulo();
   const deleteAulaMutation = useDeleteAula();
 
+  // Buscar todas as aulas uma vez
+  const moduloIds = modulos.map(m => m.id);
+  const aulasQueries = moduloIds.map(id => useAulas(id));
+  
   // Calcular progresso geral
-  const allAulas = modulos.flatMap(modulo => {
-    const { data: aulas = [] } = useAulas(modulo.id);
-    return aulas.map(aula => ({ ...aula, moduloId: modulo.id }));
+  const allAulas = aulasQueries.flatMap((query, index) => {
+    const aulas = query.data || [];
+    return aulas.map(aula => ({ ...aula, moduloId: moduloIds[index] }));
   });
 
   const totalAulas = allAulas.length;
@@ -145,9 +149,8 @@ const TreinamentoDetailView = ({ treinamento, onBack }: TreinamentoDetailViewPro
 
       {/* Módulos */}
       <div className="space-y-4">
-        {modulos.map((modulo) => {
-          const { data: aulas = [] } = useAulas(modulo.id);
-          const { data: comentariosCount } = useComentariosAulas("");
+        {modulos.map((modulo, moduloIndex) => {
+          const aulas = aulasQueries[moduloIndex]?.data || [];
           
           const aulasModulo = aulas.length;
           const aulasModuloConcluidas = progresso.filter(p => 
