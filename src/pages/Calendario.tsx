@@ -8,24 +8,29 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 export default function Calendario() {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [isConnecting, setIsConnecting] = useState(false);
+  
+  // Debug logs
+  console.log('User metadata:', user?.app_metadata);
+  console.log('Providers:', user?.app_metadata?.providers);
   
   // Verificar se tem provider_token do Google
   const hasGoogleConnected = user?.app_metadata?.providers?.includes('google');
+  console.log('hasGoogleConnected:', hasGoogleConnected);
   
   // Só buscar eventos se estiver conectado
   const { data: events, isLoading, error } = useGoogleCalendarEvents(hasGoogleConnected);
 
   const handleConnectGoogle = async () => {
     setIsConnecting(true);
-    const { error } = await signInWithGoogle();
-    if (error) {
-      console.error('Erro ao conectar Google:', error);
-    }
-    setIsConnecting(false);
+    // Fazer logout e redirecionar para página de login com Google
+    await signOut();
+    navigate('/auth');
   };
 
   return (
@@ -45,12 +50,18 @@ export default function Calendario() {
             </div>
             
             <div className="space-y-2">
-              <h3 className="text-2xl font-semibold">Conecte seu Google Calendar</h3>
+              <h3 className="text-2xl font-semibold">Login com Google Necessário</h3>
               <p className="text-muted-foreground">
-                Conecte sua conta do Google para sincronizar eventos automaticamente 
-                quando você criar entregas para os mentorados.
+                Para acessar o Google Calendar, você precisa fazer login com sua conta Google.
+                Você será redirecionado para a página de login.
               </p>
             </div>
+            
+            <Alert>
+              <AlertDescription>
+                Após fazer login com Google, você terá acesso automático aos seus eventos do calendário.
+              </AlertDescription>
+            </Alert>
 
             <div className="space-y-3 w-full">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -87,12 +98,12 @@ export default function Calendario() {
               {isConnecting ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Conectando...
+                  Redirecionando...
                 </>
               ) : (
                 <>
                   <LinkIcon className="mr-2 h-5 w-5" />
-                  Conectar Google Calendar
+                  Fazer Login com Google
                 </>
               )}
             </Button>
@@ -112,18 +123,10 @@ export default function Calendario() {
             </Badge>
           </div>
 
-          {error && (
+            {error && (
             <Alert variant="destructive">
               <AlertDescription>
                 Erro ao carregar eventos: {error.message}
-                <br />
-                <Button 
-                  variant="link" 
-                  className="p-0 h-auto" 
-                  onClick={handleConnectGoogle}
-                >
-                  Reconectar Google Calendar
-                </Button>
               </AlertDescription>
             </Alert>
           )}

@@ -13,7 +13,8 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { signIn, signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -63,6 +64,21 @@ export default function Auth() {
     setLoading(false);
   };
 
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    const { error } = await signInWithGoogle();
+    
+    if (error) {
+      toast({
+        title: "Erro ao conectar com Google",
+        description: error.message,
+        variant: "destructive",
+      });
+      setGoogleLoading(false);
+    }
+    // Não precisa setGoogleLoading(false) no sucesso porque vai redirecionar
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -71,7 +87,29 @@ export default function Auth() {
           <CardDescription>Entre ou crie sua conta para continuar</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <div className="space-y-4">
+            <Button 
+              onClick={handleGoogleSignIn} 
+              variant="outline" 
+              className="w-full h-12 text-base font-semibold"
+              disabled={googleLoading}
+            >
+              {googleLoading ? "Conectando..." : "Entrar com Google"}
+            </Button>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Ou continue com email
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <Tabs defaultValue="login" className="w-full mt-4">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Criar Conta</TabsTrigger>
