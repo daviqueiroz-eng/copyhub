@@ -17,6 +17,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -31,6 +38,8 @@ interface EntregaDialogProps {
   onOpenChange: (open: boolean) => void;
   mentorado: Mentorado | null;
   numeroLeva: number;
+  initialDate?: Date;
+  mentorados?: Mentorado[];
 }
 
 export function EntregaDialog({
@@ -38,14 +47,18 @@ export function EntregaDialog({
   onOpenChange,
   mentorado,
   numeroLeva,
+  initialDate,
+  mentorados = [],
 }: EntregaDialogProps) {
+  const [selectedMentorado, setSelectedMentorado] = useState<string | undefined>(mentorado?.id);
   const [date, setDate] = useState<Date>();
   const [concluida, setConcluida] = useState(false);
   const [observacoes, setObservacoes] = useState("");
   const [replicarParaTodasLevas, setReplicarParaTodasLevas] = useState(false);
   const [intervaloDias, setIntervaloDias] = useState(7);
 
-  const { data: entregas } = useEntregas(mentorado?.id);
+  const currentMentorado = mentorado || mentorados.find((m) => m.id === selectedMentorado);
+  const { data: entregas } = useEntregas(currentMentorado?.id);
   const createEntrega = useCreateEntrega();
   const updateEntrega = useUpdateEntrega();
   const replicateEntregas = useReplicateEntregas();
@@ -57,20 +70,32 @@ export function EntregaDialog({
       setDate(entregaAtual.data_entrega ? new Date(entregaAtual.data_entrega) : undefined);
       setConcluida(entregaAtual.concluida);
       setObservacoes(entregaAtual.observacoes || "");
+    } else if (initialDate) {
+      setDate(initialDate);
+      setConcluida(false);
+      setObservacoes("");
     } else {
       setDate(undefined);
       setConcluida(false);
       setObservacoes("");
     }
-  }, [entregaAtual, open]);
+  }, [entregaAtual, initialDate, open]);
+
+  useEffect(() => {
+    if (mentorado) {
+      setSelectedMentorado(mentorado.id);
+    } else if (!selectedMentorado && mentorados.length > 0) {
+      setSelectedMentorado(mentorados[0].id);
+    }
+  }, [mentorado, mentorados, selectedMentorado]);
 
   const handleSave = () => {
-    if (!mentorado) return;
+    if (!currentMentorado) return;
 
     // Se for 1ª leva e a opção de replicar estiver marcada
     if (numeroLeva === 1 && replicarParaTodasLevas && date) {
       replicateEntregas.mutate({
-        mentoradoId: mentorado.id,
+        mentoradoId: currentMentorado.id,
         dataInicial: date,
         intervaloDias,
       });
@@ -80,7 +105,7 @@ export function EntregaDialog({
 
     // Caso contrário, salvar apenas a entrega atual
     const entregaData = {
-      mentorado_id: mentorado.id,
+      mentorado_id: currentMentorado.id,
       numero_leva: numeroLeva,
       data_entrega: date ? format(date, "yyyy-MM-dd") : null,
       concluida,
@@ -119,11 +144,30 @@ export function EntregaDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {mentorado?.nome} - {numeroLeva}ª Leva
+            {currentMentorado?.nome || "Nova Entrega"} - {numeroLeva}ª Leva
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Seletor de Mentorado (apenas se não vier pré-selecionado) */}
+          {!mentorado && mentorados.length > 0 && (
+            <div className="space-y-2">
+              <Label>Mentorado</Label>
+              <Select value={selectedMentorado} onValueChange={setSelectedMentorado}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um mentorado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mentorados.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Data de Entrega</Label>
             <Popover>

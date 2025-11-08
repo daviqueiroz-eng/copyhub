@@ -6,11 +6,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mentorado } from "@/hooks/useMentorados";
-import { useDistribuirEntregas } from "@/hooks/useDistribuirEntregas";
 import { format, addDays, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DistribuicaoSemanalProps {
@@ -29,8 +29,6 @@ export function DistribuicaoSemanal({ mentorados }: DistribuicaoSemanalProps) {
   const [diasSemana, setDiasSemana] = useState<number[]>([1, 2, 3, 4, 5]); // seg-sex
   const [preview, setPreview] = useState<PreviewEntrega[]>([]);
   const [showPreview, setShowPreview] = useState(false);
-
-  const distribuir = useDistribuirEntregas();
 
   const diasDaSemana = [
     { valor: 1, nome: "Seg" },
@@ -88,15 +86,6 @@ export function DistribuicaoSemanal({ mentorados }: DistribuicaoSemanalProps) {
     setShowPreview(true);
   };
 
-  const aplicarDistribuicao = () => {
-    distribuir.mutate({
-      dataInicio,
-      diasSemana,
-      mentorados,
-    });
-    setShowPreview(false);
-  };
-
   // Agrupar preview por semana
   const previewPorSemana = preview.reduce((acc, entrega) => {
     const semana = format(entrega.data, "'Semana de' dd/MM", { locale: ptBR });
@@ -109,9 +98,16 @@ export function DistribuicaoSemanal({ mentorados }: DistribuicaoSemanalProps) {
 
   return (
     <div className="space-y-6">
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          Esta é uma ferramenta de <strong>planejamento visual</strong>. Use o calendário principal para criar entregas reais no banco de dados.
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
-          <CardTitle>Configurar Distribuição Automática</CardTitle>
+          <CardTitle>Preview de Distribuição Semanal</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Seletor de Data Inicial */}
@@ -172,11 +168,8 @@ export function DistribuicaoSemanal({ mentorados }: DistribuicaoSemanalProps) {
       {/* Preview da Distribuição */}
       {showPreview && preview.length > 0 && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Preview da Distribuição</CardTitle>
-            <Button onClick={aplicarDistribuicao} disabled={distribuir.isPending}>
-              {distribuir.isPending ? "Aplicando..." : "Aplicar Distribuição"}
-            </Button>
+          <CardHeader>
+            <CardTitle>Preview Sugerido</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6 max-h-[600px] overflow-y-auto">
