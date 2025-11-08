@@ -21,10 +21,11 @@ export default function Calendario() {
   
   // Verificar se tem provider_token do Google
   const hasGoogleConnected = user?.app_metadata?.providers?.includes('google');
-  const canFetch = !!session && !!hasGoogleConnected;
-  console.log('hasGoogleConnected:', hasGoogleConnected, 'session?', !!session, 'canFetch:', canFetch);
+  const providerTokenExists = Boolean((session as any)?.provider_token);
+  const canFetch = !!session && providerTokenExists;
+  console.log('hasGoogleConnected:', hasGoogleConnected, 'session?', !!session, 'providerToken?', providerTokenExists, 'canFetch:', canFetch);
   
-  // Só buscar eventos se estiver conectado e com sessão válida
+  // Só buscar eventos se estiver conectado e com token válido
   const { data: events, isLoading, error } = useGoogleCalendarEvents(canFetch);
 
   const handleConnectGoogle = async () => {
@@ -123,6 +124,14 @@ export default function Calendario() {
               Google Calendar Conectado
             </Badge>
           </div>
+
+          {!providerTokenExists && (
+            <Alert>
+              <AlertDescription>
+                Sua sessão atual não possui acesso ao Google Calendar. Faça login novamente com Google para renovar as permissões.
+              </AlertDescription>
+            </Alert>
+          )}
 
             {error && (
             <Alert variant="destructive">

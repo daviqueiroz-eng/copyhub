@@ -29,8 +29,13 @@ export const useGoogleCalendarEvents = (enabled: boolean = true) => {
   return useQuery({
     queryKey: ["google-calendar-events", { enabled }],
     queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const providerToken = (session as any)?.provider_token;
+      if (!providerToken) {
+        throw new Error('Sem token do Google. Faça login com Google e conceda acesso ao Calendar.');
+      }
       const { data, error } = await supabase.functions.invoke('google-calendar', {
-        body: { method: 'GET' }
+        body: { method: 'GET', providerToken }
       });
       
       if (error) throw error;
@@ -47,10 +52,16 @@ export const useCreateCalendarEvent = () => {
 
   return useMutation({
     mutationFn: async (event: CalendarEvent) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const providerToken = (session as any)?.provider_token;
+      if (!providerToken) {
+        throw new Error('Sem token do Google. Faça login com Google e conceda acesso ao Calendar.');
+      }
       const { data, error } = await supabase.functions.invoke('google-calendar', {
         body: {
           method: 'POST',
           eventData: event,
+          providerToken,
         }
       });
       
@@ -74,10 +85,16 @@ export const useDeleteCalendarEvent = () => {
 
   return useMutation({
     mutationFn: async (eventId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const providerToken = (session as any)?.provider_token;
+      if (!providerToken) {
+        throw new Error('Sem token do Google. Faça login com Google e conceda acesso ao Calendar.');
+      }
       const { data, error } = await supabase.functions.invoke('google-calendar', {
         body: {
           method: 'DELETE',
           eventData: { eventId },
+          providerToken,
         }
       });
       

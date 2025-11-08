@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-provider-token',
 };
 
 serve(async (req) => {
@@ -29,15 +29,28 @@ serve(async (req) => {
       throw new Error('Invalid user token');
     }
 
-    // Obter provider_token do Google
-    const { data: sessionData } = await supabase.auth.admin.getUserById(user.id);
-    const providerToken = sessionData?.user?.identities?.[0]?.identity_data?.provider_token;
-    
-    if (!providerToken) {
-      throw new Error('No Google provider token found. Please reconnect your Google account.');
+    // Tentar obter providerToken do body ou header
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch (_) {
+      body = {};
     }
 
-    const { method, eventData } = await req.json();
+    const { method, eventData, providerToken: bodyProviderToken } = body || {};
+    const headerProviderToken = req.headers.get('x-provider-token') || undefined;
+
+    let providerToken = bodyProviderToken || headerProviderToken;
+
+    // Fallback para lookup admin (pode não existir em alguns casos)
+    if (!providerToken) {
+      const { data: sessionData } = await supabase.auth.admin.getUserById(user.id);
+      providerToken = (sessionData as any)?.user?.identities?.[0]?.identity_data?.provider_token;
+    }
+
+    if (!providerToken) {
+      throw new Error('Missing Google provider access token. Please login again with Google and grant Calendar permissions.');
+    }
 
     let response: Response;
     
