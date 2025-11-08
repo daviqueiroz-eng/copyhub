@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { addDays } from "date-fns";
+import { addBusinessDays } from "@/lib/dateUtils";
 
 interface ReplicateEntregasParams {
   mentoradoId: string;
@@ -16,9 +16,10 @@ export const useReplicateEntregas = () => {
     mutationFn: async ({ mentoradoId, dataInicial, intervaloDias }: ReplicateEntregasParams) => {
       const entregas = [];
       
-      // Criar entregas para levas 1 a 6
+      // Criar entregas para levas 1 a 6 (apenas dias úteis)
       for (let i = 1; i <= 6; i++) {
-        const dataEntrega = addDays(dataInicial, intervaloDias * (i - 1));
+        const diasUteis = intervaloDias * (i - 1);
+        const dataEntrega = addBusinessDays(dataInicial, diasUteis);
         
         entregas.push({
           mentorado_id: mentoradoId,

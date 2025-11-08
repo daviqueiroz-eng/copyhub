@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { format, addDays } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { addBusinessDays } from "@/lib/dateUtils";
 import {
   Dialog,
   DialogContent,
@@ -100,14 +101,17 @@ export function EntregaDialog({
     }
   };
 
-  // Calcular preview das datas
+  // Calcular preview das datas (apenas dias úteis)
   const getPreviewDates = () => {
     if (!date || !replicarParaTodasLevas) return [];
     
-    return [2, 3, 4, 5, 6].map((leva) => ({
-      leva,
-      data: addDays(date, intervaloDias * (leva - 1)),
-    }));
+    return [2, 3, 4, 5, 6].map((leva) => {
+      const diasUteis = intervaloDias * (leva - 1);
+      return {
+        leva,
+        data: addBusinessDays(date, diasUteis),
+      };
+    });
   };
 
   return (
@@ -189,7 +193,7 @@ export function EntregaDialog({
               {replicarParaTodasLevas && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="intervalo">Dias entre cada leva</Label>
+                    <Label htmlFor="intervalo">Dias úteis entre cada leva</Label>
                     <Input
                       id="intervalo"
                       type="number"
@@ -198,6 +202,9 @@ export function EntregaDialog({
                       onChange={(e) => setIntervaloDias(Number(e.target.value))}
                       className="w-32"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Considera apenas dias úteis (seg-sex)
+                    </p>
                   </div>
 
                   {date && (
