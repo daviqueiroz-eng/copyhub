@@ -7,11 +7,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Treinamento } from "@/hooks/useTreinamentos";
 import { useModulos, useDeleteModulo } from "@/hooks/useModulos";
-import { useAulas, useDeleteAula } from "@/hooks/useAulas";
+import { useDeleteAula } from "@/hooks/useAulas";
 import { useProgressoAulas } from "@/hooks/useProgressoAulas";
-import { useComentariosAulas } from "@/hooks/useComentariosAulas";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useAuth";
+import { useQuery, useQueries } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import ModuloFormDialog from "./ModuloFormDialog";
 import AulaFormDialog from "./AulaFormDialog";
 import AulaViewDialog from "./AulaViewDialog";
@@ -55,14 +56,28 @@ const TreinamentoDetailView = ({ treinamento, onBack }: TreinamentoDetailViewPro
   const deleteModuloMutation = useDeleteModulo();
   const deleteAulaMutation = useDeleteAula();
 
-  // Buscar todas as aulas uma vez
-  const moduloIds = modulos.map(m => m.id);
-  const aulasQueries = moduloIds.map(id => useAulas(id));
+  // Buscar todas as aulas uma vez com useQueries (evita hooks dinâmicos)
+  const moduloIds = modulos.map((m) => m.id);
+  const aulasQueries = useQueries({
+    queries: moduloIds.map((id) => ({
+      queryKey: ["aulas", id],
+      enabled: !!id,
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("aulas")
+          .select("*")
+          .eq("modulo_id", id)
+          .order("ordem", { ascending: true });
+        if (error) throw error;
+        return data ?? [];
+      },
+    })),
+  });
   
-  // Calcular progresso geral
-  const allAulas = aulasQueries.flatMap((query, index) => {
-    const aulas = query.data || [];
-    return aulas.map(aula => ({ ...aula, moduloId: moduloIds[index] }));
+  // Calcular progresso geral a partir das aulas carregadas
+  const allAulas = aulasQueries.flatMap((q, index) => {
+    const aulas = (q.data as any[]) || [];
+    return aulas.map((aula) => ({ ...aula, moduloId: moduloIds[index] }));
   });
 
   const totalAulas = allAulas.length;
@@ -71,6 +86,23 @@ const TreinamentoDetailView = ({ treinamento, onBack }: TreinamentoDetailViewPro
   ).length;
   const progressoGeral = totalAulas > 0 ? (aulasConcluidas / totalAulas) * 100 : 0;
 
+  // Contagem agregada de comentários por aula (uma única query)
+  const aulaIds = allAulas.map((a) => a.id);
+  const { data: comentariosCountMap = {} } = useQuery({
+    queryKey: ["comentarios_count_by_aula", aulaIds],
+    enabled: aulaIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("comentarios_aulas")
+        .select("aula_id")
+        .in("aula_id", aulaIds);
+      if (error) throw error;
+      return (data || []).reduce((acc: Record<string, number>, row: any) => {
+        acc[row.aula_id] = (acc[row.aula_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+    },
+  });
   const handleEditModulo = (modulo: any) => {
     setSelectedModulo(modulo);
     setModuloDialogOpen(true);
@@ -205,8 +237,8 @@ const TreinamentoDetailView = ({ treinamento, onBack }: TreinamentoDetailViewPro
                 <CollapsibleContent>
                   <div className="p-4 pt-0 space-y-2">
                     {aulas.map((aula) => {
-                      const aulaConcluida = progresso.some(p => p.aula_id === aula.id && p.concluido);
-                      const { data: comentarios = [] } = useComentariosAulas(aula.id);
+                      const aulaConcluida = progresso.some((p) => p.aula_id === aula.id && p.concluido);
+                      const comentariosCount = (comentariosCountMap as Record<string, number>)[aula.id] ?? 0;
                       
                       return (
                         <div
@@ -240,10 +272,10 @@ const TreinamentoDetailView = ({ treinamento, onBack }: TreinamentoDetailViewPro
                                 </h4>
                                 <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                                   {aula.duracao && <span>{aula.duracao}</span>}
-                                  {comentarios.length > 0 && (
+                                  {comentariosCount > 0 && (
                                     <div className="flex items-center gap-1">
                                       <MessageCircle className="h-3 w-3" />
-                                      <span>{comentarios.length}</span>
+                                      <span>{comentariosCount}</span>
                                     </div>
                                   )}
                                 </div>
