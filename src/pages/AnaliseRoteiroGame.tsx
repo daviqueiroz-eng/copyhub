@@ -703,9 +703,9 @@ const AnaliseRoteiroGame = () => {
       parts.push(
               <span 
                 key={`highlight-wrapper-${idx}`} 
-                className="inline-block relative group mb-12"
+                className={`inline-block relative group ${comments.length > 0 ? 'mb-12' : ''}`}
                 style={{
-                  marginBottom: '3rem',
+                  marginBottom: comments.length > 0 ? '3rem' : '0',
                   lineHeight: '1.5',
                 }}
               >
@@ -1370,7 +1370,7 @@ const AnaliseRoteiroGame = () => {
               id="estrutura-invisivel"
               value={estruturaInvisivel}
               onChange={(e) => setEstruturaInvisivel(e.target.value)}
-              placeholder="Descreva a estrutura invisível do roteiro..."
+              placeholder=""
               className="min-h-[150px] resize-none"
             />
           </Card>
@@ -1384,7 +1384,7 @@ const AnaliseRoteiroGame = () => {
               id="gatilhos-atencao"
               value={gatilhosAtencao}
               onChange={(e) => setGatilhosAtencao(e.target.value)}
-              placeholder="Liste os 7 gatilhos da atenção..."
+              placeholder=""
               className="min-h-[120px] resize-none"
             />
           </Card>
