@@ -709,7 +709,12 @@ const AnaliseRoteiroGame = () => {
       );
     }
 
-    const sortedHighlights = [...highlights].sort((a, b) => a.startPos - b.startPos);
+    // Filtrar highlights pela cor selecionada ANTES de renderizar
+    const filteredHighlights = filterColor === "all" 
+      ? highlights 
+      : highlights.filter(h => h.color === filterColor);
+
+    const sortedHighlights = [...filteredHighlights].sort((a, b) => a.startPos - b.startPos);
     const parts: JSX.Element[] = [];
     let lastIndex = 0;
 
