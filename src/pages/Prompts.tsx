@@ -77,9 +77,7 @@ const Prompts = () => {
   const handleCopyPrompt = (e: React.MouseEvent, prompt: Prompt) => {
     e.stopPropagation();
     
-    const promptText = `${prompt.titulo}\n\n${prompt.descricao}\n\nNicho: ${prompt.nicho}\n\nConteúdo:\n${prompt.conteudo}`;
-    
-    navigator.clipboard.writeText(promptText).then(() => {
+    navigator.clipboard.writeText(prompt.conteudo).then(() => {
       toast({
         title: "Prompt copiado!",
         description: "O conteúdo foi copiado para a área de transferência.",
