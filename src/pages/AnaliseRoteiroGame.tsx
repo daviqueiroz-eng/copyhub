@@ -21,14 +21,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, BookOpen, ExternalLink, FileUp, FileEdit, ArrowLeft, Trash2, Flame } from "lucide-react";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
+import { HighlightsList } from "@/components/HighlightsList";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type Highlight = {
+  id: string;
   text: string;
   color: string;
   startPos: number;
   endPos: number;
+  annotation?: string;
 };
 
 const AnaliseRoteiroGame = () => {
@@ -54,6 +58,11 @@ const AnaliseRoteiroGame = () => {
   const [showCompletedDialog, setShowCompletedDialog] = useState(false);
   const [showAnalysesDialog, setShowAnalysesDialog] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState<string | null>(null);
+  
+  // Estados para anotações
+  const [selectedHighlightForAnnotation, setSelectedHighlightForAnnotation] = useState<string | null>(null);
+  const [annotationText, setAnnotationText] = useState("");
+  const [filterColor, setFilterColor] = useState<string>("all");
   
   // Dialog novo roteiro (admin)
   const [showNovoRoteiroDialog, setShowNovoRoteiroDialog] = useState(false);
@@ -171,17 +180,70 @@ const AnaliseRoteiroGame = () => {
     const startPos = preCaretRange.toString().length;
     const endPos = startPos + selectedText.length;
 
-    const newHighlight = {
+    const newHighlight: Highlight = {
+      id: crypto.randomUUID(),
       text: selectedText,
       color: selectedColor,
       startPos,
       endPos,
+      annotation: undefined,
     };
 
     setHighlightsHistory([...highlightsHistory, highlights]);
     setHighlights([...highlights, newHighlight]);
 
     selection.removeAllRanges();
+  };
+
+  const handleHighlightClick = (highlightId: string) => {
+    const highlight = highlights.find(h => h.id === highlightId);
+    if (highlight) {
+      setSelectedHighlightForAnnotation(highlightId);
+      setAnnotationText(highlight.annotation || "");
+    }
+  };
+
+  const handleSaveAnnotation = () => {
+    if (!selectedHighlightForAnnotation) return;
+    
+    setHighlights(highlights.map(h => 
+      h.id === selectedHighlightForAnnotation 
+        ? { ...h, annotation: annotationText.trim() || undefined }
+        : h
+    ));
+    
+    setSelectedHighlightForAnnotation(null);
+    setAnnotationText("");
+    
+    toast({
+      title: "Anotação salva",
+      description: annotationText.trim() ? "A anotação foi adicionada ao highlight." : "A anotação foi removida.",
+    });
+  };
+
+  const handleRemoveHighlight = (highlightId: string) => {
+    setHighlightsHistory([...highlightsHistory, highlights]);
+    setHighlights(highlights.filter(h => h.id !== highlightId));
+  };
+
+  const handleScrollToHighlight = (highlightId: string) => {
+    const highlight = highlights.find(h => h.id === highlightId);
+    if (!highlight) return;
+
+    const container = document.getElementById("roteiro-content");
+    if (!container) return;
+
+    // Encontrar todos os marks e achar o correto
+    const marks = container.querySelectorAll('mark');
+    marks.forEach((mark) => {
+      const text = mark.textContent;
+      if (text === highlight.text) {
+        mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Adicionar animação de destaque
+        mark.classList.add('animate-pulse');
+        setTimeout(() => mark.classList.remove('animate-pulse'), 2000);
+      }
+    });
   };
 
   const handleUndo = () => {
@@ -306,17 +368,76 @@ const AnaliseRoteiroGame = () => {
         );
       }
 
+      const isOpen = selectedHighlightForAnnotation === highlight.id;
+
       parts.push(
-        <mark
+        <Popover
           key={`highlight-${idx}`}
-          style={{
-            backgroundColor: highlight.color,
-            padding: "2px 0",
-            borderRadius: "2px",
+          open={isOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedHighlightForAnnotation(null);
+              setAnnotationText("");
+            }
           }}
         >
-          {text.slice(highlight.startPos, highlight.endPos)}
-        </mark>
+          <PopoverTrigger asChild>
+            <mark
+              onClick={(e) => {
+                e.stopPropagation();
+                handleHighlightClick(highlight.id);
+              }}
+              style={{
+                backgroundColor: highlight.color,
+                padding: "2px 4px",
+                borderRadius: "2px",
+                cursor: "pointer",
+                position: "relative",
+              }}
+              className="hover:opacity-80 transition-opacity"
+            >
+              {text.slice(highlight.startPos, highlight.endPos)}
+              {highlight.annotation && (
+                <span className="ml-1 text-xs">📝</span>
+              )}
+            </mark>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="start">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Anotação
+                </label>
+                <Textarea
+                  value={annotationText}
+                  onChange={(e) => setAnnotationText(e.target.value)}
+                  placeholder="Adicione uma observação sobre esta palavra..."
+                  className="min-h-[80px] text-sm"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  onClick={handleSaveAnnotation}
+                  className="flex-1"
+                >
+                  Salvar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedHighlightForAnnotation(null);
+                    setAnnotationText("");
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       );
 
       lastIndex = highlight.endPos;
@@ -671,28 +792,41 @@ const AnaliseRoteiroGame = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr_1fr] gap-6">
-        {/* Coluna Esquerda - Legenda de Cores */}
-        <Card className="p-4 h-fit">
-          <h3 className="text-sm font-semibold mb-3">Legenda</h3>
-          <div className="space-y-2">
-            {cores.map((cor) => (
-              <button
-                key={cor.id}
-                onClick={() => setSelectedColor(cor.cor)}
-                className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all hover:bg-accent ${
-                  selectedColor === cor.cor ? "bg-accent ring-2 ring-primary" : ""
-                }`}
-              >
-                <div
-                  className="w-5 h-5 rounded border-2 border-border flex-shrink-0"
-                  style={{ backgroundColor: cor.cor }}
-                />
-                <span className="text-xs font-medium text-left">{cor.nome}</span>
-              </button>
-            ))}
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_1fr] gap-6">
+        {/* Coluna Esquerda - Legenda de Cores + Lista de Highlights */}
+        <div className="space-y-4">
+          <Card className="p-4">
+            <h3 className="text-sm font-semibold mb-3">Legenda</h3>
+            <div className="space-y-2">
+              {cores.map((cor) => (
+                <button
+                  key={cor.id}
+                  onClick={() => setSelectedColor(cor.cor)}
+                  className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all hover:bg-accent ${
+                    selectedColor === cor.cor ? "bg-accent ring-2 ring-primary" : ""
+                  }`}
+                >
+                  <div
+                    className="w-5 h-5 rounded border-2 border-border flex-shrink-0"
+                    style={{ backgroundColor: cor.cor }}
+                  />
+                  <span className="text-xs font-medium text-left">{cor.nome}</span>
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <HighlightsList
+              highlights={highlights}
+              cores={cores}
+              filterColor={filterColor}
+              onFilterChange={setFilterColor}
+              onHighlightClick={handleScrollToHighlight}
+              onRemoveHighlight={handleRemoveHighlight}
+            />
+          </Card>
+        </div>
 
         {/* Coluna Central - Conteúdo do Roteiro */}
         <Card className="p-6">

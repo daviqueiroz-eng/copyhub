@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExternalLink } from "lucide-react";
 import { ProgressoRoteiro } from "@/hooks/useProgressoRoteiros";
 import { Roteiro } from "@/hooks/useRoteiros";
@@ -14,10 +15,12 @@ interface RoteiroAnaliseViewProps {
 }
 
 interface Highlight {
+  id?: string;
   text: string;
   color: string;
   startPos: number;
   endPos: number;
+  annotation?: string;
 }
 
 export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewProps) => {
@@ -43,15 +46,39 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
         );
       }
 
-      elements.push(
+      const highlightElement = (
         <mark
           key={`highlight-${idx}`}
           style={{ backgroundColor: highlight.color }}
-          className="rounded px-0.5"
+          className="rounded px-0.5 relative"
         >
           {highlight.text}
+          {highlight.annotation && (
+            <span className="ml-1 text-xs">📝</span>
+          )}
         </mark>
       );
+
+      // Se tiver anotação, envolver em tooltip
+      if (highlight.annotation) {
+        elements.push(
+          <TooltipProvider key={`tooltip-${idx}`}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {highlightElement}
+              </TooltipTrigger>
+              <TooltipContent 
+                side="top" 
+                className="max-w-xs bg-popover text-popover-foreground p-3"
+              >
+                <p className="text-xs whitespace-pre-wrap">{highlight.annotation}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      } else {
+        elements.push(highlightElement);
+      }
 
       lastIndex = highlight.endPos;
     });
