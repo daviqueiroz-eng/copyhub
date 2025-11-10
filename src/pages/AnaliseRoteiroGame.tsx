@@ -25,6 +25,7 @@ import { detectVideoType, extractYouTubeId, extractGoogleDriveId } from "@/lib/v
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
 import { HighlightsList } from "@/components/HighlightsList";
+import { HighlightsTable } from "@/components/HighlightsTable";
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -1393,13 +1394,23 @@ const AnaliseRoteiroGame = () => {
               </Button>
             </div>
           )}
-          <div
-            id="roteiro-content"
-            className="relative prose prose-sm max-w-none whitespace-pre-wrap text-foreground leading-relaxed select-text cursor-text"
-            onMouseUp={handleTextSelection}
-          >
-            {renderHighlightedText(currentRoteiro.conteudo)}
-          </div>
+          
+          {filterColor === "all" ? (
+            <div
+              id="roteiro-content"
+              className="relative prose prose-sm max-w-none whitespace-pre-wrap text-foreground leading-relaxed select-text cursor-text"
+              onMouseUp={handleTextSelection}
+            >
+              {renderHighlightedText(currentRoteiro.conteudo)}
+            </div>
+          ) : (
+            <HighlightsTable
+              highlights={highlights.filter(h => h.color === filterColor)}
+              colorName={cores.find(c => c.cor === filterColor)?.nome || ""}
+              color={filterColor}
+              onRemoveHighlight={handleRemoveHighlight}
+            />
+          )}
         </Card>
 
         {/* Coluna Direita - Análise */}
