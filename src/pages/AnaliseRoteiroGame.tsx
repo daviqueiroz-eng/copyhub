@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -98,6 +99,7 @@ const AnaliseRoteiroGame = () => {
   const [estruturaInvisivel, setEstruturaInvisivel] = useState("");
   const [gatilhosAtencao, setGatilhosAtencao] = useState("");
   const [estruturaRoteiro, setEstruturaRoteiro] = useState("");
+  const [estruturaRoteiroCheckboxes, setEstruturaRoteiroCheckboxes] = useState<string[]>([]);
   // Filtros
   const [selectedNicho, setSelectedNicho] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -625,10 +627,10 @@ const AnaliseRoteiroGame = () => {
     if (!currentRoteiroId) return;
 
     // Validar se os campos foram preenchidos
-    if (!estruturaInvisivel.trim() || !gatilhosAtencao.trim() || !estruturaRoteiro.trim()) {
+    if (!estruturaInvisivel.trim() || !gatilhosAtencao.trim() || estruturaRoteiroCheckboxes.length === 0) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha todos os campos de análise antes de completar.",
+        description: "Preencha todos os campos de análise e marque pelo menos uma estrutura antes de completar.",
         variant: "destructive",
       });
       return;
@@ -638,7 +640,7 @@ const AnaliseRoteiroGame = () => {
       roteiro_id: currentRoteiroId,
       estrutura_invisivel: estruturaInvisivel,
       gatilhos_atencao: gatilhosAtencao,
-      estrutura_roteiro: estruturaRoteiro,
+      estrutura_roteiro: estruturaRoteiroCheckboxes.join(", "),
       sublinhados: highlights,
     }, {
       onSuccess: () => {
@@ -651,6 +653,7 @@ const AnaliseRoteiroGame = () => {
         setEstruturaInvisivel("");
         setGatilhosAtencao("");
         setEstruturaRoteiro("");
+        setEstruturaRoteiroCheckboxes([]);
         
         // Mostrar banco de roteiros analisados
         setShowCompletedDialog(true);
@@ -1291,6 +1294,7 @@ const AnaliseRoteiroGame = () => {
                   setEstruturaInvisivel("");
                   setGatilhosAtencao("");
                   setEstruturaRoteiro("");
+                  setEstruturaRoteiroCheckboxes([]);
                 }}
                 className="w-full"
               >
@@ -1357,10 +1361,10 @@ const AnaliseRoteiroGame = () => {
             </Button>
           </div>
 
-          {/* Campo 1: Estrutura Invisível */}
+          {/* Campo 1: Estrutura da Headline */}
           <Card className="p-4">
             <Label htmlFor="estrutura-invisivel" className="text-sm font-medium mb-2 block">
-              Retire a estrutura invisível
+              Retire a estrutura da headline
             </Label>
             <Textarea
               id="estrutura-invisivel"
@@ -1387,16 +1391,41 @@ const AnaliseRoteiroGame = () => {
 
           {/* Campo 3: Estrutura do Roteiro */}
           <Card className="p-4">
-            <Label htmlFor="estrutura-roteiro" className="text-sm font-medium mb-2 block">
+            <Label className="text-sm font-medium mb-3 block">
               Estrutura do roteiro
             </Label>
-            <Textarea
-              id="estrutura-roteiro"
-              value={estruturaRoteiro}
-              onChange={(e) => setEstruturaRoteiro(e.target.value)}
-              placeholder="Descreva a estrutura do roteiro..."
-              className="min-h-[150px] resize-none"
-            />
+            <div className="space-y-3">
+              {[
+                "Valor prático",
+                "Historia",
+                "Prova/ argumentação",
+                "Ponto de identificação",
+                "Opinião polêmica",
+                "Fatos curiosos"
+              ].map((item) => (
+                <div key={item} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`estrutura-${item}`}
+                    checked={estruturaRoteiroCheckboxes.includes(item)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setEstruturaRoteiroCheckboxes([...estruturaRoteiroCheckboxes, item]);
+                      } else {
+                        setEstruturaRoteiroCheckboxes(
+                          estruturaRoteiroCheckboxes.filter((i) => i !== item)
+                        );
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`estrutura-${item}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {item}
+                  </label>
+                </div>
+              ))}
+            </div>
           </Card>
         </div>
       </div>
