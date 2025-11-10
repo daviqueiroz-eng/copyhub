@@ -297,6 +297,7 @@ export type Database = {
       mentorados: {
         Row: {
           avatar: string | null
+          canvas_data: Json | null
           created_at: string
           crencas: string | null
           desejos: string | null
@@ -316,6 +317,7 @@ export type Database = {
         }
         Insert: {
           avatar?: string | null
+          canvas_data?: Json | null
           created_at?: string
           crencas?: string | null
           desejos?: string | null
@@ -335,6 +337,7 @@ export type Database = {
         }
         Update: {
           avatar?: string | null
+          canvas_data?: Json | null
           created_at?: string
           crencas?: string | null
           desejos?: string | null
