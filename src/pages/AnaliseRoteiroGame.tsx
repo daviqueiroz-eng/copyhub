@@ -34,6 +34,7 @@ type Highlight = {
   startPos: number;
   endPos: number;
   annotation?: string;
+  annotations?: string[];
 };
 
 const AnaliseRoteiroGame = () => {
@@ -252,27 +253,37 @@ const AnaliseRoteiroGame = () => {
     return existing.startPos === newPos.startPos && existing.endPos === newPos.endPos;
   };
 
+  // Helpers para calcular posições corretas ignorando comentários no DOM
+  const findIndexedElement = (node: Node): HTMLElement | null => {
+    let el = node.nodeType === Node.TEXT_NODE ? (node.parentElement as HTMLElement | null) : (node as HTMLElement | null);
+    while (el && !(el.dataset && el.dataset.start && el.dataset.end)) {
+      el = el.parentElement;
+    }
+    return el;
+  };
+
+  const getAbsoluteOffset = (node: Node, offset: number): number => {
+    const el = findIndexedElement(node);
+    if (!el) return 0;
+    const baseStart = Number(el.dataset.start);
+    return baseStart + offset;
+  };
+
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || !selectedColor) return;
+    if (!currentRoteiro) return;
 
-    const range = selection.getRangeAt(0);
-    const container = document.getElementById("roteiro-content");
-    if (!container) return;
+    // Usar helpers para calcular posições corretas
+    const startRaw = getAbsoluteOffset(selection.anchorNode!, selection.anchorOffset);
+    const endRaw = getAbsoluteOffset(selection.focusNode!, selection.focusOffset);
+    const startPos = Math.min(startRaw, endRaw);
+    const endPos = Math.max(startRaw, endRaw);
 
-    // Calcular posições usando o range ORIGINAL (antes do trim)
-    const preCaretRange = range.cloneRange();
-    preCaretRange.selectNodeContents(container);
-    preCaretRange.setEnd(range.startContainer, range.startOffset);
-    const startPos = preCaretRange.toString().length;
-    
-    // Usar o range completo para calcular endPos
-    const fullSelectedText = range.toString();
-    const endPos = startPos + fullSelectedText.length;
-    
-    // Usar trim APENAS para validação e exibição
-    const selectedText = fullSelectedText.trim();
-    if (!selectedText) return;
+    if (startPos === endPos) return;
+
+    const selectedText = currentRoteiro.conteudo.slice(startPos, endPos);
+    if (!selectedText.trim()) return;
 
     // Verificar se já existe highlight na mesma posição
     const exactDuplicate = highlights.find(h => 
@@ -360,13 +371,24 @@ const AnaliseRoteiroGame = () => {
     }
   };
 
-  const handleSaveInlineAnnotation = (highlightId: string) => {
+  const handleAddInlineAnnotation = (highlightId: string) => {
+    const trimmed = tempAnnotationText.trim();
+    if (!trimmed) {
+      setEditingHighlightId(null);
+      setTempAnnotationText("");
+      return;
+    }
+
     setHighlightsHistory([...highlightsHistory, highlights]);
     
     setHighlights(
       highlights.map((h) =>
         h.id === highlightId
-          ? { ...h, annotation: tempAnnotationText.trim() || undefined }
+          ? { 
+              ...h, 
+              annotations: [...(h.annotations || []), trimmed],
+              annotation: trimmed // manter para compatibilidade
+            }
           : h
       )
     );
@@ -374,17 +396,10 @@ const AnaliseRoteiroGame = () => {
     setEditingHighlightId(null);
     setTempAnnotationText("");
     
-    if (tempAnnotationText.trim()) {
-      toast({
-        title: "Comentário salvo",
-        description: "Seu comentário foi adicionado à palavra grifada.",
-      });
-    } else {
-      toast({
-        title: "Comentário removido",
-        description: "O comentário foi removido da palavra grifada.",
-      });
-    }
+    toast({
+      title: "Comentário adicionado",
+      description: "Novo comentário foi adicionado à palavra grifada.",
+    });
   };
 
   const handleRemoveHighlight = (highlightId: string) => {
@@ -560,31 +575,44 @@ const AnaliseRoteiroGame = () => {
     let lastIndex = 0;
 
     sortedHighlights.forEach((highlight, idx) => {
-      // Texto normal antes do highlight
+      // Texto normal antes do highlight com índices
       if (highlight.startPos > lastIndex) {
         parts.push(
-          <span key={`text-${idx}`}>{text.slice(lastIndex, highlight.startPos)}</span>
+          <span 
+            key={`text-${idx}`}
+            data-start={lastIndex}
+            data-end={highlight.startPos}
+          >
+            {text.slice(lastIndex, highlight.startPos)}
+          </span>
         );
       }
 
       const isEditing = editingHighlightId === highlight.id;
       const commentPosition = getCommentPosition(highlight.id);
+      
+      // Pegar todos os comentários (novo formato ou fallback)
+      const comments = highlight.annotations?.length 
+        ? highlight.annotations 
+        : (highlight.annotation ? [highlight.annotation] : []);
 
-      // Renderizar highlight com comentário inline
+      // Renderizar highlight com comentários múltiplos
       parts.push(
         <span 
           key={`highlight-wrapper-${idx}`} 
           className="inline-block relative group"
         >
-          {/* Palavra grifada */}
+          {/* Palavra grifada com índices */}
           <mark
+            data-start={highlight.startPos}
+            data-end={highlight.endPos}
             ref={(el) => {
               if (el) highlightRefs.current.set(highlight.id, el);
             }}
             onDoubleClick={(e) => {
               e.stopPropagation();
               setEditingHighlightId(highlight.id);
-              setTempAnnotationText(highlight.annotation || "");
+              setTempAnnotationText("");
             }}
             style={{
               backgroundColor: highlight.color,
@@ -594,34 +622,39 @@ const AnaliseRoteiroGame = () => {
               position: "relative",
             }}
             className="hover:opacity-80 transition-opacity"
-            title="Duplo-clique para adicionar/editar comentário"
+            title="Duplo-clique para adicionar comentário"
           >
             {text.slice(highlight.startPos, highlight.endPos)}
           </mark>
 
-          {/* Comentário visível com posicionamento dinâmico */}
-          {!isEditing && highlight.annotation && (
-            <span 
+          {/* Múltiplos comentários empilhados com posicionamento dinâmico */}
+          {!isEditing && comments.length > 0 && (
+            <div 
               className={`
-                absolute z-10 px-2 py-1 text-xs bg-muted text-muted-foreground 
-                rounded border border-border shadow-lg cursor-pointer
-                whitespace-nowrap max-w-[250px] overflow-hidden text-ellipsis
+                absolute z-10 flex flex-col gap-1
                 ${commentPosition === 'left' ? 'right-full mr-2 top-0' : ''}
                 ${commentPosition === 'right' ? 'left-full ml-2 top-0' : ''}
                 ${commentPosition === 'top' ? 'bottom-full mb-2 left-1/2 -translate-x-1/2' : ''}
               `}
-              title={highlight.annotation}
-              onDoubleClick={(e) => {
-                e.stopPropagation();
-                setEditingHighlightId(highlight.id);
-                setTempAnnotationText(highlight.annotation || "");
-              }}
             >
-              💬 {highlight.annotation}
-            </span>
+              {comments.map((comment, i) => (
+                <span
+                  key={i}
+                  className="inline-block px-2 py-1 text-xs bg-muted text-muted-foreground rounded border border-border shadow whitespace-nowrap max-w-[250px] overflow-hidden text-ellipsis cursor-pointer"
+                  title={comment}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setEditingHighlightId(highlight.id);
+                    setTempAnnotationText("");
+                  }}
+                >
+                  💬 {comment}
+                </span>
+              ))}
+            </div>
           )}
 
-          {/* Campo de edição com posicionamento dinâmico */}
+          {/* Campo de adição de novo comentário */}
           {isEditing && (
             <span 
               className={`
@@ -641,7 +674,7 @@ const AnaliseRoteiroGame = () => {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      handleSaveInlineAnnotation(highlight.id);
+                      handleAddInlineAnnotation(highlight.id);
                     } else if (e.key === "Escape") {
                       setEditingHighlightId(null);
                       setTempAnnotationText("");
@@ -651,7 +684,7 @@ const AnaliseRoteiroGame = () => {
                 <Button
                   size="sm"
                   className="h-7 px-2"
-                  onClick={() => handleSaveInlineAnnotation(highlight.id)}
+                  onClick={() => handleAddInlineAnnotation(highlight.id)}
                 >
                   ✓
                 </Button>
@@ -675,9 +708,17 @@ const AnaliseRoteiroGame = () => {
       lastIndex = highlight.endPos;
     });
 
-    // Texto restante após o último highlight
+    // Texto restante após o último highlight com índices
     if (lastIndex < text.length) {
-      parts.push(<span key="text-end">{text.slice(lastIndex)}</span>);
+      parts.push(
+        <span 
+          key="text-end"
+          data-start={lastIndex}
+          data-end={text.length}
+        >
+          {text.slice(lastIndex)}
+        </span>
+      );
     }
 
     return <>{parts}</>;
