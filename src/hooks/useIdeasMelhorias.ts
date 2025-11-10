@@ -57,9 +57,19 @@ export const useIdeasMelhorias = () => {
       });
     },
     onError: (error) => {
+      console.error("Erro ao enviar ideia:", error);
+      
+      let errorMessage = "Não foi possível enviar sua ideia.";
+      
+      if (error.message.includes("row-level security") || error.message.includes("policy")) {
+        errorMessage = "Você precisa estar autenticado para enviar uma ideia. Por favor, faça login e tente novamente.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Erro ao enviar ideia",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },
