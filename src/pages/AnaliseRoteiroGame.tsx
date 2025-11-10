@@ -1249,7 +1249,7 @@ const AnaliseRoteiroGame = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_1fr] gap-6">
         {/* Coluna Esquerda - Legenda de Cores + Lista de Highlights */}
-        <div className="space-y-4">
+        <div className="space-y-4 sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto">
           <Card className="p-4">
             <h3 className="text-sm font-semibold mb-3">Legenda</h3>
             <div className="space-y-2">
@@ -1268,6 +1268,34 @@ const AnaliseRoteiroGame = () => {
                   <span className="text-xs font-medium text-left">{cor.nome}</span>
                 </button>
               ))}
+            </div>
+            
+            {/* Botões de Ação */}
+            <div className="space-y-2 mt-4 pt-4 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUndo}
+                disabled={highlightsHistory.length === 0}
+                title="Desfazer último sublinhado (Ctrl+Z)"
+                className="w-full"
+              >
+                Desfazer
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setHighlights([]);
+                  setHighlightsHistory([]);
+                  setEstruturaInvisivel("");
+                  setGatilhosAtencao("");
+                  setEstruturaRoteiro("");
+                }}
+                className="w-full"
+              >
+                Limpar Tudo
+              </Button>
             </div>
           </Card>
 
@@ -1306,43 +1334,29 @@ const AnaliseRoteiroGame = () => {
           >
             {renderHighlightedText(currentRoteiro.conteudo)}
           </div>
-          
-          <div className="mt-6 flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handleUndo}
-              disabled={highlightsHistory.length === 0}
-              title="Desfazer último sublinhado (Ctrl+Z)"
-            >
-              Desfazer
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setHighlights([]);
-                setHighlightsHistory([]);
-                setEstruturaInvisivel("");
-                setGatilhosAtencao("");
-                setEstruturaRoteiro("");
-              }}
-            >
-              Limpar Tudo
-            </Button>
-            <Button onClick={handleVerify} disabled={completarRoteiro.isPending}>
-                 {completarRoteiro.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  "Completar Roteiro"
-                )}
-              </Button>
-          </div>
         </Card>
 
         {/* Coluna Direita - Análise */}
         <div className="space-y-4">
+          {/* Botão Completar no Topo */}
+          <div className="flex justify-end">
+            <Button 
+              onClick={handleVerify} 
+              disabled={completarRoteiro.isPending}
+              size="lg"
+              className="w-full sm:w-auto"
+            >
+              {completarRoteiro.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Completar Roteiro"
+              )}
+            </Button>
+          </div>
+
           {/* Campo 1: Estrutura Invisível */}
           <Card className="p-4">
             <Label htmlFor="estrutura-invisivel" className="text-sm font-medium mb-2 block">
