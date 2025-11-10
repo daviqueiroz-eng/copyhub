@@ -19,7 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, BookOpen, ExternalLink, FileUp, FileEdit, ArrowLeft, Trash2, Flame } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink, FileUp, FileEdit, ArrowLeft, Trash2, Flame, Filter } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
 import { HighlightsList } from "@/components/HighlightsList";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -86,6 +87,13 @@ const AnaliseRoteiroGame = () => {
   const [selectedNicho, setSelectedNicho] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isFocusMode, setIsFocusMode] = useState(false);
+  
+  // Dialog e estados para filtro de palavras grifadas
+  const [showFiltroGrifadasDialog, setShowFiltroGrifadasDialog] = useState(false);
+  const [filtroGrifadasAtivo, setFiltroGrifadasAtivo] = useState(false);
+  const [filtroCorSelecionada, setFiltroCorSelecionada] = useState<string>("all");
+  const [filtroNichoSelecionado, setFiltroNichoSelecionado] = useState<string>("all");
+  const [modoFiltroAvancado, setModoFiltroAvancado] = useState(false);
 
   // Não selecionar automaticamente - usuário escolhe manualmente
 
@@ -103,10 +111,78 @@ const AnaliseRoteiroGame = () => {
   );
 
   const isAdmin = userRole === "admin";
-  const filteredRoteiros = roteiros.filter((r) =>
-    (selectedNicho === "all" || !selectedNicho || r.nicho_id === selectedNicho) &&
-    (!searchTerm || r.titulo.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  
+  // Função para filtrar roteiros baseado nas palavras grifadas
+  const getRoteirosComGrifados = (corId?: string, nichoId?: string) => {
+    // Buscar todos os progressos completados que têm sublinhados
+    const progressosComSublinhados = progressoData.filter(p => {
+      if (!p.sublinhados || !Array.isArray(p.sublinhados)) return false;
+      if (p.sublinhados.length === 0) return false;
+      
+      // Se filtro por cor estiver ativo, verificar se tem sublinhados dessa cor
+      if (corId && corId !== "all") {
+        const temCorEspecifica = p.sublinhados.some(
+          (sub: any) => sub.color === corId
+        );
+        if (!temCorEspecifica) return false;
+      }
+      
+      return true;
+    });
+    
+    // Obter IDs dos roteiros que têm análises com grifados
+    const roteirosIds = new Set(
+      progressosComSublinhados.map(p => p.roteiro_id)
+    );
+    
+    // Filtrar roteiros
+    return roteiros.filter(r => {
+      // Verificar se roteiro tem análise com grifados
+      if (!roteirosIds.has(r.id)) return false;
+      
+      // Se filtro por nicho estiver ativo, verificar nicho
+      if (nichoId && nichoId !== "all") {
+        if (r.nicho_id !== nichoId) return false;
+      }
+      
+      return true;
+    });
+  };
+  
+  // Filtrar roteiros considerando filtro de palavras grifadas
+  const filteredRoteiros = (() => {
+    let filtered = [...roteiros];
+
+    // Aplicar filtro de palavras grifadas se ativo
+    if (filtroGrifadasAtivo) {
+      const roteirosComGrifados = getRoteirosComGrifados(
+        filtroCorSelecionada,
+        modoFiltroAvancado ? filtroNichoSelecionado : undefined
+      );
+      
+      // Usar apenas roteiros que passaram no filtro de grifados
+      filtered = filtered.filter(r => 
+        roteirosComGrifados.some(rg => rg.id === r.id)
+      );
+    }
+
+    // Filtro por nicho (se não estiver usando filtro avançado de grifados)
+    if (selectedNicho && selectedNicho !== "all" && !modoFiltroAvancado) {
+      filtered = filtered.filter((r) => r.nicho_id === selectedNicho);
+    }
+
+    // Filtro por termo de busca
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter((r) =>
+        r.titulo.toLowerCase().includes(term)
+      );
+    }
+
+    // Ordenar por ordem
+    return filtered.sort((a, b) => a.ordem - b.ordem);
+  })();
+  
   const completedRoteirosWithData = progressoData?.filter(p => p.completado) || [];
 
   // Resetar roteiro selecionado se não estiver mais na lista filtrada
@@ -314,6 +390,38 @@ const AnaliseRoteiroGame = () => {
     });
   };
 
+  // Aplicar filtro de palavras grifadas
+  const handleAplicarFiltroGrifadas = () => {
+    setFiltroGrifadasAtivo(true);
+    setShowFiltroGrifadasDialog(false);
+    
+    // Se modo avançado, desativar o filtro de nicho normal
+    if (modoFiltroAvancado) {
+      setSelectedNicho("all");
+    }
+    
+    toast({
+      title: "Filtro Aplicado",
+      description: modoFiltroAvancado 
+        ? "Filtrando por nicho e categoria de cor"
+        : "Filtrando por categoria de cor",
+    });
+  };
+
+  // Limpar filtro de palavras grifadas
+  const handleLimparFiltroGrifadas = () => {
+    setFiltroGrifadasAtivo(false);
+    setFiltroCorSelecionada("all");
+    setFiltroNichoSelecionado("all");
+    setModoFiltroAvancado(false);
+    setShowFiltroGrifadasDialog(false);
+    
+    toast({
+      title: "Filtro Removido",
+      description: "Mostrando todos os roteiros novamente",
+    });
+  };
+
   const handleVerify = () => {
     if (!currentRoteiroId) return;
 
@@ -488,6 +596,15 @@ const AnaliseRoteiroGame = () => {
           <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <h1 className="text-3xl font-bold text-foreground">Análise de Roteiro</h1>
             <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={() => setShowFiltroGrifadasDialog(true)}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <Filter className="w-4 h-4" />
+                Filtrar Palavras Grifadas
+              </Button>
               {isAdmin && (
                 <Button
                   onClick={() => setShowNovoRoteiroDialog(true)}
@@ -585,7 +702,32 @@ const AnaliseRoteiroGame = () => {
 
             {/* Filtros */}
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <Select value={selectedNicho || "all"} onValueChange={setSelectedNicho}>
+              {/* Indicador de filtro ativo */}
+              {filtroGrifadasAtivo && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-lg text-sm border border-primary/20">
+                  <Filter className="w-4 h-4 flex-shrink-0" />
+                  <span className="font-medium truncate">
+                    {modoFiltroAvancado 
+                      ? `${filtroNichoSelecionado !== "all" ? nichos.find(n => n.id === filtroNichoSelecionado)?.nome : "Todos"} + ${filtroCorSelecionada !== "all" ? cores.find(c => c.cor === filtroCorSelecionada)?.nome : "Todas"}`
+                      : filtroCorSelecionada !== "all" ? cores.find(c => c.cor === filtroCorSelecionada)?.nome : "Todas as cores"
+                    }
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 hover:bg-primary/20"
+                    onClick={handleLimparFiltroGrifadas}
+                  >
+                    ✕
+                  </Button>
+                </div>
+              )}
+              
+              <Select 
+                value={selectedNicho || "all"} 
+                onValueChange={setSelectedNicho}
+                disabled={modoFiltroAvancado && filtroGrifadasAtivo}
+              >
                 <SelectTrigger className="sm:w-[200px]">
                   <SelectValue placeholder="Todos os nichos" />
                 </SelectTrigger>
@@ -716,10 +858,24 @@ const AnaliseRoteiroGame = () => {
           )}
         </div>
         
-        {!isFocusMode && (
+          {!isFocusMode && (
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => setShowFiltroGrifadasDialog(true)}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Filter className="w-4 h-4" />
+              Filtrar Grifadas
+            </Button>
+            
             {/* Filtro por nicho */}
-            <Select value={selectedNicho || "all"} onValueChange={setSelectedNicho}>
+            <Select 
+              value={selectedNicho || "all"} 
+              onValueChange={setSelectedNicho}
+              disabled={modoFiltroAvancado && filtroGrifadasAtivo}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Todos os nichos" />
               </SelectTrigger>
@@ -1077,6 +1233,110 @@ const AnaliseRoteiroGame = () => {
                 Iniciar Análise
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Filtro por Palavras Grifadas */}
+      <Dialog open={showFiltroGrifadasDialog} onOpenChange={setShowFiltroGrifadasDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Filtrar por Palavras Grifadas</DialogTitle>
+            <DialogDescription>
+              Filtre os roteiros disponíveis baseado nas análises anteriores
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs value={modoFiltroAvancado ? "avancado" : "simples"} onValueChange={(v) => setModoFiltroAvancado(v === "avancado")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="simples">Simples</TabsTrigger>
+              <TabsTrigger value="avancado">Avançado</TabsTrigger>
+            </TabsList>
+            
+            {/* ABA SIMPLES */}
+            <TabsContent value="simples" className="space-y-4">
+              <div>
+                <Label htmlFor="filtro-cor-simples">Filtrar por Categoria</Label>
+                <Select value={filtroCorSelecionada} onValueChange={setFiltroCorSelecionada}>
+                  <SelectTrigger id="filtro-cor-simples">
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as categorias</SelectItem>
+                    {cores.map((cor) => (
+                      <SelectItem key={cor.id} value={cor.cor}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full border"
+                            style={{ backgroundColor: cor.cor }}
+                          />
+                          {cor.nome}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Mostra roteiros que têm análises com palavras grifadas nesta categoria
+                </p>
+              </div>
+            </TabsContent>
+            
+            {/* ABA AVANÇADO */}
+            <TabsContent value="avancado" className="space-y-4">
+              <div>
+                <Label htmlFor="filtro-nicho-avancado">Filtrar por Nicho</Label>
+                <Select value={filtroNichoSelecionado} onValueChange={setFiltroNichoSelecionado}>
+                  <SelectTrigger id="filtro-nicho-avancado">
+                    <SelectValue placeholder="Selecione um nicho" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os nichos</SelectItem>
+                    {nichos.map((nicho) => (
+                      <SelectItem key={nicho.id} value={nicho.id}>
+                        {nicho.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="filtro-cor-avancado">Filtrar por Categoria</Label>
+                <Select value={filtroCorSelecionada} onValueChange={setFiltroCorSelecionada}>
+                  <SelectTrigger id="filtro-cor-avancado">
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as categorias</SelectItem>
+                    {cores.map((cor) => (
+                      <SelectItem key={cor.id} value={cor.cor}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full border"
+                            style={{ backgroundColor: cor.cor }}
+                          />
+                          {cor.nome}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                Combine nicho e categoria para filtros mais específicos
+              </p>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={handleLimparFiltroGrifadas}>
+              Limpar Filtro
+            </Button>
+            <Button onClick={handleAplicarFiltroGrifadas}>
+              Aplicar Filtro
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
