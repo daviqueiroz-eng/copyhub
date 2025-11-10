@@ -23,7 +23,7 @@ import { Loader2, BookOpen, ExternalLink, FileUp, FileEdit, ArrowLeft, Trash2, F
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
 import { HighlightsList } from "@/components/HighlightsList";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -60,9 +60,9 @@ const AnaliseRoteiroGame = () => {
   const [showAnalysesDialog, setShowAnalysesDialog] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState<string | null>(null);
   
-  // Estados para anotações
-  const [selectedHighlightForAnnotation, setSelectedHighlightForAnnotation] = useState<string | null>(null);
-  const [annotationText, setAnnotationText] = useState("");
+  // Estados para anotações inline (double-click)
+  const [editingHighlightId, setEditingHighlightId] = useState<string | null>(null);
+  const [tempAnnotationText, setTempAnnotationText] = useState("");
   const [filterColor, setFilterColor] = useState<string>("all");
   
   // Dialog novo roteiro (admin)
@@ -330,30 +330,31 @@ const AnaliseRoteiroGame = () => {
     selection.removeAllRanges();
   };
 
-  const handleHighlightClick = (highlightId: string) => {
-    const highlight = highlights.find(h => h.id === highlightId);
-    if (highlight) {
-      setSelectedHighlightForAnnotation(highlightId);
-      setAnnotationText(highlight.annotation || "");
+  const handleSaveInlineAnnotation = (highlightId: string) => {
+    setHighlightsHistory([...highlightsHistory, highlights]);
+    
+    setHighlights(
+      highlights.map((h) =>
+        h.id === highlightId
+          ? { ...h, annotation: tempAnnotationText.trim() || undefined }
+          : h
+      )
+    );
+    
+    setEditingHighlightId(null);
+    setTempAnnotationText("");
+    
+    if (tempAnnotationText.trim()) {
+      toast({
+        title: "Comentário salvo",
+        description: "Seu comentário foi adicionado à palavra grifada.",
+      });
+    } else {
+      toast({
+        title: "Comentário removido",
+        description: "O comentário foi removido da palavra grifada.",
+      });
     }
-  };
-
-  const handleSaveAnnotation = () => {
-    if (!selectedHighlightForAnnotation) return;
-    
-    setHighlights(highlights.map(h => 
-      h.id === selectedHighlightForAnnotation 
-        ? { ...h, annotation: annotationText.trim() || undefined }
-        : h
-    ));
-    
-    setSelectedHighlightForAnnotation(null);
-    setAnnotationText("");
-    
-    toast({
-      title: "Anotação salva",
-      description: annotationText.trim() ? "A anotação foi adicionada ao highlight." : "A anotação foi removida.",
-    });
   };
 
   const handleRemoveHighlight = (highlightId: string) => {
@@ -529,92 +530,106 @@ const AnaliseRoteiroGame = () => {
     let lastIndex = 0;
 
     sortedHighlights.forEach((highlight, idx) => {
+      // Texto normal antes do highlight
       if (highlight.startPos > lastIndex) {
         parts.push(
           <span key={`text-${idx}`}>{text.slice(lastIndex, highlight.startPos)}</span>
         );
       }
 
-      const isOpen = selectedHighlightForAnnotation === highlight.id;
+      const isEditing = editingHighlightId === highlight.id;
 
+      // Renderizar highlight com comentário inline
       parts.push(
-        <Popover
-          key={`highlight-${idx}`}
-          open={isOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSelectedHighlightForAnnotation(null);
-              setAnnotationText("");
-            }
-          }}
-        >
-          <PopoverTrigger asChild>
-            <mark
-              onClick={(e) => {
+        <span key={`highlight-wrapper-${idx}`} className="inline-block relative group">
+          {/* Palavra grifada */}
+          <mark
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setEditingHighlightId(highlight.id);
+              setTempAnnotationText(highlight.annotation || "");
+            }}
+            style={{
+              backgroundColor: highlight.color,
+              padding: "2px 4px",
+              borderRadius: "3px",
+              cursor: "pointer",
+              position: "relative",
+            }}
+            className="hover:opacity-80 transition-opacity"
+            title="Duplo-clique para adicionar/editar comentário"
+          >
+            {text.slice(highlight.startPos, highlight.endPos)}
+          </mark>
+
+          {/* Comentário visível (quando não está editando) */}
+          {!isEditing && highlight.annotation && (
+            <span 
+              className="inline-block ml-1 px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded border border-border max-w-[200px] truncate align-middle cursor-pointer"
+              title={highlight.annotation}
+              onDoubleClick={(e) => {
                 e.stopPropagation();
-                handleHighlightClick(highlight.id);
+                setEditingHighlightId(highlight.id);
+                setTempAnnotationText(highlight.annotation || "");
               }}
-              style={{
-                backgroundColor: highlight.color,
-                padding: "2px 4px",
-                borderRadius: "2px",
-                cursor: "pointer",
-                position: "relative",
-              }}
-              className="hover:opacity-80 transition-opacity"
             >
-              {text.slice(highlight.startPos, highlight.endPos)}
-              {highlight.annotation && (
-                <span className="ml-1 text-xs">📝</span>
-              )}
-            </mark>
-          </PopoverTrigger>
-          <PopoverContent className="w-80" align="start">
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium mb-1 block">
-                  Anotação
-                </label>
-                <Textarea
-                  value={annotationText}
-                  onChange={(e) => setAnnotationText(e.target.value)}
-                  placeholder="Adicione uma observação sobre esta palavra..."
-                  className="min-h-[80px] text-sm"
+              💬 {highlight.annotation}
+            </span>
+          )}
+
+          {/* Campo de edição inline (quando está editando) */}
+          {isEditing && (
+            <span className="inline-block ml-2 align-middle">
+              <span className="inline-flex items-center gap-1 bg-background border border-primary rounded-lg p-1 shadow-lg">
+                <Input
+                  value={tempAnnotationText}
+                  onChange={(e) => setTempAnnotationText(e.target.value)}
+                  placeholder="Adicione um comentário..."
+                  className="w-[200px] h-7 text-xs"
                   autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSaveInlineAnnotation(highlight.id);
+                    } else if (e.key === "Escape") {
+                      setEditingHighlightId(null);
+                      setTempAnnotationText("");
+                    }
+                  }}
                 />
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  size="sm" 
-                  onClick={handleSaveAnnotation}
-                  className="flex-1"
+                <Button
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => handleSaveInlineAnnotation(highlight.id)}
                 >
-                  Salvar
+                  ✓
                 </Button>
                 <Button
                   size="sm"
-                  variant="outline"
+                  variant="ghost"
+                  className="h-7 px-2"
                   onClick={() => {
-                    setSelectedHighlightForAnnotation(null);
-                    setAnnotationText("");
+                    setEditingHighlightId(null);
+                    setTempAnnotationText("");
                   }}
                 >
-                  Cancelar
+                  ✕
                 </Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+              </span>
+            </span>
+          )}
+        </span>
       );
 
       lastIndex = highlight.endPos;
     });
 
+    // Texto restante após o último highlight
     if (lastIndex < text.length) {
       parts.push(<span key="text-end">{text.slice(lastIndex)}</span>);
     }
 
-    return parts;
+    return <>{parts}</>;
   };
 
   if (loadingRoteiros || loadingProgresso || loadingCores) {

@@ -106,8 +106,8 @@ export const HighlightsList = ({
                       </p>
                       {highlight.annotation && (
                         <div className="mt-1 flex items-start gap-1">
-                          <span className="text-xs">📝</span>
-                          <p className="text-xs text-muted-foreground break-words">
+                          <span className="text-xs">💬</span>
+                          <p className="text-xs text-muted-foreground italic break-words">
                             {highlight.annotation}
                           </p>
                         </div>
