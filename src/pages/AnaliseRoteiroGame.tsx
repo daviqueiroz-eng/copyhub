@@ -215,6 +215,56 @@ const AnaliseRoteiroGame = () => {
     });
   };
   
+  // Função para obter lista de highlights agrupados por roteiro
+  const getHighlightsAgrupados = () => {
+    const result: Array<{
+      roteiroId: string;
+      roteiroTitulo: string;
+      nicho: string;
+      highlights: Array<{
+        id: string;
+        text: string;
+        color: string;
+        annotation?: string;
+      }>;
+    }> = [];
+
+    progressoData.forEach(progresso => {
+      if (!progresso.sublinhados || !Array.isArray(progresso.sublinhados)) return;
+      
+      // Filtrar highlights pela cor selecionada
+      const highlightsFiltrados = progresso.sublinhados.filter(
+        (sub: any) => filtroCorSelecionada === "all" || sub.color === filtroCorSelecionada
+      );
+      
+      if (highlightsFiltrados.length === 0) return;
+      
+      const roteiro = roteiros.find(r => r.id === progresso.roteiro_id);
+      if (!roteiro) return;
+      
+      // Se filtro de nicho avançado estiver ativo, verificar nicho
+      if (modoFiltroAvancado && filtroNichoSelecionado !== "all" && roteiro.nicho_id !== filtroNichoSelecionado) {
+        return;
+      }
+      
+      const nicho = nichos.find(n => n.id === roteiro.nicho_id);
+      
+      result.push({
+        roteiroId: roteiro.id,
+        roteiroTitulo: roteiro.titulo,
+        nicho: nicho?.nome || "",
+        highlights: highlightsFiltrados.map((h: any) => ({
+          id: h.id,
+          text: h.text,
+          color: h.color,
+          annotation: h.annotation || h.annotations?.join(", "),
+        })),
+      });
+    });
+    
+    return result;
+  };
+  
   // Filtrar roteiros considerando filtro de palavras grifadas
   const filteredRoteiros = (() => {
     let filtered = [...roteiros];
@@ -1105,67 +1155,170 @@ const AnaliseRoteiroGame = () => {
 
             {/* Lista de roteiros */}
             <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-              {filteredRoteiros.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhum roteiro encontrado com os filtros atuais.
-                </p>
-              ) : (
-                filteredRoteiros.map((roteiro) => {
-                  const isCompleted = progressoData.some(
-                    (p) => p.roteiro_id === roteiro.id && p.completado
-                  );
-                  const nicho = nichos.find((n) => n.id === roteiro.nicho_id);
+              {filtroGrifadasAtivo ? (
+                // Modo: Mostrar palavras grifadas
+                (() => {
+                  const highlightsAgrupados = getHighlightsAgrupados();
+                  
+                  if (highlightsAgrupados.length === 0) {
+                    return (
+                      <p className="text-center text-muted-foreground py-8">
+                        Nenhuma palavra grifada encontrada com os filtros atuais.
+                      </p>
+                    );
+                  }
+                  
+                  const corNome = cores.find(c => c.cor === filtroCorSelecionada)?.nome || "Todas as cores";
+                  const totalHighlights = highlightsAgrupados.reduce((sum, g) => sum + g.highlights.length, 0);
                   
                   return (
-                    <Card
-                      key={roteiro.id}
-                  className="p-4 hover:bg-accent transition-colors cursor-pointer"
-                  onClick={() => {
-                    setIsFocusMode(true);
-                    handleSelectRoteiro(roteiro.id);
-                  }}
-                    >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold truncate">{roteiro.titulo}</h3>
-                        {roteiro.is_private && (
-                          <span className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full">
-                            Privado
+                    <>
+                      {/* Cabeçalho informativo */}
+                      <div className="bg-muted p-3 rounded-lg mb-4">
+                        <div className="flex items-center gap-2">
+                          {filtroCorSelecionada !== "all" && (
+                            <div
+                              className="w-4 h-4 rounded-full border"
+                              style={{ backgroundColor: filtroCorSelecionada }}
+                            />
+                          )}
+                          <span className="font-semibold">{corNome}</span>
+                          <span className="text-sm text-muted-foreground">
+                            ({totalHighlights} {totalHighlights === 1 ? 'palavra grifada' : 'palavras grifadas'})
                           </span>
-                        )}
-                      </div>
-                      {nicho && (
-                        <p className="text-sm text-muted-foreground">{nicho.nome}</p>
-                      )}
-                    </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {isCompleted && (
-                            <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-1 rounded-full">
-                              ✓ Completado
-                            </span>
-                          )}
-                          {isAdmin && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteRoteiro(roteiro.id, roteiro.titulo);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline">
-                            Analisar
-                          </Button>
                         </div>
                       </div>
-                    </Card>
+                      
+                      {/* Lista de highlights agrupados por roteiro */}
+                      {highlightsAgrupados.map((grupo) => (
+                        <Card key={grupo.roteiroId} className="p-4 space-y-3">
+                          {/* Header do roteiro */}
+                          <div className="flex items-center justify-between border-b pb-2">
+                            <div>
+                              <h4 className="font-medium text-sm">{grupo.roteiroTitulo}</h4>
+                              {grupo.nicho && (
+                                <p className="text-xs text-muted-foreground">{grupo.nicho}</p>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {grupo.highlights.length} {grupo.highlights.length === 1 ? 'grifada' : 'grifadas'}
+                            </span>
+                          </div>
+                          
+                          {/* Lista de highlights */}
+                          <div className="space-y-2">
+                            {grupo.highlights.map((highlight, index) => (
+                              <div
+                                key={highlight.id}
+                                className="group hover:bg-accent p-2 rounded-lg transition-colors cursor-pointer"
+                                onClick={() => {
+                                  setIsFocusMode(true);
+                                  handleSelectRoteiro(grupo.roteiroId);
+                                }}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <span className="text-xs text-muted-foreground font-mono mt-0.5">
+                                    {index + 1}.
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <p
+                                      className="text-sm px-2 py-1 rounded inline-block"
+                                      style={{ backgroundColor: highlight.color }}
+                                    >
+                                      {highlight.text}
+                                    </p>
+                                    {highlight.annotation && (
+                                      <p className="text-xs text-muted-foreground mt-1 ml-2">
+                                        💬 {highlight.annotation}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {/* Botão para analisar o roteiro */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => {
+                              setIsFocusMode(true);
+                              handleSelectRoteiro(grupo.roteiroId);
+                            }}
+                          >
+                            Analisar este roteiro
+                          </Button>
+                        </Card>
+                      ))}
+                    </>
                   );
-                })
+                })()
+              ) : (
+                // Modo normal: Mostrar lista de roteiros
+                filteredRoteiros.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhum roteiro encontrado com os filtros atuais.
+                  </p>
+                ) : (
+                  filteredRoteiros.map((roteiro) => {
+                    const isCompleted = progressoData.some(
+                      (p) => p.roteiro_id === roteiro.id && p.completado
+                    );
+                    const nicho = nichos.find((n) => n.id === roteiro.nicho_id);
+                    
+                    return (
+                      <Card
+                        key={roteiro.id}
+                        className="p-4 hover:bg-accent transition-colors cursor-pointer"
+                        onClick={() => {
+                          setIsFocusMode(true);
+                          handleSelectRoteiro(roteiro.id);
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold truncate">{roteiro.titulo}</h3>
+                              {roteiro.is_private && (
+                                <span className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full">
+                                  Privado
+                                </span>
+                              )}
+                            </div>
+                            {nicho && (
+                              <p className="text-sm text-muted-foreground">{nicho.nome}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {isCompleted && (
+                              <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-1 rounded-full">
+                                ✓ Completado
+                              </span>
+                            )}
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRoteiro(roteiro.id, roteiro.titulo);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button size="sm" variant="outline">
+                              Analisar
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })
+                )
               )}
             </div>
           </Card>
