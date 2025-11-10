@@ -8,6 +8,8 @@ export interface IdeaMelhoria {
   nome: string;
   feedback: string;
   imagens: string[];
+  concluida: boolean;
+  data_conclusao: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -100,22 +102,59 @@ export const useIdeasMelhorias = () => {
     },
   });
 
+  const updateIdeia = useMutation({
+    mutationFn: async ({ id, concluida }: { id: string; concluida: boolean }) => {
+      const updates: any = { concluida };
+      
+      if (concluida) {
+        updates.data_conclusao = new Date().toISOString();
+      } else {
+        updates.data_conclusao = null;
+      }
+      
+      const { error } = await supabase
+        .from("ideias_melhorias")
+        .update(updates)
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["ideias-melhorias"] });
+      toast({
+        title: variables.concluida ? "Ideia marcada como concluída!" : "Ideia reaberta",
+        description: variables.concluida 
+          ? "A ideia foi marcada como implementada." 
+          : "A ideia foi reaberta para análise.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao atualizar ideia",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const uploadImagem = async (file: File): Promise<string> => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-    const filePath = fileName;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from("feedback-images")
+      .from('feedback-images')
       .upload(filePath, file);
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      throw uploadError;
+    }
 
-    const { data } = supabase.storage
-      .from("feedback-images")
+    const { data: { publicUrl } } = supabase.storage
+      .from('feedback-images')
       .getPublicUrl(filePath);
 
-    return data.publicUrl;
+    return publicUrl;
   };
 
   return {
@@ -123,6 +162,7 @@ export const useIdeasMelhorias = () => {
     isLoading,
     createIdeia,
     deleteIdeia,
+    updateIdeia,
     uploadImagem,
   };
 };

@@ -234,7 +234,9 @@ export type Database = {
       }
       ideias_melhorias: {
         Row: {
+          concluida: boolean
           created_at: string
+          data_conclusao: string | null
           feedback: string
           id: string
           imagens: string[] | null
@@ -243,7 +245,9 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          concluida?: boolean
           created_at?: string
+          data_conclusao?: string | null
           feedback: string
           id?: string
           imagens?: string[] | null
@@ -252,7 +256,9 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          concluida?: boolean
           created_at?: string
+          data_conclusao?: string | null
           feedback?: string
           id?: string
           imagens?: string[] | null

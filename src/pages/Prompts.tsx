@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Plus, PlayCircle, Pencil, Trash2 } from "lucide-react";
+import { Plus, PlayCircle, Pencil, Trash2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePrompts, useDeletePrompt, type Prompt } from "@/hooks/usePrompts";
 import { useUserRole } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { PromptViewDialog } from "@/components/PromptViewDialog";
 import { PromptFormDialog } from "@/components/PromptFormDialog";
 import {
@@ -45,6 +46,7 @@ const Prompts = () => {
   const { data: prompts = [], isLoading } = usePrompts();
   const { data: userRole } = useUserRole();
   const deletePrompt = useDeletePrompt();
+  const { toast } = useToast();
 
   const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -70,6 +72,25 @@ const Prompts = () => {
     e.stopPropagation();
     setPromptToDelete(promptId);
     setDeleteDialogOpen(true);
+  };
+
+  const handleCopyPrompt = (e: React.MouseEvent, prompt: Prompt) => {
+    e.stopPropagation();
+    
+    const promptText = `${prompt.titulo}\n\n${prompt.descricao}\n\nNicho: ${prompt.nicho}\n\nConteúdo:\n${prompt.conteudo}`;
+    
+    navigator.clipboard.writeText(promptText).then(() => {
+      toast({
+        title: "Prompt copiado!",
+        description: "O conteúdo foi copiado para a área de transferência.",
+      });
+    }).catch(() => {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o prompt.",
+        variant: "destructive",
+      });
+    });
   };
 
   const confirmDelete = () => {
@@ -181,9 +202,20 @@ const Prompts = () => {
                 <CardDescription>{prompt.descricao}</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-medium">Nicho:</span> {prompt.nicho}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium">Nicho:</span> {prompt.nicho}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={(e) => handleCopyPrompt(e, prompt)}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copiar
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

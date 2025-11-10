@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useIdeasMelhorias } from "@/hooks/useIdeasMelhorias";
 import { useUserRole } from "@/hooks/useAuth";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Upload, X, Lightbulb, Trash2, Image as ImageIcon } from "lucide-react";
+import { Loader2, Upload, X, Lightbulb, Trash2, Image as ImageIcon, Check, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -27,7 +27,7 @@ import {
 export default function IdeasMelhorias() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const { ideias, isLoading, createIdeia, deleteIdeia, uploadImagem } = useIdeasMelhorias();
+  const { ideias, isLoading, createIdeia, deleteIdeia, updateIdeia, uploadImagem } = useIdeasMelhorias();
   const { data: userRole } = useUserRole();
   const [nome, setNome] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -229,44 +229,88 @@ export default function IdeasMelhorias() {
                 ) : ideias && ideias.length > 0 ? (
                   <div className="space-y-4">
                     {ideias.map((ideia) => (
-                      <Card key={ideia.id} className="border-l-4 border-l-primary">
+                      <Card 
+                        key={ideia.id} 
+                        className={`border-l-4 ${
+                          ideia.concluida 
+                            ? 'border-l-green-500 bg-green-50/50 dark:bg-green-950/20' 
+                            : 'border-l-primary'
+                        }`}
+                      >
                         <CardContent className="pt-6">
                           <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <h3 className="font-semibold text-lg">{ideia.nome}</h3>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-lg">{ideia.nome}</h3>
+                                {ideia.concluida && (
+                                  <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-1 rounded-full flex items-center gap-1">
+                                    <Check className="h-3 w-3" />
+                                    Concluída
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-sm text-muted-foreground">
                                 {format(new Date(ideia.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", {
                                   locale: ptBR,
                                 })}
                               </p>
+                              {ideia.concluida && ideia.data_conclusao && (
+                                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                  Concluída em {format(new Date(ideia.data_conclusao), "dd/MM/yyyy 'às' HH:mm", {
+                                    locale: ptBR,
+                                  })}
+                                </p>
+                              )}
                             </div>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Deletar ideia?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta ação não pode ser desfeita. A ideia será permanentemente removida.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteIdeia.mutate(ideia.id)}
-                                    className="bg-destructive hover:bg-destructive/90"
-                                  >
-                                    Deletar
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            
+                            <div className="flex gap-2">
+                              <Button
+                                variant={ideia.concluida ? "outline" : "default"}
+                                size="icon"
+                                className={ideia.concluida ? "" : "bg-green-600 hover:bg-green-700"}
+                                onClick={() => updateIdeia.mutate({ 
+                                  id: ideia.id, 
+                                  concluida: !ideia.concluida 
+                                })}
+                                disabled={updateIdeia.isPending}
+                              >
+                                {ideia.concluida ? (
+                                  <RotateCcw className="h-4 w-4" />
+                                ) : (
+                                  <Check className="h-4 w-4" />
+                                )}
+                              </Button>
+                              
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Deletar ideia?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta ação não pode ser desfeita. A ideia será permanentemente removida.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteIdeia.mutate(ideia.id)}
+                                      className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                      Deletar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           </div>
 
-                          <p className="text-foreground whitespace-pre-wrap mb-3">
+                          <p className={`text-foreground whitespace-pre-wrap mb-3 ${
+                            ideia.concluida ? 'opacity-70' : ''
+                          }`}>
                             {ideia.feedback}
                           </p>
 
@@ -288,7 +332,9 @@ export default function IdeasMelhorias() {
                                     <img
                                       src={img}
                                       alt={`Imagem ${idx + 1}`}
-                                      className="w-full h-32 object-cover rounded-md border hover:opacity-80 transition-opacity cursor-pointer"
+                                      className={`w-full h-32 object-cover rounded-md border hover:opacity-80 transition-opacity cursor-pointer ${
+                                        ideia.concluida ? 'opacity-70' : ''
+                                      }`}
                                     />
                                   </a>
                                 ))}
