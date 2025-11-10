@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   GraduationCap,
   Calendar,
+  Lightbulb,
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,6 +31,7 @@ const menuItems = [
   { title: "Teste de Conhecimento", url: "/testes", icon: ClipboardCheck },
   { title: "Treinamentos", url: "/treinamentos", icon: GraduationCap },
   { title: "Calendário", url: "/calendario", icon: Calendar },
+  { title: "Ideias de Melhorias", url: "/ideias-melhorias", icon: Lightbulb },
 ];
 
 export function AppSidebar() {
