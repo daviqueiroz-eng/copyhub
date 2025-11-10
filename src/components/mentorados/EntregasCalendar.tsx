@@ -4,7 +4,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin, { type DropArg } from "@fullcalendar/interaction";
-import type { DateSelectArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
+import type { DateSelectArg, EventClickArg } from "@fullcalendar/core";
 import { differenceInDays } from "date-fns";
 
 import { Card } from "@/components/ui/card";
@@ -108,32 +108,6 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
     setDialogOpen(true);
   };
 
-  // Drag & Drop de entrega no calendário
-  const handleEventDrop = (dropInfo: EventDropArg) => {
-    const evt = dropInfo.event;
-    const entrega = entregas.find((e) => e.id === evt.id);
-    if (!entrega) {
-      dropInfo.revert();
-      return;
-    }
-
-    updateMutation.mutate(
-      {
-        id: entrega.id,
-        mentorado_id: entrega.mentorado_id,
-        numero_leva: entrega.numero_leva,
-        data_entrega: evt.start?.toISOString().split("T")[0] || null,
-        concluida: entrega.concluida,
-        observacoes: entrega.observacoes,
-      },
-      {
-        onError: () => {
-          dropInfo.revert();
-        },
-      }
-    );
-  };
-
   // Drop de elemento externo (do painel lateral) no calendário
   const handleDrop = (dropInfo: DropArg) => {
     const entregaId = dropInfo.draggedEl.getAttribute("data-entrega-id");
@@ -218,12 +192,11 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
               events={fcEvents}
               eventDisplay="block"
               selectable={true}
-              editable={true}
+              editable={false}
               droppable={true}
               drop={handleDrop}
               select={handleDateSelect}
               eventClick={handleEventClick}
-              eventDrop={handleEventDrop}
               locale="pt-br"
               eventContent={(arg) => (
                 <Tooltip>
@@ -264,12 +237,11 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
               height="auto"
               events={fcEvents}
               selectable={true}
-              editable={true}
+              editable={false}
               droppable={true}
               drop={handleDrop}
               select={handleDateSelect}
               eventClick={handleEventClick}
-              eventDrop={handleEventDrop}
               locale="pt-br"
             />
           </TabsContent>

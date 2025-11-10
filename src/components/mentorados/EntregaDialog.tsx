@@ -170,29 +170,41 @@ export function EntregaDialog({
 
           <div className="space-y-2">
             <Label>Data de Entrega</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP", { locale: ptBR }) : "Selecione uma data"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
+            {entregaAtual?.data_entrega ? (
+              <div className="space-y-1">
+                <div className="w-full px-3 py-2 text-sm border rounded-md bg-muted text-muted-foreground">
+                  <CalendarIcon className="inline mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP", { locale: ptBR }) : "Sem data"}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  💡 Esta é uma data limite fixa. Para alterá-la, volte à aba "Geral".
+                </p>
+              </div>
+            ) : (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP", { locale: ptBR }) : "Selecione uma data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
