@@ -698,10 +698,14 @@ const AnaliseRoteiroGame = () => {
 
       // Renderizar highlight com comentários múltiplos
       parts.push(
-        <span 
-          key={`highlight-wrapper-${idx}`} 
-          className="inline-block relative group"
-        >
+              <span 
+                key={`highlight-wrapper-${idx}`} 
+                className="inline-block relative group mb-12"
+                style={{
+                  marginBottom: '3rem',
+                  lineHeight: '1.5',
+                }}
+              >
           {/* Palavra grifada com índices */}
           <mark
             data-start={highlight.startPos}
