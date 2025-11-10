@@ -169,9 +169,14 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
     <TooltipProvider>
       {/* Legenda de Status */}
       <Card className="mb-4">
-        <div className="p-4">
+        <div className="p-4 space-y-2">
+          <div className="flex flex-col gap-1">
+            <span className="font-semibold text-base">Legenda - Datas Limites</span>
+            <p className="text-xs text-muted-foreground">
+              Este calendário mostra apenas entregas com datas limite definidas
+            </p>
+          </div>
           <div className="flex flex-wrap gap-4 items-center text-sm">
-            <span className="font-medium">Legenda:</span>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--primary))" }} />
               <span className="text-muted-foreground">Agendadas</span>

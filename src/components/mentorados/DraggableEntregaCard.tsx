@@ -2,8 +2,21 @@ import { useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Mentorado } from "@/hooks/useMentorados";
 import { GripVertical } from "lucide-react";
+
+const getLevaVariant = (numeroLeva: number): "destructive" | "default" | "secondary" => {
+  if (numeroLeva === 1) return "destructive";
+  if (numeroLeva === 2 || numeroLeva === 3) return "default";
+  return "secondary";
+};
+
+const getLevaBorderColor = (numeroLeva: number): string => {
+  if (numeroLeva === 1) return "border-l-4 border-l-red-500";
+  if (numeroLeva === 2 || numeroLeva === 3) return "border-l-4 border-l-yellow-500";
+  return "border-l-4 border-l-blue-500";
+};
 
 interface DraggableEntregaCardProps {
   entregaId: string;
@@ -51,26 +64,43 @@ export function DraggableEntregaCard({
     };
   }, [entregaId]);
 
+  const borderColor = getLevaBorderColor(numeroLeva);
+  const badgeVariant = getLevaVariant(numeroLeva);
+
   return (
-    <Card
-      ref={cardRef}
-      className="p-3 cursor-grab active:cursor-grabbing hover:bg-accent/50 transition-colors"
-    >
-      <div className="flex items-center gap-3">
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={mentorado.avatar || undefined} alt={mentorado.nome} />
-          <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-            {mentorado.iniciais}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{mentorado.nome}</p>
-          <Badge variant="outline" className="mt-1 text-xs">
-            Leva {numeroLeva}
-          </Badge>
-        </div>
-      </div>
-    </Card>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Card
+            ref={cardRef}
+            className={`p-3 cursor-grab active:cursor-grabbing hover:bg-accent hover:shadow-md transition-all duration-200 ${borderColor}`}
+          >
+            <div className="flex items-center gap-3">
+              <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <Avatar className="h-8 w-8 flex-shrink-0">
+                <AvatarImage src={mentorado.avatar || undefined} alt={mentorado.nome} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                  {mentorado.iniciais}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{mentorado.nome}</p>
+                <Badge variant={badgeVariant} className="mt-1 text-xs">
+                  Leva {numeroLeva}
+                </Badge>
+              </div>
+            </div>
+          </Card>
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-xs">
+          <div className="space-y-1">
+            <p className="font-semibold">{mentorado.nome}</p>
+            <p className="text-xs text-muted-foreground">
+              Leva {numeroLeva} - Arraste para o calendário para definir a data limite
+            </p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
