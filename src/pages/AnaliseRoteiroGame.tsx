@@ -568,7 +568,13 @@ const AnaliseRoteiroGame = () => {
   };
 
   const renderHighlightedText = (text: string) => {
-    if (highlights.length === 0) return text;
+    if (highlights.length === 0) {
+      return (
+        <span data-start={0} data-end={text.length}>
+          {text}
+        </span>
+      );
+    }
 
     const sortedHighlights = [...highlights].sort((a, b) => a.startPos - b.startPos);
     const parts: JSX.Element[] = [];
