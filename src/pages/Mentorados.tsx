@@ -31,7 +31,7 @@ import {
 } from "@/hooks/useMentorados";
 import { GeralView } from "@/components/mentorados/GeralView";
 import { CalendarioView } from "@/components/mentorados/CalendarioView";
-import { MentoradoCanvas } from "@/components/mentorados/MentoradoCanvas";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Mentorados = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,6 +40,7 @@ const Mentorados = () => {
   const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
 
+  const { user } = useAuth();
   const { data: mentorados = [] } = useMentorados();
   const createMentorado = useCreateMentorado();
   const updateMentorado = useUpdateMentorado();
@@ -51,6 +52,15 @@ const Mentorados = () => {
   };
 
   const handleAddMentorado = () => {
+    if (!user) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Você precisa estar logado para criar mentorados.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!newMentoradoName.trim()) {
       toast({
         title: "Nome obrigatório",
@@ -64,6 +74,7 @@ const Mentorados = () => {
       {
         nome: newMentoradoName,
         iniciais: getIniciais(newMentoradoName),
+        user_id: user.id,
         avatar: null,
         dores: null,
         desejos: null,
@@ -76,7 +87,6 @@ const Mentorados = () => {
         links_chats: null,
         link_drive: null,
         referencias: null,
-        canvas_data: null,
       },
       {
         onSuccess: () => {
@@ -197,11 +207,10 @@ const Mentorados = () => {
           </SheetHeader>
 
           <Tabs defaultValue="avatar" className="mt-6">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="avatar">Avatar</TabsTrigger>
               <TabsTrigger value="comunicacao">Comunicação</TabsTrigger>
               <TabsTrigger value="materiais">Materiais</TabsTrigger>
-              <TabsTrigger value="canvas">Canvas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="avatar" className="space-y-6">
@@ -353,15 +362,6 @@ const Mentorados = () => {
                   rows={4}
                 />
               </div>
-            </TabsContent>
-
-            <TabsContent value="canvas" className="space-y-6">
-              {selectedMentorado && (
-                <MentoradoCanvas
-                  mentoradoId={selectedMentorado.id}
-                  initialData={selectedMentorado.canvas_data}
-                />
-              )}
             </TabsContent>
           </Tabs>
 

@@ -297,7 +297,6 @@ export type Database = {
       mentorados: {
         Row: {
           avatar: string | null
-          canvas_data: Json | null
           created_at: string
           crencas: string | null
           desejos: string | null
@@ -314,10 +313,10 @@ export type Database = {
           referencias: string | null
           roteiros: string | null
           updated_at: string
+          user_id: string
         }
         Insert: {
           avatar?: string | null
-          canvas_data?: Json | null
           created_at?: string
           crencas?: string | null
           desejos?: string | null
@@ -334,10 +333,10 @@ export type Database = {
           referencias?: string | null
           roteiros?: string | null
           updated_at?: string
+          user_id: string
         }
         Update: {
           avatar?: string | null
-          canvas_data?: Json | null
           created_at?: string
           crencas?: string | null
           desejos?: string | null
@@ -354,6 +353,7 @@ export type Database = {
           referencias?: string | null
           roteiros?: string | null
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

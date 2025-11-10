@@ -18,7 +18,7 @@ export type Mentorado = {
   links_chats: string | null;
   link_drive: string | null;
   referencias: string | null;
-  canvas_data: any | null;
+  user_id: string;
 };
 
 export const useMentorados = () => {
