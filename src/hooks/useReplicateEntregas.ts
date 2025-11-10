@@ -20,11 +20,13 @@ export const useReplicateEntregas = () => {
       for (let i = 1; i <= 6; i++) {
         const diasUteis = intervaloDias * (i - 1);
         const dataEntrega = addBusinessDays(dataInicial, diasUteis);
+        const dataStr = dataEntrega.toISOString().split('T')[0];
         
         entregas.push({
           mentorado_id: mentoradoId,
           numero_leva: i,
-          data_entrega: dataEntrega.toISOString().split('T')[0],
+          data_entrega: dataStr,
+          data_limite: dataStr, // Define data limite igual à data de entrega
           concluida: false,
         });
       }

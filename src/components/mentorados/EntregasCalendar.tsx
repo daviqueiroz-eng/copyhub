@@ -4,7 +4,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin, { type DropArg } from "@fullcalendar/interaction";
-import type { DateSelectArg, EventClickArg } from "@fullcalendar/core";
+import type { DateSelectArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
 import { differenceInDays } from "date-fns";
 
 import { Card } from "@/components/ui/card";
@@ -81,6 +81,7 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
             numeroLeva: entrega.numero_leva,
             concluida: entrega.concluida,
             observacoes: entrega.observacoes,
+            dataLimite: entrega.data_limite,
           },
         };
       })
@@ -108,6 +109,33 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
     setDialogOpen(true);
   };
 
+  // Arrastar evento no calendário (altera apenas data_entrega, mantém data_limite)
+  const handleEventDrop = (dropInfo: EventDropArg) => {
+    const evt = dropInfo.event;
+    const entrega = entregas.find((e) => e.id === evt.id);
+    if (!entrega) {
+      dropInfo.revert();
+      return;
+    }
+
+    updateMutation.mutate(
+      {
+        id: entrega.id,
+        mentorado_id: entrega.mentorado_id,
+        numero_leva: entrega.numero_leva,
+        data_entrega: evt.start?.toISOString().split("T")[0] || null,
+        data_limite: entrega.data_limite, // Mantém a data limite original
+        concluida: entrega.concluida,
+        observacoes: entrega.observacoes,
+      },
+      {
+        onError: () => {
+          dropInfo.revert();
+        },
+      }
+    );
+  };
+
   // Drop de elemento externo (do painel lateral) no calendário
   const handleDrop = (dropInfo: DropArg) => {
     const entregaId = dropInfo.draggedEl.getAttribute("data-entrega-id");
@@ -118,13 +146,14 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
 
     const dataStr = dropInfo.dateStr;
 
-    // Atualizar a data da entrega
+    // Ao arrastar do painel, define ambas as datas como iguais inicialmente
     updateMutation.mutate(
       {
         id: entrega.id,
         mentorado_id: entrega.mentorado_id,
         numero_leva: entrega.numero_leva,
         data_entrega: dataStr,
+        data_limite: dataStr, // Define a data limite também
         concluida: entrega.concluida,
         observacoes: entrega.observacoes,
       },
@@ -132,7 +161,7 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
         onSuccess: () => {
           toast({
             title: "Entrega agendada!",
-            description: `Data definida para ${new Date(dataStr).toLocaleDateString("pt-BR")}`,
+            description: `Data limite definida para ${new Date(dataStr).toLocaleDateString("pt-BR")}`,
           });
         },
       }
@@ -192,11 +221,12 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
               events={fcEvents}
               eventDisplay="block"
               selectable={true}
-              editable={false}
+              editable={true}
               droppable={true}
               drop={handleDrop}
               select={handleDateSelect}
               eventClick={handleEventClick}
+              eventDrop={handleEventDrop}
               locale="pt-br"
               eventContent={(arg) => (
                 <Tooltip>
@@ -208,13 +238,18 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
                       <span className="font-medium text-xs">{arg.event.title}</span>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>
+                   <TooltipContent>
                     <div className="max-w-xs text-sm space-y-1">
                       <p className="font-semibold">
                         {arg.event.extendedProps["mentorado"]?.nome}
                       </p>
                       <p>Leva: {arg.event.extendedProps["numeroLeva"]}</p>
                       <p>Status: {arg.event.extendedProps["concluida"] ? "Concluída" : "Pendente"}</p>
+                      {arg.event.extendedProps["dataLimite"] && (
+                        <p className="text-xs">
+                          📍 Data Limite: {new Date(arg.event.extendedProps["dataLimite"]).toLocaleDateString("pt-BR")}
+                        </p>
+                      )}
                       {arg.event.extendedProps["observacoes"] && (
                         <p className="text-xs text-muted-foreground">
                           {arg.event.extendedProps["observacoes"]}
@@ -237,11 +272,12 @@ export const EntregasCalendar: React.FC<EntregasCalendarProps> = ({
               height="auto"
               events={fcEvents}
               selectable={true}
-              editable={false}
+              editable={true}
               droppable={true}
               drop={handleDrop}
               select={handleDateSelect}
               eventClick={handleEventClick}
+              eventDrop={handleEventDrop}
               locale="pt-br"
             />
           </TabsContent>

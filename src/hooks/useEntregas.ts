@@ -8,6 +8,7 @@ export type Entrega = {
   mentorado_id: string;
   numero_leva: number;
   data_entrega: string | null;
+  data_limite: string | null;
   concluida: boolean;
   observacoes: string | null;
   created_at: string;

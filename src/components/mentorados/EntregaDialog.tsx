@@ -67,7 +67,8 @@ export function EntregaDialog({
 
   useEffect(() => {
     if (entregaAtual) {
-      setDate(entregaAtual.data_entrega ? new Date(entregaAtual.data_entrega) : undefined);
+      // Na aba Geral, usamos data_limite; no calendário, data_entrega
+      setDate(entregaAtual.data_limite ? new Date(entregaAtual.data_limite) : undefined);
       setConcluida(entregaAtual.concluida);
       setObservacoes(entregaAtual.observacoes || "");
     } else if (initialDate) {
@@ -104,10 +105,12 @@ export function EntregaDialog({
     }
 
     // Caso contrário, salvar apenas a entrega atual
+    const dataFormatada = date ? format(date, "yyyy-MM-dd") : null;
     const entregaData = {
       mentorado_id: currentMentorado.id,
       numero_leva: numeroLeva,
-      data_entrega: date ? format(date, "yyyy-MM-dd") : null,
+      data_entrega: dataFormatada,
+      data_limite: dataFormatada, // Define ambos como iguais inicialmente
       concluida,
       observacoes: observacoes || null,
     };
@@ -169,42 +172,33 @@ export function EntregaDialog({
           )}
 
           <div className="space-y-2">
-            <Label>Data de Entrega</Label>
-            {entregaAtual?.data_entrega ? (
-              <div className="space-y-1">
-                <div className="w-full px-3 py-2 text-sm border rounded-md bg-muted text-muted-foreground">
-                  <CalendarIcon className="inline mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP", { locale: ptBR }) : "Sem data"}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  💡 Esta é uma data limite fixa. Para alterá-la, volte à aba "Geral".
-                </p>
-              </div>
-            ) : (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP", { locale: ptBR }) : "Selecione uma data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
+            <Label>Data Limite (Referência)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP", { locale: ptBR }) : "Selecione uma data"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground">
+              📍 Esta é sua data de referência (norte). Pode ser alterada no calendário sem perder essa meta.
+            </p>
           </div>
 
           <div className="flex items-center space-x-2">

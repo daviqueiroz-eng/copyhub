@@ -152,6 +152,7 @@ export type Database = {
           concluida: boolean
           created_at: string
           data_entrega: string | null
+          data_limite: string | null
           id: string
           mentorado_id: string
           numero_leva: number
@@ -162,6 +163,7 @@ export type Database = {
           concluida?: boolean
           created_at?: string
           data_entrega?: string | null
+          data_limite?: string | null
           id?: string
           mentorado_id: string
           numero_leva: number
@@ -172,6 +174,7 @@ export type Database = {
           concluida?: boolean
           created_at?: string
           data_entrega?: string | null
+          data_limite?: string | null
           id?: string
           mentorado_id?: string
           numero_leva?: number
