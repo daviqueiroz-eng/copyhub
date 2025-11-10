@@ -239,6 +239,16 @@ const AnaliseRoteiroGame = () => {
     }
   };
 
+  // Verificar se há sobreposição entre dois highlights
+  const hasOverlap = (h1: Highlight, h2: { startPos: number; endPos: number }) => {
+    return !(h1.endPos <= h2.startPos || h1.startPos >= h2.endPos);
+  };
+
+  // Verificar se um highlight já existe na posição exata
+  const isExactDuplicate = (existing: Highlight, newPos: { startPos: number; endPos: number }) => {
+    return existing.startPos === newPos.startPos && existing.endPos === newPos.endPos;
+  };
+
   const handleTextSelection = () => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || !selectedColor) return;
@@ -256,6 +266,55 @@ const AnaliseRoteiroGame = () => {
     const startPos = preCaretRange.toString().length;
     const endPos = startPos + selectedText.length;
 
+    // Verificar se já existe highlight na mesma posição
+    const exactDuplicate = highlights.find(h => 
+      isExactDuplicate(h, { startPos, endPos })
+    );
+
+    if (exactDuplicate) {
+      if (exactDuplicate.color === selectedColor) {
+        // Mesma cor - apenas avisar e ignorar
+        toast({
+          title: "Palavra já grifada",
+          description: "Esta palavra já está grifada com esta cor.",
+        });
+        selection.removeAllRanges();
+        return;
+      } else {
+        // Cor diferente - SUBSTITUIR AUTOMATICAMENTE
+        setHighlightsHistory([...highlightsHistory, highlights]);
+        setHighlights(highlights.map(h => 
+          h.id === exactDuplicate.id 
+            ? { ...h, color: selectedColor }
+            : h
+        ));
+        
+        toast({
+          title: "Cor alterada",
+          description: "A cor do highlight foi atualizada.",
+        });
+        
+        selection.removeAllRanges();
+        return;
+      }
+    }
+
+    // Verificar sobreposição parcial
+    const overlappingHighlight = highlights.find(h => 
+      hasOverlap(h, { startPos, endPos })
+    );
+
+    if (overlappingHighlight) {
+      toast({
+        title: "Sobreposição detectada",
+        description: "Esta seleção se sobrepõe a uma palavra já grifada. Selecione a palavra completa para trocar a cor.",
+        variant: "destructive",
+      });
+      selection.removeAllRanges();
+      return;
+    }
+
+    // Nenhum problema - adicionar novo highlight
     const newHighlight: Highlight = {
       id: crypto.randomUUID(),
       text: selectedText,
