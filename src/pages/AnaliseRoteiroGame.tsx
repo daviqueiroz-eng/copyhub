@@ -35,6 +35,7 @@ type Highlight = {
   endPos: number;
   annotation?: string;
   annotations?: string[];
+  commentPositions?: Record<number, { x: number; y: number }>;
 };
 
 const AnaliseRoteiroGame = () => {
@@ -65,6 +66,16 @@ const AnaliseRoteiroGame = () => {
   const [editingHighlightId, setEditingHighlightId] = useState<string | null>(null);
   const [tempAnnotationText, setTempAnnotationText] = useState("");
   const [filterColor, setFilterColor] = useState<string>("all");
+  
+  // Estado para dragging de comentários
+  const [draggingComment, setDraggingComment] = useState<{
+    highlightId: string;
+    commentIndex: number;
+    startX: number;
+    startY: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
   
   // Ref para armazenar posições das palavras grifadas
   const highlightRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -107,6 +118,18 @@ const AnaliseRoteiroGame = () => {
       setSelectedColor(cores[0].cor);
     }
   }, [cores, selectedColor]);
+
+  // Listeners globais para drag de comentários
+  useEffect(() => {
+    if (draggingComment) {
+      window.addEventListener('mousemove', handleCommentMouseMove);
+      window.addEventListener('mouseup', handleCommentMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleCommentMouseMove);
+        window.removeEventListener('mouseup', handleCommentMouseUp);
+      };
+    }
+  }, [draggingComment]);
 
   const currentRoteiro = roteiros.find((r) => r.id === currentRoteiroId);
   
@@ -352,23 +375,78 @@ const AnaliseRoteiroGame = () => {
   // Determinar posição do comentário baseado na localização da palavra
   const getCommentPosition = (highlightId: string): 'left' | 'top' | 'right' => {
     const element = highlightRefs.current.get(highlightId);
-    if (!element) return 'right'; // fallback
+    if (!element) return 'right';
 
     const rect = element.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const wordCenter = rect.left + (rect.width / 2);
+    const container = document.getElementById("roteiro-content");
+    if (!container) return 'right';
     
-    // Dividir viewport em 3 zonas
-    const leftZone = viewportWidth * 0.33;
-    const rightZone = viewportWidth * 0.67;
+    const containerRect = container.getBoundingClientRect();
+    const relativeLeft = rect.left - containerRect.left;
+    const containerWidth = containerRect.width;
     
-    if (wordCenter < leftZone) {
+    // Usar posição relativa ao container de texto
+    const leftZone = containerWidth * 0.25;
+    const rightZone = containerWidth * 0.75;
+    
+    if (relativeLeft < leftZone) {
       return 'right'; // Palavra à esquerda → comentário à direita
-    } else if (wordCenter > rightZone) {
+    } else if (relativeLeft > rightZone) {
       return 'left'; // Palavra à direita → comentário à esquerda
     } else {
       return 'top'; // Palavra no centro → comentário acima
     }
+  };
+
+  const handleCommentMouseDown = (
+    e: React.MouseEvent,
+    highlightId: string,
+    commentIndex: number
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const highlight = highlights.find(h => h.id === highlightId);
+    if (!highlight) return;
+    
+    const currentPos = highlight.commentPositions?.[commentIndex];
+    
+    setDraggingComment({
+      highlightId,
+      commentIndex,
+      startX: e.clientX,
+      startY: e.clientY,
+      offsetX: currentPos?.x || 0,
+      offsetY: currentPos?.y || 0,
+    });
+  };
+
+  const handleCommentMouseMove = (e: MouseEvent) => {
+    if (!draggingComment) return;
+    
+    const deltaX = e.clientX - draggingComment.startX;
+    const deltaY = e.clientY - draggingComment.startY;
+    
+    setHighlights(prev =>
+      prev.map(h =>
+        h.id === draggingComment.highlightId
+          ? {
+              ...h,
+              commentPositions: {
+                ...h.commentPositions,
+                [draggingComment.commentIndex]: {
+                  x: draggingComment.offsetX + deltaX,
+                  y: draggingComment.offsetY + deltaY,
+                },
+              },
+            }
+          : h
+      )
+    );
+  };
+
+  const handleCommentMouseUp = () => {
+    setDraggingComment(null);
   };
 
   const handleAddInlineAnnotation = (highlightId: string) => {
@@ -635,28 +713,57 @@ const AnaliseRoteiroGame = () => {
 
           {/* Múltiplos comentários empilhados com posicionamento dinâmico */}
           {!isEditing && comments.length > 0 && (
-            <div 
-              className={`
-                absolute z-10 flex flex-col gap-1
-                ${commentPosition === 'left' ? 'right-full mr-2 top-0' : ''}
-                ${commentPosition === 'right' ? 'left-full ml-2 top-0' : ''}
-                ${commentPosition === 'top' ? 'bottom-full mb-2 left-1/2 -translate-x-1/2' : ''}
-              `}
-            >
-              {comments.map((comment, i) => (
-                <span
-                  key={i}
-                  className="inline-block px-2 py-1 text-xs bg-muted text-muted-foreground rounded border border-border shadow whitespace-nowrap max-w-[250px] overflow-hidden text-ellipsis cursor-pointer"
-                  title={comment}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    setEditingHighlightId(highlight.id);
-                    setTempAnnotationText("");
-                  }}
-                >
-                  💬 {comment}
-                </span>
-              ))}
+            <div className="relative">
+              {comments.map((comment, i) => {
+                const customPos = highlight.commentPositions?.[i];
+                const hasCustomPos = customPos !== undefined;
+                
+                // Se tem posição custom, usar fixed; senão usar o posicionamento automático
+                const positionStyle = hasCustomPos
+                  ? {
+                      position: 'fixed' as const,
+                      left: customPos.x,
+                      top: customPos.y,
+                      zIndex: 50,
+                    }
+                  : {};
+                
+                const positionClasses = !hasCustomPos
+                  ? `absolute z-10
+                     ${commentPosition === 'left' ? 'right-full mr-2 top-0' : ''}
+                     ${commentPosition === 'right' ? 'left-full ml-2 top-0' : ''}
+                     ${commentPosition === 'top' ? 'bottom-full mb-2 left-1/2 -translate-x-1/2' : ''}`
+                  : '';
+                
+                return (
+                  <div
+                    key={i}
+                    className={positionClasses}
+                    style={positionStyle}
+                    onMouseDown={(e) => handleCommentMouseDown(e, highlight.id, i)}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      setEditingHighlightId(highlight.id);
+                      setTempAnnotationText("");
+                    }}
+                  >
+                    <span
+                      style={{
+                        backgroundColor: highlight.color,
+                        color: '#000',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        border: '1px solid rgba(0,0,0,0.1)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      }}
+                      className="inline-block text-xs whitespace-nowrap max-w-[250px] overflow-hidden text-ellipsis cursor-move select-none"
+                      title={`${comment} (Arraste para mover)`}
+                    >
+                      💬 {comment}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
 
