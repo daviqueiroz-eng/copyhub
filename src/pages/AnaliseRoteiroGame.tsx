@@ -20,7 +20,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, BookOpen, ExternalLink, FileUp, FileEdit, ArrowLeft, Trash2, Flame, Filter } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink, Copy, FileUp, FileEdit, ArrowLeft, Trash2, Flame, Filter } from "lucide-react";
+import { detectVideoType, extractYouTubeId, extractGoogleDriveId } from "@/lib/videoUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
 import { HighlightsList } from "@/components/HighlightsList";
@@ -111,6 +112,41 @@ const AnaliseRoteiroGame = () => {
   const [filtroCorSelecionada, setFiltroCorSelecionada] = useState<string>("all");
   const [filtroNichoSelecionado, setFiltroNichoSelecionado] = useState<string>("all");
   const [modoFiltroAvancado, setModoFiltroAvancado] = useState(false);
+
+  // Função para processar link de vídeo e garantir que seja abrível
+  const getWatchableVideoUrl = (url: string): string => {
+    if (!url) return '';
+    
+    const videoType = detectVideoType(url);
+    
+    // Se for YouTube, garantir formato watch
+    if (videoType === 'youtube') {
+      const videoId = extractYouTubeId(url);
+      if (videoId) {
+        return `https://www.youtube.com/watch?v=${videoId}`;
+      }
+    }
+    
+    // Se for Google Drive, formato de visualização
+    if (videoType === 'google-drive') {
+      const fileId = extractGoogleDriveId(url);
+      if (fileId) {
+        return `https://drive.google.com/file/d/${fileId}/view`;
+      }
+    }
+    
+    // Retorna URL original se não for reconhecida
+    return url;
+  };
+
+  const handleCopyVideoLink = (url: string) => {
+    const processedUrl = getWatchableVideoUrl(url);
+    navigator.clipboard.writeText(processedUrl);
+    toast({
+      title: "Link copiado!",
+      description: "O link do vídeo foi copiado para a área de transferência.",
+    });
+  };
 
   // Não selecionar automaticamente - usuário escolhe manualmente
 
@@ -1319,15 +1355,36 @@ const AnaliseRoteiroGame = () => {
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">{currentRoteiro.titulo}</h2>
           {currentRoteiro.link_video && (
-            <div className="mb-4">
+            <div className="mb-4 flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-2"
-                onClick={() => window.open(currentRoteiro.link_video!, '_blank')}
+                onClick={() => {
+                  const processedUrl = getWatchableVideoUrl(currentRoteiro.link_video!);
+                  if (processedUrl) {
+                    window.open(processedUrl, '_blank');
+                  } else {
+                    toast({
+                      title: "Link inválido",
+                      description: "Não foi possível abrir o vídeo. Verifique o link.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
               >
                 <ExternalLink className="w-4 h-4" />
                 Assistir Vídeo do Roteiro
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2"
+                onClick={() => handleCopyVideoLink(currentRoteiro.link_video!)}
+              >
+                <Copy className="w-4 h-4" />
+                Copiar Link
               </Button>
             </div>
           )}
