@@ -409,15 +409,31 @@ const AnaliseRoteiroGame = () => {
     const highlight = highlights.find(h => h.id === highlightId);
     if (!highlight) return;
     
+    const container = document.getElementById("roteiro-content");
+    if (!container) return;
+    
+    const containerRect = container.getBoundingClientRect();
     const currentPos = highlight.commentPositions?.[commentIndex];
+    
+    // Se já tem posição custom, usar ela; senão calcular posição atual do elemento
+    let initialX = currentPos?.x || 0;
+    let initialY = currentPos?.y || 0;
+    
+    // Se não tem posição custom, precisamos calcular a posição atual relativa ao container
+    if (!currentPos) {
+      const commentElement = e.currentTarget as HTMLElement;
+      const commentRect = commentElement.getBoundingClientRect();
+      initialX = commentRect.left - containerRect.left + container.scrollLeft;
+      initialY = commentRect.top - containerRect.top + container.scrollTop;
+    }
     
     setDraggingComment({
       highlightId,
       commentIndex,
       startX: e.clientX,
       startY: e.clientY,
-      offsetX: currentPos?.x || 0,
-      offsetY: currentPos?.y || 0,
+      offsetX: initialX,
+      offsetY: initialY,
     });
   };
 
@@ -719,14 +735,14 @@ const AnaliseRoteiroGame = () => {
                 const hasCustomPos = customPos !== undefined;
                 
                 // Se tem posição custom, usar fixed; senão usar o posicionamento automático
-                const positionStyle = hasCustomPos
-                  ? {
-                      position: 'fixed' as const,
-                      left: customPos.x,
-                      top: customPos.y,
-                      zIndex: 50,
-                    }
-                  : {};
+              const positionStyle = hasCustomPos
+                ? {
+                    position: 'absolute' as const,
+                    left: customPos.x,
+                    top: customPos.y,
+                    zIndex: 50,
+                  }
+                : {};
                 
                 const positionClasses = !hasCustomPos
                   ? `absolute z-10
@@ -1281,7 +1297,7 @@ const AnaliseRoteiroGame = () => {
           )}
           <div
             id="roteiro-content"
-            className="prose prose-sm max-w-none whitespace-pre-wrap text-foreground leading-relaxed select-text cursor-text"
+            className="relative prose prose-sm max-w-none whitespace-pre-wrap text-foreground leading-relaxed select-text cursor-text"
             onMouseUp={handleTextSelection}
           >
             {renderHighlightedText(currentRoteiro.conteudo)}
