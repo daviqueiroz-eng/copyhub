@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface RoteiroAnaliseViewProps {
   progresso: ProgressoRoteiro;
@@ -42,6 +42,67 @@ export const RoteiroAnaliseView = ({ progresso, roteiro, onDelete }: RoteiroAnal
   const { data: cores } = useCoresAnalise();
   const deleteProgressoRoteiro = useDeleteProgressoRoteiro();
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  
+  // Estados para interatividade dos comentários
+  const [localHighlights, setLocalHighlights] = useState<Highlight[]>([]);
+  const [draggingComment, setDraggingComment] = useState<{
+    highlightId: string;
+    commentIndex: number;
+    startX: number;
+    startY: number;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+
+  // Inicializar highlights locais
+  useEffect(() => {
+    if (progresso.sublinhados && Array.isArray(progresso.sublinhados)) {
+      setLocalHighlights(progresso.sublinhados as Highlight[]);
+    }
+  }, [progresso.sublinhados]);
+
+  // Listeners globais para drag de comentários
+  useEffect(() => {
+    if (!draggingComment) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const deltaX = e.clientX - draggingComment.startX;
+      const deltaY = e.clientY - draggingComment.startY;
+      
+      setLocalHighlights(prev =>
+        prev.map(h =>
+          h.id === draggingComment.highlightId
+            ? {
+                ...h,
+                commentPositions: {
+                  ...h.commentPositions,
+                  [draggingComment.commentIndex]: {
+                    x: draggingComment.offsetX + deltaX,
+                    y: draggingComment.offsetY + deltaY,
+                  },
+                },
+              }
+            : h
+        )
+      );
+    };
+
+    const handleMouseUp = () => {
+      setDraggingComment(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggingComment]);
 
   const handleDeleteAnalysis = async () => {
     await deleteProgressoRoteiro.mutateAsync(progresso.id);
@@ -49,13 +110,76 @@ export const RoteiroAnaliseView = ({ progresso, roteiro, onDelete }: RoteiroAnal
     if (onDelete) onDelete();
   };
 
+  const handleCommentMouseDown = (
+    e: React.MouseEvent,
+    highlightId: string,
+    commentIndex: number
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const highlight = localHighlights.find(h => h.id === highlightId);
+    if (!highlight) return;
+
+    const customPos = highlight.commentPositions?.[commentIndex];
+    const initialX = customPos?.x || 0;
+    const initialY = customPos?.y || 0;
+
+    // Se não tem posição custom ainda, inicializar baseado na posição atual do elemento
+    if (!customPos) {
+      const target = e.currentTarget as HTMLElement;
+      const rect = target.getBoundingClientRect();
+      const parent = target.parentElement;
+      if (parent) {
+        const parentRect = parent.getBoundingClientRect();
+        const relativeX = rect.left - parentRect.left;
+        const relativeY = rect.top - parentRect.top;
+        
+        setLocalHighlights(prev =>
+          prev.map(h =>
+            h.id === highlightId
+              ? {
+                  ...h,
+                  commentPositions: {
+                    ...h.commentPositions,
+                    [commentIndex]: { x: relativeX, y: relativeY },
+                  },
+                }
+              : h
+          )
+        );
+      }
+    }
+
+    setDraggingComment({
+      highlightId,
+      commentIndex,
+      startX: e.clientX,
+      startY: e.clientY,
+      offsetX: initialX,
+      offsetY: initialY,
+    });
+  };
+
+  const toggleCommentExpansion = (highlightId: string, commentIndex: number) => {
+    const key = `${highlightId}-${commentIndex}`;
+    setExpandedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
   const renderHighlightedText = () => {
-    if (!progresso.sublinhados || !Array.isArray(progresso.sublinhados) || progresso.sublinhados.length === 0) {
+    if (localHighlights.length === 0) {
       return <div className="whitespace-pre-wrap">{roteiro.conteudo}</div>;
     }
 
-    const highlights = progresso.sublinhados as Highlight[];
-    const sortedHighlights = [...highlights].sort((a, b) => a.startPos - b.startPos);
+    const sortedHighlights = [...localHighlights].sort((a, b) => a.startPos - b.startPos);
     
     const elements: JSX.Element[] = [];
     let lastIndex = 0;
@@ -77,27 +201,36 @@ export const RoteiroAnaliseView = ({ progresso, roteiro, onDelete }: RoteiroAnal
         ? [highlight.annotation]
         : [];
 
-      // Highlight com comentários
+      // Highlight com comentários - estrutura idêntica ao AnaliseRoteiroGame
       elements.push(
-        <span key={`wrapper-${idx}`} className="relative inline-block">
+        <span key={`wrapper-${idx}`} className="relative">
           <mark
             style={{ 
               backgroundColor: highlight.color,
               color: '#fff',
               padding: '2px 4px',
               borderRadius: '3px',
-              fontWeight: 500
+              fontWeight: 500,
+              position: 'relative'
             }}
           >
             {highlight.text}
           </mark>
 
-          {/* Renderizar comentários com posicionamento igual à análise */}
+          {/* Renderizar comentários com drag & drop e expansão */}
           {comments.length > 0 && (
             <div className="relative">
               {comments.map((comment, i) => {
                 const customPos = highlight.commentPositions?.[i];
                 const hasCustomPos = customPos !== undefined;
+                const commentKey = `${highlight.id}-${i}`;
+                const isExpanded = expandedComments.has(commentKey);
+                
+                // Truncar comentário se não estiver expandido
+                const MAX_LENGTH = 15;
+                const displayComment = isExpanded || comment.length <= MAX_LENGTH
+                  ? comment
+                  : comment.substring(0, MAX_LENGTH) + "...";
                 
                 const positionStyle = hasCustomPos
                   ? {
@@ -114,12 +247,18 @@ export const RoteiroAnaliseView = ({ progresso, roteiro, onDelete }: RoteiroAnal
                 
                 return (
                   <div
-                    key={`comment-${idx}-${i}`}
+                    key={i}
                     className={positionClasses}
                     style={{
                       ...positionStyle,
                       userSelect: 'none',
                       WebkitUserSelect: 'none',
+                    }}
+                    onMouseDown={(e) => handleCommentMouseDown(e, highlight.id!, i)}
+                    onDoubleClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleCommentExpansion(highlight.id!, i);
                     }}
                   >
                     <span
@@ -130,10 +269,16 @@ export const RoteiroAnaliseView = ({ progresso, roteiro, onDelete }: RoteiroAnal
                         borderRadius: '4px',
                         border: '1px solid rgba(0,0,0,0.1)',
                         boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
                       }}
-                      className="inline-block text-xs select-none max-w-[300px] whitespace-normal break-words"
+                      className={`inline-block text-xs cursor-move select-none transition-all hover:shadow-md ${
+                        isExpanded ? 'max-w-[300px] whitespace-normal break-words' : 'whitespace-nowrap max-w-[200px] overflow-hidden text-ellipsis'
+                      }`}
+                      title={isExpanded ? "Duplo-clique para minimizar" : `${comment} (Duplo-clique para expandir)`}
+                      onMouseDown={(e) => e.preventDefault()}
                     >
-                      💬 {comment}
+                      💬 {displayComment}
                     </span>
                   </div>
                 );
