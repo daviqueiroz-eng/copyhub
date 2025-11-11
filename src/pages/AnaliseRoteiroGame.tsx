@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
 import { HighlightsList } from "@/components/HighlightsList";
 import { HighlightsTable } from "@/components/HighlightsTable";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -1088,6 +1089,7 @@ const AnaliseRoteiroGame = () => {
           <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <h1 className="text-3xl font-bold text-foreground">Análise de Roteiro</h1>
             <div className="flex flex-wrap items-center gap-2">
+              <ThemeToggle />
               <Button
                 onClick={() => setShowFiltroGrifadasDialog(true)}
                 variant="outline"
@@ -1455,6 +1457,7 @@ const AnaliseRoteiroGame = () => {
         
           {!isFocusMode && (
           <div className="flex flex-wrap items-center gap-2">
+            <ThemeToggle />
             <Button
               onClick={() => setShowFiltroGrifadasDialog(true)}
               variant="outline"
@@ -1539,6 +1542,11 @@ const AnaliseRoteiroGame = () => {
               <BookOpen className="w-4 h-4" />
               Ver Analisados ({completedRoteirosWithData.length})
             </Button>
+          </div>
+        )}
+        {isFocusMode && (
+          <div>
+            <ThemeToggle />
           </div>
         )}
       </div>
