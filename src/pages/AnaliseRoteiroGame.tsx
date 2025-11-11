@@ -528,6 +528,10 @@ const AnaliseRoteiroGame = () => {
     e.preventDefault();
     e.stopPropagation();
     
+    // Prevenir scroll do navegador
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    
     const highlight = highlights.find(h => h.id === highlightId);
     if (!highlight) return;
     
@@ -545,9 +549,12 @@ const AnaliseRoteiroGame = () => {
     if (!currentPos) {
       const commentElement = e.currentTarget as HTMLElement;
       const commentRect = commentElement.getBoundingClientRect();
-      initialX = commentRect.left - containerRect.left + container.scrollLeft;
-      initialY = commentRect.top - containerRect.top + container.scrollTop;
+      initialX = commentRect.left - containerRect.left;
+      initialY = commentRect.top - containerRect.top;
     }
+    
+    // Restaurar posição de scroll imediatamente
+    window.scrollTo(scrollX, scrollY);
     
     setDraggingComment({
       highlightId,
@@ -561,6 +568,9 @@ const AnaliseRoteiroGame = () => {
 
   const handleCommentMouseMove = (e: MouseEvent) => {
     if (!draggingComment) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
     
     const deltaX = e.clientX - draggingComment.startX;
     const deltaY = e.clientY - draggingComment.startY;
@@ -919,9 +929,14 @@ const AnaliseRoteiroGame = () => {
                   <div
                     key={i}
                     className={positionClasses}
-                    style={positionStyle}
+                    style={{
+                      ...positionStyle,
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                    }}
                     onMouseDown={(e) => handleCommentMouseDown(e, highlight.id, i)}
                     onDoubleClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
                       toggleCommentExpansion(highlight.id, i);
                     }}
@@ -934,11 +949,14 @@ const AnaliseRoteiroGame = () => {
                         borderRadius: '4px',
                         border: '1px solid rgba(0,0,0,0.1)',
                         boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
                       }}
                       className={`inline-block text-xs cursor-move select-none transition-all hover:shadow-md ${
                         isExpanded ? 'max-w-[300px] whitespace-normal break-words' : 'whitespace-nowrap max-w-[200px] overflow-hidden text-ellipsis'
                       }`}
                       title={isExpanded ? "Duplo-clique para minimizar" : `${comment} (Duplo-clique para expandir)`}
+                      onMouseDown={(e) => e.preventDefault()}
                     >
                       💬 {displayComment}
                     </span>
