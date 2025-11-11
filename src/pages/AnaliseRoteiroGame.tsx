@@ -113,6 +113,15 @@ const AnaliseRoteiroGame = () => {
   const [filtroCorSelecionada, setFiltroCorSelecionada] = useState<string>("all");
   const [filtroNichoSelecionado, setFiltroNichoSelecionado] = useState<string>("all");
   const [modoFiltroAvancado, setModoFiltroAvancado] = useState(false);
+  const [filtroEstruturaSelecionada, setFiltroEstruturaSelecionada] = useState<string>("all");
+  
+  // Estados para dialog de estrutura de conteúdo notável
+  const [showEstruturaDialog, setShowEstruturaDialog] = useState(false);
+  const [highlightPendenteEstrutura, setHighlightPendenteEstrutura] = useState<Highlight | null>(null);
+  const [estruturaSelecionada, setEstruturaSelecionada] = useState<string>("");
+  
+  // Estado para comentários expandidos/minimizados
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
 
   // Função para processar link de vídeo e garantir que seja abrível
   const getWatchableVideoUrl = (url: string): string => {
@@ -233,9 +242,23 @@ const AnaliseRoteiroGame = () => {
       if (!progresso.sublinhados || !Array.isArray(progresso.sublinhados)) return;
       
       // Filtrar highlights pela cor selecionada
-      const highlightsFiltrados = progresso.sublinhados.filter(
+      let highlightsFiltrados = progresso.sublinhados.filter(
         (sub: any) => filtroCorSelecionada === "all" || sub.color === filtroCorSelecionada
       );
+      
+      // NOVO: Filtrar por estrutura se selecionada
+      if (modoFiltroAvancado && filtroEstruturaSelecionada !== "all") {
+        const corConteudoNotavel = cores.find(c => c.nome === "Conteúdo Notável");
+        
+        highlightsFiltrados = highlightsFiltrados.filter((sub: any) => {
+          // Verificar se é da cor "Conteúdo Notável"
+          if (sub.color !== corConteudoNotavel?.cor) return false;
+          
+          // Verificar se tem a estrutura selecionada
+          const annotations = sub.annotations || (sub.annotation ? [sub.annotation] : []);
+          return annotations.includes(filtroEstruturaSelecionada);
+        });
+      }
       
       if (highlightsFiltrados.length === 0) return;
       
@@ -455,8 +478,18 @@ const AnaliseRoteiroGame = () => {
       annotation: undefined,
     };
 
-    setHighlightsHistory([...highlightsHistory, highlights]);
-    setHighlights([...highlights, newHighlight]);
+    // Verificar se é "Conteúdo Notável" para abrir dialog de estrutura
+    const corConteudoNotavel = cores.find(c => c.nome === "Conteúdo Notável");
+    
+    if (selectedColor === corConteudoNotavel?.cor) {
+      // Armazenar highlight pendente e abrir dialog
+      setHighlightPendenteEstrutura(newHighlight);
+      setShowEstruturaDialog(true);
+    } else {
+      // Adicionar normalmente
+      setHighlightsHistory([...highlightsHistory, highlights]);
+      setHighlights([...highlights, newHighlight]);
+    }
 
     selection.removeAllRanges();
   };
@@ -554,6 +587,19 @@ const AnaliseRoteiroGame = () => {
     setDraggingComment(null);
   };
 
+  const toggleCommentExpansion = (highlightId: string, commentIndex: number) => {
+    const key = `${highlightId}-${commentIndex}`;
+    setExpandedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
   const handleAddInlineAnnotation = (highlightId: string) => {
     const trimmed = tempAnnotationText.trim();
     if (!trimmed) {
@@ -563,6 +609,8 @@ const AnaliseRoteiroGame = () => {
     }
 
     setHighlightsHistory([...highlightsHistory, highlights]);
+    
+    const commentIndex = highlights.find(h => h.id === highlightId)?.annotations?.length || 0;
     
     setHighlights(
       highlights.map((h) =>
@@ -576,12 +624,20 @@ const AnaliseRoteiroGame = () => {
       )
     );
     
+    // Garantir que novos comentários comecem minimizados
+    const key = `${highlightId}-${commentIndex}`;
+    setExpandedComments(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(key);
+      return newSet;
+    });
+    
     setEditingHighlightId(null);
     setTempAnnotationText("");
     
     toast({
       title: "Comentário adicionado",
-      description: "Novo comentário foi adicionado à palavra grifada.",
+      description: "Duplo-clique no comentário para expandir/minimizar.",
     });
   };
 
@@ -701,6 +757,7 @@ const AnaliseRoteiroGame = () => {
     setFiltroGrifadasAtivo(false);
     setFiltroCorSelecionada("all");
     setFiltroNichoSelecionado("all");
+    setFiltroEstruturaSelecionada("all");
     setModoFiltroAvancado(false);
     setShowFiltroGrifadasDialog(false);
     
@@ -832,6 +889,14 @@ const AnaliseRoteiroGame = () => {
               {comments.map((comment, i) => {
                 const customPos = highlight.commentPositions?.[i];
                 const hasCustomPos = customPos !== undefined;
+                const commentKey = `${highlight.id}-${i}`;
+                const isExpanded = expandedComments.has(commentKey);
+                
+                // Truncar comentário se não estiver expandido
+                const MAX_LENGTH = 15;
+                const displayComment = isExpanded || comment.length <= MAX_LENGTH
+                  ? comment
+                  : comment.substring(0, MAX_LENGTH) + "...";
                 
                 // Se tem posição custom, usar fixed; senão usar o posicionamento automático
               const positionStyle = hasCustomPos
@@ -858,8 +923,7 @@ const AnaliseRoteiroGame = () => {
                     onMouseDown={(e) => handleCommentMouseDown(e, highlight.id, i)}
                     onDoubleClick={(e) => {
                       e.stopPropagation();
-                      setEditingHighlightId(highlight.id);
-                      setTempAnnotationText("");
+                      toggleCommentExpansion(highlight.id, i);
                     }}
                   >
                     <span
@@ -871,10 +935,12 @@ const AnaliseRoteiroGame = () => {
                         border: '1px solid rgba(0,0,0,0.1)',
                         boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                       }}
-                      className="inline-block text-xs whitespace-nowrap max-w-[250px] overflow-hidden text-ellipsis cursor-move select-none"
-                      title={`${comment} (Arraste para mover)`}
+                      className={`inline-block text-xs cursor-move select-none transition-all hover:shadow-md ${
+                        isExpanded ? 'max-w-[300px] whitespace-normal break-words' : 'whitespace-nowrap max-w-[200px] overflow-hidden text-ellipsis'
+                      }`}
+                      title={isExpanded ? "Duplo-clique para minimizar" : `${comment} (Duplo-clique para expandir)`}
                     >
-                      💬 {comment}
+                      💬 {displayComment}
                     </span>
                   </div>
                 );
@@ -1853,23 +1919,6 @@ const AnaliseRoteiroGame = () => {
             {/* ABA AVANÇADO */}
             <TabsContent value="avancado" className="space-y-4">
               <div>
-                <Label htmlFor="filtro-nicho-avancado">Filtrar por Nicho</Label>
-                <Select value={filtroNichoSelecionado} onValueChange={setFiltroNichoSelecionado}>
-                  <SelectTrigger id="filtro-nicho-avancado">
-                    <SelectValue placeholder="Selecione um nicho" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os nichos</SelectItem>
-                    {nichos.map((nicho) => (
-                      <SelectItem key={nicho.id} value={nicho.id}>
-                        {nicho.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
                 <Label htmlFor="filtro-cor-avancado">Filtrar por Categoria</Label>
                 <Select value={filtroCorSelecionada} onValueChange={setFiltroCorSelecionada}>
                   <SelectTrigger id="filtro-cor-avancado">
@@ -1892,8 +1941,50 @@ const AnaliseRoteiroGame = () => {
                 </Select>
               </div>
               
+              <div>
+                <Label htmlFor="filtro-estrutura">Filtrar por Estrutura do Roteiro</Label>
+                <Select 
+                  value={filtroEstruturaSelecionada} 
+                  onValueChange={setFiltroEstruturaSelecionada}
+                  disabled={filtroCorSelecionada !== cores.find(c => c.nome === "Conteúdo Notável")?.cor}
+                >
+                  <SelectTrigger id="filtro-estrutura">
+                    <SelectValue placeholder="Todas as estruturas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as estruturas</SelectItem>
+                    <SelectItem value="Valor prático">Valor prático</SelectItem>
+                    <SelectItem value="Historia">Historia</SelectItem>
+                    <SelectItem value="Prova/ argumentação">Prova/ argumentação</SelectItem>
+                    <SelectItem value="Ponto de identificação">Ponto de identificação</SelectItem>
+                    <SelectItem value="Opinião polêmica">Opinião polêmica</SelectItem>
+                    <SelectItem value="Fatos curiosos">Fatos curiosos</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Disponível apenas quando "Conteúdo Notável" estiver selecionado
+                </p>
+              </div>
+              
+              <div>
+                <Label htmlFor="filtro-nicho-avancado">Filtrar por Nicho</Label>
+                <Select value={filtroNichoSelecionado} onValueChange={setFiltroNichoSelecionado}>
+                  <SelectTrigger id="filtro-nicho-avancado">
+                    <SelectValue placeholder="Selecione um nicho" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os nichos</SelectItem>
+                    {nichos.map((nicho) => (
+                      <SelectItem key={nicho.id} value={nicho.id}>
+                        {nicho.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <p className="text-xs text-muted-foreground">
-                Combine nicho e categoria para filtros mais específicos
+                Combine categoria, estrutura e nicho para filtros mais específicos
               </p>
             </TabsContent>
           </Tabs>
@@ -1904,6 +1995,59 @@ const AnaliseRoteiroGame = () => {
             </Button>
             <Button onClick={handleAplicarFiltroGrifadas}>
               Aplicar Filtro
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Estrutura do Roteiro (Conteúdo Notável) */}
+      <Dialog open={showEstruturaDialog} onOpenChange={setShowEstruturaDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Qual a Estrutura do roteiro?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {[
+              "Valor prático",
+              "Historia",
+              "Prova/ argumentação",
+              "Ponto de identificação",
+              "Opinião polêmica",
+              "Fatos curiosos"
+            ].map((estrutura) => (
+              <Button
+                key={estrutura}
+                variant={estruturaSelecionada === estrutura ? "default" : "outline"}
+                className="w-full justify-start"
+                onClick={() => setEstruturaSelecionada(estrutura)}
+              >
+                {estrutura}
+              </Button>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => {
+              setShowEstruturaDialog(false);
+              setHighlightPendenteEstrutura(null);
+              setEstruturaSelecionada("");
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={() => {
+              if (highlightPendenteEstrutura && estruturaSelecionada) {
+                const highlightComEstrutura = {
+                  ...highlightPendenteEstrutura,
+                  annotation: estruturaSelecionada,
+                  annotations: [estruturaSelecionada]
+                };
+                setHighlightsHistory([...highlightsHistory, highlights]);
+                setHighlights([...highlights, highlightComEstrutura]);
+                setShowEstruturaDialog(false);
+                setHighlightPendenteEstrutura(null);
+                setEstruturaSelecionada("");
+              }
+            }} disabled={!estruturaSelecionada}>
+              Confirmar
             </Button>
           </div>
         </DialogContent>
