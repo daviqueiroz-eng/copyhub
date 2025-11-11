@@ -26,7 +26,6 @@ const Headlines = () => {
   const [controleQuantidade, setControleQuantidade] = useState("");
   const [controleDificuldades, setControleDificuldades] = useState("");
   const [controleHoras, setControleHoras] = useState("");
-  const [controlePlataformas, setControlePlataformas] = useState("");
   const {
     data: planilhas,
     isLoading
@@ -91,7 +90,7 @@ const Headlines = () => {
     setLink("");
   };
   const handleCreateControle = () => {
-    if (!controleData || !controleMentorado || !controleQuantidade || !controleHoras || !controlePlataformas) {
+    if (!controleData || !controleMentorado || !controleQuantidade || !controleHoras) {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha todos os campos obrigatórios.",
@@ -105,7 +104,7 @@ const Headlines = () => {
       quantidade_roteiros: controleQuantidade,
       maiores_dificuldades: controleDificuldades || null,
       horas_trabalhadas: controleHoras,
-      plataformas: controlePlataformas
+      plataformas: ""
     }, {
       onSuccess: () => {
         resetControleForm();
@@ -114,7 +113,7 @@ const Headlines = () => {
     });
   };
   const handleUpdateControle = () => {
-    if (!editingControleId || !controleData || !controleMentorado || !controleQuantidade || !controleHoras || !controlePlataformas) {
+    if (!editingControleId || !controleData || !controleMentorado || !controleQuantidade || !controleHoras) {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha todos os campos obrigatórios.",
@@ -129,7 +128,7 @@ const Headlines = () => {
       quantidade_roteiros: controleQuantidade,
       maiores_dificuldades: controleDificuldades || null,
       horas_trabalhadas: controleHoras,
-      plataformas: controlePlataformas
+      plataformas: ""
     }, {
       onSuccess: () => {
         resetControleForm();
@@ -144,7 +143,6 @@ const Headlines = () => {
     setControleQuantidade(registro.quantidade_roteiros);
     setControleDificuldades(registro.maiores_dificuldades || "");
     setControleHoras(registro.horas_trabalhadas);
-    setControlePlataformas(registro.plataformas);
   };
   const resetControleForm = () => {
     setControleData("");
@@ -152,7 +150,6 @@ const Headlines = () => {
     setControleQuantidade("");
     setControleDificuldades("");
     setControleHoras("");
-    setControlePlataformas("");
     setEditingControleId(null);
   };
   if (isLoading || isLoadingControle) {
@@ -292,10 +289,6 @@ const Headlines = () => {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="controle-plataformas">Plataformas *</Label>
-                    <Input id="controle-plataformas" value={controlePlataformas} onChange={e => setControlePlataformas(e.target.value)} placeholder="Ex: TikTok, Instagram" />
-                  </div>
-                  <div>
                     <Label htmlFor="controle-dificuldades">Maiores dificuldades</Label>
                     <Input id="controle-dificuldades" value={controleDificuldades} onChange={e => setControleDificuldades(e.target.value)} placeholder="Descreva as dificuldades encontradas" />
                   </div>
@@ -316,7 +309,6 @@ const Headlines = () => {
                   <TableHead className="text-primary-foreground font-semibold">Quantidade de roteiros</TableHead>
                   <TableHead className="text-primary-foreground font-semibold">Maiores dificuldades</TableHead>
                   <TableHead className="text-primary-foreground font-semibold">Horas trabalhadas</TableHead>
-                  
                   <TableHead className="text-primary-foreground font-semibold w-24">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -327,7 +319,6 @@ const Headlines = () => {
                     <TableCell>{registro.quantidade_roteiros}</TableCell>
                     <TableCell>{registro.maiores_dificuldades || "-"}</TableCell>
                     <TableCell>{registro.horas_trabalhadas}</TableCell>
-                    <TableCell>{registro.plataformas}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEditControle(registro)}>
@@ -368,10 +359,6 @@ const Headlines = () => {
                     <Label htmlFor="edit-controle-horas">Horas trabalhadas *</Label>
                     <Input id="edit-controle-horas" value={controleHoras} onChange={e => setControleHoras(e.target.value)} placeholder="Ex: 8h" />
                   </div>
-                </div>
-                <div>
-                  <Label htmlFor="edit-controle-plataformas">Plataformas *</Label>
-                  <Input id="edit-controle-plataformas" value={controlePlataformas} onChange={e => setControlePlataformas(e.target.value)} placeholder="Ex: TikTok, Instagram" />
                 </div>
                 <div>
                   <Label htmlFor="edit-controle-dificuldades">Maiores dificuldades</Label>
