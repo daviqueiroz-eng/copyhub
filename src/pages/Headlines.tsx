@@ -7,12 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, Copy, Settings } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, Pencil, Copy, Settings, TrendingUp, Calendar, CalendarDays, CalendarRange } from "lucide-react";
 import { usePlanilhas, useCreatePlanilha, useUpdatePlanilha, useDeletePlanilha } from "@/hooks/usePlanilhas";
 import { useControleProducao, useCreateControleProducao, useUpdateControleProducao, useDeleteControleProducao } from "@/hooks/useControleProducao";
 import { useMentoradosControle, useCreateMentoradoControle, useDeleteMentoradoControle } from "@/hooks/useMentoradosControle";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, differenceInDays, isToday, isThisWeek, isThisMonth, isThisYear, startOfDay } from "date-fns";
 const Headlines = () => {
   // Estados para Planilhas
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -28,6 +29,7 @@ const Headlines = () => {
   const [controleQuantidade, setControleQuantidade] = useState("");
   const [controleDificuldades, setControleDificuldades] = useState("");
   const [controleHoras, setControleHoras] = useState("");
+  const [controlePlataformas, setControlePlataformas] = useState("");
 
   // Estados para Gerenciar Mentorados
   const [isMentoradosOpen, setIsMentoradosOpen] = useState(false);
@@ -123,7 +125,7 @@ const Headlines = () => {
       quantidade_roteiros: controleQuantidade,
       maiores_dificuldades: controleDificuldades || null,
       horas_trabalhadas: controleHoras,
-      plataformas: ""
+      plataformas: controlePlataformas || ""
     }, {
       onSuccess: () => {
         resetControleForm();
@@ -149,7 +151,7 @@ const Headlines = () => {
       quantidade_roteiros: controleQuantidade,
       maiores_dificuldades: controleDificuldades || null,
       horas_trabalhadas: controleHoras,
-      plataformas: ""
+      plataformas: controlePlataformas || ""
     }, {
       onSuccess: () => {
         resetControleForm();
@@ -164,6 +166,7 @@ const Headlines = () => {
     setControleQuantidade(registro.quantidade_roteiros);
     setControleDificuldades(registro.maiores_dificuldades || "");
     setControleHoras(registro.horas_trabalhadas);
+    setControlePlataformas(registro.plataformas || "");
   };
   const resetControleForm = () => {
     setControleData("");
@@ -171,6 +174,7 @@ const Headlines = () => {
     setControleQuantidade("");
     setControleDificuldades("");
     setControleHoras("");
+    setControlePlataformas("");
     setEditingControleId(null);
   };
   const handleCreateMentorado = () => {
@@ -188,6 +192,52 @@ const Headlines = () => {
         setIsMentoradosOpen(false);
       }
     });
+  };
+
+  // Função para calcular status do mentorado
+  const calcularStatusMentorado = (nomeMentorado: string) => {
+    const registros = controleProducao?.filter(r => r.mentorado === nomeMentorado) || [];
+    
+    if (registros.length === 0) {
+      return { status: "sem registros", variant: "outline" as const, dias: null };
+    }
+
+    // Pegar o registro mais recente (já está ordenado por data DESC)
+    const ultimoRegistro = registros[0];
+    const dataRegistro = startOfDay(new Date(ultimoRegistro.data));
+    const hoje = startOfDay(new Date());
+    const diasDiff = differenceInDays(hoje, dataRegistro);
+
+    if (diasDiff === 0) {
+      return { status: "atualizado", variant: "default" as const, dias: 0 };
+    } else if (diasDiff === 1) {
+      return { status: "atrasado", variant: "secondary" as const, dias: 1 };
+    } else {
+      return { status: "muito atrasado", variant: "destructive" as const, dias: diasDiff };
+    }
+  };
+
+  // Função para calcular estatísticas de produção
+  const calcularEstatisticas = (nomeMentorado: string) => {
+    const registros = controleProducao?.filter(r => r.mentorado === nomeMentorado) || [];
+    
+    const hoje = registros
+      .filter(r => isToday(new Date(r.data)))
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const semana = registros
+      .filter(r => isThisWeek(new Date(r.data), { weekStartsOn: 0 }))
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const mes = registros
+      .filter(r => isThisMonth(new Date(r.data)))
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const ano = registros
+      .filter(r => isThisYear(new Date(r.data)))
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+
+    return { hoje, semana, mes, ano };
   };
 
   if (isLoading || isLoadingControle || isLoadingMentorados) {
@@ -347,17 +397,29 @@ const Headlines = () => {
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {mentorados?.map((mentorado) => (
-                  <Card 
-                    key={mentorado.id} 
-                    className="cursor-pointer transition-all hover:shadow-lg hover:scale-105 bg-gradient-to-br from-primary/10 to-primary/5"
-                    onClick={() => setMentoradoSelecionado(mentorado.nome)}
-                  >
-                    <CardContent className="p-6 flex items-center justify-center">
-                      <h3 className="text-xl font-bold text-center">{mentorado.nome}</h3>
-                    </CardContent>
-                  </Card>
-                ))}
+                {mentorados?.map((mentorado) => {
+                  const statusInfo = calcularStatusMentorado(mentorado.nome);
+                  
+                  return (
+                    <Card 
+                      key={mentorado.id} 
+                      className="cursor-pointer transition-all hover:shadow-lg hover:scale-105 bg-gradient-to-br from-primary/10 to-primary/5 relative"
+                      onClick={() => setMentoradoSelecionado(mentorado.nome)}
+                    >
+                      <CardContent className="p-6 flex flex-col items-center justify-center gap-2">
+                        <Badge variant={statusInfo.variant} className="absolute top-2 right-2">
+                          {statusInfo.status}
+                        </Badge>
+                        <h3 className="text-xl font-bold text-center">{mentorado.nome}</h3>
+                        {statusInfo.dias !== null && statusInfo.dias > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {statusInfo.dias} {statusInfo.dias === 1 ? 'dia' : 'dias'}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           ) : (
@@ -390,12 +452,16 @@ const Headlines = () => {
                         </div>
                         <div>
                           <Label htmlFor="controle-quantidade">Quantidade de roteiros *</Label>
-                          <Input id="controle-quantidade" value={controleQuantidade} onChange={e => setControleQuantidade(e.target.value)} placeholder="Ex: 5 roteiros" />
+                          <Input id="controle-quantidade" value={controleQuantidade} onChange={e => setControleQuantidade(e.target.value)} placeholder="Ex: 5" />
                         </div>
                       </div>
                       <div>
                         <Label htmlFor="controle-horas">Horas trabalhadas *</Label>
                         <Input id="controle-horas" value={controleHoras} onChange={e => setControleHoras(e.target.value)} placeholder="Ex: 8h" />
+                      </div>
+                      <div>
+                        <Label htmlFor="controle-plataformas">Plataformas em que você fez o roteiro</Label>
+                        <Input id="controle-plataformas" value={controlePlataformas} onChange={e => setControlePlataformas(e.target.value)} placeholder="Ex: YouTube, Instagram, TikTok" />
                       </div>
                       <div>
                         <Label htmlFor="controle-dificuldades">Maiores dificuldades</Label>
@@ -409,14 +475,58 @@ const Headlines = () => {
                 </Dialog>
               </div>
 
+              {/* Seção de Estatísticas */}
+              {(() => {
+                const stats = calcularEstatisticas(mentoradoSelecionado);
+                return (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5" />
+                      Estatísticas de Produção
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5">
+                        <CardContent className="p-6 flex flex-col items-center">
+                          <Calendar className="h-8 w-8 text-green-600 mb-2" />
+                          <p className="text-3xl font-bold text-green-700">{stats.hoje}</p>
+                          <p className="text-sm text-muted-foreground">Hoje</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5">
+                        <CardContent className="p-6 flex flex-col items-center">
+                          <CalendarDays className="h-8 w-8 text-blue-600 mb-2" />
+                          <p className="text-3xl font-bold text-blue-700">{stats.semana}</p>
+                          <p className="text-sm text-muted-foreground">Esta Semana</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5">
+                        <CardContent className="p-6 flex flex-col items-center">
+                          <CalendarRange className="h-8 w-8 text-purple-600 mb-2" />
+                          <p className="text-3xl font-bold text-purple-700">{stats.mes}</p>
+                          <p className="text-sm text-muted-foreground">Este Mês</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-orange-500/10 to-orange-500/5">
+                        <CardContent className="p-6 flex flex-col items-center">
+                          <Calendar className="h-8 w-8 text-orange-600 mb-2" />
+                          <p className="text-3xl font-bold text-orange-700">{stats.ano}</p>
+                          <p className="text-sm text-muted-foreground">Este Ano</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="border rounded-lg overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]">
                       <TableHead className="text-primary-foreground font-semibold">Data</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold">Quantidade de roteiros</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold">Maiores dificuldades</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold">Horas trabalhadas</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold">Quantidade</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold">Plataformas</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold">Dificuldades</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold">Horas</TableHead>
                       <TableHead className="text-primary-foreground font-semibold w-24">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -426,6 +536,7 @@ const Headlines = () => {
                       .map(registro => <TableRow key={registro.id}>
                         <TableCell className="font-medium">{format(new Date(registro.data), "dd/MM/yyyy")}</TableCell>
                         <TableCell>{registro.quantidade_roteiros}</TableCell>
+                        <TableCell>{registro.plataformas || "-"}</TableCell>
                         <TableCell>{registro.maiores_dificuldades || "-"}</TableCell>
                         <TableCell>{registro.horas_trabalhadas}</TableCell>
                         <TableCell>
@@ -457,12 +568,16 @@ const Headlines = () => {
                       </div>
                       <div>
                         <Label htmlFor="edit-controle-quantidade">Quantidade de roteiros *</Label>
-                        <Input id="edit-controle-quantidade" value={controleQuantidade} onChange={e => setControleQuantidade(e.target.value)} placeholder="Ex: 5 roteiros" />
+                        <Input id="edit-controle-quantidade" value={controleQuantidade} onChange={e => setControleQuantidade(e.target.value)} placeholder="Ex: 5" />
                       </div>
                     </div>
                     <div>
                       <Label htmlFor="edit-controle-horas">Horas trabalhadas *</Label>
                       <Input id="edit-controle-horas" value={controleHoras} onChange={e => setControleHoras(e.target.value)} placeholder="Ex: 8h" />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-controle-plataformas">Plataformas em que você fez o roteiro</Label>
+                      <Input id="edit-controle-plataformas" value={controlePlataformas} onChange={e => setControlePlataformas(e.target.value)} placeholder="Ex: YouTube, Instagram, TikTok" />
                     </div>
                     <div>
                       <Label htmlFor="edit-controle-dificuldades">Maiores dificuldades</Label>
