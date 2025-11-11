@@ -6,9 +6,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Pencil, Copy } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Trash2, Pencil, Copy, Settings } from "lucide-react";
 import { usePlanilhas, useCreatePlanilha, useUpdatePlanilha, useDeletePlanilha } from "@/hooks/usePlanilhas";
 import { useControleProducao, useCreateControleProducao, useUpdateControleProducao, useDeleteControleProducao } from "@/hooks/useControleProducao";
+import { useMentoradosControle, useCreateMentoradoControle, useDeleteMentoradoControle } from "@/hooks/useMentoradosControle";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 const Headlines = () => {
@@ -26,6 +28,10 @@ const Headlines = () => {
   const [controleQuantidade, setControleQuantidade] = useState("");
   const [controleDificuldades, setControleDificuldades] = useState("");
   const [controleHoras, setControleHoras] = useState("");
+
+  // Estados para Gerenciar Mentorados
+  const [isMentoradosOpen, setIsMentoradosOpen] = useState(false);
+  const [novoMentorado, setNovoMentorado] = useState("");
   const {
     data: planilhas,
     isLoading
@@ -40,6 +46,14 @@ const Headlines = () => {
   const createControle = useCreateControleProducao();
   const updateControle = useUpdateControleProducao();
   const deleteControle = useDeleteControleProducao();
+  
+  const {
+    data: mentorados,
+    isLoading: isLoadingMentorados
+  } = useMentoradosControle();
+  const createMentorado = useCreateMentoradoControle();
+  const deleteMentorado = useDeleteMentoradoControle();
+  
   const {
     toast
   } = useToast();
@@ -152,7 +166,24 @@ const Headlines = () => {
     setControleHoras("");
     setEditingControleId(null);
   };
-  if (isLoading || isLoadingControle) {
+  const handleCreateMentorado = () => {
+    if (!novoMentorado.trim()) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Digite o nome do mentorado.",
+        variant: "destructive"
+      });
+      return;
+    }
+    createMentorado.mutate({ nome: novoMentorado }, {
+      onSuccess: () => {
+        setNovoMentorado("");
+        setIsMentoradosOpen(false);
+      }
+    });
+  };
+
+  if (isLoading || isLoadingControle || isLoadingMentorados) {
     return <div className="flex items-center justify-center h-screen">
         <p className="text-muted-foreground">Carregando...</p>
       </div>;
@@ -255,7 +286,7 @@ const Headlines = () => {
 
         {/* Nova Aba de Controle de Produção */}
         <TabsContent value="controle">
-          <div className="mb-6">
+          <div className="mb-6 flex gap-2">
             <Dialog open={isControleOpen} onOpenChange={setIsControleOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -275,7 +306,18 @@ const Headlines = () => {
                     </div>
                     <div>
                       <Label htmlFor="controle-mentorado">Mentorado *</Label>
-                      <Input id="controle-mentorado" value={controleMentorado} onChange={e => setControleMentorado(e.target.value)} placeholder="Nome do mentorado" />
+                      <Select value={controleMentorado} onValueChange={setControleMentorado}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o mentorado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mentorados?.map((mentorado) => (
+                            <SelectItem key={mentorado.id} value={mentorado.nome}>
+                              {mentorado.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -295,6 +337,54 @@ const Headlines = () => {
                   <Button onClick={handleCreateControle} className="w-full">
                     Registrar
                   </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isMentoradosOpen} onOpenChange={setIsMentoradosOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Gerenciar Mentorados
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Gerenciar Mentorados</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="novo-mentorado">Adicionar Novo Mentorado</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        id="novo-mentorado" 
+                        value={novoMentorado} 
+                        onChange={e => setNovoMentorado(e.target.value)} 
+                        placeholder="Nome do mentorado" 
+                      />
+                      <Button onClick={handleCreateMentorado}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-semibold mb-2">Mentorados Cadastrados</h4>
+                    <div className="space-y-2">
+                      {mentorados?.map((mentorado) => (
+                        <div key={mentorado.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                          <span>{mentorado.nome}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => deleteMentorado.mutate(mentorado.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -344,12 +434,23 @@ const Headlines = () => {
                   <div>
                     <Label htmlFor="edit-controle-data">Data *</Label>
                     <Input id="edit-controle-data" type="date" value={controleData} onChange={e => setControleData(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-controle-mentorado">Mentorado *</Label>
+                      <Select value={controleMentorado} onValueChange={setControleMentorado}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o mentorado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mentorados?.map((mentorado) => (
+                            <SelectItem key={mentorado.id} value={mentorado.nome}>
+                              {mentorado.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="edit-controle-mentorado">Mentorado *</Label>
-                    <Input id="edit-controle-mentorado" value={controleMentorado} onChange={e => setControleMentorado(e.target.value)} placeholder="Nome do mentorado" />
-                  </div>
-                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="edit-controle-quantidade">Quantidade de roteiros *</Label>
