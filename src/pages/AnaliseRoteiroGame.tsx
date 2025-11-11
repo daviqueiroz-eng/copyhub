@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useUserRole } from "@/hooks/useAuth";
 import { useRoteiros, useCreateRoteiro, useDeleteRoteiro } from "@/hooks/useRoteiros";
-import { useProgressoRoteiros, useCompletarRoteiro } from "@/hooks/useProgressoRoteiros";
+import { useProgressoRoteiros, useCompletarRoteiro, useDeleteProgressoRoteiro } from "@/hooks/useProgressoRoteiros";
 import { useCoresAnalise } from "@/hooks/useCoresAnalise";
 import { useNichos } from "@/hooks/useNichos";
 import { useAnalysisStreak } from "@/hooks/useAnalysisStreak";
@@ -55,6 +55,7 @@ const AnaliseRoteiroGame = () => {
   const completarRoteiro = useCompletarRoteiro();
   const createRoteiro = useCreateRoteiro();
   const deleteRoteiro = useDeleteRoteiro();
+  const deleteProgressoRoteiro = useDeleteProgressoRoteiro();
   const { streak, updateStreak } = useAnalysisStreak();
   const { data: medalhasUsuario = [] } = useMedalhasUsuario();
 
@@ -92,11 +93,12 @@ const AnaliseRoteiroGame = () => {
     nicho_id: "",
     link_video: "",
     ordem: 0,
+    criador_conteudo: "",
   });
   
   // Dialog roteiro avulso
   const [showAvulsoDialog, setShowAvulsoDialog] = useState(false);
-  const [avulsoForm, setAvulsoForm] = useState({ titulo: "", conteudo: "" });
+  const [avulsoForm, setAvulsoForm] = useState({ titulo: "", conteudo: "", criador_conteudo: "" });
   
   // Campos de análise
   const [estruturaInvisivel, setEstruturaInvisivel] = useState("");
@@ -717,10 +719,11 @@ const AnaliseRoteiroGame = () => {
       ordem: novoRoteiroForm.ordem,
       is_private: false,
       user_id: undefined,
+      criador_conteudo: novoRoteiroForm.criador_conteudo || undefined,
     }, {
       onSuccess: () => {
         setShowNovoRoteiroDialog(false);
-        setNovoRoteiroForm({ titulo: "", conteudo: "", nicho_id: "", link_video: "", ordem: 0 });
+        setNovoRoteiroForm({ titulo: "", conteudo: "", nicho_id: "", link_video: "", ordem: 0, criador_conteudo: "" });
         toast({
           title: "Roteiro criado",
           description: "O novo roteiro foi adicionado e está visível para todos.",
@@ -745,10 +748,11 @@ const AnaliseRoteiroGame = () => {
       ordem: 999,
       is_private: true,
       user_id: user?.id,
+      criador_conteudo: avulsoForm.criador_conteudo || undefined,
     }, {
       onSuccess: (data) => {
         setShowAvulsoDialog(false);
-        setAvulsoForm({ titulo: "", conteudo: "" });
+        setAvulsoForm({ titulo: "", conteudo: "", criador_conteudo: "" });
         setIsFocusMode(true);
         handleSelectRoteiro(data.id);
         toast({
@@ -1804,6 +1808,15 @@ const AnaliseRoteiroGame = () => {
               />
             </div>
             <div>
+              <Label htmlFor="novo-criador">Criador de Conteúdo</Label>
+              <Input
+                id="novo-criador"
+                value={novoRoteiroForm.criador_conteudo}
+                onChange={(e) => setNovoRoteiroForm({ ...novoRoteiroForm, criador_conteudo: e.target.value })}
+                placeholder="Ex: João Silva, Canal XYZ, etc."
+              />
+            </div>
+            <div>
               <Label htmlFor="novo-conteudo">Conteúdo *</Label>
               <Textarea
                 id="novo-conteudo"
@@ -1887,6 +1900,15 @@ const AnaliseRoteiroGame = () => {
                 value={avulsoForm.titulo}
                 onChange={(e) => setAvulsoForm({ ...avulsoForm, titulo: e.target.value })}
                 placeholder="Título do roteiro"
+              />
+            </div>
+            <div>
+              <Label htmlFor="avulso-criador">Criador de Conteúdo</Label>
+              <Input
+                id="avulso-criador"
+                value={avulsoForm.criador_conteudo}
+                onChange={(e) => setAvulsoForm({ ...avulsoForm, criador_conteudo: e.target.value })}
+                placeholder="Ex: João Silva, Canal XYZ, etc."
               />
             </div>
             <div>
@@ -2149,6 +2171,10 @@ const AnaliseRoteiroGame = () => {
                 <RoteiroAnaliseView
                   progresso={selectedProgressoItem}
                   roteiro={selectedRoteiroForView}
+                  onDelete={() => {
+                    setSelectedAnalysis(null);
+                    setShowAnalysesDialog(false);
+                  }}
                 />
               )}
             </div>

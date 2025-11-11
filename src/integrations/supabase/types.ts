@@ -694,6 +694,7 @@ export type Database = {
         Row: {
           conteudo: string
           created_at: string
+          criador_conteudo: string | null
           id: string
           is_private: boolean
           link_video: string | null
@@ -706,6 +707,7 @@ export type Database = {
         Insert: {
           conteudo: string
           created_at?: string
+          criador_conteudo?: string | null
           id?: string
           is_private?: boolean
           link_video?: string | null
@@ -718,6 +720,7 @@ export type Database = {
         Update: {
           conteudo?: string
           created_at?: string
+          criador_conteudo?: string | null
           id?: string
           is_private?: boolean
           link_video?: string | null

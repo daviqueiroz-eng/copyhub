@@ -2,16 +2,29 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ExternalLink } from "lucide-react";
-import { ProgressoRoteiro } from "@/hooks/useProgressoRoteiros";
+import { ExternalLink, Trash2 } from "lucide-react";
+import { ProgressoRoteiro, useDeleteProgressoRoteiro } from "@/hooks/useProgressoRoteiros";
 import { Roteiro } from "@/hooks/useRoteiros";
 import { useCoresAnalise } from "@/hooks/useCoresAnalise";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 interface RoteiroAnaliseViewProps {
   progresso: ProgressoRoteiro;
   roteiro: Roteiro;
+  onDelete?: () => void;
 }
 
 interface Highlight {
@@ -25,8 +38,16 @@ interface Highlight {
   commentPositions?: Record<number, { x: number; y: number }>;
 }
 
-export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewProps) => {
+export const RoteiroAnaliseView = ({ progresso, roteiro, onDelete }: RoteiroAnaliseViewProps) => {
   const { data: cores } = useCoresAnalise();
+  const deleteProgressoRoteiro = useDeleteProgressoRoteiro();
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
+  const handleDeleteAnalysis = async () => {
+    await deleteProgressoRoteiro.mutateAsync(progresso.id);
+    setShowDeleteAlert(false);
+    if (onDelete) onDelete();
+  };
 
   const renderHighlightedText = () => {
     if (!progresso.sublinhados || !Array.isArray(progresso.sublinhados) || progresso.sublinhados.length === 0) {
@@ -40,6 +61,7 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
     let lastIndex = 0;
 
     sortedHighlights.forEach((highlight, idx) => {
+      // Texto antes do highlight
       if (highlight.startPos > lastIndex) {
         elements.push(
           <span key={`text-${idx}`}>
@@ -48,71 +70,83 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
         );
       }
 
-      // Pegar todos os comentários (novo formato ou fallback)
+      // Pegar comentários
       const comments = highlight.annotations && highlight.annotations.length > 0
         ? highlight.annotations
         : highlight.annotation
         ? [highlight.annotation]
         : [];
 
-      // Se tiver comentários, criar wrapper com badges posicionados
-      if (comments.length > 0) {
-        elements.push(
-          <span key={`wrapper-${idx}`} className="relative inline-block">
-            <mark
-              style={{ backgroundColor: highlight.color }}
-              className="rounded px-0.5 text-white font-medium"
-            >
-              {highlight.text}
-            </mark>
-            {/* Renderizar cada comentário */}
-            {comments.map((comment, i) => {
-              const customPos = highlight.commentPositions?.[i];
-              const hasCustomPos = customPos !== undefined;
-              
-              return (
-                <span
-                  key={`comment-${idx}-${i}`}
-                  className="absolute z-10 inline-block max-w-[250px]"
-                  style={
-                    hasCustomPos
-                      ? {
-                          left: `${customPos.x}px`,
-                          top: `${customPos.y}px`,
-                        }
-                      : {
-                          left: '100%',
-                          top: '0',
-                          marginLeft: '8px',
-                        }
-                  }
-                >
-                  <span 
-                    className="inline-block text-xs bg-yellow-100 dark:bg-yellow-900 text-foreground border border-border rounded px-2 py-1 shadow-md whitespace-normal break-words"
-                    style={{ backgroundColor: highlight.color, opacity: 0.95 }}
-                  >
-                    💬 {comment}
-                  </span>
-                </span>
-              );
-            })}
-          </span>
-        );
-      } else {
-        elements.push(
+      // Highlight com comentários
+      elements.push(
+        <span key={`wrapper-${idx}`} className="relative inline-block">
           <mark
-            key={`highlight-${idx}`}
-            style={{ backgroundColor: highlight.color }}
-            className="rounded px-0.5 text-white font-medium"
+            style={{ 
+              backgroundColor: highlight.color,
+              color: '#fff',
+              padding: '2px 4px',
+              borderRadius: '3px',
+              fontWeight: 500
+            }}
           >
             {highlight.text}
           </mark>
-        );
-      }
+
+          {/* Renderizar comentários com posicionamento igual à análise */}
+          {comments.length > 0 && (
+            <div className="relative">
+              {comments.map((comment, i) => {
+                const customPos = highlight.commentPositions?.[i];
+                const hasCustomPos = customPos !== undefined;
+                
+                const positionStyle = hasCustomPos
+                  ? {
+                      position: 'absolute' as const,
+                      left: customPos.x,
+                      top: customPos.y,
+                      zIndex: 50,
+                    }
+                  : {};
+                
+                const positionClasses = !hasCustomPos
+                  ? 'absolute z-10 left-full ml-2 top-0'
+                  : '';
+                
+                return (
+                  <div
+                    key={`comment-${idx}-${i}`}
+                    className={positionClasses}
+                    style={{
+                      ...positionStyle,
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                    }}
+                  >
+                    <span
+                      style={{
+                        backgroundColor: highlight.color,
+                        color: '#000',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        border: '1px solid rgba(0,0,0,0.1)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      }}
+                      className="inline-block text-xs select-none max-w-[300px] whitespace-normal break-words"
+                    >
+                      💬 {comment}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </span>
+      );
 
       lastIndex = highlight.endPos;
     });
 
+    // Texto final
     if (lastIndex < roteiro.conteudo.length) {
       elements.push(
         <span key="text-end">
@@ -128,7 +162,31 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
     <div className="flex flex-col gap-4 min-h-[600px]">
       {/* Header */}
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold">{roteiro.titulo}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">{roteiro.titulo}</h2>
+          <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Deletar Análise
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja deletar esta análise? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAnalysis}>
+                  Deletar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span>
             Completado em: {progresso.data_completado ? format(new Date(progresso.data_completado), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "N/A"}

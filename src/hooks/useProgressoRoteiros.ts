@@ -133,3 +133,34 @@ export const useCompletarRoteiro = () => {
     },
   });
 };
+
+export const useDeleteProgressoRoteiro = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (progressoId: string) => {
+      const { error } = await supabase
+        .from("progresso_roteiros")
+        .delete()
+        .eq("id", progressoId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["progresso-roteiros"] });
+      queryClient.invalidateQueries({ queryKey: ["medalhas-usuario"] });
+      toast({
+        title: "Análise deletada",
+        description: "Sua análise foi removida com sucesso.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao deletar",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+};
