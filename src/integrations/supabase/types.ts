@@ -120,6 +120,42 @@ export type Database = {
           },
         ]
       }
+      controle_producao: {
+        Row: {
+          created_at: string
+          data: string
+          horas_trabalhadas: string
+          id: string
+          maiores_dificuldades: string | null
+          mentorado: string
+          plataformas: string
+          quantidade_roteiros: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          horas_trabalhadas: string
+          id?: string
+          maiores_dificuldades?: string | null
+          mentorado: string
+          plataformas: string
+          quantidade_roteiros: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          horas_trabalhadas?: string
+          id?: string
+          maiores_dificuldades?: string | null
+          mentorado?: string
+          plataformas?: string
+          quantidade_roteiros?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cores_analise: {
         Row: {
           cor: string
