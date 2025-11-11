@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Pencil, Copy, Settings, TrendingUp, Calendar, CalendarDays, CalendarRange } from "lucide-react";
+import { Plus, Trash2, Pencil, Copy, Settings, TrendingUp, Calendar, CalendarDays, CalendarRange, CalendarClock } from "lucide-react";
 import { usePlanilhas, useCreatePlanilha, useUpdatePlanilha, useDeletePlanilha } from "@/hooks/usePlanilhas";
 import { useControleProducao, useCreateControleProducao, useUpdateControleProducao, useDeleteControleProducao } from "@/hooks/useControleProducao";
 import { useMentoradosControle, useCreateMentoradoControle, useDeleteMentoradoControle } from "@/hooks/useMentoradosControle";
@@ -210,10 +210,8 @@ const Headlines = () => {
 
     if (diasDiff === 0) {
       return { status: "atualizado", variant: "default" as const, dias: 0 };
-    } else if (diasDiff === 1) {
-      return { status: "atrasado", variant: "secondary" as const, dias: 1 };
     } else {
-      return { status: "muito atrasado", variant: "destructive" as const, dias: diasDiff };
+      return { status: "atrasado", variant: "destructive" as const, dias: diasDiff };
     }
   };
 
@@ -235,6 +233,31 @@ const Headlines = () => {
     
     const ano = registros
       .filter(r => isThisYear(new Date(r.data)))
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+
+    return { hoje, semana, mes, ano };
+  };
+
+  // Função para calcular estatísticas gerais (todos os mentorados)
+  const calcularEstatisticasGerais = () => {
+    if (!controleProducao) return { hoje: 0, semana: 0, mes: 0, ano: 0 };
+
+    const todosRegistros = controleProducao;
+
+    const hoje = todosRegistros
+      .filter((r) => isToday(new Date(r.data)))
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+
+    const semana = todosRegistros
+      .filter((r) => isThisWeek(new Date(r.data), { weekStartsOn: 0 }))
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+
+    const mes = todosRegistros
+      .filter((r) => isThisMonth(new Date(r.data)))
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+
+    const ano = todosRegistros
+      .filter((r) => isThisYear(new Date(r.data)))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
 
     return { hoje, semana, mes, ano };
@@ -394,6 +417,81 @@ const Headlines = () => {
                     </div>
                   </DialogContent>
                 </Dialog>
+              </div>
+
+              {/* Estatísticas Gerais - Todos os Mentorados */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4">
+                  Estatísticas Gerais - Todos os Mentorados
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {(() => {
+                    const stats = calcularEstatisticasGerais();
+                    return (
+                      <>
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                              Hoje
+                            </CardTitle>
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">{stats.hoje}</div>
+                            <p className="text-xs text-muted-foreground">
+                              roteiros produzidos
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                              Esta Semana
+                            </CardTitle>
+                            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">{stats.semana}</div>
+                            <p className="text-xs text-muted-foreground">
+                              roteiros produzidos
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                              Este Mês
+                            </CardTitle>
+                            <CalendarRange className="h-4 w-4 text-muted-foreground" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">{stats.mes}</div>
+                            <p className="text-xs text-muted-foreground">
+                              roteiros produzidos
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                              Este Ano
+                            </CardTitle>
+                            <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold">{stats.ano}</div>
+                            <p className="text-xs text-muted-foreground">
+                              roteiros produzidos
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
