@@ -22,6 +22,16 @@ const formatDateWithoutTimezone = (dateString: string) => {
   return `${day}/${month}/${year}`;
 };
 
+// Função helper para comparar se uma data é hoje (ignora timezone)
+const isSameDay = (date1: Date | string, date2: Date | string) => {
+  const d1 = typeof date1 === 'string' ? new Date(date1 + 'T00:00:00') : date1;
+  const d2 = typeof date2 === 'string' ? new Date(date2 + 'T00:00:00') : date2;
+  
+  return d1.getFullYear() === d2.getFullYear() &&
+         d1.getMonth() === d2.getMonth() &&
+         d1.getDate() === d2.getDate();
+};
+
 const Headlines = () => {
   // Estados para Planilhas
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -212,13 +222,15 @@ const Headlines = () => {
 
     // Pegar o registro mais recente (já está ordenado por data DESC)
     const ultimoRegistro = registros[0];
-    const dataRegistro = startOfDay(new Date(ultimoRegistro.data));
-    const hoje = startOfDay(new Date());
-    const diasDiff = differenceInDays(hoje, dataRegistro);
-
-    if (diasDiff === 0) {
+    const hoje = new Date();
+    
+    // Comparar apenas a data (dia/mês/ano)
+    if (isSameDay(ultimoRegistro.data, hoje)) {
       return { status: "atualizado", variant: "default" as const, dias: 0 };
     } else {
+      const dataRegistro = new Date(ultimoRegistro.data + 'T00:00:00');
+      const hojeStart = startOfDay(hoje);
+      const diasDiff = differenceInDays(hojeStart, dataRegistro);
       return { status: "atrasado", variant: "destructive" as const, dias: diasDiff };
     }
   };
@@ -226,24 +238,25 @@ const Headlines = () => {
   // Função para calcular estatísticas de produção
   const calcularEstatisticas = (nomeMentorado: string) => {
     const registros = controleProducao?.filter(r => r.mentorado === nomeMentorado) || [];
+    const hoje = new Date();
     
-    const hoje = registros
-      .filter(r => isToday(new Date(r.data)))
+    const hojeTotal = registros
+      .filter(r => isSameDay(r.data, hoje))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
     
     const semana = registros
-      .filter(r => isThisWeek(new Date(r.data), { weekStartsOn: 0 }))
+      .filter(r => isThisWeek(new Date(r.data + 'T00:00:00'), { weekStartsOn: 0 }))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
     
     const mes = registros
-      .filter(r => isThisMonth(new Date(r.data)))
+      .filter(r => isThisMonth(new Date(r.data + 'T00:00:00')))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
     
     const ano = registros
-      .filter(r => isThisYear(new Date(r.data)))
+      .filter(r => isThisYear(new Date(r.data + 'T00:00:00')))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
 
-    return { hoje, semana, mes, ano };
+    return { hoje: hojeTotal, semana, mes, ano };
   };
 
   // Função para calcular estatísticas gerais (todos os mentorados)
@@ -260,28 +273,25 @@ const Headlines = () => {
 
     // Hoje vs Ontem
     const hoje = todosRegistros
-      .filter((r) => isToday(new Date(r.data)))
+      .filter((r) => isSameDay(r.data, agora))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
     
-    const ontem = todosRegistros
-      .filter((r) => {
-        const dataRegistro = new Date(r.data);
-        const dataOntem = subDays(agora, 1);
-        return dataRegistro.toDateString() === dataOntem.toDateString();
-      })
+    const ontem = subDays(agora, 1);
+    const ontemTotal = todosRegistros
+      .filter((r) => isSameDay(r.data, ontem))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
     
-    const crescimentoHoje = ontem === 0 ? (hoje > 0 ? 100 : 0) : ((hoje - ontem) / ontem) * 100;
+    const crescimentoHoje = ontemTotal === 0 ? (hoje > 0 ? 100 : 0) : ((hoje - ontemTotal) / ontemTotal) * 100;
 
     // Esta Semana vs Semana Passada
     const semana = todosRegistros
-      .filter((r) => isThisWeek(new Date(r.data), { weekStartsOn: 0 }))
+      .filter((r) => isThisWeek(new Date(r.data + 'T00:00:00'), { weekStartsOn: 0 }))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
     
     const inicioSemanaPassada = subWeeks(agora, 1);
     const semanaPassada = todosRegistros
       .filter((r) => {
-        const dataRegistro = new Date(r.data);
+        const dataRegistro = new Date(r.data + 'T00:00:00');
         return isWithinInterval(dataRegistro, {
           start: subDays(inicioSemanaPassada, dataRegistro.getDay()),
           end: subDays(inicioSemanaPassada, dataRegistro.getDay() - 6)
@@ -293,12 +303,12 @@ const Headlines = () => {
 
     // Este Mês vs Mês Passado
     const mes = todosRegistros
-      .filter((r) => isThisMonth(new Date(r.data)))
+      .filter((r) => isThisMonth(new Date(r.data + 'T00:00:00')))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
     
     const mesPassado = todosRegistros
       .filter((r) => {
-        const dataRegistro = new Date(r.data);
+        const dataRegistro = new Date(r.data + 'T00:00:00');
         const dataComparacao = subMonths(agora, 1);
         return dataRegistro.getMonth() === dataComparacao.getMonth() &&
                dataRegistro.getFullYear() === dataComparacao.getFullYear();
@@ -309,12 +319,12 @@ const Headlines = () => {
 
     // Este Ano vs Ano Passado
     const ano = todosRegistros
-      .filter((r) => isThisYear(new Date(r.data)))
+      .filter((r) => isThisYear(new Date(r.data + 'T00:00:00')))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
     
     const anoPassado = todosRegistros
       .filter((r) => {
-        const dataRegistro = new Date(r.data);
+        const dataRegistro = new Date(r.data + 'T00:00:00');
         const dataComparacao = subYears(agora, 1);
         return dataRegistro.getFullYear() === dataComparacao.getFullYear();
       })
