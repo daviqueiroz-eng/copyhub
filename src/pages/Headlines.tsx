@@ -14,6 +14,14 @@ import { useControleProducao, useCreateControleProducao, useUpdateControleProduc
 import { useMentoradosControle, useCreateMentoradoControle, useDeleteMentoradoControle } from "@/hooks/useMentoradosControle";
 import { useToast } from "@/hooks/use-toast";
 import { format, differenceInDays, isToday, isThisWeek, isThisMonth, isThisYear, startOfDay } from "date-fns";
+
+// Função helper para evitar problemas de timezone ao exibir datas
+const formatDateWithoutTimezone = (dateString: string) => {
+  if (!dateString) return "";
+  const [year, month, day] = dateString.split('T')[0].split('-');
+  return `${day}/${month}/${year}`;
+};
+
 const Headlines = () => {
   // Estados para Planilhas
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -161,7 +169,7 @@ const Headlines = () => {
   };
   const openEditControle = (registro: any) => {
     setEditingControleId(registro.id);
-    setControleData(registro.data);
+    setControleData(registro.data.split('T')[0]); // Remove parte de hora se existir
     setControleMentorado(registro.mentorado);
     setControleQuantidade(registro.quantidade_roteiros);
     setControleDificuldades(registro.maiores_dificuldades || "");
@@ -373,23 +381,23 @@ const Headlines = () => {
                 <Dialog open={isMentoradosOpen} onOpenChange={setIsMentoradosOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Gerenciar Mentorados
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar Novo Copy
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Gerenciar Mentorados</DialogTitle>
+                      <DialogTitle>Adicionar Novo Copy</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 mt-4">
                       <div>
-                        <Label htmlFor="novo-mentorado">Adicionar Novo Mentorado</Label>
+                        <Label htmlFor="novo-mentorado">Nome do Novo Copy</Label>
                         <div className="flex gap-2">
                           <Input 
                             id="novo-mentorado" 
                             value={novoMentorado} 
                             onChange={e => setNovoMentorado(e.target.value)} 
-                            placeholder="Nome do mentorado" 
+                            placeholder="Digite o nome do copy"
                           />
                           <Button onClick={handleCreateMentorado}>
                             <Plus className="h-4 w-4" />
@@ -632,7 +640,7 @@ const Headlines = () => {
                     {controleProducao
                       ?.filter(registro => registro.mentorado === mentoradoSelecionado)
                       .map(registro => <TableRow key={registro.id}>
-                        <TableCell className="font-medium">{format(new Date(registro.data), "dd/MM/yyyy")}</TableCell>
+                        <TableCell className="font-medium">{formatDateWithoutTimezone(registro.data)}</TableCell>
                         <TableCell>{registro.quantidade_roteiros}</TableCell>
                         <TableCell>{registro.plataformas || "-"}</TableCell>
                         <TableCell>{registro.maiores_dificuldades || "-"}</TableCell>
