@@ -46,38 +46,37 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
         );
       }
 
-      const highlightElement = (
-        <mark
-          key={`highlight-${idx}`}
-          style={{ backgroundColor: highlight.color }}
-          className="rounded px-0.5 relative"
-        >
-          {highlight.text}
-          {highlight.annotation && (
-            <span className="ml-1 text-xs">📝</span>
-          )}
-        </mark>
-      );
-
-      // Se tiver anotação, envolver em tooltip
+      // Se tiver anotação, criar wrapper com badge flutuante
       if (highlight.annotation) {
         elements.push(
-          <TooltipProvider key={`tooltip-${idx}`}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {highlightElement}
-              </TooltipTrigger>
-              <TooltipContent 
-                side="top" 
-                className="max-w-xs bg-popover text-popover-foreground p-3"
+          <span key={`wrapper-${idx}`} className="relative inline-block">
+            <mark
+              style={{ backgroundColor: highlight.color }}
+              className="rounded px-0.5"
+            >
+              {highlight.text}
+            </mark>
+            {/* Comentário visível como badge flutuante */}
+            <span className="absolute left-full top-0 ml-2 z-10 inline-block max-w-[250px]">
+              <span 
+                className="inline-block text-xs bg-yellow-100 dark:bg-yellow-900 text-foreground border border-border rounded px-2 py-1 shadow-md whitespace-normal break-words"
+                style={{ backgroundColor: highlight.color, opacity: 0.95 }}
               >
-                <p className="text-xs whitespace-pre-wrap">{highlight.annotation}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+                💬 {highlight.annotation}
+              </span>
+            </span>
+          </span>
         );
       } else {
-        elements.push(highlightElement);
+        elements.push(
+          <mark
+            key={`highlight-${idx}`}
+            style={{ backgroundColor: highlight.color }}
+            className="rounded px-0.5"
+          >
+            {highlight.text}
+          </mark>
+        );
       }
 
       lastIndex = highlight.endPos;
@@ -95,7 +94,7 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
   };
 
   return (
-    <div className="h-full flex flex-col gap-4">
+    <div className="flex flex-col gap-4 min-h-[600px]">
       {/* Header */}
       <div className="space-y-2">
         <h2 className="text-2xl font-bold">{roteiro.titulo}</h2>
@@ -115,7 +114,7 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
       </div>
 
       {/* Main Content Grid */}
-      <div className="flex-1 grid grid-cols-[200px_1fr_1fr] gap-4 min-h-0">
+      <div className="grid grid-cols-[200px_1fr_1fr] gap-4 h-[calc(100vh-300px)] max-h-[800px]">
         {/* Left Column - Color Legend */}
         <Card className="p-4 overflow-y-auto">
           <h3 className="text-sm font-semibold mb-3">Legenda de Cores</h3>
