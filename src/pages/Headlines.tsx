@@ -8,12 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Pencil, Copy, Settings, TrendingUp, Calendar, CalendarDays, CalendarRange, CalendarClock } from "lucide-react";
+import { Plus, Trash2, Pencil, Copy, Settings, TrendingUp, TrendingDown, Calendar, CalendarDays, CalendarRange, CalendarClock, ArrowUp, ArrowDown } from "lucide-react";
 import { usePlanilhas, useCreatePlanilha, useUpdatePlanilha, useDeletePlanilha } from "@/hooks/usePlanilhas";
 import { useControleProducao, useCreateControleProducao, useUpdateControleProducao, useDeleteControleProducao } from "@/hooks/useControleProducao";
 import { useMentoradosControle, useCreateMentoradoControle, useDeleteMentoradoControle } from "@/hooks/useMentoradosControle";
 import { useToast } from "@/hooks/use-toast";
-import { format, differenceInDays, isToday, isThisWeek, isThisMonth, isThisYear, startOfDay } from "date-fns";
+import { format, differenceInDays, isToday, isThisWeek, isThisMonth, isThisYear, startOfDay, subDays, subWeeks, subMonths, subYears, isWithinInterval } from "date-fns";
 
 // Função helper para evitar problemas de timezone ao exibir datas
 const formatDateWithoutTimezone = (dateString: string) => {
@@ -248,27 +248,102 @@ const Headlines = () => {
 
   // Função para calcular estatísticas gerais (todos os mentorados)
   const calcularEstatisticasGerais = () => {
-    if (!controleProducao) return { hoje: 0, semana: 0, mes: 0, ano: 0 };
+    if (!controleProducao) return { 
+      hoje: { valor: 0, crescimento: 0, tendencia: 'neutral' as const },
+      semana: { valor: 0, crescimento: 0, tendencia: 'neutral' as const },
+      mes: { valor: 0, crescimento: 0, tendencia: 'neutral' as const },
+      ano: { valor: 0, crescimento: 0, tendencia: 'neutral' as const }
+    };
 
     const todosRegistros = controleProducao;
+    const agora = new Date();
 
+    // Hoje vs Ontem
     const hoje = todosRegistros
       .filter((r) => isToday(new Date(r.data)))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const ontem = todosRegistros
+      .filter((r) => {
+        const dataRegistro = new Date(r.data);
+        const dataOntem = subDays(agora, 1);
+        return dataRegistro.toDateString() === dataOntem.toDateString();
+      })
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const crescimentoHoje = ontem === 0 ? (hoje > 0 ? 100 : 0) : ((hoje - ontem) / ontem) * 100;
 
+    // Esta Semana vs Semana Passada
     const semana = todosRegistros
       .filter((r) => isThisWeek(new Date(r.data), { weekStartsOn: 0 }))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const inicioSemanaPassada = subWeeks(agora, 1);
+    const semanaPassada = todosRegistros
+      .filter((r) => {
+        const dataRegistro = new Date(r.data);
+        return isWithinInterval(dataRegistro, {
+          start: subDays(inicioSemanaPassada, dataRegistro.getDay()),
+          end: subDays(inicioSemanaPassada, dataRegistro.getDay() - 6)
+        });
+      })
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const crescimentoSemana = semanaPassada === 0 ? (semana > 0 ? 100 : 0) : ((semana - semanaPassada) / semanaPassada) * 100;
 
+    // Este Mês vs Mês Passado
     const mes = todosRegistros
       .filter((r) => isThisMonth(new Date(r.data)))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const mesPassado = todosRegistros
+      .filter((r) => {
+        const dataRegistro = new Date(r.data);
+        const dataComparacao = subMonths(agora, 1);
+        return dataRegistro.getMonth() === dataComparacao.getMonth() &&
+               dataRegistro.getFullYear() === dataComparacao.getFullYear();
+      })
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const crescimentoMes = mesPassado === 0 ? (mes > 0 ? 100 : 0) : ((mes - mesPassado) / mesPassado) * 100;
 
+    // Este Ano vs Ano Passado
     const ano = todosRegistros
       .filter((r) => isThisYear(new Date(r.data)))
       .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const anoPassado = todosRegistros
+      .filter((r) => {
+        const dataRegistro = new Date(r.data);
+        const dataComparacao = subYears(agora, 1);
+        return dataRegistro.getFullYear() === dataComparacao.getFullYear();
+      })
+      .reduce((acc, r) => acc + parseInt(r.quantidade_roteiros || "0"), 0);
+    
+    const crescimentoAno = anoPassado === 0 ? (ano > 0 ? 100 : 0) : ((ano - anoPassado) / anoPassado) * 100;
 
-    return { hoje, semana, mes, ano };
+    return {
+      hoje: { 
+        valor: hoje, 
+        crescimento: crescimentoHoje,
+        tendencia: crescimentoHoje > 0 ? 'up' as const : crescimentoHoje < 0 ? 'down' as const : 'neutral' as const
+      },
+      semana: { 
+        valor: semana, 
+        crescimento: crescimentoSemana,
+        tendencia: crescimentoSemana > 0 ? 'up' as const : crescimentoSemana < 0 ? 'down' as const : 'neutral' as const
+      },
+      mes: { 
+        valor: mes, 
+        crescimento: crescimentoMes,
+        tendencia: crescimentoMes > 0 ? 'up' as const : crescimentoMes < 0 ? 'down' as const : 'neutral' as const
+      },
+      ano: { 
+        valor: ano, 
+        crescimento: crescimentoAno,
+        tendencia: crescimentoAno > 0 ? 'up' as const : crescimentoAno < 0 ? 'down' as const : 'neutral' as const
+      }
+    };
   };
 
   if (isLoading || isLoadingControle || isLoadingMentorados) {
@@ -429,15 +504,42 @@ const Headlines = () => {
 
               {/* Estatísticas Gerais - Todos os Mentorados */}
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">
-                  Estatísticas Gerais - Todos os Mentorados
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">
+                    Estatísticas Gerais - Todos os Mentorados
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const stats = calcularEstatisticasGerais();
+                      const tendenciaGeral = [stats.hoje.tendencia, stats.semana.tendencia, stats.mes.tendencia, stats.ano.tendencia];
+                      const crescimentos = tendenciaGeral.filter(t => t === 'up').length;
+                      const quedas = tendenciaGeral.filter(t => t === 'down').length;
+                      
+                      return crescimentos > quedas ? (
+                        <div className="flex items-center gap-1 text-green-600 animate-fade-in">
+                          <TrendingUp className="h-5 w-5" />
+                          <span className="text-sm font-medium">Tendência de Crescimento</span>
+                        </div>
+                      ) : quedas > crescimentos ? (
+                        <div className="flex items-center gap-1 text-red-600 animate-fade-in">
+                          <TrendingDown className="h-5 w-5" />
+                          <span className="text-sm font-medium">Tendência de Queda</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-muted-foreground animate-fade-in">
+                          <Calendar className="h-5 w-5" />
+                          <span className="text-sm font-medium">Tendência Estável</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {(() => {
                     const stats = calcularEstatisticasGerais();
                     return (
                       <>
-                        <Card>
+                        <Card className="hover-scale">
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
                               Hoje
@@ -445,14 +547,31 @@ const Headlines = () => {
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold">{stats.hoje}</div>
+                            <div className="flex items-baseline gap-2">
+                              <div className="text-2xl font-bold">{stats.hoje.valor}</div>
+                              {stats.hoje.tendencia !== 'neutral' && (
+                                <div className={`flex items-center gap-1 text-sm font-medium ${
+                                  stats.hoje.tendencia === 'up' ? 'text-green-600' : 'text-red-600'
+                                } animate-fade-in`}>
+                                  {stats.hoje.tendencia === 'up' ? (
+                                    <ArrowUp className="h-4 w-4" />
+                                  ) : (
+                                    <ArrowDown className="h-4 w-4" />
+                                  )}
+                                  <span>{Math.abs(stats.hoje.crescimento).toFixed(0)}%</span>
+                                </div>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               roteiros produzidos
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              vs ontem
                             </p>
                           </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card className="hover-scale">
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
                               Esta Semana
@@ -460,14 +579,31 @@ const Headlines = () => {
                             <CalendarDays className="h-4 w-4 text-muted-foreground" />
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold">{stats.semana}</div>
+                            <div className="flex items-baseline gap-2">
+                              <div className="text-2xl font-bold">{stats.semana.valor}</div>
+                              {stats.semana.tendencia !== 'neutral' && (
+                                <div className={`flex items-center gap-1 text-sm font-medium ${
+                                  stats.semana.tendencia === 'up' ? 'text-green-600' : 'text-red-600'
+                                } animate-fade-in`}>
+                                  {stats.semana.tendencia === 'up' ? (
+                                    <ArrowUp className="h-4 w-4" />
+                                  ) : (
+                                    <ArrowDown className="h-4 w-4" />
+                                  )}
+                                  <span>{Math.abs(stats.semana.crescimento).toFixed(0)}%</span>
+                                </div>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               roteiros produzidos
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              vs semana passada
                             </p>
                           </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card className="hover-scale">
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
                               Este Mês
@@ -475,14 +611,31 @@ const Headlines = () => {
                             <CalendarRange className="h-4 w-4 text-muted-foreground" />
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold">{stats.mes}</div>
+                            <div className="flex items-baseline gap-2">
+                              <div className="text-2xl font-bold">{stats.mes.valor}</div>
+                              {stats.mes.tendencia !== 'neutral' && (
+                                <div className={`flex items-center gap-1 text-sm font-medium ${
+                                  stats.mes.tendencia === 'up' ? 'text-green-600' : 'text-red-600'
+                                } animate-fade-in`}>
+                                  {stats.mes.tendencia === 'up' ? (
+                                    <ArrowUp className="h-4 w-4" />
+                                  ) : (
+                                    <ArrowDown className="h-4 w-4" />
+                                  )}
+                                  <span>{Math.abs(stats.mes.crescimento).toFixed(0)}%</span>
+                                </div>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               roteiros produzidos
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              vs mês passado
                             </p>
                           </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card className="hover-scale">
                           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
                               Este Ano
@@ -490,9 +643,26 @@ const Headlines = () => {
                             <CalendarClock className="h-4 w-4 text-muted-foreground" />
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold">{stats.ano}</div>
+                            <div className="flex items-baseline gap-2">
+                              <div className="text-2xl font-bold">{stats.ano.valor}</div>
+                              {stats.ano.tendencia !== 'neutral' && (
+                                <div className={`flex items-center gap-1 text-sm font-medium ${
+                                  stats.ano.tendencia === 'up' ? 'text-green-600' : 'text-red-600'
+                                } animate-fade-in`}>
+                                  {stats.ano.tendencia === 'up' ? (
+                                    <ArrowUp className="h-4 w-4" />
+                                  ) : (
+                                    <ArrowDown className="h-4 w-4" />
+                                  )}
+                                  <span>{Math.abs(stats.ano.crescimento).toFixed(0)}%</span>
+                                </div>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               roteiros produzidos
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              vs ano passado
                             </p>
                           </CardContent>
                         </Card>
