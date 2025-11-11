@@ -32,6 +32,9 @@ const Headlines = () => {
   // Estados para Gerenciar Mentorados
   const [isMentoradosOpen, setIsMentoradosOpen] = useState(false);
   const [novoMentorado, setNovoMentorado] = useState("");
+  
+  // Estado para seleção de mentorado
+  const [mentoradoSelecionado, setMentoradoSelecionado] = useState<string | null>(null);
   const {
     data: planilhas,
     isLoading
@@ -104,7 +107,9 @@ const Headlines = () => {
     setLink("");
   };
   const handleCreateControle = () => {
-    if (!controleData || !controleMentorado || !controleQuantidade || !controleHoras) {
+    const mentoradoParaUsar = mentoradoSelecionado || controleMentorado;
+    
+    if (!controleData || !mentoradoParaUsar || !controleQuantidade || !controleHoras) {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha todos os campos obrigatórios.",
@@ -114,7 +119,7 @@ const Headlines = () => {
     }
     createControle.mutate({
       data: controleData,
-      mentorado: controleMentorado,
+      mentorado: mentoradoParaUsar,
       quantidade_roteiros: controleQuantidade,
       maiores_dificuldades: controleDificuldades || null,
       horas_trabalhadas: controleHoras,
@@ -127,7 +132,9 @@ const Headlines = () => {
     });
   };
   const handleUpdateControle = () => {
-    if (!editingControleId || !controleData || !controleMentorado || !controleQuantidade || !controleHoras) {
+    const mentoradoParaUsar = mentoradoSelecionado || controleMentorado;
+    
+    if (!editingControleId || !controleData || !mentoradoParaUsar || !controleQuantidade || !controleHoras) {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha todos os campos obrigatórios.",
@@ -138,7 +145,7 @@ const Headlines = () => {
     updateControle.mutate({
       id: editingControleId,
       data: controleData,
-      mentorado: controleMentorado,
+      mentorado: mentoradoParaUsar,
       quantidade_roteiros: controleQuantidade,
       maiores_dificuldades: controleDificuldades || null,
       horas_trabalhadas: controleHoras,
@@ -286,191 +293,189 @@ const Headlines = () => {
 
         {/* Nova Aba de Controle de Produção */}
         <TabsContent value="controle">
-          <div className="mb-6 flex gap-2">
-            <Dialog open={isControleOpen} onOpenChange={setIsControleOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Registro
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Novo Registro de Produção</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="controle-data">Data *</Label>
-                      <Input id="controle-data" type="date" value={controleData} onChange={e => setControleData(e.target.value)} />
-                    </div>
-                    <div>
-                      <Label htmlFor="controle-mentorado">Mentorado *</Label>
-                      <Select value={controleMentorado} onValueChange={setControleMentorado}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o mentorado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {mentorados?.map((mentorado) => (
-                            <SelectItem key={mentorado.id} value={mentorado.nome}>
-                              {mentorado.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="controle-quantidade">Quantidade de roteiros *</Label>
-                      <Input id="controle-quantidade" value={controleQuantidade} onChange={e => setControleQuantidade(e.target.value)} placeholder="Ex: 5 roteiros" />
-                    </div>
-                    <div>
-                      <Label htmlFor="controle-horas">Horas trabalhadas *</Label>
-                      <Input id="controle-horas" value={controleHoras} onChange={e => setControleHoras(e.target.value)} placeholder="Ex: 8h" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="controle-dificuldades">Maiores dificuldades</Label>
-                    <Input id="controle-dificuldades" value={controleDificuldades} onChange={e => setControleDificuldades(e.target.value)} placeholder="Descreva as dificuldades encontradas" />
-                  </div>
-                  <Button onClick={handleCreateControle} className="w-full">
-                    Registrar
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isMentoradosOpen} onOpenChange={setIsMentoradosOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Gerenciar Mentorados
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Gerenciar Mentorados</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <div>
-                    <Label htmlFor="novo-mentorado">Adicionar Novo Mentorado</Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        id="novo-mentorado" 
-                        value={novoMentorado} 
-                        onChange={e => setNovoMentorado(e.target.value)} 
-                        placeholder="Nome do mentorado" 
-                      />
-                      <Button onClick={handleCreateMentorado}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-semibold mb-2">Mentorados Cadastrados</h4>
-                    <div className="space-y-2">
-                      {mentorados?.map((mentorado) => (
-                        <div key={mentorado.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                          <span>{mentorado.nome}</span>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => deleteMentorado.mutate(mentorado.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+          {!mentoradoSelecionado ? (
+            // Tela de seleção de mentorados
+            <div>
+              <div className="mb-6">
+                <Dialog open={isMentoradosOpen} onOpenChange={setIsMentoradosOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Gerenciar Mentorados
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Gerenciar Mentorados</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      <div>
+                        <Label htmlFor="novo-mentorado">Adicionar Novo Mentorado</Label>
+                        <div className="flex gap-2">
+                          <Input 
+                            id="novo-mentorado" 
+                            value={novoMentorado} 
+                            onChange={e => setNovoMentorado(e.target.value)} 
+                            placeholder="Nome do mentorado" 
+                          />
+                          <Button onClick={handleCreateMentorado}>
+                            <Plus className="h-4 w-4" />
                           </Button>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]">
-                  <TableHead className="text-primary-foreground font-semibold">Data</TableHead>
-                  <TableHead className="text-primary-foreground font-semibold">Mentorado</TableHead>
-                  <TableHead className="text-primary-foreground font-semibold">Quantidade de roteiros</TableHead>
-                  <TableHead className="text-primary-foreground font-semibold">Maiores dificuldades</TableHead>
-                  <TableHead className="text-primary-foreground font-semibold">Horas trabalhadas</TableHead>
-                  <TableHead className="text-primary-foreground font-semibold w-24">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {controleProducao?.map(registro => <TableRow key={registro.id}>
-                    <TableCell className="font-medium">{format(new Date(registro.data), "dd/MM/yyyy")}</TableCell>
-                    <TableCell>{registro.mentorado}</TableCell>
-                    <TableCell>{registro.quantidade_roteiros}</TableCell>
-                    <TableCell>{registro.maiores_dificuldades || "-"}</TableCell>
-                    <TableCell>{registro.horas_trabalhadas}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEditControle(registro)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteControle.mutate(registro.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
                       </div>
-                    </TableCell>
-                  </TableRow>)}
-              </TableBody>
-            </Table>
-          </div>
+                      
+                      <div className="border rounded-lg p-4">
+                        <h4 className="font-semibold mb-2">Mentorados Cadastrados</h4>
+                        <div className="space-y-2">
+                          {mentorados?.map((mentorado) => (
+                            <div key={mentorado.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                              <span>{mentorado.nome}</span>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => deleteMentorado.mutate(mentorado.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
 
-          <Dialog open={!!editingControleId} onOpenChange={open => !open && resetControleForm()}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Editar Registro de Produção</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-controle-data">Data *</Label>
-                    <Input id="edit-controle-data" type="date" value={controleData} onChange={e => setControleData(e.target.value)} />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {mentorados?.map((mentorado) => (
+                  <Card 
+                    key={mentorado.id} 
+                    className="cursor-pointer transition-all hover:shadow-lg hover:scale-105 bg-gradient-to-br from-primary/10 to-primary/5"
+                    onClick={() => setMentoradoSelecionado(mentorado.nome)}
+                  >
+                    <CardContent className="p-6 flex items-center justify-center">
+                      <h3 className="text-xl font-bold text-center">{mentorado.nome}</h3>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : (
+            // Tela de controle individual do mentorado
+            <div>
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Button variant="outline" onClick={() => setMentoradoSelecionado(null)}>
+                    ← Voltar
+                  </Button>
+                  <h2 className="text-2xl font-bold">Controle de Produção - {mentoradoSelecionado}</h2>
+                </div>
+                
+                <Dialog open={isControleOpen} onOpenChange={setIsControleOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar Registro
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Novo Registro de Produção - {mentoradoSelecionado}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="controle-data">Data *</Label>
+                          <Input id="controle-data" type="date" value={controleData} onChange={e => setControleData(e.target.value)} />
+                        </div>
+                        <div>
+                          <Label htmlFor="controle-quantidade">Quantidade de roteiros *</Label>
+                          <Input id="controle-quantidade" value={controleQuantidade} onChange={e => setControleQuantidade(e.target.value)} placeholder="Ex: 5 roteiros" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="controle-horas">Horas trabalhadas *</Label>
+                        <Input id="controle-horas" value={controleHoras} onChange={e => setControleHoras(e.target.value)} placeholder="Ex: 8h" />
+                      </div>
+                      <div>
+                        <Label htmlFor="controle-dificuldades">Maiores dificuldades</Label>
+                        <Input id="controle-dificuldades" value={controleDificuldades} onChange={e => setControleDificuldades(e.target.value)} placeholder="Descreva as dificuldades encontradas" />
+                      </div>
+                      <Button onClick={handleCreateControle} className="w-full">
+                        Registrar
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]">
+                      <TableHead className="text-primary-foreground font-semibold">Data</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold">Quantidade de roteiros</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold">Maiores dificuldades</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold">Horas trabalhadas</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold w-24">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {controleProducao
+                      ?.filter(registro => registro.mentorado === mentoradoSelecionado)
+                      .map(registro => <TableRow key={registro.id}>
+                        <TableCell className="font-medium">{format(new Date(registro.data), "dd/MM/yyyy")}</TableCell>
+                        <TableCell>{registro.quantidade_roteiros}</TableCell>
+                        <TableCell>{registro.maiores_dificuldades || "-"}</TableCell>
+                        <TableCell>{registro.horas_trabalhadas}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEditControle(registro)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => deleteControle.mutate(registro.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                       </TableRow>)}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {/* Dialog de Edição */}
+              <Dialog open={!!editingControleId} onOpenChange={open => !open && resetControleForm()}>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Editar Registro de Produção</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="edit-controle-data">Data *</Label>
+                        <Input id="edit-controle-data" type="date" value={controleData} onChange={e => setControleData(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-controle-quantidade">Quantidade de roteiros *</Label>
+                        <Input id="edit-controle-quantidade" value={controleQuantidade} onChange={e => setControleQuantidade(e.target.value)} placeholder="Ex: 5 roteiros" />
+                      </div>
                     </div>
                     <div>
-                      <Label htmlFor="edit-controle-mentorado">Mentorado *</Label>
-                      <Select value={controleMentorado} onValueChange={setControleMentorado}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o mentorado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {mentorados?.map((mentorado) => (
-                            <SelectItem key={mentorado.id} value={mentorado.nome}>
-                              {mentorado.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="edit-controle-horas">Horas trabalhadas *</Label>
+                      <Input id="edit-controle-horas" value={controleHoras} onChange={e => setControleHoras(e.target.value)} placeholder="Ex: 8h" />
                     </div>
+                    <div>
+                      <Label htmlFor="edit-controle-dificuldades">Maiores dificuldades</Label>
+                      <Input id="edit-controle-dificuldades" value={controleDificuldades} onChange={e => setControleDificuldades(e.target.value)} placeholder="Descreva as dificuldades encontradas" />
+                    </div>
+                    <Button onClick={handleUpdateControle} className="w-full">
+                      Salvar Alterações
+                    </Button>
                   </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-controle-quantidade">Quantidade de roteiros *</Label>
-                    <Input id="edit-controle-quantidade" value={controleQuantidade} onChange={e => setControleQuantidade(e.target.value)} placeholder="Ex: 5 roteiros" />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-controle-horas">Horas trabalhadas *</Label>
-                    <Input id="edit-controle-horas" value={controleHoras} onChange={e => setControleHoras(e.target.value)} placeholder="Ex: 8h" />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="edit-controle-dificuldades">Maiores dificuldades</Label>
-                  <Input id="edit-controle-dificuldades" value={controleDificuldades} onChange={e => setControleDificuldades(e.target.value)} placeholder="Descreva as dificuldades encontradas" />
-                </div>
-                <Button onClick={handleUpdateControle} className="w-full">
-                  Salvar Alterações
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>;
