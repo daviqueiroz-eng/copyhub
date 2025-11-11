@@ -21,6 +21,8 @@ interface Highlight {
   startPos: number;
   endPos: number;
   annotation?: string;
+  annotations?: string[];
+  commentPositions?: Record<number, { x: number; y: number }>;
 }
 
 export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewProps) => {
@@ -46,25 +48,54 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
         );
       }
 
-      // Se tiver anotação, criar wrapper com badge flutuante
-      if (highlight.annotation) {
+      // Pegar todos os comentários (novo formato ou fallback)
+      const comments = highlight.annotations && highlight.annotations.length > 0
+        ? highlight.annotations
+        : highlight.annotation
+        ? [highlight.annotation]
+        : [];
+
+      // Se tiver comentários, criar wrapper com badges posicionados
+      if (comments.length > 0) {
         elements.push(
           <span key={`wrapper-${idx}`} className="relative inline-block">
             <mark
               style={{ backgroundColor: highlight.color }}
-              className="rounded px-0.5"
+              className="rounded px-0.5 text-white font-medium"
             >
               {highlight.text}
             </mark>
-            {/* Comentário visível como badge flutuante */}
-            <span className="absolute left-full top-0 ml-2 z-10 inline-block max-w-[250px]">
-              <span 
-                className="inline-block text-xs bg-yellow-100 dark:bg-yellow-900 text-foreground border border-border rounded px-2 py-1 shadow-md whitespace-normal break-words"
-                style={{ backgroundColor: highlight.color, opacity: 0.95 }}
-              >
-                💬 {highlight.annotation}
-              </span>
-            </span>
+            {/* Renderizar cada comentário */}
+            {comments.map((comment, i) => {
+              const customPos = highlight.commentPositions?.[i];
+              const hasCustomPos = customPos !== undefined;
+              
+              return (
+                <span
+                  key={`comment-${idx}-${i}`}
+                  className="absolute z-10 inline-block max-w-[250px]"
+                  style={
+                    hasCustomPos
+                      ? {
+                          left: `${customPos.x}px`,
+                          top: `${customPos.y}px`,
+                        }
+                      : {
+                          left: '100%',
+                          top: '0',
+                          marginLeft: '8px',
+                        }
+                  }
+                >
+                  <span 
+                    className="inline-block text-xs bg-yellow-100 dark:bg-yellow-900 text-foreground border border-border rounded px-2 py-1 shadow-md whitespace-normal break-words"
+                    style={{ backgroundColor: highlight.color, opacity: 0.95 }}
+                  >
+                    💬 {comment}
+                  </span>
+                </span>
+              );
+            })}
           </span>
         );
       } else {
@@ -72,7 +103,7 @@ export const RoteiroAnaliseView = ({ progresso, roteiro }: RoteiroAnaliseViewPro
           <mark
             key={`highlight-${idx}`}
             style={{ backgroundColor: highlight.color }}
-            className="rounded px-0.5"
+            className="rounded px-0.5 text-white font-medium"
           >
             {highlight.text}
           </mark>
