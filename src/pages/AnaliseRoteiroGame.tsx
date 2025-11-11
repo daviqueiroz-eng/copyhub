@@ -535,22 +535,36 @@ const AnaliseRoteiroGame = () => {
     const highlight = highlights.find(h => h.id === highlightId);
     if (!highlight) return;
     
-    const container = document.getElementById("roteiro-content");
-    if (!container) return;
+    const commentEl = e.currentTarget as HTMLElement;
+    // Pega o container correto para posicionamento absoluto (offsetParent)
+    const parent = (commentEl.offsetParent as HTMLElement) || commentEl.parentElement;
+    if (!parent) return;
     
-    const containerRect = container.getBoundingClientRect();
+    const parentRect = parent.getBoundingClientRect();
     const currentPos = highlight.commentPositions?.[commentIndex];
     
-    // Se já tem posição custom, usar ela; senão calcular posição atual do elemento
     let initialX = currentPos?.x || 0;
     let initialY = currentPos?.y || 0;
     
-    // Se não tem posição custom, precisamos calcular a posição atual relativa ao container
     if (!currentPos) {
-      const commentElement = e.currentTarget as HTMLElement;
-      const commentRect = commentElement.getBoundingClientRect();
-      initialX = commentRect.left - containerRect.left;
-      initialY = commentRect.top - containerRect.top;
+      const commentRect = commentEl.getBoundingClientRect();
+      initialX = commentRect.left - parentRect.left;
+      initialY = commentRect.top - parentRect.top;
+      
+      // Fixar imediatamente a posição para evitar salto no primeiro movimento
+      setHighlights(prev =>
+        prev.map(h =>
+          h.id === highlightId
+            ? {
+                ...h,
+                commentPositions: {
+                  ...(h.commentPositions || {}),
+                  [commentIndex]: { x: initialX, y: initialY },
+                },
+              }
+            : h
+        )
+      );
     }
     
     // Restaurar posição de scroll imediatamente
