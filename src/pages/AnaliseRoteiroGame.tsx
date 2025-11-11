@@ -27,6 +27,7 @@ import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
 import { HighlightsList } from "@/components/HighlightsList";
 import { HighlightsTable } from "@/components/HighlightsTable";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import confetti from "canvas-confetti";
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -125,6 +126,9 @@ const AnaliseRoteiroGame = () => {
   
   // Estado para comentários expandidos/minimizados
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  
+  // Estado para indicar erro nos checkboxes
+  const [showCheckboxError, setShowCheckboxError] = useState(false);
 
   // Função para processar link de vídeo e garantir que seja abrível
   const getWatchableVideoUrl = (url: string): string => {
@@ -796,18 +800,66 @@ const AnaliseRoteiroGame = () => {
     });
   };
 
+  const triggerConfetti = () => {
+    // Confetes do centro
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+    
+    // Confetes dos lados (efeito mais dramático)
+    setTimeout(() => {
+      confetti({
+        particleCount: 50,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 }
+      });
+      confetti({
+        particleCount: 50,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 }
+      });
+    }, 250);
+  };
+
   const handleVerify = () => {
     if (!currentRoteiroId) return;
 
-    // Validar se os campos foram preenchidos
-    if (!estruturaInvisivel.trim() || !gatilhosAtencao.trim() || estruturaRoteiroCheckboxes.length === 0) {
+    // Validação com feedback específico para cada campo
+    if (!estruturaInvisivel.trim()) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Preencha todos os campos de análise e marque pelo menos uma estrutura antes de completar.",
+        title: "Campo obrigatório",
+        description: "Preencha a 'Estrutura da headline invisível' antes de completar.",
         variant: "destructive",
       });
+      setShowCheckboxError(false);
       return;
     }
+
+    if (!gatilhosAtencao.trim()) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Preencha os 'Gatilhos de atenção' antes de completar.",
+        variant: "destructive",
+      });
+      setShowCheckboxError(false);
+      return;
+    }
+
+    if (estruturaRoteiroCheckboxes.length === 0) {
+      toast({
+        title: "Selecione uma estrutura",
+        description: "Marque pelo menos uma opção na 'Estrutura do roteiro' antes de completar.",
+        variant: "destructive",
+      });
+      setShowCheckboxError(true);
+      return;
+    }
+
+    setShowCheckboxError(false);
 
     completarRoteiro.mutate({
       roteiro_id: currentRoteiroId,
@@ -819,6 +871,15 @@ const AnaliseRoteiroGame = () => {
       onSuccess: () => {
         // Atualizar streak
         updateStreak();
+        
+        // 🎉 Disparar confetes
+        triggerConfetti();
+        
+        // Toast de celebração
+        toast({
+          title: "🎉 Roteiro Completado!",
+          description: "Parabéns! Mais uma análise concluída com sucesso.",
+        });
         
         // Limpar campos e highlights
         setHighlights([]);
@@ -1726,10 +1787,15 @@ const AnaliseRoteiroGame = () => {
           </Card>
 
           {/* Campo 3: Estrutura do Roteiro */}
-          <Card className="p-4">
-            <Label className="text-sm font-medium mb-3 block">
-              Estrutura do roteiro
+          <Card className={`p-4 transition-all ${showCheckboxError ? 'border-2 border-destructive ring-2 ring-destructive/20' : ''}`}>
+            <Label className={`text-sm font-medium mb-3 block ${showCheckboxError ? 'text-destructive' : ''}`}>
+              Estrutura do roteiro {showCheckboxError && <span className="text-destructive">*</span>}
             </Label>
+            {showCheckboxError && (
+              <p className="text-xs text-destructive mb-2">
+                Marque pelo menos uma opção antes de completar
+              </p>
+            )}
             <div className="space-y-3">
               {[
                 "Valor prático",
@@ -1746,6 +1812,7 @@ const AnaliseRoteiroGame = () => {
                     onCheckedChange={(checked) => {
                       if (checked) {
                         setEstruturaRoteiroCheckboxes([...estruturaRoteiroCheckboxes, item]);
+                        setShowCheckboxError(false);
                       } else {
                         setEstruturaRoteiroCheckboxes(
                           estruturaRoteiroCheckboxes.filter((i) => i !== item)
