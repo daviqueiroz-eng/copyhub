@@ -248,7 +248,7 @@ const AnaliseRoteiroGame = () => {
       
       // NOVO: Filtrar por estrutura se selecionada
       if (modoFiltroAvancado && filtroEstruturaSelecionada !== "all") {
-        const corConteudoNotavel = cores.find(c => c.nome === "Conteúdo Notável");
+        const corConteudoNotavel = cores.find(c => c.nome === "Conteúdo notável");
         
         highlightsFiltrados = highlightsFiltrados.filter((sub: any) => {
           // Verificar se é da cor "Conteúdo Notável"
@@ -479,7 +479,7 @@ const AnaliseRoteiroGame = () => {
     };
 
     // Verificar se é "Conteúdo Notável" para abrir dialog de estrutura
-    const corConteudoNotavel = cores.find(c => c.nome === "Conteúdo Notável");
+    const corConteudoNotavel = cores.find(c => c.nome === "Conteúdo notável");
     
     if (selectedColor === corConteudoNotavel?.cor) {
       // Armazenar highlight pendente e abrir dialog
@@ -1946,7 +1946,7 @@ const AnaliseRoteiroGame = () => {
                 <Select 
                   value={filtroEstruturaSelecionada} 
                   onValueChange={setFiltroEstruturaSelecionada}
-                  disabled={filtroCorSelecionada !== cores.find(c => c.nome === "Conteúdo Notável")?.cor}
+                  disabled={filtroCorSelecionada !== cores.find(c => c.nome === "Conteúdo notável")?.cor}
                 >
                   <SelectTrigger id="filtro-estrutura">
                     <SelectValue placeholder="Todas as estruturas" />
