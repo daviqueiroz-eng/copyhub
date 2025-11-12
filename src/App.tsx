@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import Mural from "./pages/Mural";
 import Mentorados from "./pages/Mentorados";
@@ -31,21 +32,21 @@ const App = () => (
         <AuthProvider>
           <Layout>
             <Routes>
-              <Route path="/" element={<Mural />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/mentorados" element={<Mentorados />} />
-              <Route path="/prompts" element={<Prompts />} />
-              <Route path="/headlines" element={<Headlines />} />
-              <Route path="/intensificadores" element={<Intensificadores />} />
-              <Route path="/testes" element={<Testes />} />
-              <Route path="/testes/trinka" element={<TrinkaGame />} />
-              <Route path="/testes/analise-roteiro" element={<AnaliseRoteiroGame />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/treinamentos" element={<Treinamentos />} />
-              <Route path="/calendario" element={<Calendario />} />
-              <Route path="/ideias-melhorias" element={<IdeasMelhorias />} />
+              <Route path="/" element={<ProtectedRoute><Mural /></ProtectedRoute>} />
+              <Route path="/mentorados" element={<ProtectedRoute><Mentorados /></ProtectedRoute>} />
+              <Route path="/prompts" element={<ProtectedRoute><Prompts /></ProtectedRoute>} />
+              <Route path="/headlines" element={<ProtectedRoute><Headlines /></ProtectedRoute>} />
+              <Route path="/intensificadores" element={<ProtectedRoute><Intensificadores /></ProtectedRoute>} />
+              <Route path="/testes" element={<ProtectedRoute><Testes /></ProtectedRoute>} />
+              <Route path="/testes/trinka" element={<ProtectedRoute><TrinkaGame /></ProtectedRoute>} />
+              <Route path="/testes/analise-roteiro" element={<ProtectedRoute><AnaliseRoteiroGame /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+              <Route path="/treinamentos" element={<ProtectedRoute><Treinamentos /></ProtectedRoute>} />
+              <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
+              <Route path="/ideias-melhorias" element={<ProtectedRoute><IdeasMelhorias /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
+              <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
             </Routes>
           </Layout>
         </AuthProvider>

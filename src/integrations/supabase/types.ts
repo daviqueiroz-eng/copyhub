@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      allowed_emails: {
+        Row: {
+          cadastrado_por: string | null
+          created_at: string | null
+          email: string
+          id: string
+          nome: string
+          usado: boolean | null
+          usado_em: string | null
+        }
+        Insert: {
+          cadastrado_por?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          nome: string
+          usado?: boolean | null
+          usado_em?: string | null
+        }
+        Update: {
+          cadastrado_por?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          nome?: string
+          usado?: boolean | null
+          usado_em?: string | null
+        }
+        Relationships: []
+      }
       aulas: {
         Row: {
           conteudo: string | null
