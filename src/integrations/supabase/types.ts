@@ -571,6 +571,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ativo: boolean
           avatar: string | null
           created_at: string
           id: string
@@ -579,6 +580,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ativo?: boolean
           avatar?: string | null
           created_at?: string
           id: string
@@ -587,6 +589,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ativo?: boolean
           avatar?: string | null
           created_at?: string
           id?: string
@@ -881,6 +884,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_user_active: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"

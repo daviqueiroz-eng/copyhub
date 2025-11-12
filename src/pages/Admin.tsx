@@ -52,6 +52,7 @@ const Admin = () => {
   const [editingCor, setEditingCor] = useState<any>(null);
   const [corForm, setCorForm] = useState({ nome: "", cor: "#3b82f6", ordem: 0 });
 
+
   // Medalhas state
   const { data: medalhas = [], isLoading: loadingMedalhas } = useMedalhas();
   const createMedalha = useCreateMedalha();
@@ -62,81 +63,6 @@ const Admin = () => {
     icone: "🏆", 
     roteiros_necessarios: 1,
     ordem: 0 
-  });
-
-  // Usuários state
-  const queryClient = useQueryClient();
-  const [isUsuarioDialogOpen, setIsUsuarioDialogOpen] = useState(false);
-  const [usuarioForm, setUsuarioForm] = useState({ email: "", nome: "" });
-
-  const { data: allowedEmails = [], isLoading: loadingEmails } = useQuery({
-    queryKey: ["allowed-emails"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("allowed_emails")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  const createEmailMutation = useMutation({
-    mutationFn: async ({ email, nome }: { email: string; nome: string }) => {
-      const { data, error } = await supabase
-        .from("allowed_emails")
-        .insert({
-          email: email.toLowerCase().trim(),
-          nome: nome.trim(),
-          cadastrado_por: user?.id
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["allowed-emails"] });
-      toast({
-        title: "Usuário cadastrado",
-        description: "Email adicionado à lista de autorizados"
-      });
-      setIsUsuarioDialogOpen(false);
-      setUsuarioForm({ email: "", nome: "" });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao cadastrar",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  });
-
-  const deleteEmailMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("allowed_emails")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["allowed-emails"] });
-      toast({
-        title: "Usuário removido",
-        description: "Email removido da lista"
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao deletar",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
   });
 
   if (loading || loadingRole) {
@@ -286,34 +212,6 @@ const Admin = () => {
     });
   };
 
-  // Usuário handlers
-  const handleAddAllowedEmail = () => {
-    if (!usuarioForm.email || !usuarioForm.nome) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha email e nome",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    createEmailMutation.mutate(usuarioForm);
-  };
-
-  const handleDeleteAllowedEmail = (id: string, usado: boolean) => {
-    if (usado) {
-      toast({
-        title: "Não é possível deletar",
-        description: "Este email já foi usado para criar uma conta",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (confirm("Tem certeza que deseja remover este usuário?")) {
-      deleteEmailMutation.mutate(id);
-    }
-  };
 
   return (
     <div className="container max-w-6xl mx-auto px-4 py-8">
@@ -329,11 +227,10 @@ const Admin = () => {
       </div>
 
       <Tabs defaultValue="roteiros" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="roteiros">Roteiros</TabsTrigger>
           <TabsTrigger value="cores">Cores de Análise</TabsTrigger>
           <TabsTrigger value="medalhas">Medalhas</TabsTrigger>
-          <TabsTrigger value="usuarios">Usuários</TabsTrigger>
         </TabsList>
 
         {/* Roteiros Tab */}
@@ -695,117 +592,6 @@ const Admin = () => {
                         <TableCell className="font-medium">{medalha.nome}</TableCell>
                         <TableCell>{medalha.descricao}</TableCell>
                         <TableCell>{medalha.roteiros_necessarios}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Usuários Tab */}
-        <TabsContent value="usuarios" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Gerenciar Usuários</CardTitle>
-                  <CardDescription>
-                    Adicione emails autorizados a fazer login com Google
-                  </CardDescription>
-                </div>
-                <Dialog open={isUsuarioDialogOpen} onOpenChange={setIsUsuarioDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Novo Usuário
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Cadastrar Novo Usuário</DialogTitle>
-                      <DialogDescription>
-                        Adicione o email e nome da pessoa que poderá acessar a plataforma
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 mt-4">
-                      <div>
-                        <Label htmlFor="user-email">Email do Google</Label>
-                        <Input
-                          id="user-email"
-                          type="email"
-                          value={usuarioForm.email}
-                          onChange={(e) => setUsuarioForm({ ...usuarioForm, email: e.target.value })}
-                          placeholder="usuario@gmail.com"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="user-nome">Nome Completo</Label>
-                        <Input
-                          id="user-nome"
-                          value={usuarioForm.nome}
-                          onChange={(e) => setUsuarioForm({ ...usuarioForm, nome: e.target.value })}
-                          placeholder="João Silva"
-                        />
-                      </div>
-                      <Button 
-                        onClick={handleAddAllowedEmail} 
-                        className="w-full"
-                        disabled={createEmailMutation.isPending}
-                      >
-                        {createEmailMutation.isPending ? "Cadastrando..." : "Cadastrar Usuário"}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingEmails ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
-              ) : allowedEmails.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Nenhum usuário cadastrado ainda.</p>
-                  <p className="text-sm mt-2">Clique em "Novo Usuário" para adicionar.</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Cadastrado em</TableHead>
-                      <TableHead className="w-[100px]">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allowedEmails.map((user: any) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-mono text-sm">{user.email}</TableCell>
-                        <TableCell>{user.nome}</TableCell>
-                        <TableCell>
-                          <Badge variant={user.usado ? "secondary" : "default"}>
-                            {user.usado ? "✓ Cadastrado" : "⏳ Pendente"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(user.created_at).toLocaleDateString('pt-BR')}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteAllowedEmail(user.id, user.usado)}
-                            disabled={user.usado || deleteEmailMutation.isPending}
-                            title={user.usado ? "Não é possível deletar usuário já cadastrado" : "Deletar"}
-                          >
-                            <Trash2 className={`h-4 w-4 ${user.usado ? 'text-muted-foreground' : 'text-destructive'}`} />
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

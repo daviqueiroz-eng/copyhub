@@ -20,6 +20,7 @@ import Calendario from "./pages/Calendario";
 import IdeasMelhorias from "./pages/IdeasMelhorias";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import GerenciarUsuarios from "./pages/GerenciarUsuarios";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/treinamentos" element={<ProtectedRoute><Treinamentos /></ProtectedRoute>} />
               <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
               <Route path="/ideias-melhorias" element={<ProtectedRoute><IdeasMelhorias /></ProtectedRoute>} />
+              <Route path="/usuarios" element={<ProtectedRoute><GerenciarUsuarios /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
             </Routes>

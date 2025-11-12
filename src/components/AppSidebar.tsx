@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Calendar,
   Lightbulb,
+  UserCog,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +33,7 @@ const menuItems = [
   { title: "Treinamentos", url: "/treinamentos", icon: GraduationCap },
   { title: "Calendário", url: "/calendario", icon: Calendar },
   { title: "Ideias de Melhorias", url: "/ideias-melhorias", icon: Lightbulb },
+  { title: "Gerenciar Usuários", url: "/usuarios", icon: UserCog },
 ];
 
 export function AppSidebar() {
