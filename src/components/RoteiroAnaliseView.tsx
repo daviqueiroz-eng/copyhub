@@ -398,10 +398,46 @@ export const RoteiroAnaliseView = ({ progresso, roteiro, onDelete }: RoteiroAnal
 
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Estrutura do roteiro
+              Conteúdo notável presente
             </label>
             <Textarea
               value={progresso.estrutura_roteiro || ""}
+              disabled
+              className="min-h-[120px] resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              Carga cognitiva
+            </label>
+            <div className="flex items-center justify-center h-16 bg-muted rounded-md">
+              <span className="text-3xl font-bold text-primary">
+                {progresso.carga_cognitiva || "N/A"}
+              </span>
+              {progresso.carga_cognitiva && (
+                <span className="text-sm text-muted-foreground ml-2">/10</span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              O que tornou viral
+            </label>
+            <Textarea
+              value={progresso.o_que_tornou_viral || ""}
+              disabled
+              className="min-h-[120px] resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              Melhorias para potencial
+            </label>
+            <Textarea
+              value={progresso.melhorias_potencial || ""}
               disabled
               className="min-h-[120px] resize-none"
             />
