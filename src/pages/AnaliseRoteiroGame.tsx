@@ -27,6 +27,7 @@ import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
 import { HighlightsList } from "@/components/HighlightsList";
 import { HighlightsTable } from "@/components/HighlightsTable";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { RankingMensal } from "@/components/RankingMensal";
 import confetti from "canvas-confetti";
 
 import { format } from "date-fns";
@@ -1250,6 +1251,11 @@ const AnaliseRoteiroGame = () => {
               <MedalhasSection />
             </div>
           </div>
+
+          {/* Ranking Mensal */}
+          <Card className="p-6 mb-6">
+            <RankingMensal />
+          </Card>
 
           <Card className="p-8 max-w-4xl mx-auto">
             <div className="text-center mb-8">

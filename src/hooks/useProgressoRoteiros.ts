@@ -77,6 +77,7 @@ export const useCompletarRoteiro = () => {
     },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["progresso-roteiros"] });
+      queryClient.invalidateQueries({ queryKey: ["ranking-mensal"] });
       
       // Verificar e desbloquear medalhas automaticamente
       if (!user) return;
