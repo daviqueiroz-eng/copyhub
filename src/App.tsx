@@ -7,10 +7,10 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import Mural from "./pages/Mural";
+import Perfil from "./pages/Perfil";
 import Mentorados from "./pages/Mentorados";
 import Prompts from "./pages/Prompts";
 import Headlines from "./pages/Headlines";
-import Intensificadores from "./pages/Intensificadores";
 import Testes from "./pages/Testes";
 import TrinkaGame from "./pages/TrinkaGame";
 import AnaliseRoteiroGame from "./pages/AnaliseRoteiroGame";
@@ -35,10 +35,10 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<ProtectedRoute><Mural /></ProtectedRoute>} />
+              <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
               <Route path="/mentorados" element={<ProtectedRoute><Mentorados /></ProtectedRoute>} />
               <Route path="/prompts" element={<ProtectedRoute><Prompts /></ProtectedRoute>} />
               <Route path="/headlines" element={<ProtectedRoute><Headlines /></ProtectedRoute>} />
-              <Route path="/intensificadores" element={<ProtectedRoute><Intensificadores /></ProtectedRoute>} />
               <Route path="/testes" element={<ProtectedRoute><Testes /></ProtectedRoute>} />
               <Route path="/testes/trinka" element={<ProtectedRoute><TrinkaGame /></ProtectedRoute>} />
               <Route path="/testes/analise-roteiro" element={<ProtectedRoute><AnaliseRoteiroGame /></ProtectedRoute>} />

@@ -4,12 +4,12 @@ import {
   Users,
   Sparkles,
   FileText,
-  Zap,
   ClipboardCheck,
   GraduationCap,
   Calendar,
   Lightbulb,
   UserCog,
+  User,
 } from "lucide-react";
 import {
   Sidebar,
@@ -25,10 +25,10 @@ import {
 
 const menuItems = [
   { title: "Mural", url: "/", icon: MessageSquare },
+  { title: "Meu Perfil", url: "/perfil", icon: User },
   { title: "Meus Mentorados", url: "/mentorados", icon: Users },
   { title: "Banco de Prompts", url: "/prompts", icon: Sparkles },
   { title: "Planilhas Importantes", url: "/headlines", icon: FileText },
-  { title: "Base de Intensificadores", url: "/intensificadores", icon: Zap },
   { title: "Teste de Conhecimento", url: "/testes", icon: ClipboardCheck },
   { title: "Treinamentos", url: "/treinamentos", icon: GraduationCap },
   { title: "Calendário", url: "/calendario", icon: Calendar },

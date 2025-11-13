@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth as useAuthContext } from "@/contexts/AuthContext";
 
@@ -20,6 +20,57 @@ export const useProfile = () => {
       return data;
     },
     enabled: !!user,
+  });
+};
+
+export const useUpdateProfile = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+
+  return useMutation({
+    mutationFn: async (data: {
+      nome: string;
+      cargo: 'junior' | 'pleno' | 'senior';
+      pdi?: string | null;
+      avatar?: string | null;
+    }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("profiles")
+        .update(data)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+};
+
+export const useUploadAvatar = () => {
+  const { user } = useAuthContext();
+
+  return useMutation({
+    mutationFn: async (file: File) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      return data.publicUrl;
+    },
   });
 };
 

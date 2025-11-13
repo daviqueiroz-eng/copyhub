@@ -573,27 +573,33 @@ export type Database = {
         Row: {
           ativo: boolean
           avatar: string | null
+          cargo: Database["public"]["Enums"]["cargo_type"] | null
           created_at: string
           id: string
           nome: string
+          pdi: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           ativo?: boolean
           avatar?: string | null
+          cargo?: Database["public"]["Enums"]["cargo_type"] | null
           created_at?: string
           id: string
           nome: string
+          pdi?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           ativo?: boolean
           avatar?: string | null
+          cargo?: Database["public"]["Enums"]["cargo_type"] | null
           created_at?: string
           id?: string
           nome?: string
+          pdi?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -888,6 +894,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      cargo_type: "junior" | "pleno" | "senior"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1016,6 +1023,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      cargo_type: ["junior", "pleno", "senior"],
     },
   },
 } as const
