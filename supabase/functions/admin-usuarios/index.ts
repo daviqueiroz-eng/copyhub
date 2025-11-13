@@ -109,6 +109,17 @@ Deno.serve(async (req) => {
 
         if (error) throw error
 
+        // Se bloqueando (status = false), invalidar todas as sessões do usuário
+        if (status === false) {
+          try {
+            await supabaseAdmin.auth.admin.signOut(userId, 'global')
+            console.log('User sessions invalidated:', { userId })
+          } catch (signOutError) {
+            console.error('Error signing out user:', signOutError)
+            // Não falhar a operação se signOut der erro
+          }
+        }
+
         console.log('User status toggled:', { userId, status })
 
         return new Response(

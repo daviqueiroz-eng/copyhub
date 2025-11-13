@@ -36,8 +36,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    // Verificação periódica do status ativo
+    const checkUserStatus = setInterval(async () => {
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (!currentUser) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('ativo')
+          .eq('user_id', currentUser.id)
+          .single();
+
+        // Se usuário foi bloqueado, deslogar
+        if (data && !data.ativo) {
+          console.log('User blocked, signing out...');
+          await supabase.auth.signOut();
+          navigate("/auth");
+        }
+      } catch (error) {
+        console.error('Error checking user status:', error);
+      }
+    }, 10000); // Verifica a cada 10 segundos
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(checkUserStatus);
+    };
+  }, [navigate]);
 
   const signInWithGoogle = async () => {
     try {
