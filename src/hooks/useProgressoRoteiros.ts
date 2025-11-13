@@ -13,6 +13,9 @@ export type ProgressoRoteiro = {
   estrutura_invisivel?: string | null;
   gatilhos_atencao?: string | null;
   estrutura_roteiro?: string | null;
+  carga_cognitiva?: number | null;
+  o_que_tornou_viral?: string | null;
+  melhorias_potencial?: string | null;
   sublinhados?: any | null;
 };
 
@@ -47,12 +50,18 @@ export const useCompletarRoteiro = () => {
       estrutura_invisivel,
       gatilhos_atencao,
       estrutura_roteiro,
+      carga_cognitiva,
+      o_que_tornou_viral,
+      melhorias_potencial,
       sublinhados,
     }: {
       roteiro_id: string;
       estrutura_invisivel?: string;
       gatilhos_atencao?: string;
       estrutura_roteiro?: string;
+      carga_cognitiva?: number;
+      o_que_tornou_viral?: string;
+      melhorias_potencial?: string;
       sublinhados?: any[];
     }) => {
       if (!user) throw new Error("Usuário não autenticado");
@@ -67,6 +76,9 @@ export const useCompletarRoteiro = () => {
           estrutura_invisivel,
           gatilhos_atencao,
           estrutura_roteiro,
+          carga_cognitiva,
+          o_que_tornou_viral,
+          melhorias_potencial,
           sublinhados,
         })
         .select()

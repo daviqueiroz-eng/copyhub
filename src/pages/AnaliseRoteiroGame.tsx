@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -107,6 +108,9 @@ const AnaliseRoteiroGame = () => {
   const [gatilhosAtencao, setGatilhosAtencao] = useState("");
   const [estruturaRoteiro, setEstruturaRoteiro] = useState("");
   const [estruturaRoteiroCheckboxes, setEstruturaRoteiroCheckboxes] = useState<string[]>([]);
+  const [cargaCognitiva, setCargaCognitiva] = useState<number>(5);
+  const [oQueTornouViral, setOQueTornouViral] = useState("");
+  const [melhoriasPotencial, setMelhoriasPotencial] = useState("");
   // Filtros
   const [selectedNicho, setSelectedNicho] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -867,6 +871,9 @@ const AnaliseRoteiroGame = () => {
       estrutura_invisivel: estruturaInvisivel,
       gatilhos_atencao: gatilhosAtencao,
       estrutura_roteiro: estruturaRoteiroCheckboxes.join(", "),
+      carga_cognitiva: cargaCognitiva,
+      o_que_tornou_viral: oQueTornouViral,
+      melhorias_potencial: melhoriasPotencial,
       sublinhados: highlights,
     }, {
       onSuccess: () => {
@@ -889,6 +896,9 @@ const AnaliseRoteiroGame = () => {
         setGatilhosAtencao("");
         setEstruturaRoteiro("");
         setEstruturaRoteiroCheckboxes([]);
+        setCargaCognitiva(5);
+        setOQueTornouViral("");
+        setMelhoriasPotencial("");
         
         // Mostrar banco de roteiros analisados
         setShowCompletedDialog(true);
@@ -1667,6 +1677,9 @@ const AnaliseRoteiroGame = () => {
                   setGatilhosAtencao("");
                   setEstruturaRoteiro("");
                   setEstruturaRoteiroCheckboxes([]);
+                  setCargaCognitiva(5);
+                  setOQueTornouViral("");
+                  setMelhoriasPotencial("");
                 }}
                 className="w-full"
               >
@@ -1792,10 +1805,10 @@ const AnaliseRoteiroGame = () => {
             />
           </Card>
 
-          {/* Campo 3: Estrutura do Roteiro */}
+          {/* Campo 3: Conteúdo Notável */}
           <Card className={`p-4 transition-all ${showCheckboxError ? 'border-2 border-destructive ring-2 ring-destructive/20' : ''}`}>
             <Label className={`text-sm font-medium mb-3 block ${showCheckboxError ? 'text-destructive' : ''}`}>
-              Estrutura do roteiro {showCheckboxError && <span className="text-destructive">*</span>}
+              Conteúdo notável presente {showCheckboxError && <span className="text-destructive">*</span>}
             </Label>
             {showCheckboxError && (
               <p className="text-xs text-destructive mb-2">
@@ -1835,6 +1848,59 @@ const AnaliseRoteiroGame = () => {
                 </div>
               ))}
             </div>
+          </Card>
+
+          {/* Campo 4: Carga Cognitiva */}
+          <Card className="p-4">
+            <Label htmlFor="carga-cognitiva" className="text-sm font-medium mb-3 block">
+              Carga cognitiva
+            </Label>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground min-w-[40px]">1</span>
+                <Slider
+                  id="carga-cognitiva"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={[cargaCognitiva]}
+                  onValueChange={(value) => setCargaCognitiva(value[0])}
+                  className="flex-1"
+                />
+                <span className="text-sm text-muted-foreground min-w-[40px]">10</span>
+              </div>
+              <div className="text-center">
+                <span className="text-2xl font-bold text-primary">{cargaCognitiva}</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Campo 5: O que tornou viral */}
+          <Card className="p-4">
+            <Label htmlFor="tornou-viral" className="text-sm font-medium mb-2 block">
+              O que tornou esse vídeo víral?
+            </Label>
+            <Textarea
+              id="tornou-viral"
+              value={oQueTornouViral}
+              onChange={(e) => setOQueTornouViral(e.target.value)}
+              placeholder="Descreva os elementos que tornaram este conteúdo viral..."
+              className="min-h-[120px] resize-none"
+            />
+          </Card>
+
+          {/* Campo 6: Melhorias para potencial */}
+          <Card className="p-4">
+            <Label htmlFor="melhorias-potencial" className="text-sm font-medium mb-2 block">
+              O que melhoraria nesse roteiros para ter ainda mais potencial?
+            </Label>
+            <Textarea
+              id="melhorias-potencial"
+              value={melhoriasPotencial}
+              onChange={(e) => setMelhoriasPotencial(e.target.value)}
+              placeholder="Sugira melhorias que aumentariam o potencial do roteiro..."
+              className="min-h-[120px] resize-none"
+            />
           </Card>
         </div>
       </div>
@@ -2139,7 +2205,7 @@ const AnaliseRoteiroGame = () => {
       <Dialog open={showEstruturaDialog} onOpenChange={setShowEstruturaDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Qual a Estrutura do roteiro?</DialogTitle>
+            <DialogTitle>qual o conteúdo notável?</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             {[
