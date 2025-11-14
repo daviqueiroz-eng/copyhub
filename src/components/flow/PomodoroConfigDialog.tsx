@@ -72,7 +72,7 @@ export const PomodoroConfigDialog = ({ open, onOpenChange }: PomodoroConfigDialo
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-md">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Configurações do Pomodoro</DialogTitle>
           </DialogHeader>
@@ -88,7 +88,6 @@ export const PomodoroConfigDialog = ({ open, onOpenChange }: PomodoroConfigDialo
                   max="120"
                   value={customMinutos}
                   onChange={(e) => setCustomMinutos(parseInt(e.target.value) || 25)}
-                  className="bg-gray-700 border-gray-600"
                 />
                 <Button onClick={handleCustomTimeSubmit}>Aplicar</Button>
               </div>
@@ -101,7 +100,7 @@ export const PomodoroConfigDialog = ({ open, onOpenChange }: PomodoroConfigDialo
                 value={fonteSelecionada}
                 onValueChange={(value) => handleFonteChange(value as "manual" | "biblioteca")}
               >
-                <SelectTrigger className="bg-gray-700 border-gray-600">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -120,7 +119,6 @@ export const PomodoroConfigDialog = ({ open, onOpenChange }: PomodoroConfigDialo
                   placeholder="https://youtube.com/watch?v=..."
                   value={youtubeUrl}
                   onChange={(e) => handleYoutubeUrlChange(e.target.value)}
-                  className="bg-gray-700 border-gray-600"
                 />
               </div>
             )}
@@ -136,7 +134,7 @@ export const PomodoroConfigDialog = ({ open, onOpenChange }: PomodoroConfigDialo
                     if (musica) handleBibliotecaSelect(musica);
                   }}
                 >
-                  <SelectTrigger className="bg-gray-700 border-gray-600">
+                  <SelectTrigger>
                     <SelectValue placeholder="Escolha uma música..." />
                   </SelectTrigger>
                   <SelectContent>
