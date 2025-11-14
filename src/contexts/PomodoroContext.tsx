@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import YouTube from "react-youtube";
 
 type PomodoroModo = "trabalho" | "pausaCurta" | "pausaLonga";
 
@@ -45,6 +46,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const inicioSessaoRef = useRef<Date | null>(null);
   const tempoInicialRef = useRef<number>(PRESETS.trabalho);
+  const sessaoCompletadaRef = useRef<boolean>(false);
 
   // Carregar do localStorage na inicialização
   useEffect(() => {
@@ -91,6 +93,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       intervalRef.current = setInterval(() => {
         setSegundosRestantes((prev) => {
           if (prev <= 1) {
+            sessaoCompletadaRef.current = true; // Marcar como completada
             salvarSessao();
             setIsRunning(false);
             
@@ -136,6 +139,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   const toggleTimer = () => {
     if (!isRunning) {
       inicioSessaoRef.current = new Date();
+      sessaoCompletadaRef.current = false; // Reset ao iniciar nova sessão
     }
     setIsRunning(!isRunning);
   };
@@ -146,10 +150,12 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     setSegundosRestantes(novoTempo);
     tempoInicialRef.current = novoTempo;
     inicioSessaoRef.current = null;
+    sessaoCompletadaRef.current = false; // Limpar flag
   };
 
   const salvarSessao = async () => {
     if (!inicioSessaoRef.current) return;
+    if (!sessaoCompletadaRef.current) return; // Só salvar se completou naturalmente
 
     const duracaoMinutos = Math.round((Date.now() - inicioSessaoRef.current.getTime()) / 60000);
     
@@ -169,6 +175,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     }
     
     inicioSessaoRef.current = null;
+    sessaoCompletadaRef.current = false; // Reset flag
   };
 
   const value = {
@@ -189,6 +196,24 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   return (
     <PomodoroContext.Provider value={value}>
       {children}
+      
+      {/* Player YouTube Global - continua tocando mesmo ao trocar de página */}
+      {videoId && (
+        <div className="fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none">
+          <YouTube
+            videoId={videoId}
+            opts={{
+              playerVars: {
+                autoplay: 0,
+                controls: 0,
+              },
+            }}
+            onReady={(event) => {
+              playerRef.current = event.target;
+            }}
+          />
+        </div>
+      )}
     </PomodoroContext.Provider>
   );
 };
