@@ -42,7 +42,8 @@ Deno.serve(async (req) => {
       throw new Error('Forbidden: Admin access required')
     }
 
-    const { action, userId, status, role } = await req.json()
+    const body = await req.json()
+    const { action, userId, status, role, email, nome } = body
 
     console.log('Admin action:', { action, userId, status, role, adminId: user.id })
 
@@ -175,7 +176,7 @@ Deno.serve(async (req) => {
       }
 
       case 'add_to_whitelist': {
-        const { email, nome } = await req.json()
+        // email e nome já extraídos do body no início
 
         const { error } = await supabaseAdmin
           .from('allowed_emails')
