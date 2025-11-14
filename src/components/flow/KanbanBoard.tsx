@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Plus, Trash2, GripVertical } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -20,6 +28,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -37,32 +46,49 @@ import {
 } from "@/hooks/useFlowTarefas";
 
 const COLUNAS = [
-  { id: "todo", titulo: "A Fazer", cor: "bg-blue-100" },
-  { id: "doing", titulo: "Em Progresso", cor: "bg-yellow-100" },
-  { id: "done", titulo: "Concluído", cor: "bg-green-100" },
+  { id: "todo", titulo: "A Fazer", cor: "bg-blue-50" },
+  { id: "doing", titulo: "Em Progresso", cor: "bg-yellow-50" },
+  { id: "done", titulo: "Concluído", cor: "bg-green-50" },
 ] as const;
 
-const TarefaCard = ({ tarefa, onDelete }: { tarefa: FlowTarefa; onDelete: () => void }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+const TarefaCard = ({ 
+  tarefa, 
+  onDelete, 
+  onClick 
+}: { 
+  tarefa: FlowTarefa; 
+  onDelete: () => void;
+  onClick: () => void;
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tarefa.id,
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.5 : 1,
   };
 
   const prioridadeCor = {
-    baixa: "bg-gray-200",
-    media: "bg-blue-200",
-    alta: "bg-red-200",
+    baixa: "bg-secondary text-secondary-foreground",
+    media: "bg-primary/20 text-primary",
+    alta: "bg-destructive/20 text-destructive",
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card className="p-3 mb-2 cursor-move hover:shadow-md transition-shadow">
+    <div ref={setNodeRef} style={style}>
+      <Card 
+        className="p-3 mb-2 hover:shadow-md transition-shadow cursor-pointer"
+        onClick={onClick}
+      >
         <div className="flex justify-between items-start mb-2">
-          <h4 className="font-medium text-sm">{tarefa.titulo}</h4>
+          <div className="flex items-start gap-2 flex-1">
+            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-1">
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <h4 className="font-medium text-sm flex-1">{tarefa.titulo}</h4>
+          </div>
           <Button
             size="sm"
             variant="ghost"
@@ -76,9 +102,9 @@ const TarefaCard = ({ tarefa, onDelete }: { tarefa: FlowTarefa; onDelete: () => 
           </Button>
         </div>
         {tarefa.descricao && (
-          <p className="text-xs text-muted-foreground mb-2">{tarefa.descricao}</p>
+          <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{tarefa.descricao}</p>
         )}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Badge className={prioridadeCor[tarefa.prioridade]} variant="secondary">
             {tarefa.prioridade}
           </Badge>
@@ -93,16 +119,53 @@ const TarefaCard = ({ tarefa, onDelete }: { tarefa: FlowTarefa; onDelete: () => 
   );
 };
 
+const DroppableColumn = ({ 
+  id, 
+  children, 
+  titulo, 
+  cor, 
+  count 
+}: { 
+  id: string; 
+  children: React.ReactNode; 
+  titulo: string; 
+  cor: string; 
+  count: number;
+}) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  
+  return (
+    <div 
+      ref={setNodeRef}
+      className={`p-4 rounded-lg ${cor} ${isOver ? 'ring-2 ring-primary' : ''} transition-all`}
+    >
+      <h4 className="font-semibold mb-3 flex items-center justify-between">
+        {titulo}
+        <Badge variant="secondary">{count}</Badge>
+      </h4>
+      <div className="space-y-2 min-h-[400px]">
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export const KanbanBoard = () => {
   const { data: tarefas = [], isLoading } = useFlowTarefas();
   const createTarefa = useCreateTarefa();
   const updateTarefa = useUpdateTarefa();
   const deleteTarefa = useDeleteTarefa();
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [tarefaEditando, setTarefaEditando] = useState<FlowTarefa | null>(null);
+
+  // Form states
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [prioridade, setPrioridade] = useState<"baixa" | "media" | "alta">("media");
+  const [status, setStatus] = useState<"todo" | "doing" | "done">("todo");
+  const [dataLimite, setDataLimite] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -114,29 +177,62 @@ export const KanbanBoard = () => {
     if (!over) return;
 
     const tarefaId = active.id as string;
-    const overContainer = over.id as string;
-    
+    const novoStatus = over.id as string;
+
+    // Verificar se é uma coluna válida
     const validStatuses = ["todo", "doing", "done"];
-    const isColumn = validStatuses.includes(overContainer);
-    
-    if (isColumn) {
-      updateTarefa.mutate({ id: tarefaId, status: overContainer as "todo" | "doing" | "done" });
+    if (validStatuses.includes(novoStatus)) {
+      updateTarefa.mutate({ id: tarefaId, status: novoStatus as any });
     }
   };
 
-  const handleSubmit = () => {
+  const resetForm = () => {
+    setTitulo("");
+    setDescricao("");
+    setPrioridade("media");
+    setStatus("todo");
+    setDataLimite("");
+    setTarefaEditando(null);
+  };
+
+  const handleCreate = () => {
     if (!titulo.trim()) return;
 
     createTarefa.mutate({
       titulo,
-      descricao,
+      descricao: descricao || undefined,
       prioridade,
+      data_limite: dataLimite || undefined,
     });
 
-    setIsDialogOpen(false);
-    setTitulo("");
-    setDescricao("");
-    setPrioridade("media");
+    setIsCreateDialogOpen(false);
+    resetForm();
+  };
+
+  const handleEdit = (tarefa: FlowTarefa) => {
+    setTarefaEditando(tarefa);
+    setTitulo(tarefa.titulo);
+    setDescricao(tarefa.descricao || "");
+    setPrioridade(tarefa.prioridade);
+    setStatus(tarefa.status);
+    setDataLimite(tarefa.data_limite || "");
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdate = () => {
+    if (!tarefaEditando || !titulo.trim()) return;
+
+    updateTarefa.mutate({
+      id: tarefaEditando.id,
+      titulo,
+      descricao: descricao || null,
+      prioridade,
+      status,
+      data_limite: dataLimite || null,
+    });
+
+    setIsEditDialogOpen(false);
+    resetForm();
   };
 
   if (isLoading) return <div>Carregando tarefas...</div>;
@@ -145,7 +241,12 @@ export const KanbanBoard = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">📊 Quadro Kanban</h3>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        
+        {/* Dialog de Criação */}
+        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+          setIsCreateDialogOpen(open);
+          if (!open) resetForm();
+        }}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="mr-2 h-4 w-4" /> Nova Tarefa
@@ -156,30 +257,122 @@ export const KanbanBoard = () => {
               <DialogTitle>Nova Tarefa</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <Input
-                placeholder="Título da tarefa..."
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-              />
-              <Textarea
-                placeholder="Descrição..."
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-              />
-              <div className="flex gap-2">
-                {(["baixa", "media", "alta"] as const).map((p) => (
-                  <Button
-                    key={p}
-                    size="sm"
-                    variant={prioridade === p ? "default" : "outline"}
-                    onClick={() => setPrioridade(p)}
-                  >
-                    {p}
-                  </Button>
-                ))}
+              <div>
+                <Label htmlFor="titulo">Título</Label>
+                <Input
+                  id="titulo"
+                  placeholder="Título da tarefa..."
+                  value={titulo}
+                  onChange={(e) => setTitulo(e.target.value)}
+                />
               </div>
-              <Button onClick={handleSubmit} className="w-full">
+              <div>
+                <Label htmlFor="descricao">Descrição</Label>
+                <Textarea
+                  id="descricao"
+                  placeholder="Descrição..."
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Prioridade</Label>
+                <div className="flex gap-2 mt-2">
+                  {(["baixa", "media", "alta"] as const).map((p) => (
+                    <Button
+                      key={p}
+                      size="sm"
+                      variant={prioridade === p ? "default" : "outline"}
+                      onClick={() => setPrioridade(p)}
+                    >
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="data-limite">Data Limite</Label>
+                <Input
+                  id="data-limite"
+                  type="date"
+                  value={dataLimite}
+                  onChange={(e) => setDataLimite(e.target.value)}
+                />
+              </div>
+              <Button onClick={handleCreate} className="w-full">
                 Criar Tarefa
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de Edição */}
+        <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) resetForm();
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Tarefa</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-titulo">Título</Label>
+                <Input
+                  id="edit-titulo"
+                  placeholder="Título da tarefa..."
+                  value={titulo}
+                  onChange={(e) => setTitulo(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-descricao">Descrição</Label>
+                <Textarea
+                  id="edit-descricao"
+                  placeholder="Descrição..."
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-status">Status</Label>
+                <Select value={status} onValueChange={(value: any) => setStatus(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todo">A Fazer</SelectItem>
+                    <SelectItem value="doing">Em Progresso</SelectItem>
+                    <SelectItem value="done">Concluído</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Prioridade</Label>
+                <div className="flex gap-2 mt-2">
+                  {(["baixa", "media", "alta"] as const).map((p) => (
+                    <Button
+                      key={p}
+                      size="sm"
+                      variant={prioridade === p ? "default" : "outline"}
+                      onClick={() => setPrioridade(p)}
+                    >
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="edit-data-limite">Data Limite</Label>
+                <Input
+                  id="edit-data-limite"
+                  type="date"
+                  value={dataLimite}
+                  onChange={(e) => setDataLimite(e.target.value)}
+                />
+              </div>
+              <Button onClick={handleUpdate} className="w-full">
+                Salvar Alterações
               </Button>
             </div>
           </DialogContent>
@@ -192,26 +385,27 @@ export const KanbanBoard = () => {
             const tarefasDaColuna = tarefas.filter((t) => t.status === coluna.id);
 
             return (
-              <div key={coluna.id} className={`p-4 rounded-lg ${coluna.cor}`}>
-                <h4 className="font-semibold mb-3 flex items-center justify-between">
-                  {coluna.titulo}
-                  <Badge variant="secondary">{tarefasDaColuna.length}</Badge>
-                </h4>
+              <DroppableColumn
+                key={coluna.id}
+                id={coluna.id}
+                titulo={coluna.titulo}
+                cor={coluna.cor}
+                count={tarefasDaColuna.length}
+              >
                 <SortableContext
                   items={tarefasDaColuna.map((t) => t.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-2 min-h-[200px]">
-                    {tarefasDaColuna.map((tarefa) => (
-                      <TarefaCard
-                        key={tarefa.id}
-                        tarefa={tarefa}
-                        onDelete={() => deleteTarefa.mutate(tarefa.id)}
-                      />
-                    ))}
-                  </div>
+                  {tarefasDaColuna.map((tarefa) => (
+                    <TarefaCard
+                      key={tarefa.id}
+                      tarefa={tarefa}
+                      onDelete={() => deleteTarefa.mutate(tarefa.id)}
+                      onClick={() => handleEdit(tarefa)}
+                    />
+                  ))}
                 </SortableContext>
-              </div>
+              </DroppableColumn>
             );
           })}
         </div>
