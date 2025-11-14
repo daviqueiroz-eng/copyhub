@@ -35,14 +35,14 @@ export const PomodoroTimer = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white p-6">
+      <div className="min-h-screen bg-background p-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           {/* ========== COLUNA ESQUERDA: TIMER ========== */}
           <div className="flex flex-col items-center justify-center space-y-8">
             {/* Breadcrumb */}
             <div className="self-start">
-              <span className="text-gray-400">Foco →</span>
+              <span className="text-muted-foreground">Foco →</span>
             </div>
 
             {/* Timer Circular */}
@@ -56,7 +56,7 @@ export const PomodoroTimer = () => {
             {/* Botão Principal */}
             <Button
               size="lg"
-              className="w-48 h-14 text-lg rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+              className="w-48 h-14 text-lg rounded-full bg-primary hover:bg-primary/90"
               onClick={toggleTimer}
             >
               {isRunning ? (
@@ -76,7 +76,6 @@ export const PomodoroTimer = () => {
                 variant="outline"
                 size="sm"
                 onClick={resetTimer}
-                className="bg-transparent border-gray-600 hover:bg-gray-800 text-white"
               >
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Resetar
@@ -86,7 +85,6 @@ export const PomodoroTimer = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowConfig(true)}
-                className="bg-transparent border-gray-600 hover:bg-gray-800 text-white"
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Configurar
@@ -100,28 +98,28 @@ export const PomodoroTimer = () => {
             {/* Grid de Estatísticas (2x2) */}
             <div className="grid grid-cols-2 gap-4">
               {/* Pomos de hoje */}
-              <Card className="bg-gray-800 border-gray-700 p-4">
-                <p className="text-gray-400 text-sm">Pomos de hoje</p>
+              <Card className="p-4">
+                <p className="text-muted-foreground text-sm">Pomos de hoje</p>
                 <p className="text-4xl font-bold mt-2">{estatisticas?.pomosHoje || 0}</p>
               </Card>
 
               {/* Foco de hoje */}
-              <Card className="bg-gray-800 border-gray-700 p-4">
-                <p className="text-gray-400 text-sm">Foco de hoje</p>
+              <Card className="p-4">
+                <p className="text-muted-foreground text-sm">Foco de hoje</p>
                 <p className="text-4xl font-bold mt-2">
                   {estatisticas?.focoHoje || 0} <span className="text-lg">m</span>
                 </p>
               </Card>
 
               {/* Pomos totais */}
-              <Card className="bg-gray-800 border-gray-700 p-4">
-                <p className="text-gray-400 text-sm">Pomos totais</p>
+              <Card className="p-4">
+                <p className="text-muted-foreground text-sm">Pomos totais</p>
                 <p className="text-4xl font-bold mt-2">{estatisticas?.pomosTotal || 0}</p>
               </Card>
 
               {/* Duração Total */}
-              <Card className="bg-gray-800 border-gray-700 p-4">
-                <p className="text-gray-400 text-sm">Duração Total Focada</p>
+              <Card className="p-4">
+                <p className="text-muted-foreground text-sm">Duração Total Focada</p>
                 <p className="text-2xl font-bold mt-2">
                   {estatisticas ? formatDuracao(estatisticas.duracaoTotal) : "0 m"}
                 </p>
@@ -129,7 +127,7 @@ export const PomodoroTimer = () => {
             </div>
 
             {/* Histórico de Sessões */}
-            <Card className="bg-gray-800 border-gray-700 p-6">
+            <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold">Foco em Registro</h3>
               </div>
@@ -139,16 +137,16 @@ export const PomodoroTimer = () => {
                 {estatisticas?.sessoesAgrupadas && 
                   Object.entries(estatisticas.sessoesAgrupadas).map(([data, sessoes]) => (
                     <div key={data}>
-                      <p className="text-gray-400 text-sm mb-2">{data}</p>
+                      <p className="text-muted-foreground text-sm mb-2">{data}</p>
                       <div className="space-y-2">
                         {sessoes.map(sessao => (
                           <div
                             key={sessao.id}
-                            className="flex items-center gap-3 p-2 rounded hover:bg-gray-700 transition"
+                            className="flex items-center gap-3 p-2 rounded hover:bg-muted transition"
                           >
                             {/* Ícone do tipo */}
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
-                              sessao.tipo === "trabalho" ? "bg-blue-500" : "bg-green-500"
+                              sessao.tipo === "trabalho" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
                             }`}>
                               🍅
                             </div>
@@ -162,7 +160,7 @@ export const PomodoroTimer = () => {
                             </div>
 
                             {/* Duração */}
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-muted-foreground">
                               {sessao.duracao_minutos}m
                             </p>
                           </div>
@@ -172,7 +170,7 @@ export const PomodoroTimer = () => {
                   ))}
 
                 {(!estatisticas?.sessoesAgrupadas || Object.keys(estatisticas.sessoesAgrupadas).length === 0) && (
-                  <p className="text-center text-gray-500 py-8">
+                  <p className="text-center text-muted-foreground py-8">
                     Nenhuma sessão registrada ainda
                   </p>
                 )}
