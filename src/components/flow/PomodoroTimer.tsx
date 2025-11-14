@@ -7,7 +7,6 @@ import { Play, Pause, RotateCcw, Settings } from "lucide-react";
 import { CircularTimer } from "./CircularTimer";
 import { PomodoroConfigDialog } from "./PomodoroConfigDialog";
 import { format } from "date-fns";
-import YouTube from "react-youtube";
 
 export const PomodoroTimer = () => {
   const [showConfig, setShowConfig] = useState(false);
@@ -179,24 +178,6 @@ export const PomodoroTimer = () => {
           </div>
         </div>
       </div>
-
-      {/* Player YouTube invisível (roda em background) */}
-      {videoId && (
-        <div className="fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none">
-          <YouTube
-            videoId={videoId}
-            opts={{
-              playerVars: {
-                autoplay: 0,
-                controls: 0,
-              },
-            }}
-            onReady={(event) => {
-              playerRef.current = event.target;
-            }}
-          />
-        </div>
-      )}
 
       {/* Dialog de Configurações */}
       <PomodoroConfigDialog open={showConfig} onOpenChange={setShowConfig} />
