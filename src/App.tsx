@@ -21,6 +21,7 @@ import IdeasMelhorias from "./pages/IdeasMelhorias";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import GerenciarUsuarios from "./pages/GerenciarUsuarios";
+import ModoFlow from "./pages/ModoFlow";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="/testes/analise-roteiro" element={<ProtectedRoute><AnaliseRoteiroGame /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               <Route path="/treinamentos" element={<ProtectedRoute><Treinamentos /></ProtectedRoute>} />
+              <Route path="/modo-flow" element={<ProtectedRoute><ModoFlow /></ProtectedRoute>} />
               <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
               <Route path="/ideias-melhorias" element={<ProtectedRoute><IdeasMelhorias /></ProtectedRoute>} />
               <Route path="/usuarios" element={<ProtectedRoute><GerenciarUsuarios /></ProtectedRoute>} />

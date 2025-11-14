@@ -257,6 +257,102 @@ export type Database = {
           },
         ]
       }
+      flow_notas: {
+        Row: {
+          conteudo: string | null
+          cor: string | null
+          created_at: string
+          id: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conteudo?: string | null
+          cor?: string | null
+          created_at?: string
+          id?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conteudo?: string | null
+          cor?: string | null
+          created_at?: string
+          id?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      flow_pomodoro_sessoes: {
+        Row: {
+          completada: boolean
+          created_at: string
+          duracao_minutos: number
+          id: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          completada?: boolean
+          created_at?: string
+          duracao_minutos: number
+          id?: string
+          tipo?: string
+          user_id: string
+        }
+        Update: {
+          completada?: boolean
+          created_at?: string
+          duracao_minutos?: number
+          id?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      flow_tarefas: {
+        Row: {
+          created_at: string
+          data_limite: string | null
+          descricao: string | null
+          id: string
+          ordem: number
+          prioridade: string | null
+          status: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_limite?: string | null
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          prioridade?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data_limite?: string | null
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          prioridade?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       headlines: {
         Row: {
           category_key: string
@@ -645,6 +741,7 @@ export type Database = {
       }
       progresso_roteiros: {
         Row: {
+          carga_cognitiva: number | null
           completado: boolean
           created_at: string
           data_completado: string | null
@@ -652,11 +749,14 @@ export type Database = {
           estrutura_roteiro: string | null
           gatilhos_atencao: string | null
           id: string
+          melhorias_potencial: string | null
+          o_que_tornou_viral: string | null
           roteiro_id: string
           sublinhados: Json | null
           user_id: string
         }
         Insert: {
+          carga_cognitiva?: number | null
           completado?: boolean
           created_at?: string
           data_completado?: string | null
@@ -664,11 +764,14 @@ export type Database = {
           estrutura_roteiro?: string | null
           gatilhos_atencao?: string | null
           id?: string
+          melhorias_potencial?: string | null
+          o_que_tornou_viral?: string | null
           roteiro_id: string
           sublinhados?: Json | null
           user_id: string
         }
         Update: {
+          carga_cognitiva?: number | null
           completado?: boolean
           created_at?: string
           data_completado?: string | null
@@ -676,6 +779,8 @@ export type Database = {
           estrutura_roteiro?: string | null
           gatilhos_atencao?: string | null
           id?: string
+          melhorias_potencial?: string | null
+          o_que_tornou_viral?: string | null
           roteiro_id?: string
           sublinhados?: Json | null
           user_id?: string
