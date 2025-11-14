@@ -257,6 +257,33 @@ export type Database = {
           },
         ]
       }
+      flow_biblioteca_musicas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          titulo: string
+          updated_at: string
+          youtube_url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          titulo: string
+          updated_at?: string
+          youtube_url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          titulo?: string
+          updated_at?: string
+          youtube_url?: string
+        }
+        Relationships: []
+      }
       flow_notas: {
         Row: {
           conteudo: string | null

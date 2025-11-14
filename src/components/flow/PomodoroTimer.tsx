@@ -5,6 +5,10 @@ import { Play, Pause, RotateCcw, Maximize2, Minimize2 } from "lucide-react";
 import { CircularTimer } from "./CircularTimer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useFlowBiblioteca } from "@/hooks/useFlowBiblioteca";
+import { BibliotecaMusicasDialog } from "./BibliotecaMusicasDialog";
+import { useUserRole } from "@/hooks/useAuth";
 
 const PRESETS = {
   trabalho: 25 * 60,
@@ -20,8 +24,14 @@ export const PomodoroTimer = () => {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [videoId, setVideoId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fonteSelecionada, setFonteSelecionada] = useState<"manual" | "biblioteca">("manual");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<any>(null);
+  
+  const { musicas } = useFlowBiblioteca();
+  const { data: userRole } = useUserRole();
+  const isAdmin = userRole === "admin";
 
   const totalSegundos = tempoCustomizado || PRESETS[modo];
 
@@ -52,12 +62,32 @@ export const PomodoroTimer = () => {
 
   useEffect(() => {
     const savedUrl = localStorage.getItem("pomodoro_youtube_url");
+    const savedFonte = localStorage.getItem("pomodoro_fonte") as "manual" | "biblioteca";
+    
     if (savedUrl) {
       setYoutubeUrl(savedUrl);
       const id = extractYouTubeId(savedUrl);
       if (id) setVideoId(id);
     }
+    if (savedFonte) {
+      setFonteSelecionada(savedFonte);
+    }
   }, []);
+
+  // Controlar play/pause do YouTube player
+  useEffect(() => {
+    if (!playerRef.current) return;
+    
+    try {
+      if (isRunning) {
+        playerRef.current?.playVideo?.();
+      } else {
+        playerRef.current?.pauseVideo?.();
+      }
+    } catch (error) {
+      console.log("Player não está pronto ainda");
+    }
+  }, [isRunning]);
 
   const extractYouTubeId = (url: string) => {
     const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
@@ -72,6 +102,26 @@ export const PomodoroTimer = () => {
       setVideoId(id);
       localStorage.setItem("pomodoro_youtube_url", url);
     }
+  };
+
+  const handleFonteChange = (fonte: "manual" | "biblioteca") => {
+    setFonteSelecionada(fonte);
+    localStorage.setItem("pomodoro_fonte", fonte);
+    // Limpar vídeo atual ao trocar de fonte
+    setVideoId(null);
+    setYoutubeUrl("");
+  };
+
+  const handleMusicaBibliotecaChange = (musicaId: string) => {
+    const musica = musicas.find((m) => m.id === musicaId);
+    if (musica) {
+      handleYoutubeUrlChange(musica.youtube_url);
+    }
+  };
+
+  // Função chamada quando o player do YouTube estiver pronto
+  const onPlayerReady = (event: any) => {
+    playerRef.current = event.target;
   };
 
   const handleModoChange = (novoModo: typeof modo) => {
@@ -138,14 +188,34 @@ export const PomodoroTimer = () => {
         {/* Vídeo em tela cheia */}
         {videoId ? (
           <iframe
+            id="youtube-player-fullscreen"
             width="90%"
             height="90%"
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=${isRunning ? 1 : 0}`}
+            src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`}
             title="YouTube video player"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             className="rounded-lg"
+            onLoad={() => {
+              const iframe = document.getElementById("youtube-player-fullscreen") as HTMLIFrameElement;
+              if (iframe && iframe.contentWindow) {
+                playerRef.current = {
+                  playVideo: () => {
+                    iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                  },
+                  pauseVideo: () => {
+                    iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+                  },
+                };
+                // Iniciar tocando se o timer estiver rodando
+                if (isRunning) {
+                  setTimeout(() => {
+                    iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                  }, 500);
+                }
+              }
+            }}
           />
         ) : (
           <div className="text-white text-xl">Adicione um link do YouTube para visualizar aqui</div>
@@ -182,17 +252,53 @@ export const PomodoroTimer = () => {
           </Button>
         </div>
 
-        {/* Campo de YouTube */}
-        <div className="max-w-md mx-auto space-y-2">
-          <Label htmlFor="youtube-url">Link do YouTube (opcional)</Label>
-          <Input
-            id="youtube-url"
-            placeholder="https://youtube.com/watch?v=..."
-            value={youtubeUrl}
-            onChange={(e) => handleYoutubeUrlChange(e.target.value)}
-          />
-          {youtubeUrl && !videoId && (
-            <p className="text-sm text-destructive">URL inválida. Use um link do YouTube válido.</p>
+        {/* Seletor de Fonte + Campo de YouTube/Biblioteca */}
+        <div className="max-w-md mx-auto space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <Label htmlFor="fonte">Fonte de Áudio/Vídeo</Label>
+              <Select value={fonteSelecionada} onValueChange={handleFonteChange}>
+                <SelectTrigger id="fonte">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Link Manual</SelectItem>
+                  <SelectItem value="biblioteca">Biblioteca de Músicas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {isAdmin && <BibliotecaMusicasDialog />}
+          </div>
+
+          {fonteSelecionada === "manual" ? (
+            <div>
+              <Label htmlFor="youtube-url">Link do YouTube</Label>
+              <Input
+                id="youtube-url"
+                placeholder="https://youtube.com/watch?v=..."
+                value={youtubeUrl}
+                onChange={(e) => handleYoutubeUrlChange(e.target.value)}
+              />
+              {youtubeUrl && !videoId && (
+                <p className="text-sm text-destructive">URL inválida. Use um link do YouTube válido.</p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <Label htmlFor="musica-biblioteca">Escolher da Biblioteca</Label>
+              <Select onValueChange={handleMusicaBibliotecaChange}>
+                <SelectTrigger id="musica-biblioteca">
+                  <SelectValue placeholder="Selecione uma música..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {musicas.map((musica) => (
+                    <SelectItem key={musica.id} value={musica.id}>
+                      {musica.titulo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
         </div>
 
@@ -234,18 +340,33 @@ export const PomodoroTimer = () => {
             </div>
           </div>
 
-          {/* Player do YouTube (só aparece quando timer está rodando) */}
-          {isRunning && videoId && (
+          {/* Player do YouTube (aparece sempre que houver vídeo selecionado) */}
+          {videoId && (
             <div className="w-full">
               <iframe
+                id="youtube-player"
                 width="100%"
                 height="400"
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+                src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}`}
                 title="YouTube video player"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 className="rounded-lg shadow-lg"
+                onLoad={() => {
+                  // Configurar YouTube IFrame API
+                  const iframe = document.getElementById("youtube-player") as HTMLIFrameElement;
+                  if (iframe && iframe.contentWindow) {
+                    playerRef.current = {
+                      playVideo: () => {
+                        iframe.contentWindow?.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                      },
+                      pauseVideo: () => {
+                        iframe.contentWindow?.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+                      },
+                    };
+                  }
+                }}
               />
             </div>
           )}
