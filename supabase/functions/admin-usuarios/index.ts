@@ -192,6 +192,24 @@ Deno.serve(async (req) => {
         )
       }
 
+      case 'update_nome': {
+        // nome já extraído do body no início
+
+        const { error } = await supabaseAdmin
+          .from('profiles')
+          .update({ nome })
+          .eq('user_id', userId)
+
+        if (error) throw error
+
+        console.log('User name updated:', { userId, nome })
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
       default:
         throw new Error('Invalid action')
     }
