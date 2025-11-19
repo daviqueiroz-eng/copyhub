@@ -19,10 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserCog, Lock, Unlock, Trash2, UserPlus } from "lucide-react";
+import { Loader2, UserCog, Lock, Unlock, Trash2, UserPlus, Pencil } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface User {
@@ -46,6 +54,8 @@ export default function GerenciarUsuarios() {
   const { user } = useAuth();
   const [newEmail, setNewEmail] = useState("");
   const [newNome, setNewNome] = useState("");
+  const [editingUser, setEditingUser] = useState<{ id: string; nome: string } | null>(null);
+  const [editedNome, setEditedNome] = useState("");
 
   // Buscar usuários
   const { data, isLoading } = useQuery({
@@ -76,7 +86,7 @@ export default function GerenciarUsuarios() {
 
   // Mutation para ações de usuário
   const actionMutation = useMutation({
-    mutationFn: async (params: { action: string; userId?: string; status?: boolean; role?: string }) => {
+    mutationFn: async (params: { action: string; userId?: string; status?: boolean; role?: string; nome?: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch(
@@ -201,6 +211,25 @@ export default function GerenciarUsuarios() {
     }
   };
 
+  const handleEditNome = (userId: string, currentNome: string) => {
+    setEditingUser({ id: userId, nome: currentNome });
+    setEditedNome(currentNome);
+  };
+
+  const handleSaveNome = () => {
+    if (editingUser && editedNome.trim()) {
+      actionMutation.mutate(
+        { action: "update_nome", userId: editingUser.id, nome: editedNome.trim() },
+        {
+          onSuccess: () => {
+            setEditingUser(null);
+            setEditedNome("");
+          },
+        }
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -306,6 +335,14 @@ export default function GerenciarUsuarios() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditNome(usuario.id, usuario.nome)}
+                      disabled={actionMutation.isPending}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
