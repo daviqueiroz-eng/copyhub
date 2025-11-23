@@ -24,6 +24,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import { useAtividadesNaoVisualizadas } from "@/hooks/useAtividadesGerais";
 
 const menuItems = [
   { title: "Mural", url: "/", icon: MessageSquare },
@@ -34,7 +36,7 @@ const menuItems = [
   { title: "Planilhas Importantes", url: "/headlines", icon: FileText },
   { title: "Teste de Conhecimento", url: "/testes", icon: ClipboardCheck },
   { title: "Treinamentos", url: "/treinamentos", icon: GraduationCap },
-  { title: "Modo Flow", url: "/modo-flow", icon: Zap },
+  { title: "Atividades", url: "/modo-flow", icon: Zap },
   { title: "Calendário", url: "/calendario", icon: Calendar },
   { title: "Ideias de Melhorias", url: "/ideias-melhorias", icon: Lightbulb },
   { title: "Gerenciar Usuários", url: "/usuarios", icon: UserCog },
@@ -42,6 +44,7 @@ const menuItems = [
 
 export function AppSidebar() {
   const { open } = useSidebar();
+  const { data: contadorNaoLidas = 0 } = useAtividadesNaoVisualizadas();
 
   return (
     <Sidebar collapsible="icon">
@@ -66,6 +69,11 @@ export function AppSidebar() {
                     >
                       <item.icon className="h-5 w-5" />
                       <span>{item.title}</span>
+                      {item.title === "Atividades" && contadorNaoLidas > 0 && (
+                        <Badge variant="destructive" className="ml-auto">
+                          {contadorNaoLidas}
+                        </Badge>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

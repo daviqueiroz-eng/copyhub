@@ -44,6 +44,74 @@ export type Database = {
         }
         Relationships: []
       }
+      atividades_gerais: {
+        Row: {
+          anexos: Json | null
+          created_at: string
+          created_by: string
+          data_limite: string | null
+          descricao: string | null
+          id: string
+          prioridade: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          anexos?: Json | null
+          created_at?: string
+          created_by: string
+          data_limite?: string | null
+          descricao?: string | null
+          id?: string
+          prioridade?: string
+          tipo?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          anexos?: Json | null
+          created_at?: string
+          created_by?: string
+          data_limite?: string | null
+          descricao?: string | null
+          id?: string
+          prioridade?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      atividades_visualizadas: {
+        Row: {
+          atividade_id: string
+          id: string
+          user_id: string
+          visualizada_em: string
+        }
+        Insert: {
+          atividade_id: string
+          id?: string
+          user_id: string
+          visualizada_em?: string
+        }
+        Update: {
+          atividade_id?: string
+          id?: string
+          user_id?: string
+          visualizada_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atividades_visualizadas_atividade_id_fkey"
+            columns: ["atividade_id"]
+            isOneToOne: false
+            referencedRelation: "atividades_gerais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       aulas: {
         Row: {
           conteudo: string | null
