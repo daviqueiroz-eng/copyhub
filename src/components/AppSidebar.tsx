@@ -11,6 +11,7 @@ import {
   UserCog,
   User,
   Zap,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   Sidebar,
@@ -26,6 +27,7 @@ import {
 
 const menuItems = [
   { title: "Mural", url: "/", icon: MessageSquare },
+  { title: "Dash Geral", url: "/dash-geral", icon: LayoutDashboard },
   { title: "Meu Perfil", url: "/perfil", icon: User },
   { title: "Meus Mentorados", url: "/mentorados", icon: Users },
   { title: "Banco de Prompts", url: "/prompts", icon: Sparkles },
