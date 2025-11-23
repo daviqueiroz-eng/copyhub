@@ -22,6 +22,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import GerenciarUsuarios from "./pages/GerenciarUsuarios";
 import ModoFlow from "./pages/ModoFlow";
+import DashGeral from "./pages/DashGeral";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<ProtectedRoute><Mural /></ProtectedRoute>} />
+              <Route path="/dash-geral" element={<ProtectedRoute><DashGeral /></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
               <Route path="/mentorados" element={<ProtectedRoute><Mentorados /></ProtectedRoute>} />
               <Route path="/prompts" element={<ProtectedRoute><Prompts /></ProtectedRoute>} />
