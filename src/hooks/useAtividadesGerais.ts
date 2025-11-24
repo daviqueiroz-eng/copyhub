@@ -39,7 +39,8 @@ export const useCreateAtividadeGeral = () => {
     mutationFn: async (atividade: Omit<AtividadeGeral, "id" | "created_by" | "created_at" | "updated_at">) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      const { data, error } = await supabase
+      // Criar atividade geral
+      const { data: atividadeData, error: atividadeError } = await supabase
         .from("atividades_gerais")
         .insert({
           ...atividade,
@@ -48,12 +49,41 @@ export const useCreateAtividadeGeral = () => {
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (atividadeError) throw atividadeError;
+
+      // Buscar todos os usuários ativos
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("ativo", true);
+
+      if (profilesError) throw profilesError;
+
+      // Criar uma tarefa para cada usuário
+      if (profiles && profiles.length > 0) {
+        const tarefas = profiles.map(profile => ({
+          user_id: profile.user_id,
+          titulo: atividade.titulo,
+          descricao: atividade.descricao,
+          prioridade: atividade.prioridade,
+          data_limite: atividade.data_limite,
+          atividade_geral_id: atividadeData.id,
+          status: 'todo' as const,
+        }));
+
+        const { error: tarefasError } = await supabase
+          .from("flow_tarefas")
+          .insert(tarefas);
+
+        if (tarefasError) throw tarefasError;
+      }
+
+      return atividadeData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atividades-gerais"] });
-      toast.success("Atividade criada com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["flow-tarefas"] });
+      toast.success("Atividade criada e distribuída para todos os usuários!");
     },
     onError: (error: any) => {
       toast.error(`Erro ao criar atividade: ${error.message}`);
