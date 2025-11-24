@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, Megaphone } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -76,12 +77,24 @@ const TarefaCard = ({
     alta: "bg-destructive/20 text-destructive",
   };
 
+  const isAtividadeGeral = !!tarefa.atividade_geral_id;
+
   return (
     <div ref={setNodeRef} style={style}>
       <Card 
-        className="p-3 mb-2 hover:shadow-md transition-shadow cursor-pointer"
+        className={cn(
+          "p-3 mb-2 hover:shadow-md transition-shadow cursor-pointer",
+          isAtividadeGeral && "border-l-4 border-l-orange-500 bg-orange-50/50 dark:bg-orange-950/20"
+        )}
         onClick={onClick}
       >
+        {isAtividadeGeral && (
+          <Badge variant="outline" className="mb-2 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700">
+            <Megaphone className="h-3 w-3 mr-1" />
+            Atividade Geral
+          </Badge>
+        )}
+
         <div className="flex justify-between items-start mb-2">
           <div className="flex items-start gap-2 flex-1">
             <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-1">
@@ -89,17 +102,19 @@ const TarefaCard = ({
             </div>
             <h4 className="font-medium text-sm flex-1">{tarefa.titulo}</h4>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
+          {!isAtividadeGeral && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
         {tarefa.descricao && (
           <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{tarefa.descricao}</p>
@@ -222,14 +237,23 @@ export const KanbanBoard = () => {
   const handleUpdate = () => {
     if (!tarefaEditando || !titulo.trim()) return;
 
-    updateTarefa.mutate({
-      id: tarefaEditando.id,
-      titulo,
-      descricao: descricao || null,
-      prioridade,
-      status,
-      data_limite: dataLimite || null,
-    });
+    // Se for atividade geral, só permitir alteração de status
+    if (tarefaEditando.atividade_geral_id) {
+      updateTarefa.mutate({
+        id: tarefaEditando.id,
+        atividade_geral_id: tarefaEditando.atividade_geral_id,
+        status,
+      });
+    } else {
+      updateTarefa.mutate({
+        id: tarefaEditando.id,
+        titulo,
+        descricao: descricao || null,
+        prioridade,
+        status,
+        data_limite: dataLimite || null,
+      });
+    }
 
     setIsEditDialogOpen(false);
     resetForm();
@@ -323,6 +347,7 @@ export const KanbanBoard = () => {
                   placeholder="Título da tarefa..."
                   value={titulo}
                   onChange={(e) => setTitulo(e.target.value)}
+                  disabled={!!tarefaEditando?.atividade_geral_id}
                 />
               </div>
               <div>
@@ -332,6 +357,7 @@ export const KanbanBoard = () => {
                   placeholder="Descrição..."
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
+                  disabled={!!tarefaEditando?.atividade_geral_id}
                 />
               </div>
               <div>
@@ -356,6 +382,7 @@ export const KanbanBoard = () => {
                       size="sm"
                       variant={prioridade === p ? "default" : "outline"}
                       onClick={() => setPrioridade(p)}
+                      disabled={!!tarefaEditando?.atividade_geral_id}
                     >
                       {p.charAt(0).toUpperCase() + p.slice(1)}
                     </Button>
@@ -369,8 +396,14 @@ export const KanbanBoard = () => {
                   type="date"
                   value={dataLimite}
                   onChange={(e) => setDataLimite(e.target.value)}
+                  disabled={!!tarefaEditando?.atividade_geral_id}
                 />
               </div>
+              {tarefaEditando?.atividade_geral_id && (
+                <p className="text-sm text-muted-foreground">
+                  💡 Atividades gerais só permitem alteração de status
+                </p>
+              )}
               <Button onClick={handleUpdate} className="w-full">
                 Salvar Alterações
               </Button>

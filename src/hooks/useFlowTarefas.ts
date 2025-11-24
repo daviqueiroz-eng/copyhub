@@ -12,6 +12,7 @@ export type FlowTarefa = {
   ordem: number;
   prioridade: "baixa" | "media" | "alta";
   data_limite: string | null;
+  atividade_geral_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -69,10 +70,15 @@ export const useUpdateTarefa = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...data }: Partial<FlowTarefa> & { id: string }) => {
+    mutationFn: async ({ id, atividade_geral_id, ...data }: Partial<FlowTarefa> & { id: string }) => {
+      // Se for atividade geral, permitir apenas atualização de status e ordem
+      const updateData = atividade_geral_id 
+        ? { status: data.status, ordem: data.ordem }
+        : data;
+
       const { error } = await supabase
         .from("flow_tarefas")
-        .update(data)
+        .update(updateData)
         .eq("id", id);
 
       if (error) throw error;
