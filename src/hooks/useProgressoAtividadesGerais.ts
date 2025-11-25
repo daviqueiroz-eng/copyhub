@@ -30,10 +30,11 @@ export const useProgressoAtividadesGerais = () => {
 
   return useQuery<ProgressoAtividade[]>({
     queryKey: ["progresso-atividades-gerais"],
-    queryFn: async () => {
+    queryFn: async (): Promise<ProgressoAtividade[]> => {
+      // Query simplificada para evitar inferência profunda de tipos
       const { data: atividades, error: atividadesError } = await supabase
         .from("atividades_gerais")
-        .select("*")
+        .select("id, titulo, tipo, prioridade, data_limite, created_at")
         .order("created_at", { ascending: false });
 
       if (atividadesError) throw atividadesError;

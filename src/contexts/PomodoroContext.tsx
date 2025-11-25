@@ -26,6 +26,8 @@ type PomodoroContextType = PomodoroState & {
   toggleTimer: () => void;
   resetTimer: () => void;
   salvarSessao: () => Promise<void>;
+  showRestDialog: boolean;
+  setShowRestDialog: (show: boolean) => void;
   PRESETS: Record<PomodoroModo, number>;
 };
 
@@ -41,12 +43,14 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   const [videoId, setVideoId] = useState<string | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [fonteSelecionada, setFonteSelecionada] = useState<"manual" | "biblioteca">("manual");
+  const [showRestDialog, setShowRestDialog] = useState(false);
   const playerRef = useRef<any>(null);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const inicioSessaoRef = useRef<Date | null>(null);
   const tempoInicialRef = useRef<number>(PRESETS.trabalho);
   const sessaoCompletadaRef = useRef<boolean>(false);
+  const bellAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Carregar do localStorage na inicialização
   useEffect(() => {
@@ -66,6 +70,11 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         console.error("Erro ao carregar estado do pomodoro:", error);
       }
     }
+  }, []);
+
+  // Carregar áudio do sino
+  useEffect(() => {
+    bellAudioRef.current = new Audio("/sounds/bell.mp3");
   }, []);
 
   // Salvar no localStorage sempre que mudar
@@ -97,12 +106,24 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
             salvarSessao();
             setIsRunning(false);
             
+            // Tocar sino
+            if (bellAudioRef.current) {
+              bellAudioRef.current.play().catch(err => {
+                console.log("Erro ao tocar sino:", err);
+              });
+            }
+            
             // Notificação
             if ("Notification" in window && Notification.permission === "granted") {
               new Notification("Pomodoro concluído!", {
                 body: `Sessão de ${modo === "trabalho" ? "trabalho" : "pausa"} finalizada!`,
                 icon: "/favicon.ico"
               });
+            }
+            
+            // Mostrar dialog de descanso apenas para sessões de trabalho
+            if (modo === "trabalho") {
+              setShowRestDialog(true);
             }
             
             return 0;
@@ -190,6 +211,8 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     toggleTimer,
     resetTimer,
     salvarSessao,
+    showRestDialog,
+    setShowRestDialog,
     PRESETS,
   };
 
