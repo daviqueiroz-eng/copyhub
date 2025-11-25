@@ -3,6 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
+export interface ChecklistItem {
+  id: string;
+  texto: string;
+  concluida: boolean;
+}
+
 export interface AtividadeGeral {
   id: string;
   created_by: string;
@@ -11,6 +17,7 @@ export interface AtividadeGeral {
   tipo: string;
   prioridade: string;
   data_limite: string | null;
+  checklist: ChecklistItem[];
   anexos: any;
   created_at: string;
   updated_at: string;
@@ -26,7 +33,12 @@ export const useAtividadesGerais = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as AtividadeGeral[];
+      
+      // Cast checklist de Json para ChecklistItem[]
+      return (data || []).map(item => ({
+        ...item,
+        checklist: (item.checklist as any) || [],
+      })) as AtividadeGeral[];
     },
   });
 };
@@ -43,7 +55,13 @@ export const useCreateAtividadeGeral = () => {
       const { data: atividadeData, error: atividadeError } = await supabase
         .from("atividades_gerais")
         .insert({
-          ...atividade,
+          titulo: atividade.titulo,
+          descricao: atividade.descricao,
+          tipo: atividade.tipo,
+          prioridade: atividade.prioridade,
+          data_limite: atividade.data_limite,
+          checklist: atividade.checklist as any,
+          anexos: atividade.anexos,
           created_by: user.id,
         })
         .select()
@@ -96,9 +114,19 @@ export const useUpdateAtividadeGeral = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...atividade }: Partial<AtividadeGeral> & { id: string }) => {
+      const updateData: any = {};
+      
+      if (atividade.titulo !== undefined) updateData.titulo = atividade.titulo;
+      if (atividade.descricao !== undefined) updateData.descricao = atividade.descricao;
+      if (atividade.tipo !== undefined) updateData.tipo = atividade.tipo;
+      if (atividade.prioridade !== undefined) updateData.prioridade = atividade.prioridade;
+      if (atividade.data_limite !== undefined) updateData.data_limite = atividade.data_limite;
+      if (atividade.checklist !== undefined) updateData.checklist = atividade.checklist as any;
+      if (atividade.anexos !== undefined) updateData.anexos = atividade.anexos;
+
       const { data, error } = await supabase
         .from("atividades_gerais")
-        .update(atividade)
+        .update(updateData)
         .eq("id", id)
         .select()
         .single();

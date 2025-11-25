@@ -47,6 +47,7 @@ export type Database = {
       atividades_gerais: {
         Row: {
           anexos: Json | null
+          checklist: Json | null
           created_at: string
           created_by: string
           data_limite: string | null
@@ -59,6 +60,7 @@ export type Database = {
         }
         Insert: {
           anexos?: Json | null
+          checklist?: Json | null
           created_at?: string
           created_by: string
           data_limite?: string | null
@@ -71,6 +73,7 @@ export type Database = {
         }
         Update: {
           anexos?: Json | null
+          checklist?: Json | null
           created_at?: string
           created_by?: string
           data_limite?: string | null
@@ -411,6 +414,7 @@ export type Database = {
       }
       flow_tarefas: {
         Row: {
+          atividade_geral_id: string | null
           created_at: string
           data_limite: string | null
           descricao: string | null
@@ -423,6 +427,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          atividade_geral_id?: string | null
           created_at?: string
           data_limite?: string | null
           descricao?: string | null
@@ -435,6 +440,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          atividade_geral_id?: string | null
           created_at?: string
           data_limite?: string | null
           descricao?: string | null
@@ -446,7 +452,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "flow_tarefas_atividade_geral_id_fkey"
+            columns: ["atividade_geral_id"]
+            isOneToOne: false
+            referencedRelation: "atividades_gerais"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       headlines: {
         Row: {
