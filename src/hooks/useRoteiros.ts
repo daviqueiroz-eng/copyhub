@@ -12,6 +12,7 @@ export type Roteiro = {
   user_id?: string;
   is_private: boolean;
   criador_conteudo?: string;
+  visualizacoes?: string;
   created_at: string;
   updated_at: string;
 };
@@ -36,7 +37,7 @@ export const useCreateRoteiro = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (roteiro: { titulo: string; conteudo: string; ordem: number; nicho_id?: string; link_video?: string; is_private?: boolean; user_id?: string; criador_conteudo?: string }) => {
+    mutationFn: async (roteiro: { titulo: string; conteudo: string; ordem: number; nicho_id?: string; link_video?: string; is_private?: boolean; user_id?: string; criador_conteudo?: string; visualizacoes?: string }) => {
       const { data, error } = await supabase
         .from("roteiros")
         .insert(roteiro)

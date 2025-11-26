@@ -963,6 +963,7 @@ export type Database = {
           titulo: string
           updated_at: string
           user_id: string | null
+          visualizacoes: string | null
         }
         Insert: {
           conteudo: string
@@ -976,6 +977,7 @@ export type Database = {
           titulo: string
           updated_at?: string
           user_id?: string | null
+          visualizacoes?: string | null
         }
         Update: {
           conteudo?: string
@@ -989,6 +991,7 @@ export type Database = {
           titulo?: string
           updated_at?: string
           user_id?: string | null
+          visualizacoes?: string | null
         }
         Relationships: [
           {

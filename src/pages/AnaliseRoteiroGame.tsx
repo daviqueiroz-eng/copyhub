@@ -88,7 +88,7 @@ const AnaliseRoteiroGame = () => {
   // Ref para armazenar posições das palavras grifadas
   const highlightRefs = useRef<Map<string, HTMLElement>>(new Map());
   
-  // Dialog novo roteiro (admin)
+  // Dialog novo roteiro (todos os usuários)
   const [showNovoRoteiroDialog, setShowNovoRoteiroDialog] = useState(false);
   const [novoRoteiroForm, setNovoRoteiroForm] = useState({
     titulo: "",
@@ -97,6 +97,8 @@ const AnaliseRoteiroGame = () => {
     link_video: "",
     ordem: 0,
     criador_conteudo: "",
+    visualizacoes: "",
+    tipoUpload: "privado" as "privado" | "geral",
   });
   
   // Dialog roteiro avulso
@@ -720,22 +722,30 @@ const AnaliseRoteiroGame = () => {
       return;
     }
 
+    const isPrivate = novoRoteiroForm.tipoUpload === "privado";
+
     createRoteiro.mutate({
       titulo: novoRoteiroForm.titulo,
       conteudo: novoRoteiroForm.conteudo,
       nicho_id: novoRoteiroForm.nicho_id || undefined,
       link_video: novoRoteiroForm.link_video || undefined,
       ordem: novoRoteiroForm.ordem,
-      is_private: false,
-      user_id: undefined,
+      is_private: isPrivate,
+      user_id: isPrivate ? user?.id : undefined,
       criador_conteudo: novoRoteiroForm.criador_conteudo || undefined,
+      visualizacoes: novoRoteiroForm.visualizacoes || undefined,
     }, {
       onSuccess: () => {
         setShowNovoRoteiroDialog(false);
-        setNovoRoteiroForm({ titulo: "", conteudo: "", nicho_id: "", link_video: "", ordem: 0, criador_conteudo: "" });
+        setNovoRoteiroForm({ 
+          titulo: "", conteudo: "", nicho_id: "", link_video: "", 
+          ordem: 0, criador_conteudo: "", visualizacoes: "", tipoUpload: "privado" 
+        });
         toast({
           title: "Roteiro criado",
-          description: "O novo roteiro foi adicionado e está visível para todos.",
+          description: isPrivate 
+            ? "Seu roteiro privado foi salvo e só você pode vê-lo."
+            : "O novo roteiro foi adicionado e está visível para todos.",
         });
       },
     });
@@ -1175,17 +1185,15 @@ const AnaliseRoteiroGame = () => {
                 <Filter className="w-4 h-4" />
                 Filtrar Palavras Grifadas
               </Button>
-              {isAdmin && (
-                <Button
-                  onClick={() => setShowNovoRoteiroDialog(true)}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <FileUp className="w-4 h-4" />
-                  Novo Roteiro
-                </Button>
-              )}
+              <Button
+                onClick={() => setShowNovoRoteiroDialog(true)}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <FileUp className="w-4 h-4" />
+                Novo Roteiro
+              </Button>
               <Button
                 onClick={() => setShowAvulsoDialog(true)}
                 variant="outline"
@@ -1927,13 +1935,13 @@ const AnaliseRoteiroGame = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Novo Roteiro (Admin) */}
+      {/* Dialog Novo Roteiro */}
       <Dialog open={showNovoRoteiroDialog} onOpenChange={setShowNovoRoteiroDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Criar Novo Roteiro</DialogTitle>
             <DialogDescription>
-              Adicione um novo roteiro ao banco de dados.
+              Adicione um novo roteiro {isAdmin ? "ao banco de dados" : "para você analisar"}.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1953,6 +1961,15 @@ const AnaliseRoteiroGame = () => {
                 value={novoRoteiroForm.criador_conteudo}
                 onChange={(e) => setNovoRoteiroForm({ ...novoRoteiroForm, criador_conteudo: e.target.value })}
                 placeholder="Ex: João Silva, Canal XYZ, etc."
+              />
+            </div>
+            <div>
+              <Label htmlFor="novo-visualizacoes">Quantas Visualizações?</Label>
+              <Input
+                id="novo-visualizacoes"
+                value={novoRoteiroForm.visualizacoes}
+                onChange={(e) => setNovoRoteiroForm({ ...novoRoteiroForm, visualizacoes: e.target.value })}
+                placeholder="Ex: 150k, 1.2M, 500 mil..."
               />
             </div>
             <div>
@@ -2002,6 +2019,37 @@ const AnaliseRoteiroGame = () => {
                 onChange={(e) => setNovoRoteiroForm({ ...novoRoteiroForm, link_video: e.target.value })}
                 placeholder="https://..."
               />
+            </div>
+            <div>
+              <Label>Onde subir este roteiro?</Label>
+              <div className="space-y-2 mt-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="tipo-privado"
+                    checked={novoRoteiroForm.tipoUpload === "privado"}
+                    onChange={() => setNovoRoteiroForm({ ...novoRoteiroForm, tipoUpload: "privado" })}
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor="tipo-privado" className="cursor-pointer font-normal">
+                    Subir para Mim (apenas eu vejo)
+                  </Label>
+                </div>
+                {isAdmin && (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="tipo-geral"
+                      checked={novoRoteiroForm.tipoUpload === "geral"}
+                      onChange={() => setNovoRoteiroForm({ ...novoRoteiroForm, tipoUpload: "geral" })}
+                      className="w-4 h-4"
+                    />
+                    <Label htmlFor="tipo-geral" className="cursor-pointer font-normal">
+                      Subir para Geral (todos veem)
+                    </Label>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowNovoRoteiroDialog(false)}>
