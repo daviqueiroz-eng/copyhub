@@ -22,6 +22,8 @@ export const PomodoroConfigDialog = ({ open, onOpenChange }: PomodoroConfigDialo
   const {
     tempoCustomizado,
     setTempoCustomizado,
+    pausaCurtaCustomizada,
+    setPausaCurtaCustomizada,
     youtubeUrl,
     setYoutubeUrl,
     setVideoId,
@@ -30,8 +32,12 @@ export const PomodoroConfigDialog = ({ open, onOpenChange }: PomodoroConfigDialo
     resetTimer,
   } = usePomodoro();
 
-  const [customMinutos, setCustomMinutos] = useState(
+  const [customMinutosPomo, setCustomMinutosPomo] = useState(
     tempoCustomizado ? Math.floor(tempoCustomizado / 60) : 25
+  );
+  
+  const [customMinutosPausa, setCustomMinutosPausa] = useState(
+    pausaCurtaCustomizada ? Math.floor(pausaCurtaCustomizada / 60) : 5
   );
 
   const handleYoutubeUrlChange = (url: string) => {
@@ -48,8 +54,10 @@ export const PomodoroConfigDialog = ({ open, onOpenChange }: PomodoroConfigDialo
   };
 
   const handleCustomTimeSubmit = () => {
-    const segundos = customMinutos * 60;
-    setTempoCustomizado(segundos);
+    const segundosPomo = customMinutosPomo * 60;
+    const segundosPausa = customMinutosPausa * 60;
+    setTempoCustomizado(segundosPomo);
+    setPausaCurtaCustomizada(segundosPausa);
     resetTimer();
     onOpenChange(false);
   };
@@ -78,20 +86,39 @@ export const PomodoroConfigDialog = ({ open, onOpenChange }: PomodoroConfigDialo
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Tempo Personalizado */}
+            {/* Duração do Pomo */}
             <div className="space-y-2">
-              <Label>Tempo Personalizado (minutos)</Label>
-              <div className="flex gap-2">
+              <Label>Duração do Pomo</Label>
+              <div className="flex items-center gap-2">
                 <Input
                   type="number"
                   min="1"
                   max="120"
-                  value={customMinutos}
-                  onChange={(e) => setCustomMinutos(parseInt(e.target.value) || 25)}
+                  value={customMinutosPomo}
+                  onChange={(e) => setCustomMinutosPomo(parseInt(e.target.value) || 25)}
                 />
-                <Button onClick={handleCustomTimeSubmit}>Aplicar</Button>
+                <span className="text-muted-foreground text-sm">minutos</span>
               </div>
             </div>
+
+            {/* Duração da Pausa Curta */}
+            <div className="space-y-2">
+              <Label>Duração da Pausa Curta</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={customMinutosPausa}
+                  onChange={(e) => setCustomMinutosPausa(parseInt(e.target.value) || 5)}
+                />
+                <span className="text-muted-foreground text-sm">minutos</span>
+              </div>
+            </div>
+
+            <Button onClick={handleCustomTimeSubmit} className="w-full">
+              Aplicar Configurações
+            </Button>
 
             {/* Fonte de Áudio */}
             <div className="space-y-2">

@@ -16,17 +16,20 @@ interface PomodoroRestDialogProps {
   open: boolean;
   onClose: () => void;
   onStartRest: (minutos: number) => void;
+  pausaCurtaCustomizada?: number | null;
 }
 
 export function PomodoroRestDialog({
   open,
   onClose,
   onStartRest,
+  pausaCurtaCustomizada,
 }: PomodoroRestDialogProps) {
-  const [customMinutes, setCustomMinutes] = useState<string>("10");
+  const tempoDescanso = pausaCurtaCustomizada ? Math.floor(pausaCurtaCustomizada / 60) : 5;
+  const [customMinutes, setCustomMinutes] = useState<string>(String(tempoDescanso));
 
   const handleQuickRest = () => {
-    onStartRest(5);
+    onStartRest(tempoDescanso);
   };
 
   const handleCustomRest = () => {
@@ -55,7 +58,7 @@ export function PomodoroRestDialog({
             className="w-full"
             size="lg"
           >
-            Descansar 5 minutos
+            Descansar {tempoDescanso} minutos
           </Button>
 
           <div className="space-y-2">

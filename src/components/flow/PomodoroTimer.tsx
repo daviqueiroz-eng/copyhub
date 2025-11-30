@@ -15,6 +15,7 @@ export const PomodoroTimer = () => {
   const {
     segundosRestantes,
     tempoCustomizado,
+    pausaCurtaCustomizada,
     modo,
     isRunning,
     toggleTimer,
@@ -192,6 +193,7 @@ export const PomodoroTimer = () => {
       <PomodoroRestDialog
         open={showRestDialog}
         onClose={() => setShowRestDialog(false)}
+        pausaCurtaCustomizada={pausaCurtaCustomizada}
         onStartRest={(minutos) => {
           setTempoCustomizado(minutos * 60);
           setModo("pausaCurta");

@@ -9,6 +9,7 @@ type PomodoroState = {
   segundosRestantes: number;
   isRunning: boolean;
   tempoCustomizado: number | null;
+  pausaCurtaCustomizada: number | null;
   videoId: string | null;
   youtubeUrl: string;
   fonteSelecionada: "manual" | "biblioteca";
@@ -20,6 +21,7 @@ type PomodoroContextType = PomodoroState & {
   setSegundosRestantes: (segundos: number) => void;
   setIsRunning: (running: boolean) => void;
   setTempoCustomizado: (tempo: number | null) => void;
+  setPausaCurtaCustomizada: (tempo: number | null) => void;
   setVideoId: (id: string | null) => void;
   setYoutubeUrl: (url: string) => void;
   setFonteSelecionada: (fonte: "manual" | "biblioteca") => void;
@@ -40,6 +42,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   const [segundosRestantes, setSegundosRestantes] = useState(PRESETS.trabalho);
   const [isRunning, setIsRunning] = useState(false);
   const [tempoCustomizado, setTempoCustomizado] = useState<number | null>(null);
+  const [pausaCurtaCustomizada, setPausaCurtaCustomizada] = useState<number | null>(null);
   const [videoId, setVideoId] = useState<string | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [fonteSelecionada, setFonteSelecionada] = useState<"manual" | "biblioteca">("manual");
@@ -62,6 +65,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         setSegundosRestantes(state.segundosRestantes || PRESETS.trabalho);
         setIsRunning(false); // Sempre começa pausado após reload
         setTempoCustomizado(state.tempoCustomizado);
+        setPausaCurtaCustomizada(state.pausaCurtaCustomizada);
         setYoutubeUrl(state.youtubeUrl || "");
         setVideoId(state.videoId);
         setFonteSelecionada(state.fonteSelecionada || "manual");
@@ -74,7 +78,9 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
 
   // Carregar áudio do sino
   useEffect(() => {
-    bellAudioRef.current = new Audio("/sounds/bell.mp3");
+    const audio = new Audio("/sounds/bell.mp3");
+    audio.load(); // Pré-carregar
+    bellAudioRef.current = audio;
   }, []);
 
   // Salvar no localStorage sempre que mudar
@@ -84,13 +90,14 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       segundosRestantes,
       isRunning,
       tempoCustomizado,
+      pausaCurtaCustomizada,
       youtubeUrl,
       videoId,
       fonteSelecionada,
       tempoInicialRef: tempoInicialRef.current,
     };
     localStorage.setItem("pomodoro_state", JSON.stringify(state));
-  }, [modo, segundosRestantes, isRunning, tempoCustomizado, youtubeUrl, videoId, fonteSelecionada]);
+  }, [modo, segundosRestantes, isRunning, tempoCustomizado, pausaCurtaCustomizada, youtubeUrl, videoId, fonteSelecionada]);
 
   // Lógica do timer (continua rodando mesmo fora da página)
   useEffect(() => {
@@ -108,6 +115,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
             
             // Tocar sino
             if (bellAudioRef.current) {
+              bellAudioRef.current.currentTime = 0; // Resetar para início
               bellAudioRef.current.play().catch(err => {
                 console.log("Erro ao tocar sino:", err);
               });
@@ -204,6 +212,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     segundosRestantes, setSegundosRestantes,
     isRunning, setIsRunning,
     tempoCustomizado, setTempoCustomizado,
+    pausaCurtaCustomizada, setPausaCurtaCustomizada,
     videoId, setVideoId,
     youtubeUrl, setYoutubeUrl,
     fonteSelecionada, setFonteSelecionada,
