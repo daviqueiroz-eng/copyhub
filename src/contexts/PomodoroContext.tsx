@@ -109,31 +109,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       intervalRef.current = setInterval(() => {
         setSegundosRestantes((prev) => {
           if (prev <= 1) {
-            sessaoCompletadaRef.current = true; // Marcar como completada
-            salvarSessao();
-            setIsRunning(false);
-            
-            // Tocar sino
-            if (bellAudioRef.current) {
-              bellAudioRef.current.currentTime = 0; // Resetar para início
-              bellAudioRef.current.play().catch(err => {
-                console.log("Erro ao tocar sino:", err);
-              });
-            }
-            
-            // Notificação
-            if ("Notification" in window && Notification.permission === "granted") {
-              new Notification("Pomodoro concluído!", {
-                body: `Sessão de ${modo === "trabalho" ? "trabalho" : "pausa"} finalizada!`,
-                icon: "/favicon.ico"
-              });
-            }
-            
-            // Mostrar dialog de descanso apenas para sessões de trabalho
-            if (modo === "trabalho") {
-              setShowRestDialog(true);
-            }
-            
+            setIsRunning(false); // Parar o timer
             return 0;
           }
           return prev - 1;
@@ -148,7 +124,39 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning, segundosRestantes, modo]);
+  }, [isRunning, segundosRestantes]);
+
+  // Detectar quando o timer chega a 0 e executar as ações
+  useEffect(() => {
+    if (segundosRestantes === 0 && isRunning === false && inicioSessaoRef.current) {
+      // Marcar como completada e salvar
+      sessaoCompletadaRef.current = true;
+      salvarSessao();
+      
+      // Tocar sino
+      console.log("Timer finalizado! Tocando sino...");
+      if (bellAudioRef.current) {
+        bellAudioRef.current.currentTime = 0;
+        bellAudioRef.current.play().catch(err => {
+          console.error("Erro ao tocar sino:", err);
+        });
+      }
+      
+      // Notificação
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Pomodoro concluído!", {
+          body: `Sessão de ${modo === "trabalho" ? "trabalho" : "pausa"} finalizada!`,
+          icon: "/favicon.ico"
+        });
+      }
+      
+      // Mostrar dialog de descanso apenas para sessões de trabalho
+      if (modo === "trabalho") {
+        console.log("Mostrando dialog de descanso...");
+        setShowRestDialog(true);
+      }
+    }
+  }, [segundosRestantes, isRunning, modo]);
 
   // Controlar YouTube player sincronizado com timer
   useEffect(() => {
