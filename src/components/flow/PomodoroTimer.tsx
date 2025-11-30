@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Play, Pause, RotateCcw, Settings } from "lucide-react";
 import { CircularTimer } from "./CircularTimer";
 import { PomodoroConfigDialog } from "./PomodoroConfigDialog";
-import { PomodoroRestDialog } from "./PomodoroRestDialog";
 import { format } from "date-fns";
 
 export const PomodoroTimer = () => {
@@ -15,18 +14,10 @@ export const PomodoroTimer = () => {
   const {
     segundosRestantes,
     tempoCustomizado,
-    pausaCurtaCustomizada,
     modo,
     isRunning,
     toggleTimer,
     resetTimer,
-    playerRef,
-    videoId,
-    showRestDialog,
-    setShowRestDialog,
-    setModo,
-    setTempoCustomizado,
-    setIsRunning,
     PRESETS,
   } = usePomodoro();
 
@@ -188,19 +179,6 @@ export const PomodoroTimer = () => {
 
       {/* Dialog de Configurações */}
       <PomodoroConfigDialog open={showConfig} onOpenChange={setShowConfig} />
-      
-      {/* Dialog de Descanso */}
-      <PomodoroRestDialog
-        open={showRestDialog}
-        onClose={() => setShowRestDialog(false)}
-        pausaCurtaCustomizada={pausaCurtaCustomizada}
-        onStartRest={(minutos) => {
-          setTempoCustomizado(minutos * 60);
-          setModo("pausaCurta");
-          setIsRunning(true);
-          setShowRestDialog(false);
-        }}
-      />
     </>
   );
 };
