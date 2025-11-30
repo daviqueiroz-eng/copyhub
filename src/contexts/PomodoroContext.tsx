@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import YouTube from "react-youtube";
-import { PomodoroRestDialog } from "@/components/flow/PomodoroRestDialog";
 
 type PomodoroModo = "trabalho" | "pausaCurta" | "pausaLonga";
 
@@ -29,8 +28,6 @@ type PomodoroContextType = PomodoroState & {
   toggleTimer: () => void;
   resetTimer: () => void;
   salvarSessao: () => Promise<void>;
-  showRestDialog: boolean;
-  setShowRestDialog: (show: boolean) => void;
   PRESETS: Record<PomodoroModo, number>;
 };
 
@@ -47,7 +44,6 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   const [videoId, setVideoId] = useState<string | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [fonteSelecionada, setFonteSelecionada] = useState<"manual" | "biblioteca">("manual");
-  const [showRestDialog, setShowRestDialog] = useState(false);
   const playerRef = useRef<any>(null);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -187,7 +183,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       // Marcar como completado para evitar execuções múltiplas
       timerCompletadoRef.current = true;
       
-      // Parar timer
+      // Parar timer temporariamente
       setIsRunning(false);
       
       // Tocar sino
@@ -205,13 +201,49 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         });
       }
       
-      // Mostrar dialog de descanso apenas para sessões de trabalho
+      // NOVO: Iniciar automaticamente o modo descanso (se estava em trabalho)
       if (modo === "trabalho") {
-        console.log("💬 Mostrando dialog de descanso...");
-        setShowRestDialog(true);
+        console.log("⏰ Iniciando automaticamente modo descanso...");
+        
+        // Calcular tempo de pausa (customizado ou padrão 5 min)
+        const tempoPausa = pausaCurtaCustomizada || PRESETS.pausaCurta;
+        
+        // Configurar para modo pausa curta
+        setModo("pausaCurta");
+        setSegundosRestantes(tempoPausa);
+        
+        // Resetar refs para nova sessão
+        inicioSessaoRef.current = new Date();
+        timerCompletadoRef.current = false;
+        sessaoCompletadaRef.current = false;
+        
+        // Iniciar automaticamente após pequeno delay (para UI atualizar)
+        setTimeout(() => {
+          setIsRunning(true);
+        }, 100);
+      }
+      
+      // Se estava em pausa, voltar para modo trabalho
+      if (modo === "pausaCurta" || modo === "pausaLonga") {
+        console.log("⏰ Pausa finalizada! Voltando para modo trabalho...");
+        
+        const tempoTrabalho = tempoCustomizado || PRESETS.trabalho;
+        
+        setModo("trabalho");
+        setSegundosRestantes(tempoTrabalho);
+        
+        // Resetar refs
+        inicioSessaoRef.current = new Date();
+        timerCompletadoRef.current = false;
+        sessaoCompletadaRef.current = false;
+        
+        // Iniciar automaticamente
+        setTimeout(() => {
+          setIsRunning(true);
+        }, 100);
       }
     }
-  }, [segundosRestantes, modo]);
+  }, [segundosRestantes, modo, pausaCurtaCustomizada, tempoCustomizado]);
 
   // Controlar YouTube player sincronizado com timer
   useEffect(() => {
@@ -286,8 +318,6 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     toggleTimer,
     resetTimer,
     salvarSessao,
-    showRestDialog,
-    setShowRestDialog,
     PRESETS,
   };
 
@@ -313,22 +343,6 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         </div>
       )}
       
-      {/* Dialog de Descanso Global - aparece em qualquer página */}
-      <PomodoroRestDialog
-        open={showRestDialog}
-        onClose={() => setShowRestDialog(false)}
-        pausaCurtaCustomizada={pausaCurtaCustomizada}
-        onStartRest={(minutos) => {
-          setTempoCustomizado(minutos * 60);
-          setModo("pausaCurta");
-          setSegundosRestantes(minutos * 60);
-          setIsRunning(true);
-          setShowRestDialog(false);
-          inicioSessaoRef.current = new Date();
-          timerCompletadoRef.current = false;
-          sessaoCompletadaRef.current = false;
-        }}
-      />
     </PomodoroContext.Provider>
   );
 };
