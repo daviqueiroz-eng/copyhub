@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import YouTube from "react-youtube";
+import { PomodoroRestDialog } from "@/components/flow/PomodoroRestDialog";
 
 type PomodoroModo = "trabalho" | "pausaCurta" | "pausaLonga";
 
@@ -311,6 +312,23 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
           />
         </div>
       )}
+      
+      {/* Dialog de Descanso Global - aparece em qualquer página */}
+      <PomodoroRestDialog
+        open={showRestDialog}
+        onClose={() => setShowRestDialog(false)}
+        pausaCurtaCustomizada={pausaCurtaCustomizada}
+        onStartRest={(minutos) => {
+          setTempoCustomizado(minutos * 60);
+          setModo("pausaCurta");
+          setSegundosRestantes(minutos * 60);
+          setIsRunning(true);
+          setShowRestDialog(false);
+          inicioSessaoRef.current = new Date();
+          timerCompletadoRef.current = false;
+          sessaoCompletadaRef.current = false;
+        }}
+      />
     </PomodoroContext.Provider>
   );
 };
