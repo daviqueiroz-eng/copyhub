@@ -53,6 +53,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   const inicioSessaoRef = useRef<Date | null>(null);
   const tempoInicialRef = useRef<number>(PRESETS.trabalho);
   const sessaoCompletadaRef = useRef<boolean>(false);
+  const timerCompletadoRef = useRef<boolean>(false); // Flag para evitar execuções múltiplas
   const bellAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Carregar do localStorage na inicialização
@@ -75,6 +76,58 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   }, []);
+
+  // Função para tocar som de sino (com fallback sintetizado)
+  const playBellSound = () => {
+    try {
+      // Tentar tocar arquivo primeiro
+      if (bellAudioRef.current) {
+        bellAudioRef.current.currentTime = 0;
+        bellAudioRef.current.play().catch(() => {
+          // Fallback: gerar som via Web Audio API
+          playSynthesizedBell();
+        });
+      } else {
+        playSynthesizedBell();
+      }
+    } catch (error) {
+      console.error("Erro ao tocar sino:", error);
+      playSynthesizedBell();
+    }
+  };
+
+  // Função para gerar som de sino sintetizado
+  const playSynthesizedBell = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Criar três tons harmônicos para som de sino
+      const frequencies = [830, 1000, 1200];
+      
+      frequencies.forEach((freq, index) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = freq;
+        oscillator.type = "sine";
+        
+        // Envelope de volume para som natural
+        const now = audioContext.currentTime;
+        const delay = index * 0.05; // Pequeno atraso entre tons
+        gainNode.gain.setValueAtTime(0, now + delay);
+        gainNode.gain.linearRampToValueAtTime(0.3, now + delay + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + delay + 1.5);
+        
+        oscillator.start(now + delay);
+        oscillator.stop(now + delay + 1.5);
+      });
+    } catch (error) {
+      console.error("Erro ao sintetizar sino:", error);
+    }
+  };
 
   // Carregar áudio do sino
   useEffect(() => {
@@ -101,46 +154,47 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
 
   // Lógica do timer (continua rodando mesmo fora da página)
   useEffect(() => {
-    if (isRunning && segundosRestantes > 0) {
-      if (!inicioSessaoRef.current) {
-        inicioSessaoRef.current = new Date();
+    if (!isRunning) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
+      return;
+    }
 
-      intervalRef.current = setInterval(() => {
-        setSegundosRestantes((prev) => {
-          if (prev <= 1) {
-            setIsRunning(false); // Parar o timer
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
+    // Timer está rodando
+    intervalRef.current = setInterval(() => {
+      setSegundosRestantes((prev) => {
+        if (prev <= 0) return 0;
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-    }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning, segundosRestantes]);
+  }, [isRunning]);
 
   // Detectar quando o timer chega a 0 e executar as ações
   useEffect(() => {
-    if (segundosRestantes === 0 && isRunning === false && inicioSessaoRef.current) {
-      // Marcar como completada e salvar
-      sessaoCompletadaRef.current = true;
-      salvarSessao();
+    // Executar apenas uma vez quando timer chegar a 0
+    if (segundosRestantes === 0 && !timerCompletadoRef.current && inicioSessaoRef.current) {
+      console.log("🔔 Timer chegou a 0! Executando ações...");
+      
+      // Marcar como completado para evitar execuções múltiplas
+      timerCompletadoRef.current = true;
+      
+      // Parar timer
+      setIsRunning(false);
       
       // Tocar sino
-      console.log("Timer finalizado! Tocando sino...");
-      if (bellAudioRef.current) {
-        bellAudioRef.current.currentTime = 0;
-        bellAudioRef.current.play().catch(err => {
-          console.error("Erro ao tocar sino:", err);
-        });
-      }
+      playBellSound();
+      
+      // Marcar sessão como completada e salvar
+      sessaoCompletadaRef.current = true;
+      salvarSessao();
       
       // Notificação
       if ("Notification" in window && Notification.permission === "granted") {
@@ -152,11 +206,11 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       
       // Mostrar dialog de descanso apenas para sessões de trabalho
       if (modo === "trabalho") {
-        console.log("Mostrando dialog de descanso...");
+        console.log("💬 Mostrando dialog de descanso...");
         setShowRestDialog(true);
       }
     }
-  }, [segundosRestantes, isRunning, modo]);
+  }, [segundosRestantes, modo]);
 
   // Controlar YouTube player sincronizado com timer
   useEffect(() => {
@@ -175,8 +229,10 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
 
   const toggleTimer = () => {
     if (!isRunning) {
+      // Iniciar timer
       inicioSessaoRef.current = new Date();
-      sessaoCompletadaRef.current = false; // Reset ao iniciar nova sessão
+      sessaoCompletadaRef.current = false;
+      timerCompletadoRef.current = false; // Reset flag de completado
     }
     setIsRunning(!isRunning);
   };
@@ -187,7 +243,8 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     setSegundosRestantes(novoTempo);
     tempoInicialRef.current = novoTempo;
     inicioSessaoRef.current = null;
-    sessaoCompletadaRef.current = false; // Limpar flag
+    sessaoCompletadaRef.current = false;
+    timerCompletadoRef.current = false; // Reset flag de completado
   };
 
   const salvarSessao = async () => {
