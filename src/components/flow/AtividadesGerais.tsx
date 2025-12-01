@@ -9,9 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Edit, Calendar, AlertCircle, CheckSquare, X, BarChart3 } from "lucide-react";
+import { Plus, Trash2, Edit, Calendar, AlertCircle, CheckSquare, X, BarChart3, Users } from "lucide-react";
 import { useAtividadesGerais, useCreateAtividadeGeral, useUpdateAtividadeGeral, useDeleteAtividadeGeral, useMarcarTodasComoVistas, type ChecklistItem } from "@/hooks/useAtividadesGerais";
 import { useUserRole } from "@/hooks/useAuth";
+import { useProgressoAtividadesGerais } from "@/hooks/useProgressoAtividadesGerais";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AtividadesGeraisStatus } from "./AtividadesGeraisStatus";
@@ -24,11 +27,13 @@ interface AtividadeFormData {
   prioridade: string;
   data_limite: string;
   checklist: ChecklistItem[];
+  usuarios_destinatarios?: string[] | null;
 }
 
 export const AtividadesGerais = () => {
   const { data: atividades, isLoading } = useAtividadesGerais();
   const { data: userRole } = useUserRole();
+  const { data: progressoAtividades } = useProgressoAtividadesGerais();
   const createMutation = useCreateAtividadeGeral();
   const updateMutation = useUpdateAtividadeGeral();
   const deleteMutation = useDeleteAtividadeGeral();
@@ -44,8 +49,27 @@ export const AtividadesGerais = () => {
     prioridade: "media",
     data_limite: "",
     checklist: [],
+    usuarios_destinatarios: null,
   });
   const [newChecklistItem, setNewChecklistItem] = useState("");
+  const [enviarParaTodos, setEnviarParaTodos] = useState(true);
+  const [usuariosSelecionados, setUsuariosSelecionados] = useState<string[]>([]);
+
+  // Buscar usuários ativos
+  const { data: profiles } = useQuery({
+    queryKey: ["profiles-ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin,
+  });
 
   const addChecklistItem = () => {
     if (!newChecklistItem.trim()) return;
@@ -86,6 +110,11 @@ export const AtividadesGerais = () => {
       return;
     }
 
+    if (!enviarParaTodos && usuariosSelecionados.length === 0) {
+      toast.error("Selecione pelo menos um usuário destinatário");
+      return;
+    }
+
     try {
       if (editingId) {
         await updateMutation.mutateAsync({
@@ -101,8 +130,9 @@ export const AtividadesGerais = () => {
           data_limite: formData.data_limite || null,
           descricao: formData.descricao || null,
           anexos: [],
+          usuarios_destinatarios: enviarParaTodos ? null : usuariosSelecionados,
         });
-        toast.success("Atividade criada!");
+        toast.success("Atividade criada e distribuída!");
       }
 
       setDialogOpen(false);
@@ -114,7 +144,10 @@ export const AtividadesGerais = () => {
         prioridade: "media",
         data_limite: "",
         checklist: [],
+        usuarios_destinatarios: null,
       });
+      setEnviarParaTodos(true);
+      setUsuariosSelecionados([]);
     } catch (error) {
       toast.error("Erro ao salvar atividade");
     }
@@ -181,7 +214,10 @@ export const AtividadesGerais = () => {
                     prioridade: "media",
                     data_limite: "",
                     checklist: [],
+                    usuarios_destinatarios: null,
                   });
+                  setEnviarParaTodos(true);
+                  setUsuariosSelecionados([]);
                 }}>
                   <Plus className="mr-2 h-4 w-4" />
                   Nova Atividade Geral
@@ -250,6 +286,49 @@ export const AtividadesGerais = () => {
                     onChange={(e) => setFormData({ ...formData, data_limite: e.target.value })}
                   />
                 </div>
+
+                {!editingId && (
+                  <div className="space-y-3 p-4 border rounded-lg">
+                    <Label>Destinatários</Label>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="enviar-todos"
+                        checked={enviarParaTodos}
+                        onCheckedChange={(checked) => {
+                          setEnviarParaTodos(checked as boolean);
+                          if (checked) setUsuariosSelecionados([]);
+                        }}
+                      />
+                      <Label htmlFor="enviar-todos" className="font-normal cursor-pointer">
+                        Enviar para todos os usuários
+                      </Label>
+                    </div>
+                    
+                    {!enviarParaTodos && (
+                      <div className="space-y-2 mt-3 max-h-48 overflow-y-auto border rounded p-3">
+                        <p className="text-sm text-muted-foreground mb-2">Selecione os usuários:</p>
+                        {profiles?.map((profile) => (
+                          <div key={profile.user_id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`user-${profile.user_id}`}
+                              checked={usuariosSelecionados.includes(profile.user_id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setUsuariosSelecionados([...usuariosSelecionados, profile.user_id]);
+                                } else {
+                                  setUsuariosSelecionados(usuariosSelecionados.filter(id => id !== profile.user_id));
+                                }
+                              }}
+                            />
+                            <Label htmlFor={`user-${profile.user_id}`} className="font-normal cursor-pointer">
+                              {profile.nome}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>Checklist (opcional)</Label>
@@ -324,13 +403,16 @@ export const AtividadesGerais = () => {
                   ? Math.round((checklistCompleted / checklistTotal) * 100) 
                   : 0;
 
+                // Buscar progresso da atividade
+                const progresso = progressoAtividades?.find(p => p.atividade_id === atividade.id);
+
                 return (
             <Card key={atividade.id} className="relative">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1">
                     <CardTitle className="text-lg">{atividade.titulo}</CardTitle>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       {getPrioridadeBadge(atividade.prioridade)}
                       <Badge variant="outline">{atividade.tipo}</Badge>
                     </div>
@@ -355,18 +437,35 @@ export const AtividadesGerais = () => {
                   )}
                 </div>
               </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
                   {atividade.descricao && (
-                    <CardDescription className="mb-3">
+                    <CardDescription>
                       {atividade.descricao}
                     </CardDescription>
                   )}
 
+                  {progresso && (
+                    <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          {progresso.usuarios_concluidos}/{progresso.total_usuarios} concluídos
+                        </span>
+                      </div>
+                      {progresso.usuarios_pendentes > 0 && (
+                        <p className="text-sm text-orange-600 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {progresso.usuarios_pendentes} pendente(s)
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {checklistTotal > 0 && (
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2">
                       <CheckSquare className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">
-                        {checklistCompleted}/{checklistTotal} concluídos ({checklistProgress}%)
+                        Checklist: {checklistCompleted}/{checklistTotal} ({checklistProgress}%)
                       </span>
                     </div>
                   )}

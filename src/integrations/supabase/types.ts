@@ -57,6 +57,7 @@ export type Database = {
           tipo: string
           titulo: string
           updated_at: string
+          usuarios_destinatarios: string[] | null
         }
         Insert: {
           anexos?: Json | null
@@ -70,6 +71,7 @@ export type Database = {
           tipo?: string
           titulo: string
           updated_at?: string
+          usuarios_destinatarios?: string[] | null
         }
         Update: {
           anexos?: Json | null
@@ -83,6 +85,7 @@ export type Database = {
           tipo?: string
           titulo?: string
           updated_at?: string
+          usuarios_destinatarios?: string[] | null
         }
         Relationships: []
       }
