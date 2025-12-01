@@ -377,9 +377,10 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         onClose={() => setShowRestDialog(false)}
         pausaCurtaCustomizada={pausaCurtaCustomizada}
         onStartRest={(minutos) => {
-          setTempoCustomizado(minutos * 60);
+          // Mudar para modo pausa curta
           setModo("pausaCurta");
           setSegundosRestantes(minutos * 60);
+          tempoInicialRef.current = minutos * 60;
           setIsRunning(true);
           setShowRestDialog(false);
           inicioSessaoRef.current = new Date();
@@ -393,20 +394,19 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
           console.log("☕ Descanso iniciado - sessão ativa");
         }}
         onSkip={() => {
-          // Pular descanso e voltar para trabalho
+          // Pular descanso e preparar para próximo trabalho
           const tempoTrabalho = tempoCustomizado || PRESETS.trabalho;
           setModo("trabalho");
           setSegundosRestantes(tempoTrabalho);
+          tempoInicialRef.current = tempoTrabalho;
           setShowRestDialog(false);
-          inicioSessaoRef.current = new Date();
           timerCompletadoRef.current = false;
           sessaoCompletadaRef.current = false;
           
-          // Marcar sessão como ativa (localStorage + ref)
-          localStorage.setItem("pomodoro_sessao_ativa", "true");
-          sessaoAtivaRef.current = true;
+          // NÃO iniciar automaticamente - usuário decide quando começar
+          setIsRunning(false);
           
-          console.log("⏭️ Descanso pulado - nova sessão ativa");
+          console.log("⏭️ Descanso pulado - timer preparado");
         }}
       />
     </PomodoroContext.Provider>
