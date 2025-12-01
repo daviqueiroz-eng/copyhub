@@ -83,6 +83,12 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         setYoutubeUrl(state.youtubeUrl || "");
         setVideoId(state.videoId);
         setFonteSelecionada(state.fonteSelecionada || "manual");
+        
+        // Se tinha sessão ativa, restaurar a ref
+        const sessaoAtiva = localStorage.getItem("pomodoro_sessao_ativa") === "true";
+        if (sessaoAtiva) {
+          inicioSessaoRef.current = new Date();
+        }
       } catch (error) {
         console.error("Erro ao carregar estado do pomodoro:", error);
       }
@@ -191,9 +197,14 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
 
   // Detectar quando o timer chega a 0 e executar as ações
   useEffect(() => {
+    const sessaoAtiva = localStorage.getItem("pomodoro_sessao_ativa") === "true";
+    
     // Executar apenas uma vez quando timer chegar a 0
-    if (segundosRestantes === 0 && !timerCompletadoRef.current && inicioSessaoRef.current) {
+    if (segundosRestantes === 0 && !timerCompletadoRef.current && sessaoAtiva) {
       console.log("🔔 Timer chegou a 0! Executando ações...");
+      
+      // Limpar flag de sessão ativa
+      localStorage.removeItem("pomodoro_sessao_ativa");
       
       // Marcar como completado para evitar execuções múltiplas
       timerCompletadoRef.current = true;
@@ -248,10 +259,16 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         tempoInicialRef.current = novoTempo;
       }
       
+      // Marcar sessão como ativa no localStorage
+      localStorage.setItem("pomodoro_sessao_ativa", "true");
+      
       // Iniciar timer
       inicioSessaoRef.current = new Date();
       sessaoCompletadaRef.current = false;
       timerCompletadoRef.current = false; // Reset flag de completado
+    } else {
+      // Ao pausar, limpar flag de sessão ativa
+      localStorage.removeItem("pomodoro_sessao_ativa");
     }
     setIsRunning(!isRunning);
   };
@@ -264,6 +281,9 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     inicioSessaoRef.current = null;
     sessaoCompletadaRef.current = false;
     timerCompletadoRef.current = false; // Reset flag de completado
+    
+    // Limpar flag de sessão ativa
+    localStorage.removeItem("pomodoro_sessao_ativa");
   };
 
   const salvarSessao = async () => {
