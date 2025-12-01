@@ -1,21 +1,18 @@
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Coffee } from "lucide-react";
 
 interface PomodoroRestDialogProps {
   open: boolean;
   onClose: () => void;
   onStartRest: (minutos: number) => void;
+  onSkip: () => void;
   pausaCurtaCustomizada?: number | null;
 }
 
@@ -23,68 +20,54 @@ export function PomodoroRestDialog({
   open,
   onClose,
   onStartRest,
+  onSkip,
   pausaCurtaCustomizada,
 }: PomodoroRestDialogProps) {
   const tempoDescanso = pausaCurtaCustomizada ? Math.floor(pausaCurtaCustomizada / 60) : 5;
-  const [customMinutes, setCustomMinutes] = useState<string>(String(tempoDescanso));
-
-  const handleQuickRest = () => {
-    onStartRest(tempoDescanso);
-  };
-
-  const handleCustomRest = () => {
-    const minutos = parseInt(customMinutes);
-    if (minutos > 0 && minutos <= 60) {
-      onStartRest(minutos);
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="flex items-center gap-2">
-            <Coffee className="h-6 w-6 text-primary" />
-            <DialogTitle>Sessão Concluída!</DialogTitle>
-          </div>
-          <DialogDescription>
-            Parabéns! Você completou uma sessão de foco. Quer fazer uma pausa?
+          <DialogTitle className="text-2xl text-center">
+            Você completou um Pomo! 🍅
+          </DialogTitle>
+          <DialogDescription className="text-center text-lg pt-2">
+            Descansar por {tempoDescanso} minutos?
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 py-6">
+          {/* Botão Relaxar (verde, principal) */}
           <Button
-            onClick={handleQuickRest}
-            className="w-full"
+            onClick={() => onStartRest(tempoDescanso)}
+            className="w-full h-12 text-lg bg-green-600 hover:bg-green-700 text-white"
             size="lg"
           >
-            Descansar {tempoDescanso} minutos
+            <Coffee className="mr-2 h-5 w-5" />
+            Relaxar
           </Button>
 
-          <div className="space-y-2">
-            <Label htmlFor="custom-minutes">Ou escolha o tempo de descanso:</Label>
-            <div className="flex gap-2">
-              <Input
-                id="custom-minutes"
-                type="number"
-                min="1"
-                max="60"
-                value={customMinutes}
-                onChange={(e) => setCustomMinutes(e.target.value)}
-                placeholder="10"
-              />
-              <Button onClick={handleCustomRest} variant="secondary">
-                Descansar {customMinutes} min
-              </Button>
-            </div>
-          </div>
+          {/* Botão Pular (secundário) */}
+          <Button
+            onClick={onSkip}
+            variant="secondary"
+            className="w-full h-12 text-lg"
+            size="lg"
+          >
+            Pular
+          </Button>
+
+          {/* Botão Sair (outline) */}
+          <Button
+            onClick={onClose}
+            variant="outline"
+            className="w-full h-12 text-lg"
+            size="lg"
+          >
+            Sair
+          </Button>
         </div>
-
-        <DialogFooter>
-          <Button onClick={onClose} variant="outline">
-            Continuar trabalhando
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

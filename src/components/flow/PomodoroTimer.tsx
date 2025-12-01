@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePomodoro } from "@/contexts/PomodoroContext";
 import { usePomodoroEstatisticas } from "@/hooks/usePomodoroSessoes";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Play, Pause, RotateCcw, Settings } from "lucide-react";
 import { CircularTimer } from "./CircularTimer";
 import { PomodoroConfigDialog } from "./PomodoroConfigDialog";
@@ -10,6 +11,20 @@ import { format } from "date-fns";
 
 export const PomodoroTimer = () => {
   const [showConfig, setShowConfig] = useState(false);
+  const [notas, setNotas] = useState("");
+  
+  // Carregar notas do localStorage
+  useEffect(() => {
+    const notasSalvas = localStorage.getItem("pomodoroNotas");
+    if (notasSalvas) {
+      setNotas(notasSalvas);
+    }
+  }, []);
+  
+  // Salvar notas no localStorage quando mudam
+  useEffect(() => {
+    localStorage.setItem("pomodoroNotas", notas);
+  }, [notas]);
   
   const {
     segundosRestantes,
@@ -84,12 +99,26 @@ export const PomodoroTimer = () => {
                 onClick={() => setShowConfig(true)}
               >
                 <Settings className="mr-2 h-4 w-4" />
-                Configurar
-              </Button>
-            </div>
-          </div>
+                 Configurar
+               </Button>
+             </div>
 
-          {/* ========== COLUNA DIREITA: ESTATÍSTICAS + HISTÓRICO ========== */}
+             {/* Área de Anotações */}
+             <Card className="w-full max-w-md p-6 mt-8">
+               <h3 className="text-lg font-semibold mb-3">Foco em Notas</h3>
+               <Textarea
+                 value={notas}
+                 onChange={(e) => setNotas(e.target.value)}
+                 placeholder="O que você tem em mente? Registre suas ideias..."
+                 className="min-h-[120px] resize-none bg-muted/50 border-muted"
+               />
+               <p className="text-xs text-muted-foreground mt-2">
+                 Suas notas são salvas automaticamente
+               </p>
+             </Card>
+           </div>
+
+           {/* ========== COLUNA DIREITA: ESTATÍSTICAS + HISTÓRICO ========== */}
           <div className="space-y-6">
             
             {/* Grid de Estatísticas (2x2) */}
