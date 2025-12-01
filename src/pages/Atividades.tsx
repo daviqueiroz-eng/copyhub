@@ -3,13 +3,11 @@ import { PomodoroTimer } from "@/components/flow/PomodoroTimer";
 import { NotasQuick } from "@/components/flow/NotasQuick";
 import { KanbanBoard } from "@/components/flow/KanbanBoard";
 import { AtividadesGerais } from "@/components/flow/AtividadesGerais";
-import { AtividadesGeraisStatus } from "@/components/flow/AtividadesGeraisStatus";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Clock, StickyNote, KanbanSquare, Megaphone } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const Atividades = () => {
   const { user } = useAuth();
@@ -47,7 +45,7 @@ const Atividades = () => {
       </div>
 
       <Tabs defaultValue="pomodoro" className="w-full">
-        <TabsList className={cn("grid w-full max-w-2xl", isAdmin ? "grid-cols-5" : "grid-cols-4")}>
+        <TabsList className="grid w-full max-w-2xl grid-cols-4">
           <TabsTrigger value="pomodoro">
             <Clock className="mr-2 h-4 w-4" />
             Pomodoro
@@ -64,11 +62,6 @@ const Atividades = () => {
             <Megaphone className="mr-2 h-4 w-4" />
             Atividades Gerais
           </TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="acompanhamento">
-              Acompanhamento
-            </TabsTrigger>
-          )}
         </TabsList>
 
         <TabsContent value="pomodoro" className="mt-6">
@@ -86,12 +79,6 @@ const Atividades = () => {
         <TabsContent value="atividades-gerais" className="mt-6">
           <AtividadesGerais />
         </TabsContent>
-
-        {isAdmin && (
-          <TabsContent value="acompanhamento" className="mt-6">
-            <AtividadesGeraisStatus />
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );

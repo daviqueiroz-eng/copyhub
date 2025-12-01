@@ -48,7 +48,7 @@ export const useCreateAtividadeGeral = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (atividade: Omit<AtividadeGeral, "id" | "created_by" | "created_at" | "updated_at">) => {
+    mutationFn: async (atividade: Omit<AtividadeGeral, "id" | "created_by" | "created_at" | "updated_at"> & { usuarios_destinatarios?: string[] | null }) => {
       if (!user) throw new Error("Usuário não autenticado");
 
       // Criar atividade geral
@@ -63,24 +63,34 @@ export const useCreateAtividadeGeral = () => {
           checklist: atividade.checklist as any,
           anexos: atividade.anexos,
           created_by: user.id,
+          usuarios_destinatarios: atividade.usuarios_destinatarios,
         })
         .select()
         .single();
 
       if (atividadeError) throw atividadeError;
 
-      // Buscar todos os usuários ativos
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("ativo", true);
+      // Determinar usuários destinatários
+      let userIds: string[] = [];
+      
+      if (atividade.usuarios_destinatarios && atividade.usuarios_destinatarios.length > 0) {
+        // Se houver usuários específicos, usar esses
+        userIds = atividade.usuarios_destinatarios;
+      } else {
+        // Se não, buscar todos os usuários ativos
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("ativo", true);
 
-      if (profilesError) throw profilesError;
+        if (profilesError) throw profilesError;
+        userIds = profiles?.map(p => p.user_id) || [];
+      }
 
-      // Criar uma tarefa para cada usuário
-      if (profiles && profiles.length > 0) {
-        const tarefas = profiles.map(profile => ({
-          user_id: profile.user_id,
+      // Criar uma tarefa para cada usuário destinatário
+      if (userIds.length > 0) {
+        const tarefas = userIds.map(userId => ({
+          user_id: userId,
           titulo: atividade.titulo,
           descricao: atividade.descricao,
           prioridade: atividade.prioridade,
