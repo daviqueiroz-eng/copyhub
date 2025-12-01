@@ -463,6 +463,13 @@ export type Database = {
             referencedRelation: "atividades_gerais"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "flow_tarefas_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       headlines: {
