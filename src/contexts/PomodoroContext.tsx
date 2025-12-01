@@ -185,6 +185,13 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     // Timer está rodando
     intervalRef.current = setInterval(() => {
       setSegundosRestantes((prev) => {
+        // Detectar quando timer está prestes a chegar a 0
+        if (prev === 1 && modo === "trabalho" && sessaoAtivaRef.current) {
+          // Marcar flag no localStorage para mostrar dialog de forma confiável
+          localStorage.setItem("pomodoro_mostrar_dialog", "true");
+          console.log("🎯 Flag de dialog setada - timer vai chegar a 0");
+        }
+        
         if (prev <= 0) return 0;
         return prev - 1;
       });
@@ -195,23 +202,29 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning]);
+  }, [isRunning, modo]);
 
   // Detectar quando o timer chega a 0 e executar as ações
   useEffect(() => {
+    // Verificar flag do localStorage para mostrar dialog de forma confiável
+    const deveExibirDialog = localStorage.getItem("pomodoro_mostrar_dialog") === "true";
+    
     // Debug: log do estado atual
     console.log("🎯 Estado atual:", { 
       segundosRestantes, 
       modo, 
       sessaoAtiva: sessaoAtivaRef.current, 
       timerCompletado: timerCompletadoRef.current,
-      isRunning
+      isRunning,
+      deveExibirDialog
     });
     
-    // Executar apenas uma vez quando timer chegar a 0
-    // Verificar sessaoAtivaRef (mais confiável) OU isRunning (verificação secundária)
-    if (segundosRestantes === 0 && !timerCompletadoRef.current && (sessaoAtivaRef.current || isRunning)) {
+    // Executar apenas uma vez quando timer chegar a 0 E flag estiver ativa
+    if (segundosRestantes === 0 && !timerCompletadoRef.current && deveExibirDialog) {
       console.log("🔔 Timer chegou a 0! Executando ações...");
+      
+      // Limpar flag do dialog
+      localStorage.removeItem("pomodoro_mostrar_dialog");
       
       // Limpar flags de sessão ativa
       localStorage.removeItem("pomodoro_sessao_ativa");
