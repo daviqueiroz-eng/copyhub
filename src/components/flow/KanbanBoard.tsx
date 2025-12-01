@@ -183,7 +183,11 @@ export const KanbanBoard = () => {
   const [dataLimite, setDataLimite] = useState("");
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Evita conflito com clicks
+      },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
