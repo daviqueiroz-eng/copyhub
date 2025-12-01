@@ -186,7 +186,9 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     intervalRef.current = setInterval(() => {
       setSegundosRestantes((prev) => {
         // Detectar quando timer está prestes a chegar a 0
-        if (prev === 1 && modo === "trabalho" && sessaoAtivaRef.current) {
+        // Usar localStorage ao invés de ref para verificação mais confiável
+        const sessaoAtiva = localStorage.getItem("pomodoro_sessao_ativa") === "true";
+        if (prev === 1 && modo === "trabalho" && sessaoAtiva) {
           // Marcar flag no localStorage para mostrar dialog de forma confiável
           localStorage.setItem("pomodoro_mostrar_dialog", "true");
           console.log("🎯 Flag de dialog setada - timer vai chegar a 0");
@@ -206,21 +208,32 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
 
   // Detectar quando o timer chega a 0 e executar as ações
   useEffect(() => {
+    // BACKUP: Setar flag se timer estiver em 1 segundo e não foi setada ainda
+    const sessaoAtiva = localStorage.getItem("pomodoro_sessao_ativa") === "true";
+    if (segundosRestantes === 1 && isRunning && modo === "trabalho" && sessaoAtiva) {
+      localStorage.setItem("pomodoro_mostrar_dialog", "true");
+      console.log("🎯 [BACKUP] Flag de dialog setada no useEffect");
+    }
+    
     // Verificar flag do localStorage para mostrar dialog de forma confiável
     const deveExibirDialog = localStorage.getItem("pomodoro_mostrar_dialog") === "true";
+    
+    // BACKUP: Verificação adicional - se timer chegou a 0, está rodando, e é modo trabalho - garantir que dialog apareça
+    const deveForcarDialog = segundosRestantes === 0 && isRunning && modo === "trabalho" && sessaoAtiva;
     
     // Debug: log do estado atual
     console.log("🎯 Estado atual:", { 
       segundosRestantes, 
       modo, 
-      sessaoAtiva: sessaoAtivaRef.current, 
+      sessaoAtiva, 
       timerCompletado: timerCompletadoRef.current,
       isRunning,
-      deveExibirDialog
+      deveExibirDialog,
+      deveForcarDialog
     });
     
-    // Executar apenas uma vez quando timer chegar a 0 E flag estiver ativa
-    if (segundosRestantes === 0 && !timerCompletadoRef.current && deveExibirDialog) {
+    // Executar apenas uma vez quando timer chegar a 0 E (flag estiver ativa OU verificação de backup passar)
+    if (segundosRestantes === 0 && !timerCompletadoRef.current && (deveExibirDialog || deveForcarDialog)) {
       console.log("🔔 Timer chegou a 0! Executando ações...");
       
       // Limpar flag do dialog
