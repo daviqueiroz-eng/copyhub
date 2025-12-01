@@ -213,77 +213,58 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
 
   // Detectar quando o timer chega a 0 e executar as ações
   useEffect(() => {
-    // Só executar quando timer chegar a 0 e estiver rodando
+    // BACKUP: Se timer está em 1 segundo e rodando em modo trabalho, preparar flags
+    if (segundosRestantes === 1 && isRunning && modo === "trabalho") {
+      localStorage.setItem("pomodoro_mostrar_dialog", "true");
+      localStorage.setItem("pomodoro_sessao_ativa", "true");
+      console.log("🎯 [useEffect backup] Flags setadas - timer em 1 segundo");
+    }
+
+    // Só executar quando timer chegar a 0
     if (segundosRestantes !== 0) return;
-    if (!isRunning) return;
-    
-    const sessaoAtiva = localStorage.getItem("pomodoro_sessao_ativa") === "true";
-    const deveExibirDialog = localStorage.getItem("pomodoro_mostrar_dialog") === "true";
-    
-    console.log("🎯 Timer chegou a 0:", { 
-      modo, 
-      sessaoAtiva, 
-      deveExibirDialog,
-      isRunning
-    });
-    
-    // Se é modo trabalho E tem sessão ativa OU flag de dialog
-    if (modo === "trabalho" && (deveExibirDialog || sessaoAtiva)) {
-      console.log("🔔 Finalizando sessão de trabalho!");
-      
-      // Limpar flags ANTES de executar ações
+
+    // Para modo trabalho: usar isRunning como fonte de verdade principal
+    if (modo === "trabalho" && isRunning) {
+      console.log("🔔 Finalizando sessão de trabalho! (isRunning garantiu execução)");
+
+      // Limpar flags
       localStorage.removeItem("pomodoro_mostrar_dialog");
       localStorage.removeItem("pomodoro_sessao_ativa");
-      
-      // Parar timer
+
       setIsRunning(false);
-      
-      // Tocar sino
       playBellSound();
-      
-      // Marcar sessão como completada e salvar
       sessaoCompletadaRef.current = true;
       salvarSessao();
-      
-      // Notificação
+
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification("Pomodoro concluído!", {
           body: "Sessão de trabalho finalizada!",
           icon: "/favicon.ico"
         });
       }
-      
-      // Mostrar dialog de descanso
-      console.log("💬 Mostrando dialog de descanso...");
+
       setShowRestDialog(true);
     }
-    // Se é modo pausa (curta ou longa) - apenas parar e resetar para trabalho
-    else if ((modo === "pausaCurta" || modo === "pausaLonga") && sessaoAtiva) {
-      console.log("☕ Finalizando pausa - voltando para modo trabalho");
-      
-      // Limpar flag de sessão ativa
+    // Para modo pausa: resetar para trabalho
+    else if ((modo === "pausaCurta" || modo === "pausaLonga") && isRunning) {
+      console.log("⏰ Finalizando pausa - retornando para modo trabalho");
+
       localStorage.removeItem("pomodoro_sessao_ativa");
-      
-      // Parar timer
+
       setIsRunning(false);
-      
-      // Tocar sino
       playBellSound();
-      
-      // Notificação
+
+      // Resetar para modo trabalho automaticamente
+      const tempoTrabalho = tempoCustomizado || PRESETS.trabalho;
+      setModo("trabalho");
+      setSegundosRestantes(tempoTrabalho);
+
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Pausa concluída!", {
+        new Notification("Pausa finalizada!", {
           body: "Hora de voltar ao trabalho!",
           icon: "/favicon.ico"
         });
       }
-      
-      // Resetar automaticamente para modo trabalho (mas não iniciar)
-      const tempoTrabalho = tempoCustomizado || PRESETS.trabalho;
-      setModo("trabalho");
-      setSegundosRestantes(tempoTrabalho);
-      tempoInicialRef.current = tempoTrabalho;
-      sessaoCompletadaRef.current = false;
     }
   }, [segundosRestantes, isRunning, modo, tempoCustomizado, PRESETS]);
 
