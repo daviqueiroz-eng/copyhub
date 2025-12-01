@@ -24,9 +24,9 @@ export const CircularTimer = ({ segundosRestantes, totalSegundos }: CircularTime
           cy="160"
           r={raio}
           stroke="currentColor"
-          strokeWidth="12"
+          strokeWidth="4"
           fill="none"
-          className="text-muted"
+          className="text-muted/40"
         />
         {/* Círculo de progresso animado */}
         <circle
@@ -34,7 +34,7 @@ export const CircularTimer = ({ segundosRestantes, totalSegundos }: CircularTime
           cy="160"
           r={raio}
           stroke="currentColor"
-          strokeWidth="12"
+          strokeWidth="4"
           fill="none"
           strokeDasharray={circunferencia}
           strokeDashoffset={offset}
