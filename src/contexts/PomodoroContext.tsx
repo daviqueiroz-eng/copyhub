@@ -63,15 +63,26 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     if (saved) {
       try {
         const state = JSON.parse(saved);
-        setModo(state.modo || "trabalho");
-        setSegundosRestantes(state.segundosRestantes || PRESETS.trabalho);
+        const modoCarregado = state.modo || "trabalho";
+        setModo(modoCarregado);
+        
+        // Se estava em 0, resetar para tempo padrão
+        const tempoSalvo = state.segundosRestantes;
+        if (tempoSalvo <= 0) {
+          const tempoReset = state.tempoCustomizado || PRESETS[modoCarregado];
+          setSegundosRestantes(tempoReset);
+          tempoInicialRef.current = tempoReset;
+        } else {
+          setSegundosRestantes(tempoSalvo);
+          tempoInicialRef.current = state.tempoInicialRef || PRESETS[modoCarregado];
+        }
+        
         setIsRunning(false); // Sempre começa pausado após reload
         setTempoCustomizado(state.tempoCustomizado);
         setPausaCurtaCustomizada(state.pausaCurtaCustomizada);
         setYoutubeUrl(state.youtubeUrl || "");
         setVideoId(state.videoId);
         setFonteSelecionada(state.fonteSelecionada || "manual");
-        tempoInicialRef.current = state.tempoInicialRef || PRESETS.trabalho;
       } catch (error) {
         console.error("Erro ao carregar estado do pomodoro:", error);
       }
@@ -230,6 +241,13 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
 
   const toggleTimer = () => {
     if (!isRunning) {
+      // Se timer está zerado, resetar antes de iniciar
+      if (segundosRestantes === 0) {
+        const novoTempo = tempoCustomizado || PRESETS[modo];
+        setSegundosRestantes(novoTempo);
+        tempoInicialRef.current = novoTempo;
+      }
+      
       // Iniciar timer
       inicioSessaoRef.current = new Date();
       sessaoCompletadaRef.current = false;
