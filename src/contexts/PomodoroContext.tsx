@@ -54,40 +54,60 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   const inicioSessaoRef = useRef<Date | null>(null);
   const tempoInicialRef = useRef<number>(PRESETS.trabalho);
   const sessaoCompletadaRef = useRef<boolean>(false);
-  const modoRef = useRef<PomodoroModo>("trabalho"); // Ref para evitar closure desatualizada
+  const modoRef = useRef<PomodoroModo>("trabalho");
   const bellAudioRef = useRef<HTMLAudioElement | null>(null);
+  const endTimeRef = useRef<number | null>(null); // Timestamp de quando o timer deve terminar
 
   // Carregar do localStorage na inicialização
   useEffect(() => {
     const saved = localStorage.getItem("pomodoro_state");
+    const savedEndTime = localStorage.getItem("pomodoro_end_time");
+    
     if (saved) {
       try {
         const state = JSON.parse(saved);
         const modoCarregado = state.modo || "trabalho";
         setModo(modoCarregado);
-        
-        // Se estava em 0, resetar para tempo padrão
-        const tempoSalvo = state.segundosRestantes;
-        if (tempoSalvo <= 0) {
-          const tempoReset = state.tempoCustomizado || PRESETS[modoCarregado];
-          setSegundosRestantes(tempoReset);
-          tempoInicialRef.current = tempoReset;
-        } else {
-          setSegundosRestantes(tempoSalvo);
-          tempoInicialRef.current = state.tempoInicialRef || PRESETS[modoCarregado];
-        }
-        
-        setIsRunning(false); // Sempre começa pausado após reload
         setTempoCustomizado(state.tempoCustomizado);
         setPausaCurtaCustomizada(state.pausaCurtaCustomizada);
         setYoutubeUrl(state.youtubeUrl || "");
         setVideoId(state.videoId);
         setFonteSelecionada(state.fonteSelecionada || "manual");
         
-        // Se tinha sessão ativa, restaurar o início da sessão
-        const sessaoAtiva = localStorage.getItem("pomodoro_sessao_ativa") === "true";
-        if (sessaoAtiva) {
-          inicioSessaoRef.current = new Date();
+        // Se tinha um endTime salvo, verificar se ainda é válido
+        if (savedEndTime) {
+          const endTime = parseInt(savedEndTime);
+          const now = Date.now();
+          
+          if (endTime > now) {
+            // Timer ainda não terminou - restaurar e continuar
+            endTimeRef.current = endTime;
+            const remaining = Math.ceil((endTime - now) / 1000);
+            setSegundosRestantes(remaining);
+            setIsRunning(true);
+            inicioSessaoRef.current = new Date();
+            localStorage.setItem("pomodoro_sessao_ativa", "true");
+            console.log("⏰ Timer restaurado do localStorage - restam", remaining, "segundos");
+          } else {
+            // Timer deveria ter terminado - limpar e resetar
+            localStorage.removeItem("pomodoro_end_time");
+            const tempoReset = state.tempoCustomizado || PRESETS[modoCarregado];
+            setSegundosRestantes(tempoReset);
+            tempoInicialRef.current = tempoReset;
+            setIsRunning(false);
+          }
+        } else {
+          // Sem endTime salvo - restaurar estado normal
+          const tempoSalvo = state.segundosRestantes;
+          if (tempoSalvo <= 0) {
+            const tempoReset = state.tempoCustomizado || PRESETS[modoCarregado];
+            setSegundosRestantes(tempoReset);
+            tempoInicialRef.current = tempoReset;
+          } else {
+            setSegundosRestantes(tempoSalvo);
+            tempoInicialRef.current = state.tempoInicialRef || PRESETS[modoCarregado];
+          }
+          setIsRunning(false);
         }
       } catch (error) {
         console.error("Erro ao carregar estado do pomodoro:", error);
@@ -95,19 +115,17 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Sincronizar modoRef com modo (evita closure desatualizada)
+  // Sincronizar modoRef com modo
   useEffect(() => {
     modoRef.current = modo;
   }, [modo]);
 
-  // Função para tocar som de sino (com fallback sintetizado)
+  // Função para tocar som de sino
   const playBellSound = () => {
     try {
-      // Tentar tocar arquivo primeiro
       if (bellAudioRef.current) {
         bellAudioRef.current.currentTime = 0;
         bellAudioRef.current.play().catch(() => {
-          // Fallback: gerar som via Web Audio API
           playSynthesizedBell();
         });
       } else {
@@ -123,8 +141,6 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   const playSynthesizedBell = () => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      // Criar três tons harmônicos para som de sino
       const frequencies = [830, 1000, 1200];
       
       frequencies.forEach((freq, index) => {
@@ -137,9 +153,8 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         oscillator.frequency.value = freq;
         oscillator.type = "sine";
         
-        // Envelope de volume para som natural
         const now = audioContext.currentTime;
-        const delay = index * 0.05; // Pequeno atraso entre tons
+        const delay = index * 0.05;
         gainNode.gain.setValueAtTime(0, now + delay);
         gainNode.gain.linearRampToValueAtTime(0.3, now + delay + 0.01);
         gainNode.gain.exponentialRampToValueAtTime(0.01, now + delay + 1.5);
@@ -155,7 +170,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   // Carregar áudio do sino
   useEffect(() => {
     const audio = new Audio("/sounds/bell.mp3");
-    audio.load(); // Pré-carregar
+    audio.load();
     bellAudioRef.current = audio;
   }, []);
 
@@ -175,9 +190,24 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("pomodoro_state", JSON.stringify(state));
   }, [modo, segundosRestantes, isRunning, tempoCustomizado, pausaCurtaCustomizada, youtubeUrl, videoId, fonteSelecionada]);
 
-  // Lógica do timer (continua rodando mesmo fora da página)
+  // Listener de visibilidade - sincronizar imediatamente quando voltar para a aba
   useEffect(() => {
-    if (!isRunning) {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isRunning && endTimeRef.current) {
+        const now = Date.now();
+        const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
+        setSegundosRestantes(remaining);
+        console.log("👁️ Aba visível - sincronizando timer:", remaining, "segundos");
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isRunning]);
+
+  // Lógica do timer baseada em timestamp
+  useEffect(() => {
+    if (!isRunning || !endTimeRef.current) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -185,50 +215,40 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Timer está rodando
-    intervalRef.current = setInterval(() => {
-      setSegundosRestantes((prev) => {
-        // Detectar quando timer está prestes a chegar a 0
-        // Usar modoRef para evitar closure desatualizada
-        const modoAtual = modoRef.current;
-        const sessaoAtiva = localStorage.getItem("pomodoro_sessao_ativa") === "true";
-        
-        if (prev === 1 && modoAtual === "trabalho" && sessaoAtiva) {
-          // Marcar flag no localStorage para mostrar dialog de forma confiável
-          localStorage.setItem("pomodoro_mostrar_dialog", "true");
-          console.log("🎯 Flag de dialog setada - timer vai chegar a 0");
-        }
-        
-        if (prev <= 0) return 0;
-        return prev - 1;
-      });
-    }, 1000);
+    // Função que calcula tempo restante baseado no timestamp
+    const updateTimer = () => {
+      if (!endTimeRef.current) return;
+      
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
+      setSegundosRestantes(remaining);
+    };
+
+    // Atualizar imediatamente
+    updateTimer();
+
+    // Interval de 250ms para UI responsiva (mas cálculo baseado em timestamp)
+    intervalRef.current = setInterval(updateTimer, 250);
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, modo]);
+  }, [isRunning]);
 
   // Detectar quando o timer chega a 0 e executar as ações
   useEffect(() => {
-    // BACKUP: Se timer está em 1 segundo e rodando em modo trabalho, preparar flags
-    if (segundosRestantes === 1 && isRunning && modo === "trabalho") {
-      localStorage.setItem("pomodoro_mostrar_dialog", "true");
-      localStorage.setItem("pomodoro_sessao_ativa", "true");
-      console.log("🎯 [useEffect backup] Flags setadas - timer em 1 segundo");
-    }
-
     // Só executar quando timer chegar a 0
     if (segundosRestantes !== 0) return;
 
     // Para modo trabalho: usar isRunning como fonte de verdade principal
     if (modo === "trabalho" && isRunning) {
-      console.log("🔔 Finalizando sessão de trabalho! (isRunning garantiu execução)");
+      console.log("🔔 Finalizando sessão de trabalho!");
 
-      // Limpar flags
-      localStorage.removeItem("pomodoro_mostrar_dialog");
+      // Limpar endTime e flags
+      endTimeRef.current = null;
+      localStorage.removeItem("pomodoro_end_time");
       localStorage.removeItem("pomodoro_sessao_ativa");
 
       setIsRunning(false);
@@ -249,6 +269,9 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     else if ((modo === "pausaCurta" || modo === "pausaLonga") && isRunning) {
       console.log("⏰ Finalizando pausa - retornando para modo trabalho");
 
+      // Limpar endTime e flags
+      endTimeRef.current = null;
+      localStorage.removeItem("pomodoro_end_time");
       localStorage.removeItem("pomodoro_sessao_ativa");
 
       setIsRunning(false);
@@ -285,48 +308,58 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
 
   const toggleTimer = () => {
     if (!isRunning) {
-      // Se timer está zerado, resetar antes de iniciar
-      if (segundosRestantes === 0) {
-        const novoTempo = tempoCustomizado || PRESETS[modo];
-        setSegundosRestantes(novoTempo);
-        tempoInicialRef.current = novoTempo;
+      // Determinar tempo atual
+      let tempoAtual = segundosRestantes;
+      if (tempoAtual === 0) {
+        tempoAtual = tempoCustomizado || PRESETS[modo];
+        setSegundosRestantes(tempoAtual);
+        tempoInicialRef.current = tempoAtual;
       }
       
-      // Marcar sessão como ativa
+      // Calcular timestamp de término
+      endTimeRef.current = Date.now() + (tempoAtual * 1000);
+      localStorage.setItem("pomodoro_end_time", endTimeRef.current.toString());
       localStorage.setItem("pomodoro_sessao_ativa", "true");
       
       // Iniciar timer
       inicioSessaoRef.current = new Date();
       sessaoCompletadaRef.current = false;
       
-      console.log("▶️ Timer iniciado - sessão ativa");
+      console.log("▶️ Timer iniciado - término previsto:", new Date(endTimeRef.current).toLocaleTimeString());
     } else {
-      // Ao pausar, limpar flag de sessão ativa
+      // Ao pausar, calcular segundos restantes e limpar endTime
+      if (endTimeRef.current) {
+        const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+        setSegundosRestantes(remaining);
+      }
+      endTimeRef.current = null;
+      localStorage.removeItem("pomodoro_end_time");
       localStorage.removeItem("pomodoro_sessao_ativa");
       
-      console.log("⏸️ Timer pausado - sessão desativada");
+      console.log("⏸️ Timer pausado");
     }
     setIsRunning(!isRunning);
   };
 
   const resetTimer = () => {
     setIsRunning(false);
+    endTimeRef.current = null;
+    localStorage.removeItem("pomodoro_end_time");
+    
     const novoTempo = tempoCustomizado || PRESETS[modo];
     setSegundosRestantes(novoTempo);
     tempoInicialRef.current = novoTempo;
     inicioSessaoRef.current = null;
     sessaoCompletadaRef.current = false;
     
-    // Limpar flags
     localStorage.removeItem("pomodoro_sessao_ativa");
-    localStorage.removeItem("pomodoro_mostrar_dialog");
     
-    console.log("🔄 Timer resetado - sessão desativada");
+    console.log("🔄 Timer resetado");
   };
 
   const salvarSessao = async () => {
     if (!inicioSessaoRef.current) return;
-    if (!sessaoCompletadaRef.current) return; // Só salvar se completou naturalmente
+    if (!sessaoCompletadaRef.current) return;
 
     const duracaoMinutos = Math.round((Date.now() - inicioSessaoRef.current.getTime()) / 60000);
     
@@ -346,7 +379,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     }
     
     inicioSessaoRef.current = null;
-    sessaoCompletadaRef.current = false; // Reset flag
+    sessaoCompletadaRef.current = false;
   };
 
   const value = {
@@ -371,7 +404,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     <PomodoroContext.Provider value={value}>
       {children}
       
-      {/* Player YouTube Global - continua tocando mesmo ao trocar de página */}
+      {/* Player YouTube Global */}
       {videoId && (
         <div className="fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none">
           <YouTube
@@ -389,36 +422,38 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         </div>
       )}
       
-      {/* Dialog de Descanso Global - aparece em qualquer página */}
+      {/* Dialog de Descanso Global */}
       <PomodoroRestDialog
         open={showRestDialog}
         onClose={() => setShowRestDialog(false)}
         pausaCurtaCustomizada={pausaCurtaCustomizada}
         onStartRest={(minutos) => {
-          // Mudar para modo pausa curta
+          // Iniciar pausa
           setModo("pausaCurta");
-          setSegundosRestantes(minutos * 60);
-          tempoInicialRef.current = minutos * 60;
+          const tempoDescanso = minutos * 60;
+          setSegundosRestantes(tempoDescanso);
+          tempoInicialRef.current = tempoDescanso;
+          
+          // Calcular endTime para pausa
+          endTimeRef.current = Date.now() + (tempoDescanso * 1000);
+          localStorage.setItem("pomodoro_end_time", endTimeRef.current.toString());
+          localStorage.setItem("pomodoro_sessao_ativa", "true");
+          
           setIsRunning(true);
           setShowRestDialog(false);
           inicioSessaoRef.current = new Date();
           sessaoCompletadaRef.current = false;
           
-          // Marcar sessão como ativa
-          localStorage.setItem("pomodoro_sessao_ativa", "true");
-          
-          console.log("☕ Descanso iniciado - sessão ativa");
+          console.log("☕ Descanso iniciado - término previsto:", new Date(endTimeRef.current).toLocaleTimeString());
         }}
         onSkip={() => {
-          // Pular descanso e preparar para próximo trabalho
+          // Pular descanso
           const tempoTrabalho = tempoCustomizado || PRESETS.trabalho;
           setModo("trabalho");
           setSegundosRestantes(tempoTrabalho);
           tempoInicialRef.current = tempoTrabalho;
           setShowRestDialog(false);
           sessaoCompletadaRef.current = false;
-          
-          // NÃO iniciar automaticamente - usuário decide quando começar
           setIsRunning(false);
           
           console.log("⏭️ Descanso pulado - timer preparado");
