@@ -31,6 +31,7 @@ import {
 } from "@/hooks/useMentorados";
 import { GeralView } from "@/components/mentorados/GeralView";
 import { CalendarioView } from "@/components/mentorados/CalendarioView";
+import { OrdemPrioridadeView } from "@/components/mentorados/OrdemPrioridadeView";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Mentorados = () => {
@@ -141,9 +142,10 @@ const Mentorados = () => {
       </div>
 
       <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="geral">Geral</TabsTrigger>
           <TabsTrigger value="calendario">Calendário</TabsTrigger>
+          <TabsTrigger value="prioridade">Ordem de Prioridade</TabsTrigger>
         </TabsList>
 
         <TabsContent value="geral" className="mt-6">
@@ -156,6 +158,10 @@ const Mentorados = () => {
 
         <TabsContent value="calendario" className="mt-6">
           <CalendarioView mentorados={mentorados} />
+        </TabsContent>
+
+        <TabsContent value="prioridade" className="mt-6">
+          <OrdemPrioridadeView />
         </TabsContent>
       </Tabs>
 
