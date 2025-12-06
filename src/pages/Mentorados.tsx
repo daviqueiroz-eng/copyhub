@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, ExternalLink, Instagram } from "lucide-react";
+import { Plus, Search, ExternalLink, Instagram, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +38,7 @@ import {
   useMentorados, 
   useCreateMentorado, 
   useUpdateMentorado,
+  useDeleteMentorado,
   type Mentorado 
 } from "@/hooks/useMentorados";
 import { GeralView } from "@/components/mentorados/GeralView";
@@ -45,6 +57,7 @@ const Mentorados = () => {
   const { data: mentorados = [] } = useMentorados();
   const createMentorado = useCreateMentorado();
   const updateMentorado = useUpdateMentorado();
+  const deleteMentorado = useDeleteMentorado();
 
   const getIniciais = (nome: string) => {
     const parts = nome.trim().split(" ");
@@ -114,6 +127,17 @@ const Mentorados = () => {
     updateMentorado.mutate({
       id: selectedMentorado.id,
       [field]: value,
+    });
+  };
+
+  const handleDeleteMentorado = () => {
+    if (!selectedMentorado) return;
+    
+    deleteMentorado.mutate(selectedMentorado.id, {
+      onSuccess: () => {
+        setIsDetailSheetOpen(false);
+        setSelectedMentorado(null);
+      },
     });
   };
 
@@ -396,7 +420,7 @@ const Mentorados = () => {
             </TabsContent>
           </Tabs>
 
-          <div className="mt-6">
+          <div className="mt-6 space-y-3">
             <Button 
               className="w-full" 
               onClick={() => {
@@ -405,6 +429,32 @@ const Mentorados = () => {
             >
               Fechar
             </Button>
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Excluir Mentorado
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir mentorado?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação não pode ser desfeita. Todos os dados de "{selectedMentorado?.nome}" serão permanentemente removidos.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteMentorado}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Confirmar Exclusão
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </SheetContent>
       </Sheet>
