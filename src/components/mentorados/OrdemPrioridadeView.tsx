@@ -1,15 +1,21 @@
-import { useState, useMemo } from "react";
-import { Upload, Filter, AlertCircle, FileText } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Upload, Filter, AlertCircle, FileText, Check, ChevronsUpDown, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { TrelloUploadDialog } from "./TrelloUploadDialog";
 import { PrioridadeCard } from "./PrioridadeCard";
 import {
@@ -18,16 +24,19 @@ import {
   filterAndSortCards,
   TrelloCard,
 } from "@/hooks/useTrelloImport";
-import { useUserRole } from "@/hooks/useAuth";
+import { useUserRole, useProfile } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 export function OrdemPrioridadeView() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedCopywriter, setSelectedCopywriter] = useState<string>("");
+  const [comboboxOpen, setComboboxOpen] = useState(false);
   
   const { data: trelloImport, isLoading } = useTrelloImport();
   const { data: userRole } = useUserRole();
+  const { data: profile } = useProfile();
   const isAdmin = userRole === "admin";
 
   const cards = useMemo(() => {
@@ -38,6 +47,23 @@ export function OrdemPrioridadeView() {
   const copywriters = useMemo(() => {
     return extractUniqueCopywriters(cards);
   }, [cards]);
+
+  // Auto-detect user's name in copywriters list
+  const matchedCopywriter = useMemo(() => {
+    if (!profile?.nome) return null;
+    const profileName = profile.nome.toLowerCase();
+    return copywriters.find(cw => {
+      const cwLower = cw.toLowerCase();
+      return cwLower.includes(profileName) || profileName.includes(cwLower);
+    });
+  }, [copywriters, profile?.nome]);
+
+  // Auto-select user's name when loaded
+  useEffect(() => {
+    if (matchedCopywriter && !selectedCopywriter) {
+      setSelectedCopywriter(matchedCopywriter);
+    }
+  }, [matchedCopywriter, selectedCopywriter]);
 
   const filteredCards = useMemo(() => {
     return filterAndSortCards(cards, selectedCopywriter);
@@ -62,19 +88,79 @@ export function OrdemPrioridadeView() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Filter className="h-5 w-5 text-muted-foreground" />
-            <Select value={selectedCopywriter} onValueChange={setSelectedCopywriter}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="Filtrar por copywriter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os copywriters</SelectItem>
-                {copywriters.map((cw) => (
-                  <SelectItem key={cw} value={cw}>
-                    {cw}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboboxOpen}
+                  className="w-[280px] justify-between"
+                >
+                  {selectedCopywriter
+                    ? (
+                      <span className="flex items-center gap-2">
+                        {selectedCopywriter === matchedCopywriter && (
+                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                        )}
+                        {selectedCopywriter}
+                      </span>
+                    )
+                    : "Buscar copywriter..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[280px] p-0">
+                <Command>
+                  <CommandInput placeholder="Digite seu nome..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum copywriter encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="all"
+                        onSelect={() => {
+                          setSelectedCopywriter("");
+                          setComboboxOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            !selectedCopywriter ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        Todos os copywriters
+                      </CommandItem>
+                      {copywriters.map((cw) => (
+                        <CommandItem
+                          key={cw}
+                          value={cw}
+                          onSelect={(currentValue) => {
+                            setSelectedCopywriter(currentValue === selectedCopywriter ? "" : currentValue);
+                            setComboboxOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedCopywriter === cw ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <span className="flex items-center gap-2">
+                            {cw === matchedCopywriter && (
+                              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                            )}
+                            {cw}
+                            {cw === matchedCopywriter && (
+                              <Badge variant="secondary" className="text-xs">Você</Badge>
+                            )}
+                          </span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
@@ -97,7 +183,7 @@ export function OrdemPrioridadeView() {
       )}
 
       {/* Contador */}
-      {selectedCopywriter && selectedCopywriter !== "all" && (
+      {selectedCopywriter && (
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
@@ -137,7 +223,7 @@ export function OrdemPrioridadeView() {
             <AlertCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-medium mb-2">Nenhuma entrega encontrada</h3>
             <p className="text-sm text-muted-foreground">
-              {selectedCopywriter && selectedCopywriter !== "all"
+              {selectedCopywriter
                 ? "Não há entregas pendentes para este copywriter com prazo definido"
                 : "Selecione um copywriter para ver suas entregas"
               }

@@ -740,6 +740,7 @@ export type Database = {
           estilo_comum: string | null
           id: string
           iniciais: string
+          instagram: string | null
           link_drive: string | null
           links_chats: string | null
           nome: string
@@ -760,6 +761,7 @@ export type Database = {
           estilo_comum?: string | null
           id?: string
           iniciais: string
+          instagram?: string | null
           link_drive?: string | null
           links_chats?: string | null
           nome: string
@@ -780,6 +782,7 @@ export type Database = {
           estilo_comum?: string | null
           id?: string
           iniciais?: string
+          instagram?: string | null
           link_drive?: string | null
           links_chats?: string | null
           nome?: string

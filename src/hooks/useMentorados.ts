@@ -18,6 +18,7 @@ export type Mentorado = {
   links_chats: string | null;
   link_drive: string | null;
   referencias: string | null;
+  instagram: string | null;
   user_id: string;
 };
 
