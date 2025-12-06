@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Upload, Filter, AlertCircle, FileText, Check, ChevronsUpDown, Star, CalendarDays } from "lucide-react";
+import { Upload, Filter, AlertCircle, FileText, Check, ChevronsUpDown, Star, CalendarDays, LayoutGrid, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/popover";
 import { TrelloUploadDialog } from "./TrelloUploadDialog";
 import { PrioridadeCard } from "./PrioridadeCard";
+import { PrioridadeCalendar } from "./PrioridadeCalendar";
 import {
   useTrelloImport,
   extractUniqueCopywriters,
@@ -31,12 +32,14 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 type PeriodFilter = "all" | "today" | "week" | "month";
+type ViewMode = "grid" | "calendar";
 
 export function OrdemPrioridadeView() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedCopywriter, setSelectedCopywriter] = useState<string>("");
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   
   const { data: trelloImport, isLoading } = useTrelloImport();
   const { data: userRole } = useUserRole();
@@ -239,7 +242,7 @@ export function OrdemPrioridadeView() {
           )}
         </div>
 
-        {/* Filtro por período (admin ou todos) */}
+        {/* Filtro por período e toggle de visualização */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex items-center gap-3">
             <CalendarDays className="h-5 w-5 text-muted-foreground" />
@@ -275,6 +278,23 @@ export function OrdemPrioridadeView() {
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
+
+          {/* Toggle Grid/Calendário */}
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(value) => value && setViewMode(value as ViewMode)}
+            className="border rounded-lg p-1 bg-muted/50"
+          >
+            <ToggleGroupItem value="grid" aria-label="Visualização em grade" className="gap-1.5 data-[state=on]:bg-background">
+              <LayoutGrid className="h-4 w-4" />
+              <span className="hidden sm:inline">Grid</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="calendar" aria-label="Visualização em calendário" className="gap-1.5 data-[state=on]:bg-background">
+              <Calendar className="h-4 w-4" />
+              <span className="hidden sm:inline">Calendário</span>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </div>
 
@@ -337,6 +357,8 @@ export function OrdemPrioridadeView() {
             </p>
           </CardContent>
         </Card>
+      ) : viewMode === "calendar" ? (
+        <PrioridadeCalendar cards={filteredCards} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
           {filteredCards.map((card, index) => (

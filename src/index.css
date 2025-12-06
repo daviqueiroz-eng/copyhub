@@ -136,3 +136,100 @@ All colors MUST be HSL.
   background-color: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
 }
+
+/* FullCalendar Prioridade Styles */
+.fullcalendar-prioridade .fc {
+  font-family: inherit;
+}
+
+.fullcalendar-prioridade .fc-toolbar-title {
+  font-size: 1.25rem !important;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.fullcalendar-prioridade .fc-button {
+  background-color: hsl(var(--secondary)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem !important;
+}
+
+.fullcalendar-prioridade .fc-button:hover {
+  background-color: hsl(var(--accent)) !important;
+}
+
+.fullcalendar-prioridade .fc-button-active {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.fullcalendar-prioridade .fc-col-header-cell {
+  background-color: hsl(var(--muted));
+  padding: 0.75rem 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.fullcalendar-prioridade .fc-daygrid-day {
+  min-height: 120px;
+}
+
+.fullcalendar-prioridade .fc-daygrid-day-number {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem;
+}
+
+.fullcalendar-prioridade .fc-daygrid-day.fc-day-today {
+  background-color: hsl(var(--primary) / 0.08) !important;
+}
+
+.fullcalendar-prioridade .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullcalendar-prioridade .fc-event {
+  cursor: pointer;
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+}
+
+.fullcalendar-prioridade .fc-more-link {
+  color: hsl(var(--primary));
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+
+.fullcalendar-prioridade .fc-popover {
+  background-color: hsl(var(--popover));
+  border-color: hsl(var(--border));
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  border-radius: 0.5rem;
+}
+
+.fullcalendar-prioridade .fc-popover-header {
+  background-color: hsl(var(--muted));
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+}
+
+.fullcalendar-prioridade .fc-daygrid-more-link {
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.fullcalendar-prioridade .fc-daygrid-more-link:hover {
+  background-color: hsl(var(--muted));
+}
