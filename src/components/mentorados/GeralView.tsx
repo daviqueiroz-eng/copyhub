@@ -64,7 +64,7 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
     }
   };
 
-  const handleOpenAllInstagrams = () => {
+  const handleOpenAllInstagrams = async () => {
     if (mentoradosWithInstagram.length === 0) {
       toast({
         title: "Nenhum Instagram cadastrado",
@@ -76,17 +76,23 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
 
     toast({
       title: `Abrindo ${mentoradosWithInstagram.length} perfis`,
-      description: "Permita pop-ups se necessário.",
+      description: "Se o navegador bloquear, permita pop-ups para este site.",
     });
 
-    mentoradosWithInstagram.forEach((m, index) => {
-      const handle = m.instagram?.replace(/^@/, "");
+    // Abre o primeiro imediatamente (ação direta do usuário - não bloqueada)
+    const firstHandle = mentoradosWithInstagram[0]?.instagram?.replace(/^@/, "");
+    if (firstHandle) {
+      window.open(`https://instagram.com/${firstHandle}`, "_blank");
+    }
+
+    // Abre os demais com delay maior para evitar bloqueio
+    for (let i = 1; i < mentoradosWithInstagram.length; i++) {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const handle = mentoradosWithInstagram[i]?.instagram?.replace(/^@/, "");
       if (handle) {
-        setTimeout(() => {
-          window.open(`https://instagram.com/${handle}`, "_blank", "noopener,noreferrer");
-        }, index * 300); // Delay to avoid popup blockers
+        window.open(`https://instagram.com/${handle}`, "_blank");
       }
-    });
+    }
   };
 
   return (
