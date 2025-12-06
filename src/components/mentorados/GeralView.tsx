@@ -79,18 +79,24 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
       description: "Se o navegador bloquear, permita pop-ups para este site.",
     });
 
-    // Abre o primeiro imediatamente (ação direta do usuário - não bloqueada)
-    const firstHandle = mentoradosWithInstagram[0]?.instagram?.replace(/^@/, "");
-    if (firstHandle) {
-      window.open(`https://instagram.com/${firstHandle}`, "_blank");
-    }
+    // Função para abrir link usando técnica de elemento <a>
+    const openInstagramLink = (handle: string) => {
+      const link = document.createElement('a');
+      link.href = `https://instagram.com/${handle}`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
 
-    // Abre os demais com delay maior para evitar bloqueio
-    for (let i = 1; i < mentoradosWithInstagram.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 800));
+    // Abre todos com pequeno delay entre cada
+    for (let i = 0; i < mentoradosWithInstagram.length; i++) {
       const handle = mentoradosWithInstagram[i]?.instagram?.replace(/^@/, "");
       if (handle) {
-        window.open(`https://instagram.com/${handle}`, "_blank");
+        openInstagramLink(handle);
+        // Pequeno delay para navegador processar
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
   };
