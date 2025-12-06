@@ -1,0 +1,1 @@
+ALTER TABLE mentorados ADD COLUMN instagram TEXT;

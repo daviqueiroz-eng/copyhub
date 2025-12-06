@@ -11,6 +11,7 @@ export interface TrelloCard {
   listName: string;
   prazoMaxRoteiros: string;
   planoMentoria: string;
+  cardUrl: string;
 }
 
 interface TrelloImport {
@@ -114,6 +115,7 @@ export function parseTrelloCSV(csvText: string): TrelloCard[] {
   const listNameIdx = headers.findIndex(h => h.toLowerCase().includes("list name"));
   const prazoIdx = headers.findIndex(h => h.toLowerCase().includes("prazo máx. roteiros") || h.toLowerCase().includes("prazo max. roteiros"));
   const planoIdx = headers.findIndex(h => h.toLowerCase().includes("plano mentoria"));
+  const cardUrlIdx = headers.findIndex(h => h.toLowerCase().includes("card url"));
 
   const cards: TrelloCard[] = [];
 
@@ -129,6 +131,7 @@ export function parseTrelloCSV(csvText: string): TrelloCard[] {
       listName: values[listNameIdx] || "",
       prazoMaxRoteiros: values[prazoIdx] || "",
       planoMentoria: values[planoIdx] || "",
+      cardUrl: values[cardUrlIdx] || "",
     });
   }
 

@@ -6,6 +6,9 @@ import { EntregaDialog } from "./EntregaDialog";
 import { Mentorado } from "@/hooks/useMentorados";
 import { useEntregas, useMoveEntrega } from "@/hooks/useEntregas";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Instagram } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface GeralViewProps {
   mentorados: Mentorado[];
@@ -17,6 +20,7 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
   const [selectedLeva, setSelectedLeva] = useState(1);
+  const { toast } = useToast();
 
   const { data: entregas = [] } = useEntregas();
   const moveEntrega = useMoveEntrega();
@@ -32,6 +36,8 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
   const filteredMentorados = mentorados.filter((m) =>
     m.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const mentoradosWithInstagram = filteredMentorados.filter(m => m.instagram);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -58,6 +64,31 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
     }
   };
 
+  const handleOpenAllInstagrams = () => {
+    if (mentoradosWithInstagram.length === 0) {
+      toast({
+        title: "Nenhum Instagram cadastrado",
+        description: "Não há mentorados com Instagram cadastrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: `Abrindo ${mentoradosWithInstagram.length} perfis`,
+      description: "Permita pop-ups se necessário.",
+    });
+
+    mentoradosWithInstagram.forEach((m, index) => {
+      const handle = m.instagram?.replace(/^@/, "");
+      if (handle) {
+        setTimeout(() => {
+          window.open(`https://instagram.com/${handle}`, "_blank", "noopener,noreferrer");
+        }, index * 300); // Delay to avoid popup blockers
+      }
+    });
+  };
+
   return (
     <>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -65,7 +96,20 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
           <div className="min-w-max">
             {/* Header */}
             <div className="grid grid-cols-[300px_repeat(6,120px)] gap-4 mb-4 pb-2 border-b sticky top-0 bg-background z-10">
-              <div className="font-semibold text-sm">Mentorado</div>
+              <div className="font-semibold text-sm flex items-center gap-2">
+                <span>Mentorado</span>
+                {mentoradosWithInstagram.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-7 text-xs"
+                    onClick={handleOpenAllInstagrams}
+                  >
+                    <Instagram className="h-3.5 w-3.5 text-pink-500" />
+                    Abrir todos ({mentoradosWithInstagram.length})
+                  </Button>
+                )}
+              </div>
               {[1, 2, 3, 4, 5, 6].map((num) => (
                 <div key={num} className="text-center font-semibold text-sm">
                   {num}ª Leva

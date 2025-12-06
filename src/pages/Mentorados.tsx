@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, ExternalLink } from "lucide-react";
+import { Plus, Search, ExternalLink, Instagram } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,6 +88,7 @@ const Mentorados = () => {
         links_chats: null,
         link_drive: null,
         referencias: null,
+        instagram: null,
       },
       {
         onSuccess: () => {
@@ -227,6 +228,30 @@ const Mentorados = () => {
                   value={selectedMentorado?.plano || ""}
                   onChange={(e) => handleUpdateMentorado("plano", e.target.value)}
                   placeholder="Ex: Plano Pro - 3 meses"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="instagram" className="flex items-center gap-2">
+                  <Instagram className="h-4 w-4 text-pink-500" />
+                  Instagram
+                  {selectedMentorado?.instagram && (
+                    <a
+                      href={`https://instagram.com/${selectedMentorado.instagram.replace(/^@/, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary/80"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                </Label>
+                <Input
+                  id="instagram"
+                  value={selectedMentorado?.instagram || ""}
+                  onChange={(e) => handleUpdateMentorado("instagram", e.target.value)}
+                  placeholder="@usuario"
                 />
               </div>
 

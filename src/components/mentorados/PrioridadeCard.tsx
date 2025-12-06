@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Tag, User } from "lucide-react";
+import { Calendar, Tag, User, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrelloCard, getUrgencyLevel } from "@/hooks/useTrelloImport";
@@ -48,8 +48,17 @@ export function PrioridadeCard({ card }: PrioridadeCardProps) {
 
   const instagram = extractInstagram(card.cardDescription);
 
+  const handleClick = () => {
+    if (card.cardUrl) {
+      window.open(card.cardUrl, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
-    <Card className={`${urgencyStyles[urgency]} transition-all hover:shadow-md`}>
+    <Card 
+      className={`${urgencyStyles[urgency]} transition-all hover:shadow-md ${card.cardUrl ? "cursor-pointer hover:scale-[1.01]" : ""}`}
+      onClick={handleClick}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
@@ -57,6 +66,9 @@ export function PrioridadeCard({ card }: PrioridadeCardProps) {
               <Badge className={urgencyLabels[urgency].className}>
                 {urgencyLabels[urgency].text}
               </Badge>
+              {card.cardUrl && (
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              )}
             </div>
 
             <h3 className="font-semibold text-lg truncate">{card.cardName}</h3>
