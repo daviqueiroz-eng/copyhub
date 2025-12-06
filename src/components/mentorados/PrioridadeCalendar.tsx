@@ -3,8 +3,15 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { TrelloCard, getUrgencyLevel } from "@/hooks/useTrelloImport";
-import { Badge } from "@/components/ui/badge";
+import { ExternalLink, User, FileText } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PrioridadeCalendarProps {
   cards: TrelloCard[];
@@ -18,23 +25,23 @@ export function PrioridadeCalendar({ cards }: PrioridadeCalendarProps) {
         const urgency = getUrgencyLevel(card.prazoMaxRoteiros);
         
         const colorMap = {
-          overdue: { bg: "#ef4444", border: "#dc2626", text: "#ffffff" },
-          today: { bg: "#f97316", border: "#ea580c", text: "#ffffff" },
-          this_week: { bg: "#eab308", border: "#ca8a04", text: "#1a1a1a" },
-          normal: { bg: "#22c55e", border: "#16a34a", text: "#ffffff" },
+          overdue: { bg: "#dc2626", border: "#b91c1c", text: "#ffffff", label: "Atrasado" },
+          today: { bg: "#ea580c", border: "#c2410c", text: "#ffffff", label: "Hoje" },
+          this_week: { bg: "#ca8a04", border: "#a16207", text: "#ffffff", label: "Esta Semana" },
+          normal: { bg: "#16a34a", border: "#15803d", text: "#ffffff", label: "No Prazo" },
         };
 
         const colors = colorMap[urgency];
 
-        // Extract mentee name (first part before " / " or full name)
-        const menteeName = card.cardName.split(" / ")[0].trim();
+        // Extract client/mentee name - the full card name is the client
+        const clientName = card.cardName;
         
-        // Extract copywriter
+        // Extract copywriter (first member)
         const copywriter = card.members?.split(",")[0]?.trim() || "";
 
         return {
           id: `${card.cardName}-${index}`,
-          title: menteeName,
+          title: clientName,
           start: card.prazoMaxRoteiros,
           allDay: true,
           backgroundColor: colors.bg,
@@ -44,9 +51,11 @@ export function PrioridadeCalendar({ cards }: PrioridadeCalendarProps) {
             card,
             copywriter,
             urgency,
-            fullName: card.cardName,
+            urgencyLabel: colors.label,
+            clientName,
             listName: card.listName,
             cardUrl: card.cardUrl,
+            prazoMaxRoteiros: card.prazoMaxRoteiros,
           },
         };
       });
@@ -62,52 +71,126 @@ export function PrioridadeCalendar({ cards }: PrioridadeCalendarProps) {
   const renderEventContent = (eventInfo: {
     event: {
       title: string;
+      backgroundColor: string;
       extendedProps: {
         copywriter: string;
         urgency: string;
+        urgencyLabel: string;
+        clientName: string;
+        listName: string;
+        cardUrl: string;
+        prazoMaxRoteiros: string;
       };
     };
   }) => {
-    const { title, extendedProps } = eventInfo.event;
-    const { copywriter } = extendedProps;
+    const { extendedProps, backgroundColor } = eventInfo.event;
+    const { copywriter, clientName, listName, prazoMaxRoteiros, urgencyLabel } = extendedProps;
+
+    const formattedDate = prazoMaxRoteiros 
+      ? format(parseISO(prazoMaxRoteiros), "dd 'de' MMMM", { locale: ptBR })
+      : "";
 
     return (
-      <div className="px-1.5 py-0.5 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
-        <div className="flex items-center gap-1 text-xs font-medium truncate">
-          {copywriter && (
-            <span className="bg-black/20 px-1 rounded text-[10px] font-semibold shrink-0">
-              {copywriter.split(" ")[0]}
-            </span>
-          )}
-          <span className="truncate">{title}</span>
-        </div>
-      </div>
+      <TooltipProvider>
+        <Tooltip delayDuration={200}>
+          <TooltipTrigger asChild>
+            <div 
+              className="px-2.5 py-2 overflow-hidden cursor-pointer group transition-all duration-200 hover:scale-[1.02] hover:shadow-lg rounded-md"
+              style={{ backgroundColor }}
+            >
+              {/* Client Name - Main Focus */}
+              <div className="flex items-start gap-1.5">
+                <User className="w-3.5 h-3.5 mt-0.5 shrink-0 opacity-80" />
+                <span className="font-semibold text-sm leading-tight line-clamp-2">
+                  {clientName}
+                </span>
+              </div>
+              
+              {/* Copywriter Badge */}
+              {copywriter && (
+                <div className="flex items-center gap-1 mt-1.5">
+                  <FileText className="w-3 h-3 opacity-70" />
+                  <span className="text-[11px] opacity-90 font-medium truncate">
+                    {copywriter}
+                  </span>
+                </div>
+              )}
+              
+              {/* External Link Indicator */}
+              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ExternalLink className="w-3 h-3" />
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent 
+            side="top" 
+            className="max-w-xs p-3 space-y-2 bg-popover border shadow-xl"
+          >
+            <div className="space-y-1.5">
+              <p className="font-bold text-sm text-foreground">{clientName}</p>
+              {copywriter && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <FileText className="w-3 h-3" />
+                  Copywriter: <span className="font-medium text-foreground">{copywriter}</span>
+                </p>
+              )}
+              {listName && (
+                <p className="text-xs text-muted-foreground">
+                  Etapa: <span className="font-medium text-foreground">{listName}</span>
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Prazo: <span className="font-medium text-foreground">{formattedDate}</span>
+              </p>
+              <div className="flex items-center gap-1.5 pt-1">
+                <span 
+                  className="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                  style={{ 
+                    backgroundColor: eventInfo.event.backgroundColor,
+                    color: '#ffffff'
+                  }}
+                >
+                  {urgencyLabel}
+                </span>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground pt-1 border-t flex items-center gap-1">
+              <ExternalLink className="w-3 h-3" />
+              Clique para abrir no Trello
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   };
 
   return (
-    <div className="space-y-4">
-      {/* Legenda de cores */}
-      <div className="flex flex-wrap items-center gap-4 p-3 bg-muted/50 rounded-lg">
-        <span className="text-sm font-medium text-muted-foreground">Legenda:</span>
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge className="bg-[#ef4444] text-white hover:bg-[#dc2626]">
-            Atrasado
-          </Badge>
-          <Badge className="bg-[#f97316] text-white hover:bg-[#ea580c]">
-            Hoje
-          </Badge>
-          <Badge className="bg-[#eab308] text-[#1a1a1a] hover:bg-[#ca8a04]">
-            Esta Semana
-          </Badge>
-          <Badge className="bg-[#22c55e] text-white hover:bg-[#16a34a]">
-            No Prazo
-          </Badge>
+    <div className="space-y-6">
+      {/* Enhanced Legend */}
+      <div className="flex flex-wrap items-center gap-6 p-4 bg-card border rounded-xl shadow-sm">
+        <span className="text-sm font-semibold text-foreground">Legenda de Status:</span>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-[#dc2626] shadow-sm" />
+            <span className="text-sm font-medium">Atrasado</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-[#ea580c] shadow-sm" />
+            <span className="text-sm font-medium">Hoje</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-[#ca8a04] shadow-sm" />
+            <span className="text-sm font-medium">Esta Semana</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-[#16a34a] shadow-sm" />
+            <span className="text-sm font-medium">No Prazo</span>
+          </div>
         </div>
       </div>
 
-      {/* Calendário */}
-      <div className="bg-card border rounded-lg p-4 min-h-[700px]">
+      {/* Calendar */}
+      <div className="bg-card border rounded-xl p-6 shadow-sm min-h-[800px]">
         <FullCalendar
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
@@ -126,7 +209,7 @@ export function PrioridadeCalendar({ cards }: PrioridadeCalendarProps) {
             week: "Semana",
           }}
           height="auto"
-          dayMaxEvents={4}
+          dayMaxEvents={5}
           moreLinkText={(num) => `+${num} mais`}
           moreLinkClick="popover"
           eventDisplay="block"
@@ -134,7 +217,7 @@ export function PrioridadeCalendar({ cards }: PrioridadeCalendarProps) {
           firstDay={1}
           fixedWeekCount={false}
           showNonCurrentDates={true}
-          eventClassNames="rounded-md shadow-sm"
+          eventClassNames="!rounded-lg !shadow-md !border-0 !p-0 overflow-hidden"
           dayCellClassNames="hover:bg-muted/30 transition-colors"
           viewClassNames="fullcalendar-prioridade"
         />
