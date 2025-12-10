@@ -13,22 +13,66 @@ interface CelebracaoDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Chave para localStorage
+const SEEN_PHOTOS_KEY = "celebracao_fotos_vistas";
+
+// Função para obter fotos já vistas
+const getSeenPhotos = (): string[] => {
+  try {
+    const stored = localStorage.getItem(SEEN_PHOTOS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Função para marcar foto como vista
+const markPhotoAsSeen = (photoId: string) => {
+  const seen = getSeenPhotos();
+  if (!seen.includes(photoId)) {
+    seen.push(photoId);
+    localStorage.setItem(SEEN_PHOTOS_KEY, JSON.stringify(seen));
+  }
+};
+
+// Função para resetar fotos vistas (quando todas foram mostradas)
+const resetSeenPhotos = () => {
+  localStorage.removeItem(SEEN_PHOTOS_KEY);
+};
+
 export function CelebracaoDialog({ open, onOpenChange }: CelebracaoDialogProps) {
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (open) {
-      // Buscar foto aleatória
+      // Buscar foto aleatória não repetida
       const fetchFotoAleatoria = async () => {
         setIsLoading(true);
         const { data, error } = await supabase
           .from("fotos_celebracao")
-          .select("url");
+          .select("id, url");
 
         if (!error && data && data.length > 0) {
-          const randomIndex = Math.floor(Math.random() * data.length);
-          setFotoUrl(data[randomIndex].url);
+          const seenPhotos = getSeenPhotos();
+          
+          // Filtrar fotos não vistas
+          let availablePhotos = data.filter(photo => !seenPhotos.includes(photo.id));
+          
+          // Se todas as fotos já foram vistas, resetar e usar todas
+          if (availablePhotos.length === 0) {
+            resetSeenPhotos();
+            availablePhotos = data;
+          }
+          
+          // Selecionar aleatoriamente das disponíveis
+          const randomIndex = Math.floor(Math.random() * availablePhotos.length);
+          const selectedPhoto = availablePhotos[randomIndex];
+          
+          // Marcar como vista
+          markPhotoAsSeen(selectedPhoto.id);
+          
+          setFotoUrl(selectedPhoto.url);
         } else {
           setFotoUrl(null);
         }
