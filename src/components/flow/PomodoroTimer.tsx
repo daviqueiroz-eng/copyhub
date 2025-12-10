@@ -4,7 +4,7 @@ import { usePomodoroEstatisticas } from "@/hooks/usePomodoroSessoes";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Play, Pause, RotateCcw, Settings } from "lucide-react";
+import { Play, Pause, RotateCcw, Settings, Video, VideoOff } from "lucide-react";
 import { CircularTimer } from "./CircularTimer";
 import { PomodoroConfigDialog } from "./PomodoroConfigDialog";
 import { format } from "date-fns";
@@ -34,6 +34,9 @@ export const PomodoroTimer = () => {
     toggleTimer,
     resetTimer,
     PRESETS,
+    videoId,
+    mostrarVideo,
+    setMostrarVideo,
   } = usePomodoro();
 
   const estatisticas = usePomodoroEstatisticas();
@@ -99,9 +102,29 @@ export const PomodoroTimer = () => {
                 onClick={() => setShowConfig(true)}
               >
                 <Settings className="mr-2 h-4 w-4" />
-                 Configurar
-               </Button>
-             </div>
+                Configurar
+              </Button>
+
+              {videoId && (
+                <Button
+                  variant={mostrarVideo ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setMostrarVideo(!mostrarVideo)}
+                >
+                  {mostrarVideo ? (
+                    <>
+                      <Video className="mr-2 h-4 w-4" />
+                      Esconder Vídeo
+                    </>
+                  ) : (
+                    <>
+                      <VideoOff className="mr-2 h-4 w-4" />
+                      Mostrar Vídeo
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
 
              {/* Área de Anotações */}
              <Card className="w-full max-w-md p-6 mt-8">
