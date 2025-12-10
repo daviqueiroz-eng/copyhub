@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, Search, Eye, User } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Eye, User, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -133,6 +132,25 @@ export const AnalysesTableView = ({
     return sublinhados.filter(h => h.color === color);
   };
 
+  // Determinar quais cores mostrar (apenas a selecionada ou todas)
+  const coresToShow = useMemo(() => {
+    if (selectedCor === "all") return cores;
+    return cores.filter(c => c.cor === selectedCor);
+  }, [cores, selectedCor]);
+
+  // Verificar se é "Conteúdo notável" (para truncar apenas essa categoria)
+  const isConteudoNotavel = (corNome: string) => {
+    return corNome.toLowerCase().includes("conteúdo notável") || 
+           corNome.toLowerCase().includes("conteudo notavel");
+  };
+
+  // Calcular largura mínima da tabela baseado nas colunas
+  const tableMinWidth = useMemo(() => {
+    const baseWidth = 800; // Colunas fixas
+    const colorColWidth = 120;
+    return baseWidth + (coresToShow.length * colorColWidth);
+  }, [coresToShow]);
+
   return (
     <Card className="p-4 w-full">
       {/* Filtros */}
@@ -185,38 +203,45 @@ export const AnalysesTableView = ({
       {/* Contador */}
       <div className="mb-3 text-sm text-muted-foreground">
         {filteredProgressos.length} análise{filteredProgressos.length !== 1 ? 's' : ''} encontrada{filteredProgressos.length !== 1 ? 's' : ''}
+        {selectedCor !== "all" && (
+          <span className="ml-2">
+            • Mostrando apenas: <span className="font-medium">{cores.find(c => c.cor === selectedCor)?.nome}</span>
+          </span>
+        )}
       </div>
 
-      {/* Tabela com scroll horizontal e vertical */}
-      <div className="w-full overflow-x-auto border rounded-lg">
-        <ScrollArea className="h-[calc(100vh-450px)] min-h-[400px]">
-          <Table className="min-w-[1400px]">
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-[50px] sticky left-0 bg-muted/50"></TableHead>
-                <TableHead className="min-w-[280px] sticky left-[50px] bg-muted/50">Roteiro</TableHead>
-                <TableHead className="min-w-[140px]">Nicho</TableHead>
-                <TableHead className="min-w-[140px]">Criador</TableHead>
-                <TableHead className="w-[100px] text-center">Views</TableHead>
-                {cores.map((cor) => (
-                  <TableHead key={cor.id} className="min-w-[120px] text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <div
-                        className="w-3.5 h-3.5 rounded-full border flex-shrink-0"
-                        style={{ backgroundColor: cor.cor }}
-                      />
-                      <span className="text-xs font-medium">{cor.nome}</span>
-                    </div>
-                  </TableHead>
-                ))}
-                <TableHead className="w-[110px] text-center">Data</TableHead>
-                <TableHead className="w-[90px]"></TableHead>
-              </TableRow>
-            </TableHeader>
+      {/* Tabela com scroll horizontal e vertical nativo */}
+      <div 
+        className="w-full overflow-auto border rounded-lg"
+        style={{ height: 'calc(100vh - 450px)', minHeight: '400px' }}
+      >
+        <Table style={{ minWidth: `${tableMinWidth}px` }}>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="w-[50px] sticky left-0 bg-muted/50 z-10"></TableHead>
+              <TableHead className="min-w-[280px] sticky left-[50px] bg-muted/50 z-10">Roteiro</TableHead>
+              <TableHead className="min-w-[140px]">Nicho</TableHead>
+              <TableHead className="min-w-[140px]">Criador</TableHead>
+              <TableHead className="w-[100px] text-center">Views</TableHead>
+              {coresToShow.map((cor) => (
+                <TableHead key={cor.id} className="min-w-[120px] text-center">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <div
+                      className="w-3.5 h-3.5 rounded-full border flex-shrink-0"
+                      style={{ backgroundColor: cor.cor }}
+                    />
+                    <span className="text-xs font-medium">{cor.nome}</span>
+                  </div>
+                </TableHead>
+              ))}
+              <TableHead className="w-[110px] text-center">Data</TableHead>
+              <TableHead className="w-[90px]"></TableHead>
+            </TableRow>
+          </TableHeader>
           <TableBody>
             {filteredProgressos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={cores.length + 7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={coresToShow.length + 7} className="text-center py-8 text-muted-foreground">
                   Nenhuma análise encontrada com os filtros atuais.
                 </TableCell>
               </TableRow>
@@ -236,7 +261,7 @@ export const AnalysesTableView = ({
                       className="hover:bg-muted/30 cursor-pointer"
                       onClick={() => toggleRowExpansion(progresso.id)}
                     >
-                      <TableCell>
+                      <TableCell className="sticky left-0 bg-background z-10">
                         <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
                           {isExpanded ? (
                             <ChevronUp className="h-4 w-4" />
@@ -245,7 +270,7 @@ export const AnalysesTableView = ({
                           )}
                         </Button>
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium sticky left-[50px] bg-background z-10">
                         <div className="flex flex-col">
                           <span className="truncate max-w-[250px]" title={roteiro.titulo}>
                             {roteiro.titulo}
@@ -281,7 +306,7 @@ export const AnalysesTableView = ({
                           <span className="text-muted-foreground text-xs">-</span>
                         )}
                       </TableCell>
-                      {cores.map((cor) => (
+                      {coresToShow.map((cor) => (
                         <TableCell key={cor.id} className="text-center">
                           {counts[cor.cor] ? (
                             <Badge 
@@ -320,13 +345,31 @@ export const AnalysesTableView = ({
                     {/* Linha expandida */}
                     {isExpanded && (
                       <TableRow className="bg-muted/20">
-                        <TableCell colSpan={cores.length + 7}>
+                        <TableCell colSpan={coresToShow.length + 7}>
                           <div className="p-4 space-y-4">
+                            {/* Botão para ver roteiro analisado */}
+                            <div className="flex justify-end">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectAnalysis(progresso.id);
+                                }}
+                                className="gap-2"
+                              >
+                                <FileText className="h-4 w-4" />
+                                Ver roteiro analisado
+                              </Button>
+                            </div>
+
                             {/* Grid de highlights por cor */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {cores.map((cor) => {
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                              {coresToShow.map((cor) => {
                                 const highlights = getHighlightsForColor(progresso.sublinhados, cor.cor);
                                 if (highlights.length === 0) return null;
+                                
+                                const shouldTruncate = isConteudoNotavel(cor.nome);
                                 
                                 return (
                                   <div key={cor.id} className="space-y-2">
@@ -340,14 +383,16 @@ export const AnalysesTableView = ({
                                         {highlights.length}
                                       </Badge>
                                     </div>
-                                    <div className="space-y-1 pl-6">
-                                      {highlights.slice(0, 5).map((h, idx) => (
+                                    <div className="space-y-1.5 pl-6">
+                                      {highlights.map((h, idx) => (
                                         <div key={h.id || idx} className="text-xs">
                                           <span 
-                                            className="px-1 py-0.5 rounded"
+                                            className="px-1.5 py-0.5 rounded inline-block"
                                             style={{ backgroundColor: cor.cor, color: isLightColor(cor.cor) ? '#000' : '#fff' }}
                                           >
-                                            {h.text.length > 50 ? h.text.slice(0, 50) + '...' : h.text}
+                                            {shouldTruncate && h.text.length > 80 
+                                              ? h.text.slice(0, 80) + '...' 
+                                              : h.text}
                                           </span>
                                           {h.annotation && (
                                             <span className="ml-2 text-muted-foreground">
@@ -356,11 +401,6 @@ export const AnalysesTableView = ({
                                           )}
                                         </div>
                                       ))}
-                                      {highlights.length > 5 && (
-                                        <span className="text-xs text-muted-foreground">
-                                          +{highlights.length - 5} mais...
-                                        </span>
-                                      )}
                                     </div>
                                   </div>
                                 );
@@ -400,7 +440,6 @@ export const AnalysesTableView = ({
             )}
           </TableBody>
         </Table>
-      </ScrollArea>
       </div>
     </Card>
   );
