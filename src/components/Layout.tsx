@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { StreakBar } from "@/components/StreakBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AtualizacoesPopup } from "@/components/AtualizacoesPopup";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ export function Layout({ children }: LayoutProps) {
           </main>
         </div>
       </div>
+      <AtualizacoesPopup />
     </SidebarProvider>
   );
 }
