@@ -134,7 +134,7 @@ export const AnalysesTableView = ({
   };
 
   return (
-    <Card className="p-4">
+    <Card className="p-4 w-full">
       {/* Filtros */}
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="relative flex-1 min-w-[200px]">
@@ -187,31 +187,32 @@ export const AnalysesTableView = ({
         {filteredProgressos.length} análise{filteredProgressos.length !== 1 ? 's' : ''} encontrada{filteredProgressos.length !== 1 ? 's' : ''}
       </div>
 
-      {/* Tabela */}
-      <ScrollArea className="h-[600px]">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-[40px]"></TableHead>
-              <TableHead className="min-w-[200px]">Roteiro</TableHead>
-              <TableHead className="min-w-[120px]">Nicho</TableHead>
-              <TableHead className="min-w-[120px]">Criador</TableHead>
-              <TableHead className="w-[80px] text-center">Views</TableHead>
-              {cores.map((cor) => (
-                <TableHead key={cor.id} className="w-[80px] text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <div
-                      className="w-3 h-3 rounded-full border flex-shrink-0"
-                      style={{ backgroundColor: cor.cor }}
-                    />
-                    <span className="text-xs truncate max-w-[60px]">{cor.nome}</span>
-                  </div>
-                </TableHead>
-              ))}
-              <TableHead className="w-[100px] text-center">Data</TableHead>
-              <TableHead className="w-[80px]"></TableHead>
-            </TableRow>
-          </TableHeader>
+      {/* Tabela com scroll horizontal e vertical */}
+      <div className="w-full overflow-x-auto border rounded-lg">
+        <ScrollArea className="h-[calc(100vh-450px)] min-h-[400px]">
+          <Table className="min-w-[1400px]">
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-[50px] sticky left-0 bg-muted/50"></TableHead>
+                <TableHead className="min-w-[280px] sticky left-[50px] bg-muted/50">Roteiro</TableHead>
+                <TableHead className="min-w-[140px]">Nicho</TableHead>
+                <TableHead className="min-w-[140px]">Criador</TableHead>
+                <TableHead className="w-[100px] text-center">Views</TableHead>
+                {cores.map((cor) => (
+                  <TableHead key={cor.id} className="min-w-[120px] text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <div
+                        className="w-3.5 h-3.5 rounded-full border flex-shrink-0"
+                        style={{ backgroundColor: cor.cor }}
+                      />
+                      <span className="text-xs font-medium">{cor.nome}</span>
+                    </div>
+                  </TableHead>
+                ))}
+                <TableHead className="w-[110px] text-center">Data</TableHead>
+                <TableHead className="w-[90px]"></TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {filteredProgressos.length === 0 ? (
               <TableRow>
@@ -400,6 +401,7 @@ export const AnalysesTableView = ({
           </TableBody>
         </Table>
       </ScrollArea>
+      </div>
     </Card>
   );
 };
