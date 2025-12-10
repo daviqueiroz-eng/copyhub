@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, BookOpen, ExternalLink, Copy, FileUp, FileEdit, ArrowLeft, Trash2, Flame, Filter, Plus, Eye, User, Table2, LayoutGrid } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink, Copy, FileUp, FileEdit, ArrowLeft, Trash2, Flame, Filter, Plus, Eye, User, Table2, LayoutGrid, Image } from "lucide-react";
 import { detectVideoType, extractYouTubeId, extractGoogleDriveId } from "@/lib/videoUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
@@ -30,6 +30,8 @@ import { HighlightsTable } from "@/components/HighlightsTable";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RankingMensal } from "@/components/RankingMensal";
 import { AnalysesTableView } from "@/components/AnalysesTableView";
+import { GerenciarFotosDialog } from "@/components/GerenciarFotosDialog";
+import { CelebracaoDialog } from "@/components/CelebracaoDialog";
 import confetti from "canvas-confetti";
 
 import { format } from "date-fns";
@@ -145,6 +147,10 @@ const AnaliseRoteiroGame = () => {
   
   // Estado para modo de visualização (cards ou tabela)
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  
+  // Estados para fotos de celebração
+  const [showGerenciarFotosDialog, setShowGerenciarFotosDialog] = useState(false);
+  const [showCelebracaoDialog, setShowCelebracaoDialog] = useState(false);
 
   // Função para processar link de vídeo e garantir que seja abrível
   const getWatchableVideoUrl = (url: string): string => {
@@ -919,11 +925,8 @@ const AnaliseRoteiroGame = () => {
         setOQueTornouViral("");
         setMelhoriasPotencial("");
         
-        // Mostrar banco de roteiros analisados
-        setShowCompletedDialog(true);
-        
-        // Redirecionar para home
-        navigate('/');
+        // Mostrar dialog de celebração com foto aleatória
+        setShowCelebracaoDialog(true);
       },
     });
   };
@@ -1221,6 +1224,17 @@ const AnaliseRoteiroGame = () => {
                 <BookOpen className="w-4 h-4" />
                 Ver Analisados ({completedRoteirosWithData.length})
               </Button>
+              {isAdmin && (
+                <Button
+                  onClick={() => setShowGerenciarFotosDialog(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Image className="w-4 h-4" />
+                  Fotos Celebração
+                </Button>
+              )}
             </div>
           </div>
 
@@ -2500,6 +2514,24 @@ const AnaliseRoteiroGame = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de Gerenciar Fotos de Celebração (Admin) */}
+      <GerenciarFotosDialog
+        open={showGerenciarFotosDialog}
+        onOpenChange={setShowGerenciarFotosDialog}
+      />
+
+      {/* Dialog de Celebração ao Completar Análise */}
+      <CelebracaoDialog
+        open={showCelebracaoDialog}
+        onOpenChange={(open) => {
+          setShowCelebracaoDialog(open);
+          if (!open) {
+            // Redirecionar para home quando fechar
+            navigate('/');
+          }
+        }}
+      />
     </>
   );
 };
