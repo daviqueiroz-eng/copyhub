@@ -1386,18 +1386,7 @@ const AnaliseRoteiroGame = () => {
             </Button>
 
             {/* Lista de roteiros ou Tabela */}
-            {viewMode === "table" ? (
-              <AnalysesTableView
-                progressos={progressoData}
-                roteiros={roteiros}
-                cores={cores}
-                nichos={nichos}
-                onSelectAnalysis={(progressoId) => {
-                  setSelectedAnalysis(progressoId);
-                  setShowAnalysesDialog(true);
-                }}
-              />
-            ) : (
+            {viewMode === "cards" && (
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                 {filtroGrifadasAtivo ? (
                   // Modo: Mostrar palavras grifadas
@@ -1582,6 +1571,22 @@ const AnaliseRoteiroGame = () => {
               </div>
             )}
           </Card>
+
+          {/* Tabela de análises - Fora do Card para ocupar largura total */}
+          {viewMode === "table" && (
+            <div className="w-full mt-6">
+              <AnalysesTableView
+                progressos={progressoData}
+                roteiros={roteiros}
+                cores={cores}
+                nichos={nichos}
+                onSelectAnalysis={(progressoId) => {
+                  setSelectedAnalysis(progressoId);
+                  setShowAnalysesDialog(true);
+                }}
+              />
+            </div>
+          )}
         </div>
       ) : (
         <div className="container max-w-7xl mx-auto px-4 py-8">
