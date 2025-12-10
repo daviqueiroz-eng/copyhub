@@ -8,6 +8,7 @@ import { Play, Pause, RotateCcw, Settings, Video, VideoOff } from "lucide-react"
 import { CircularTimer } from "./CircularTimer";
 import { PomodoroConfigDialog } from "./PomodoroConfigDialog";
 import { format } from "date-fns";
+import YouTube from "react-youtube";
 
 export const PomodoroTimer = () => {
   const [showConfig, setShowConfig] = useState(false);
@@ -37,6 +38,7 @@ export const PomodoroTimer = () => {
     videoId,
     mostrarVideo,
     setMostrarVideo,
+    playerRef,
   } = usePomodoro();
 
   const estatisticas = usePomodoroEstatisticas();
@@ -67,6 +69,31 @@ export const PomodoroTimer = () => {
                 totalSegundos={totalSegundos}
               />
             </div>
+
+            {/* Player YouTube - aparece abaixo do timer quando ativado */}
+            {videoId && mostrarVideo && (
+              <Card className="w-full max-w-md overflow-hidden">
+                <YouTube
+                  videoId={videoId}
+                  opts={{
+                    width: '100%',
+                    height: '225',
+                    playerVars: {
+                      autoplay: 0,
+                      controls: 1,
+                    },
+                  }}
+                  onReady={(event) => {
+                    playerRef.current = event.target;
+                    // Se o timer estiver rodando, iniciar o vídeo
+                    if (isRunning) {
+                      event.target.playVideo();
+                    }
+                  }}
+                  className="w-full"
+                />
+              </Card>
+            )}
 
             {/* Botão Principal */}
             <Button

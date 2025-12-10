@@ -416,20 +416,17 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     <PomodoroContext.Provider value={value}>
       {children}
       
-      {/* Player YouTube Global */}
-      {videoId && (
-        <div className={mostrarVideo 
-          ? "fixed bottom-4 right-4 z-50 rounded-lg overflow-hidden shadow-2xl border border-border"
-          : "fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none"
-        }>
+      {/* Player YouTube Global - invisível quando mostrarVideo=false, renderizado no PomodoroTimer quando true */}
+      {videoId && !mostrarVideo && (
+        <div className="fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none">
           <YouTube
             videoId={videoId}
             opts={{
-              width: mostrarVideo ? '320' : '1',
-              height: mostrarVideo ? '180' : '1',
+              width: '1',
+              height: '1',
               playerVars: {
                 autoplay: 0,
-                controls: mostrarVideo ? 1 : 0,
+                controls: 0,
               },
             }}
             onReady={(event) => {
