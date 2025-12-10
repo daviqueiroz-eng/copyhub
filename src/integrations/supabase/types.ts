@@ -118,6 +118,68 @@ export type Database = {
           },
         ]
       }
+      atualizacoes_lidas: {
+        Row: {
+          atualizacao_id: string
+          id: string
+          lida_em: string
+          user_id: string
+        }
+        Insert: {
+          atualizacao_id: string
+          id?: string
+          lida_em?: string
+          user_id: string
+        }
+        Update: {
+          atualizacao_id?: string
+          id?: string
+          lida_em?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atualizacoes_lidas_atualizacao_id_fkey"
+            columns: ["atualizacao_id"]
+            isOneToOne: false
+            referencedRelation: "atualizacoes_sistema"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atualizacoes_sistema: {
+        Row: {
+          ativo: boolean
+          conteudo: string
+          created_at: string
+          created_by: string | null
+          id: string
+          tipo: string
+          titulo: string
+          versao: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          conteudo: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tipo?: string
+          titulo: string
+          versao?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          conteudo?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tipo?: string
+          titulo?: string
+          versao?: string | null
+        }
+        Relationships: []
+      }
       aulas: {
         Row: {
           conteudo: string | null
