@@ -16,11 +16,11 @@ import { useCoresAnalise, useCreateCorAnalise, useUpdateCorAnalise, useDeleteCor
 import { useMedalhas, useCreateMedalha } from "@/hooks/useMedalhas";
 import { useNichos } from "@/hooks/useNichos";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Plus, Pencil, Trash2, ArrowLeft, Megaphone } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowLeft } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { AtualizacoesManager } from "@/components/admin/AtualizacoesManager";
+
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -228,14 +228,10 @@ const Admin = () => {
       </div>
 
       <Tabs defaultValue="roteiros" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="roteiros">Roteiros</TabsTrigger>
           <TabsTrigger value="cores">Cores de Análise</TabsTrigger>
           <TabsTrigger value="medalhas">Medalhas</TabsTrigger>
-          <TabsTrigger value="atualizacoes" className="gap-1">
-            <Megaphone className="h-4 w-4" />
-            Atualizações
-          </TabsTrigger>
         </TabsList>
 
         {/* Roteiros Tab */}
@@ -606,10 +602,6 @@ const Admin = () => {
           </Card>
         </TabsContent>
 
-        {/* Atualizações Tab */}
-        <TabsContent value="atualizacoes" className="space-y-4">
-          <AtualizacoesManager />
-        </TabsContent>
       </Tabs>
     </div>
   );
