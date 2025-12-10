@@ -144,8 +144,11 @@ export function CelebracaoDialog({ open, onOpenChange }: CelebracaoDialogProps) 
 
           {/* Footer */}
           <div className="text-center pb-6 px-4">
-            <p className="text-muted-foreground mb-4">
+            <p className="text-muted-foreground mb-2">
               Você completou mais uma análise de roteiro!
+            </p>
+            <p className="text-sm font-medium text-primary mb-4">
+              Tire uma foto e mostre o seu progresso no grupo!!
             </p>
             <Button
               size="lg"
