@@ -653,6 +653,27 @@ export type Database = {
           },
         ]
       }
+      fotos_celebracao: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          url?: string
+        }
+        Relationships: []
+      }
       headlines: {
         Row: {
           category_key: string
