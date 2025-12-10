@@ -15,6 +15,7 @@ type PomodoroState = {
   youtubeUrl: string;
   fonteSelecionada: "manual" | "biblioteca";
   playerRef: React.MutableRefObject<any>;
+  mostrarVideo: boolean;
 };
 
 type PomodoroContextType = PomodoroState & {
@@ -26,6 +27,7 @@ type PomodoroContextType = PomodoroState & {
   setVideoId: (id: string | null) => void;
   setYoutubeUrl: (url: string) => void;
   setFonteSelecionada: (fonte: "manual" | "biblioteca") => void;
+  setMostrarVideo: (mostrar: boolean) => void;
   toggleTimer: () => void;
   resetTimer: () => void;
   salvarSessao: () => Promise<void>;
@@ -48,6 +50,10 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [fonteSelecionada, setFonteSelecionada] = useState<"manual" | "biblioteca">("manual");
   const [showRestDialog, setShowRestDialog] = useState(false);
+  const [mostrarVideo, setMostrarVideo] = useState(() => {
+    const saved = localStorage.getItem("pomodoro_mostrar_video");
+    return saved === "true";
+  });
   const playerRef = useRef<any>(null);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -189,6 +195,11 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     };
     localStorage.setItem("pomodoro_state", JSON.stringify(state));
   }, [modo, segundosRestantes, isRunning, tempoCustomizado, pausaCurtaCustomizada, youtubeUrl, videoId, fonteSelecionada]);
+
+  // Salvar preferência de mostrar vídeo
+  useEffect(() => {
+    localStorage.setItem("pomodoro_mostrar_video", mostrarVideo.toString());
+  }, [mostrarVideo]);
 
   // Listener de visibilidade - sincronizar imediatamente quando voltar para a aba
   useEffect(() => {
@@ -391,6 +402,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     videoId, setVideoId,
     youtubeUrl, setYoutubeUrl,
     fonteSelecionada, setFonteSelecionada,
+    mostrarVideo, setMostrarVideo,
     playerRef,
     toggleTimer,
     resetTimer,
@@ -406,13 +418,18 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       
       {/* Player YouTube Global */}
       {videoId && (
-        <div className="fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none">
+        <div className={mostrarVideo 
+          ? "fixed bottom-4 right-4 z-50 rounded-lg overflow-hidden shadow-2xl border border-border"
+          : "fixed bottom-0 right-0 w-1 h-1 opacity-0 pointer-events-none"
+        }>
           <YouTube
             videoId={videoId}
             opts={{
+              width: mostrarVideo ? '320' : '1',
+              height: mostrarVideo ? '180' : '1',
               playerVars: {
                 autoplay: 0,
-                controls: 0,
+                controls: mostrarVideo ? 1 : 0,
               },
             }}
             onReady={(event) => {
