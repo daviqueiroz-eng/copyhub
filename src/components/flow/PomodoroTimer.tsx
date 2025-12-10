@@ -62,38 +62,39 @@ export const PomodoroTimer = () => {
               <span className="text-muted-foreground">Foco →</span>
             </div>
 
-            {/* Timer Circular */}
-            <div className="relative">
-              <CircularTimer
-                segundosRestantes={segundosRestantes}
-                totalSegundos={totalSegundos}
-              />
-            </div>
-
-            {/* Player YouTube - aparece abaixo do timer quando ativado */}
-            {videoId && mostrarVideo && (
-              <Card className="w-full max-w-md overflow-hidden">
-                <YouTube
-                  videoId={videoId}
-                  opts={{
-                    width: '100%',
-                    height: '225',
-                    playerVars: {
-                      autoplay: 0,
-                      controls: 1,
-                    },
-                  }}
-                  onReady={(event) => {
-                    playerRef.current = event.target;
-                    // Se o timer estiver rodando, iniciar o vídeo
-                    if (isRunning) {
-                      event.target.playVideo();
-                    }
-                  }}
-                  className="w-full"
+            {/* Timer + Vídeo lado a lado */}
+            <div className="flex items-center gap-8">
+              {/* Timer Circular */}
+              <div className="relative">
+                <CircularTimer
+                  segundosRestantes={segundosRestantes}
+                  totalSegundos={totalSegundos}
                 />
-              </Card>
-            )}
+              </div>
+
+              {/* Player YouTube - ao lado direito do timer */}
+              {videoId && mostrarVideo && (
+                <Card className="overflow-hidden rounded-xl w-[320px]">
+                  <YouTube
+                    videoId={videoId}
+                    opts={{
+                      width: '320',
+                      height: '180',
+                      playerVars: {
+                        autoplay: 0,
+                        controls: 1,
+                      },
+                    }}
+                    onReady={(event) => {
+                      playerRef.current = event.target;
+                      if (isRunning) {
+                        event.target.playVideo();
+                      }
+                    }}
+                  />
+                </Card>
+              )}
+            </div>
 
             {/* Botão Principal */}
             <Button
