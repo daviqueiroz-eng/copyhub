@@ -53,33 +53,33 @@ export const PomodoroTimer = () => {
   return (
     <>
       <div className="min-h-screen bg-background p-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="max-w-7xl mx-auto space-y-8">
           
-          {/* ========== COLUNA ESQUERDA: TIMER ========== */}
-          <div className="flex flex-col items-center justify-center space-y-8">
+          {/* ========== LINHA 1: TIMER + VÍDEO LADO A LADO ========== */}
+          <div className="flex flex-col items-center space-y-6">
             {/* Breadcrumb */}
             <div className="self-start">
               <span className="text-muted-foreground">Foco →</span>
             </div>
 
             {/* Timer + Vídeo lado a lado */}
-            <div className="flex items-center gap-8">
+            <div className="flex items-center justify-center gap-10 w-full">
               {/* Timer Circular */}
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <CircularTimer
                   segundosRestantes={segundosRestantes}
                   totalSegundos={totalSegundos}
                 />
               </div>
 
-              {/* Player YouTube - ao lado direito do timer */}
+              {/* Player YouTube - GRANDE ao lado direito do timer */}
               {videoId && mostrarVideo && (
-                <Card className="overflow-hidden rounded-xl w-[320px]">
+                <Card className="overflow-hidden rounded-xl flex-1 max-w-2xl">
                   <YouTube
                     videoId={videoId}
                     opts={{
-                      width: '320',
-                      height: '180',
+                      width: '100%',
+                      height: '400',
                       playerVars: {
                         autoplay: 0,
                         controls: 1,
@@ -91,6 +91,7 @@ export const PomodoroTimer = () => {
                         event.target.playVideo();
                       }
                     }}
+                    className="w-full"
                   />
                 </Card>
               )}
@@ -153,26 +154,11 @@ export const PomodoroTimer = () => {
                 </Button>
               )}
             </div>
+          </div>
 
-             {/* Área de Anotações */}
-             <Card className="w-full max-w-md p-6 mt-8">
-               <h3 className="text-lg font-semibold mb-3">Foco em Notas</h3>
-               <Textarea
-                 value={notas}
-                 onChange={(e) => setNotas(e.target.value)}
-                 placeholder="O que você tem em mente? Registre suas ideias..."
-                 className="min-h-[120px] resize-none bg-muted/50 border-muted"
-               />
-               <p className="text-xs text-muted-foreground mt-2">
-                 Suas notas são salvas automaticamente
-               </p>
-             </Card>
-           </div>
-
-           {/* ========== COLUNA DIREITA: ESTATÍSTICAS + HISTÓRICO ========== */}
-          <div className="space-y-6">
-            
-            {/* Grid de Estatísticas (2x2) */}
+          {/* ========== LINHA 2: ESTATÍSTICAS + HISTÓRICO ========== */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Estatísticas (2x2 grid) */}
             <div className="grid grid-cols-2 gap-4">
               {/* Pomos de hoje */}
               <Card className="p-4">
@@ -210,7 +196,7 @@ export const PomodoroTimer = () => {
               </div>
 
               {/* Lista de Sessões Agrupadas por Data */}
-              <div className="space-y-6 max-h-96 overflow-y-auto">
+              <div className="space-y-6 max-h-72 overflow-y-auto">
                 {estatisticas?.sessoesAgrupadas && 
                   Object.entries(estatisticas.sessoesAgrupadas).map(([data, sessoes]) => (
                     <div key={data}>
@@ -254,6 +240,20 @@ export const PomodoroTimer = () => {
               </div>
             </Card>
           </div>
+
+          {/* ========== LINHA 3: NOTAS ========== */}
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-3">Foco em Notas</h3>
+            <Textarea
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              placeholder="O que você tem em mente? Registre suas ideias..."
+              className="min-h-[120px] resize-none bg-muted/50 border-muted"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Suas notas são salvas automaticamente
+            </p>
+          </Card>
         </div>
       </div>
 
