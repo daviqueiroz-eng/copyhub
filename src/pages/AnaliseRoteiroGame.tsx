@@ -1281,65 +1281,16 @@ const AnaliseRoteiroGame = () => {
             </div>
           </div>
 
-          {/* Seção de Perfil e Medalhas */}
+          {/* Seção de Medalhas e Ranking lado a lado */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Card de Perfil e Estatísticas */}
-            <Card className="p-6">
-              <div className="flex items-start gap-4 mb-6">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={profile?.avatar || undefined} />
-                  <AvatarFallback className="text-lg">
-                    {profile?.nome?.substring(0, 2).toUpperCase() || "??"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{profile?.nome || "Usuário"}</h3>
-                  <p className="text-sm text-muted-foreground">{user?.email}</p>
-                </div>
-              </div>
-              
-              {/* Indicador de Streak */}
-              {streak > 0 && (
-                <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-lg p-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Flame className="w-5 h-5 text-orange-500" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Sequência Atual</p>
-                      <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                        {streak} {streak === 1 ? 'dia' : 'dias'} consecutivos
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Estatísticas */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <p className="text-2xl font-bold text-primary">
-                    {progressoData.filter(p => p.completado).length}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Roteiros Completados</p>
-                </div>
-                <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <p className="text-2xl font-bold text-primary">
-                    {medalhasUsuario.length}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Medalhas Conquistadas</p>
-                </div>
-              </div>
-            </Card>
+            {/* Card de Medalhas com Streak e Contagem */}
+            <MedalhasSection streak={streak} medalhasCount={medalhasUsuario.length} />
             
-            {/* Card de Medalhas */}
-            <div>
-              <MedalhasSection />
-            </div>
+            {/* Ranking Mensal */}
+            <Card className="p-6 h-full">
+              <RankingMensal />
+            </Card>
           </div>
-
-          {/* Ranking Mensal */}
-          <Card className="p-6 mb-6">
-            <RankingMensal />
-          </Card>
 
           <Card className="p-8 max-w-4xl mx-auto">
             <div className="text-center mb-8">
