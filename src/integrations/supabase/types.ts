@@ -715,6 +715,61 @@ export type Database = {
           },
         ]
       }
+      headlines_criadas: {
+        Row: {
+          created_at: string | null
+          estrutura_base: string | null
+          headline: string
+          id: string
+          nicho_id: string | null
+          progresso_id: string | null
+          roteiro_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          estrutura_base?: string | null
+          headline: string
+          id?: string
+          nicho_id?: string | null
+          progresso_id?: string | null
+          roteiro_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          estrutura_base?: string | null
+          headline?: string
+          id?: string
+          nicho_id?: string | null
+          progresso_id?: string | null
+          roteiro_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "headlines_criadas_nicho_id_fkey"
+            columns: ["nicho_id"]
+            isOneToOne: false
+            referencedRelation: "nichos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "headlines_criadas_progresso_id_fkey"
+            columns: ["progresso_id"]
+            isOneToOne: false
+            referencedRelation: "progresso_roteiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "headlines_criadas_roteiro_id_fkey"
+            columns: ["roteiro_id"]
+            isOneToOne: false
+            referencedRelation: "roteiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ideias_melhorias: {
         Row: {
           concluida: boolean
