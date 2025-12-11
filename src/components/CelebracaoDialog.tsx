@@ -194,12 +194,12 @@ export function CelebracaoDialog({ open, onOpenChange }: CelebracaoDialogProps) 
           {/* Imagem */}
           <div className="p-3">
             {isLoading ? (
-              <div className="w-full h-52 bg-muted animate-pulse rounded-lg" />
+              <div className="w-full h-64 bg-muted animate-pulse rounded-lg" />
             ) : (
               <img
                 src={fotoUrl!}
                 alt="Celebração"
-                className="w-full max-h-[35vh] object-contain rounded-lg"
+                className="w-full max-h-[45vh] object-contain rounded-lg"
               />
             )}
           </div>
