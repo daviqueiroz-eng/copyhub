@@ -8,6 +8,7 @@ import { useCoresAnalise } from "@/hooks/useCoresAnalise";
 import { useNichos, useCreateNicho } from "@/hooks/useNichos";
 import { useAnalysisStreak } from "@/hooks/useAnalysisStreak";
 import { useMedalhasUsuario } from "@/hooks/useMedalhas";
+import { useCreateHeadlinesCriadas } from "@/hooks/useHeadlinesCriadas";
 import { MedalhasSection } from "@/components/MedalhasSection";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, BookOpen, ExternalLink, Copy, FileUp, FileEdit, ArrowLeft, Trash2, Flame, Filter, Plus, Eye, User, Table2, LayoutGrid, Image } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink, Copy, FileUp, FileEdit, ArrowLeft, Trash2, Flame, Filter, Plus, Eye, User, Table2, LayoutGrid, Image, FileText } from "lucide-react";
 import { detectVideoType, extractYouTubeId, extractGoogleDriveId } from "@/lib/videoUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
@@ -32,6 +33,7 @@ import { RankingMensal } from "@/components/RankingMensal";
 import { AnalysesTableView } from "@/components/AnalysesTableView";
 import { GerenciarFotosDialog } from "@/components/GerenciarFotosDialog";
 import { CelebracaoDialog } from "@/components/CelebracaoDialog";
+import { HeadlinesCriadasView } from "@/components/HeadlinesCriadasView";
 import confetti from "canvas-confetti";
 
 import { format } from "date-fns";
@@ -63,6 +65,7 @@ const AnaliseRoteiroGame = () => {
   const createRoteiro = useCreateRoteiro();
   const deleteRoteiro = useDeleteRoteiro();
   const deleteProgressoRoteiro = useDeleteProgressoRoteiro();
+  const createHeadlinesCriadas = useCreateHeadlinesCriadas();
   const { streak, updateStreak } = useAnalysisStreak();
   const { data: medalhasUsuario = [] } = useMedalhasUsuario();
 
@@ -145,12 +148,28 @@ const AnaliseRoteiroGame = () => {
   const [showNovoNichoDialog, setShowNovoNichoDialog] = useState(false);
   const [novoNichoNome, setNovoNichoNome] = useState("");
   
-  // Estado para modo de visualização (cards ou tabela)
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  // Estado para modo de visualização (cards, tabela ou headlines)
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "headlines">("cards");
   
   // Estados para fotos de celebração
   const [showGerenciarFotosDialog, setShowGerenciarFotosDialog] = useState(false);
   const [showCelebracaoDialog, setShowCelebracaoDialog] = useState(false);
+  
+  // Estados para headlines em nichos aleatórios
+  const [nichosAleatorios, setNichosAleatorios] = useState<string[]>([]);
+  const [headlinesNichos, setHeadlinesNichos] = useState<{
+    nicho1: string;
+    nicho2: string;
+    nicho3: string;
+  }>({ nicho1: "", nicho2: "", nicho3: "" });
+  
+  // Função para selecionar 3 nichos aleatórios (excluindo o nicho atual)
+  const selecionarNichosAleatorios = (nichoAtualId?: string | null) => {
+    const nichosDisponiveis = nichos.filter(n => n.id !== nichoAtualId);
+    const embaralhados = [...nichosDisponiveis].sort(() => Math.random() - 0.5);
+    setNichosAleatorios(embaralhados.slice(0, 3).map(n => n.id));
+    setHeadlinesNichos({ nicho1: "", nicho2: "", nicho3: "" });
+  };
 
   // Função para processar link de vídeo e garantir que seja abrível
   const getWatchableVideoUrl = (url: string): string => {
@@ -367,6 +386,10 @@ const AnaliseRoteiroGame = () => {
     setEstruturaInvisivel("");
     setGatilhosAtencao("");
     setEstruturaRoteiro("");
+    
+    // Selecionar nichos aleatórios para criar headlines
+    const roteiro = roteiros.find(r => r.id === roteiroId);
+    selecionarNichosAleatorios(roteiro?.nicho_id);
   };
 
   const handleRandomRoteiro = () => {
@@ -901,7 +924,25 @@ const AnaliseRoteiroGame = () => {
       melhorias_potencial: melhoriasPotencial,
       sublinhados: highlights,
     }, {
-      onSuccess: () => {
+      onSuccess: async (data) => {
+        // Salvar headlines criadas (se houver)
+        if (user) {
+          const headlinesParaSalvar = nichosAleatorios
+            .map((nichoId, index) => ({
+              user_id: user.id,
+              progresso_id: data?.id,
+              roteiro_id: currentRoteiroId,
+              nicho_id: nichoId,
+              headline: headlinesNichos[`nicho${index + 1}` as keyof typeof headlinesNichos],
+              estrutura_base: estruturaInvisivel,
+            }))
+            .filter(h => h.headline.trim() !== "");
+          
+          if (headlinesParaSalvar.length > 0) {
+            await createHeadlinesCriadas.mutateAsync(headlinesParaSalvar);
+          }
+        }
+        
         // Atualizar streak
         updateStreak();
         
@@ -924,6 +965,8 @@ const AnaliseRoteiroGame = () => {
         setCargaCognitiva(5);
         setOQueTornouViral("");
         setMelhoriasPotencial("");
+        setHeadlinesNichos({ nicho1: "", nicho2: "", nicho3: "" });
+        setNichosAleatorios([]);
         
         // Mostrar dialog de celebração com foto aleatória
         setShowCelebracaoDialog(true);
@@ -1371,7 +1414,7 @@ const AnaliseRoteiroGame = () => {
                 <Button
                   variant={viewMode === "cards" ? "default" : "ghost"}
                   size="sm"
-                  className="gap-1.5 rounded-r-none"
+                  className="gap-1.5 rounded-none rounded-l-md"
                   onClick={() => setViewMode("cards")}
                 >
                   <LayoutGrid className="h-4 w-4" />
@@ -1380,11 +1423,20 @@ const AnaliseRoteiroGame = () => {
                 <Button
                   variant={viewMode === "table" ? "default" : "ghost"}
                   size="sm"
-                  className="gap-1.5 rounded-l-none"
+                  className="gap-1.5 rounded-none border-x"
                   onClick={() => setViewMode("table")}
                 >
                   <Table2 className="h-4 w-4" />
                   Tabela
+                </Button>
+                <Button
+                  variant={viewMode === "headlines" ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5 rounded-none rounded-r-md"
+                  onClick={() => setViewMode("headlines")}
+                >
+                  <FileText className="h-4 w-4" />
+                  Headlines
                 </Button>
               </div>
             </div>
@@ -1599,6 +1651,13 @@ const AnaliseRoteiroGame = () => {
                   setShowAnalysesDialog(true);
                 }}
               />
+            </div>
+          )}
+          
+          {/* Headlines criadas - Nova aba */}
+          {viewMode === "headlines" && (
+            <div className="w-full mt-6">
+              <HeadlinesCriadasView />
             </div>
           )}
         </div>
@@ -1888,6 +1947,36 @@ const AnaliseRoteiroGame = () => {
               className="min-h-[150px] resize-none"
             />
           </Card>
+
+          {/* Campo Headlines para Nichos Aleatórios */}
+          {nichosAleatorios.length > 0 && (
+            <Card className="p-4 border-primary/30 bg-primary/5">
+              <Label className="text-sm font-medium mb-4 block">
+                Crie 3 headlines diferentes usando essa estrutura para outros nichos
+              </Label>
+              <div className="space-y-4">
+                {nichosAleatorios.map((nichoId, index) => {
+                  const nicho = nichos.find(n => n.id === nichoId);
+                  return (
+                    <div key={nichoId}>
+                      <Label className="text-sm italic text-muted-foreground mb-1 block">
+                        {nicho?.nome || "Nicho aleatório"}
+                      </Label>
+                      <Textarea
+                        value={headlinesNichos[`nicho${index + 1}` as keyof typeof headlinesNichos]}
+                        onChange={(e) => setHeadlinesNichos(prev => ({
+                          ...prev,
+                          [`nicho${index + 1}`]: e.target.value
+                        }))}
+                        placeholder={`Digite uma headline para ${nicho?.nome || "este nicho"}...`}
+                        className="min-h-[60px] resize-none"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
 
           {/* Campo 2: 7 Gatilhos da Atenção */}
           <Card className="p-4">
