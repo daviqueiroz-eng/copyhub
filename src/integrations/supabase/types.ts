@@ -1630,6 +1630,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_grupo_member: {
+        Args: { _grupo_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
