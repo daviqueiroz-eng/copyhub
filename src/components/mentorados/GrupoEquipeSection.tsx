@@ -9,11 +9,13 @@ import { useGrupoMembros, useAddGrupoMembro, useRemoveGrupoMembro, GrupoMembro }
 import { useGrupoMentorados, useCreateGrupoMentorado, useDeleteGrupoMentorado, GrupoMentorado } from "@/hooks/useGruposMentorados";
 import { useGrupoTags, GrupoTag } from "@/hooks/useGruposTags";
 import { useAssignTag, useRemoveTag } from "@/hooks/useGruposMentorados";
-import { useGrupoMembrosVirais, useAddViral, countViralsByMembro } from "@/hooks/useGruposMembrosVirais";
-import { Plus, Trash2, User, Loader2, X, Flame, Zap } from "lucide-react";
+import { useGrupoMembrosVirais, useAddViral, useRemoveViral, countViralsByMembro, GrupoMembroViral } from "@/hooks/useGruposMembrosVirais";
+import { Plus, Trash2, User, Loader2, X, Flame, Zap, History, ExternalLink } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface GrupoEquipeSectionProps {
   grupo: Grupo;
@@ -24,6 +26,18 @@ interface Profile {
   user_id: string;
   nome: string;
   avatar: string | null;
+}
+
+interface ViralDialogState {
+  open: boolean;
+  membroId: string;
+  tipo: "primeira_viral" | "viral_constante";
+}
+
+interface HistoryDialogState {
+  open: boolean;
+  membroId: string;
+  membroNome: string;
 }
 
 export function GrupoEquipeSection({ grupo, isOwner }: GrupoEquipeSectionProps) {
@@ -39,12 +53,20 @@ export function GrupoEquipeSection({ grupo, isOwner }: GrupoEquipeSectionProps) 
   const assignTag = useAssignTag();
   const removeTag = useRemoveTag();
   const addViral = useAddViral();
+  const removeViral = useRemoveViral();
 
   const [showAddMembro, setShowAddMembro] = useState(false);
   const [showAddMentorado, setShowAddMentorado] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [apelido, setApelido] = useState("");
   const [novoMentoradoNome, setNovoMentoradoNome] = useState("");
+  
+  // Viral dialog states
+  const [viralDialog, setViralDialog] = useState<ViralDialogState>({ open: false, membroId: "", tipo: "primeira_viral" });
+  const [viralLinkVideo, setViralLinkVideo] = useState("");
+  
+  // History dialog state
+  const [historyDialog, setHistoryDialog] = useState<HistoryDialogState>({ open: false, membroId: "", membroNome: "" });
 
   // Fetch all profiles for selection
   const { data: profiles = [] } = useQuery({
@@ -120,17 +142,44 @@ export function GrupoEquipeSection({ grupo, isOwner }: GrupoEquipeSectionProps) 
     }
   };
 
-  const handleAddViral = async (membroId: string, tipo: "primeira_viral" | "viral_constante") => {
+  const openViralDialog = (membroId: string, tipo: "primeira_viral" | "viral_constante") => {
+    setViralDialog({ open: true, membroId, tipo });
+    setViralLinkVideo("");
+  };
+
+  const handleAddViral = async () => {
     try {
       await addViral.mutateAsync({
-        membro_id: membroId,
-        tipo,
+        membro_id: viralDialog.membroId,
+        tipo: viralDialog.tipo,
         grupo_id: grupo.id,
+        link_video: viralLinkVideo.trim() || undefined,
       });
-      toast({ title: tipo === "primeira_viral" ? "Primeira Viral registrada!" : "Viral Constante registrado!" });
+      toast({ title: viralDialog.tipo === "primeira_viral" ? "Primeira Viral registrada!" : "Viral Constante registrado!" });
+      setViralDialog({ open: false, membroId: "", tipo: "primeira_viral" });
+      setViralLinkVideo("");
     } catch (error: any) {
       toast({ title: "Erro ao registrar", description: error.message, variant: "destructive" });
     }
+  };
+
+  const handleDeleteViral = async (viralId: string) => {
+    try {
+      await removeViral.mutateAsync({ id: viralId, grupo_id: grupo.id });
+      toast({ title: "Viral removido!" });
+    } catch (error: any) {
+      toast({ title: "Erro ao remover", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const openHistoryDialog = (membroId: string, membroNome: string) => {
+    setHistoryDialog({ open: true, membroId, membroNome });
+  };
+
+  const getMembroVirais = (membroId: string): GrupoMembroViral[] => {
+    return virais.filter(v => v.membro_id === membroId).sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   };
 
   if (loadingMembros || loadingMentorados) {
@@ -185,7 +234,7 @@ export function GrupoEquipeSection({ grupo, isOwner }: GrupoEquipeSectionProps) 
                       variant="ghost" 
                       size="sm" 
                       className="w-full mt-1 h-7 text-xs hover:bg-orange-500/20"
-                      onClick={() => handleAddViral(membro.id, "primeira_viral")}
+                      onClick={() => openViralDialog(membro.id, "primeira_viral")}
                       disabled={addViral.isPending}
                     >
                       <Plus className="h-3 w-3 mr-1" />
@@ -202,7 +251,7 @@ export function GrupoEquipeSection({ grupo, isOwner }: GrupoEquipeSectionProps) 
                       variant="ghost" 
                       size="sm" 
                       className="w-full mt-1 h-7 text-xs hover:bg-blue-500/20"
-                      onClick={() => handleAddViral(membro.id, "viral_constante")}
+                      onClick={() => openViralDialog(membro.id, "viral_constante")}
                       disabled={addViral.isPending}
                     >
                       <Plus className="h-3 w-3 mr-1" />
@@ -210,6 +259,17 @@ export function GrupoEquipeSection({ grupo, isOwner }: GrupoEquipeSectionProps) 
                     </Button>
                   </div>
                 </div>
+
+                {/* History button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-8 text-xs"
+                  onClick={() => openHistoryDialog(membro.id, membro.apelido)}
+                >
+                  <History className="h-3 w-3 mr-1" />
+                  Ver Histórico ({getMembroVirais(membro.id).length})
+                </Button>
 
                 {/* Mentorados list */}
                 <div className="space-y-2">
@@ -332,6 +392,111 @@ export function GrupoEquipeSection({ grupo, isOwner }: GrupoEquipeSectionProps) 
               {addMembro.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Adicionar
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Viral Dialog */}
+      <Dialog open={viralDialog.open} onOpenChange={(open) => !open && setViralDialog({ open: false, membroId: "", tipo: "primeira_viral" })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {viralDialog.tipo === "primeira_viral" ? (
+                <>
+                  <Flame className="h-5 w-5 text-orange-500" />
+                  Registrar Primeira Viral
+                </>
+              ) : (
+                <>
+                  <Zap className="h-5 w-5 text-blue-500" />
+                  Registrar Viral Constante
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <label className="text-sm font-medium">Link do Vídeo (opcional)</label>
+              <Input
+                value={viralLinkVideo}
+                onChange={(e) => setViralLinkVideo(e.target.value)}
+                placeholder="https://instagram.com/reel/..."
+              />
+            </div>
+            <Button 
+              className="w-full" 
+              onClick={handleAddViral}
+              disabled={addViral.isPending}
+            >
+              {addViral.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Registrar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={historyDialog.open} onOpenChange={(open) => !open && setHistoryDialog({ open: false, membroId: "", membroNome: "" })}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Histórico de Virais - {historyDialog.membroNome}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto space-y-2 pt-4">
+            {getMembroVirais(historyDialog.membroId).length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Nenhum viral registrado ainda.</p>
+            ) : (
+              getMembroVirais(historyDialog.membroId).map((viral) => (
+                <div 
+                  key={viral.id} 
+                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                    viral.tipo === "primeira_viral" 
+                      ? "bg-orange-500/5 border-orange-500/20" 
+                      : "bg-blue-500/5 border-blue-500/20"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {viral.tipo === "primeira_viral" ? (
+                      <Flame className="h-5 w-5 text-orange-500" />
+                    ) : (
+                      <Zap className="h-5 w-5 text-blue-500" />
+                    )}
+                    <div>
+                      <span className="font-medium text-sm">
+                        {viral.tipo === "primeira_viral" ? "Primeira Viral" : "Viral Constante"}
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        {format(parseISO(viral.data_registro), "dd/MM/yyyy", { locale: ptBR })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {viral.link_video && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => window.open(viral.link_video!, "_blank")}
+                        title="Abrir vídeo"
+                      >
+                        <ExternalLink className="h-4 w-4 text-primary" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteViral(viral.id)}
+                      disabled={removeViral.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>

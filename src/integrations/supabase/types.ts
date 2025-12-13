@@ -794,6 +794,7 @@ export type Database = {
           created_at: string | null
           data_registro: string
           id: string
+          link_video: string | null
           membro_id: string
           quantidade: number
           tipo: string
@@ -802,6 +803,7 @@ export type Database = {
           created_at?: string | null
           data_registro?: string
           id?: string
+          link_video?: string | null
           membro_id: string
           quantidade?: number
           tipo: string
@@ -810,6 +812,7 @@ export type Database = {
           created_at?: string | null
           data_registro?: string
           id?: string
+          link_video?: string | null
           membro_id?: string
           quantidade?: number
           tipo?: string

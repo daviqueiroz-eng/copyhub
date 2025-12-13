@@ -8,6 +8,7 @@ export interface GrupoMembroViral {
   quantidade: number;
   data_registro: string;
   created_at: string;
+  link_video?: string | null;
 }
 
 export const useGrupoMembrosVirais = (grupoId: string | null) => {
@@ -44,13 +45,14 @@ export const useAddViral = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { membro_id: string; tipo: "primeira_viral" | "viral_constante"; grupo_id: string }) => {
+    mutationFn: async (data: { membro_id: string; tipo: "primeira_viral" | "viral_constante"; grupo_id: string; link_video?: string }) => {
       const { data: viral, error } = await supabase
         .from("grupos_membros_virais")
         .insert({
           membro_id: data.membro_id,
           tipo: data.tipo,
           quantidade: 1,
+          link_video: data.link_video || null,
         })
         .select()
         .single();
