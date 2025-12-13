@@ -674,6 +674,225 @@ export type Database = {
         }
         Relationships: []
       }
+      grupos: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          data_fim_meta: string | null
+          data_inicio_meta: string | null
+          descricao_meta: string | null
+          id: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          data_fim_meta?: string | null
+          data_inicio_meta?: string | null
+          descricao_meta?: string | null
+          id?: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          data_fim_meta?: string | null
+          data_inicio_meta?: string | null
+          descricao_meta?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      grupos_atividades: {
+        Row: {
+          concluida: boolean | null
+          created_at: string | null
+          created_by: string
+          data_limite: string | null
+          descricao: string | null
+          grupo_id: string
+          id: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          concluida?: boolean | null
+          created_at?: string | null
+          created_by: string
+          data_limite?: string | null
+          descricao?: string | null
+          grupo_id: string
+          id?: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          concluida?: boolean | null
+          created_at?: string | null
+          created_by?: string
+          data_limite?: string | null
+          descricao?: string | null
+          grupo_id?: string
+          id?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_atividades_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grupos_membros: {
+        Row: {
+          apelido: string
+          created_at: string | null
+          grupo_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          apelido: string
+          created_at?: string | null
+          grupo_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          apelido?: string
+          created_at?: string | null
+          grupo_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_membros_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grupos_mentorados: {
+        Row: {
+          created_at: string | null
+          grupo_id: string
+          id: string
+          membro_id: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          grupo_id: string
+          id?: string
+          membro_id: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          grupo_id?: string
+          id?: string
+          membro_id?: string
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_mentorados_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grupos_mentorados_membro_id_fkey"
+            columns: ["membro_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_membros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grupos_mentorados_tags: {
+        Row: {
+          created_at: string | null
+          id: string
+          mentorado_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          mentorado_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          mentorado_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_mentorados_tags_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_mentorados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grupos_mentorados_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grupos_tags: {
+        Row: {
+          cor: string
+          created_at: string | null
+          grupo_id: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          cor?: string
+          created_at?: string | null
+          grupo_id: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          cor?: string
+          created_at?: string | null
+          grupo_id?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_tags_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       headlines: {
         Row: {
           category_key: string
