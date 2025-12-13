@@ -12,6 +12,7 @@ import { GrupoMetaHeader } from "./GrupoMetaHeader";
 import { GrupoEquipeSection } from "./GrupoEquipeSection";
 import { GrupoAtividadesSection } from "./GrupoAtividadesSection";
 import { GrupoTagManager } from "./GrupoTagManager";
+import { useGrupoMembrosVirais, countTotalVirais } from "@/hooks/useGruposMembrosVirais";
 
 export function GrupoView() {
   const { user } = useAuth();
@@ -25,7 +26,12 @@ export function GrupoView() {
 
   // Use first group or null
   const grupo = grupos?.[0] || null;
+  const { data: virais = [] } = useGrupoMembrosVirais(grupo?.id || null);
   const isOwner = grupo?.created_by === user?.id;
+  
+  // Calculate total virals
+  const totalPrimeiraViral = countTotalVirais(virais, "primeira_viral");
+  const totalViralConstante = countTotalVirais(virais, "viral_constante");
 
   const handleCreateGrupo = async () => {
     if (!novoGrupoNome.trim()) {
@@ -115,7 +121,12 @@ export function GrupoView() {
   return (
     <div className="space-y-6">
       {/* Meta Header */}
-      <GrupoMetaHeader grupo={grupo} isOwner={isOwner} />
+      <GrupoMetaHeader 
+        grupo={grupo} 
+        isOwner={isOwner} 
+        totalPrimeiraViral={totalPrimeiraViral}
+        totalViralConstante={totalViralConstante}
+      />
 
       {/* Equipe Section */}
       <Card>
