@@ -682,6 +682,8 @@ export type Database = {
           data_inicio_meta: string | null
           descricao_meta: string | null
           id: string
+          meta_primeira_viral: number | null
+          meta_viral_constante: number | null
           nome: string
           updated_at: string | null
         }
@@ -692,6 +694,8 @@ export type Database = {
           data_inicio_meta?: string | null
           descricao_meta?: string | null
           id?: string
+          meta_primeira_viral?: number | null
+          meta_viral_constante?: number | null
           nome: string
           updated_at?: string | null
         }
@@ -702,6 +706,8 @@ export type Database = {
           data_inicio_meta?: string | null
           descricao_meta?: string | null
           id?: string
+          meta_primeira_viral?: number | null
+          meta_viral_constante?: number | null
           nome?: string
           updated_at?: string | null
         }
@@ -779,6 +785,41 @@ export type Database = {
             columns: ["grupo_id"]
             isOneToOne: false
             referencedRelation: "grupos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grupos_membros_virais: {
+        Row: {
+          created_at: string | null
+          data_registro: string
+          id: string
+          membro_id: string
+          quantidade: number
+          tipo: string
+        }
+        Insert: {
+          created_at?: string | null
+          data_registro?: string
+          id?: string
+          membro_id: string
+          quantidade?: number
+          tipo: string
+        }
+        Update: {
+          created_at?: string | null
+          data_registro?: string
+          id?: string
+          membro_id?: string
+          quantidade?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupos_membros_virais_membro_id_fkey"
+            columns: ["membro_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_membros"
             referencedColumns: ["id"]
           },
         ]
