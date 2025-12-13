@@ -96,6 +96,29 @@ export function GrupoMetaHeader({ grupo, isOwner, totalPrimeiraViral = 0, totalV
   const faltaPrimeiraViral = Math.max(0, metaPrimeiraViral - totalPrimeiraViral);
   const faltaViralConstante = Math.max(0, metaViralConstante - totalViralConstante);
 
+  // Calculate actual goal progress (based on virals achieved, not time)
+  const calculateGoalProgress = () => {
+    let totalWeight = 0;
+    let weightedProgress = 0;
+
+    if (metaPrimeiraViral > 0) {
+      const progress = Math.min(100, (totalPrimeiraViral / metaPrimeiraViral) * 100);
+      weightedProgress += progress;
+      totalWeight += 1;
+    }
+
+    if (metaViralConstante > 0) {
+      const progress = Math.min(100, (totalViralConstante / metaViralConstante) * 100);
+      weightedProgress += progress;
+      totalWeight += 1;
+    }
+
+    if (totalWeight === 0) return 0;
+    return Math.round(weightedProgress / totalWeight);
+  };
+
+  const goalProgress = calculateGoalProgress();
+
   return (
     <>
       <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 text-white overflow-hidden">
@@ -136,20 +159,20 @@ export function GrupoMetaHeader({ grupo, isOwner, totalPrimeiraViral = 0, totalV
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-slate-400">Progresso do mês</span>
-                  <span className="text-pink-400 font-bold">{Math.round(progresso)}%</span>
+                  <span className="text-sm text-slate-400">Progresso da Meta</span>
+                  <span className="text-pink-400 font-bold">{goalProgress}%</span>
                 </div>
               </div>
 
-              {/* Progress bar */}
+              {/* Progress bar - based on goals achieved */}
               <div className="relative">
                 <Progress 
-                  value={progresso} 
+                  value={goalProgress} 
                   className="h-3 bg-slate-700"
                 />
                 <div 
                   className="absolute top-0 left-0 h-3 rounded-full bg-gradient-to-r from-pink-500 to-pink-400"
-                  style={{ width: `${progresso}%` }}
+                  style={{ width: `${goalProgress}%` }}
                 />
               </div>
 
