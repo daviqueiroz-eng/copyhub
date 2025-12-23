@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { RefreshCw, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,7 +17,7 @@ interface HeadlinesRandomDialogProps {
   onSelect: (headline: string) => void;
 }
 
-type QuantityOption = 15 | 25 | 30;
+
 
 // Fisher-Yates shuffle
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -37,37 +37,36 @@ export const HeadlinesRandomDialog = ({
   const { data: allHeadlines = [], isLoading } = useAnalysisHeadlines();
   const [displayedHeadlines, setDisplayedHeadlines] = useState<AnalysisHeadline[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState<QuantityOption | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const countRef = useRef(9);
 
-  // Gerar headlines aleatórias com a quantidade selecionada
-  const generateRandomHeadlines = useCallback((count: number) => {
+  // Gerar headlines aleatórias
+  const generateRandomHeadlines = useCallback(() => {
     if (allHeadlines.length === 0) return;
     const shuffled = shuffleArray(allHeadlines);
-    setDisplayedHeadlines(shuffled.slice(0, count));
+    setDisplayedHeadlines(shuffled.slice(0, countRef.current));
     setSelectedId(null);
     setHasGenerated(true);
   }, [allHeadlines]);
+
+  // Gerar ao abrir (sem pergunta de quantidade)
+  useEffect(() => {
+    if (open && allHeadlines.length > 0 && !hasGenerated) {
+      generateRandomHeadlines();
+    }
+  }, [open, allHeadlines, hasGenerated, generateRandomHeadlines]);
 
   // Reset ao fechar
   useEffect(() => {
     if (!open) {
       setDisplayedHeadlines([]);
       setSelectedId(null);
-      setQuantity(null);
       setHasGenerated(false);
     }
   }, [open]);
 
-  const handleSelectQuantity = (q: QuantityOption) => {
-    setQuantity(q);
-    generateRandomHeadlines(q);
-  };
-
   const handleGenerateNew = () => {
-    if (quantity) {
-      generateRandomHeadlines(quantity);
-    }
+    generateRandomHeadlines();
   };
 
   const handleUse = () => {
@@ -124,25 +123,6 @@ export const HeadlinesRandomDialog = ({
             <p className="text-sm text-muted-foreground mt-1">
               Complete análises para ter headlines disponíveis aqui.
             </p>
-          </div>
-        ) : !hasGenerated ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-6">
-            <p className="text-lg font-medium text-foreground">
-              Quantas headlines você quer gerar?
-            </p>
-            <div className="flex gap-4">
-              {([15, 25, 30] as QuantityOption[]).map((q) => (
-                <Button
-                  key={q}
-                  variant="outline"
-                  size="lg"
-                  className="w-20 h-20 text-2xl font-bold hover:bg-primary hover:text-primary-foreground"
-                  onClick={() => handleSelectQuantity(q)}
-                >
-                  {q}
-                </Button>
-              ))}
-            </div>
           </div>
         ) : (
           <ScrollArea className="flex-1">
