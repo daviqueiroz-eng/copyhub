@@ -51,7 +51,8 @@ export const MentoradoRoteirosView = ({
   onClose,
 }: MentoradoRoteirosViewProps) => {
   const [guiaAtiva, setGuiaAtiva] = useState(1);
-  const [guias, setGuias] = useState<GuiaConfig[]>([{ numero: 1, quantidade: 10 }]);
+  const [guias, setGuias] = useState<GuiaConfig[]>([]);
+  const [showFirstGuiaDialog, setShowFirstGuiaDialog] = useState(true);
   const [roteirosLocais, setRoteirosLocais] = useState<Map<string, RoteiroLocal>>(new Map());
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
@@ -119,6 +120,7 @@ export const MentoradoRoteirosView = ({
       
       if (guiasAtualizadas.length > 0) {
         setGuias(guiasAtualizadas);
+        setShowFirstGuiaDialog(false); // Já tem guias do banco
       }
     }
     
@@ -133,6 +135,16 @@ export const MentoradoRoteirosView = ({
     
     setRoteirosLocais(newMap);
   }, [roteiros, isLoading]);
+
+  // Handler para criar primeira guia
+  const handleCreateFirstGuia = (quantidade: number) => {
+    setGuias([{ numero: 1, quantidade }]);
+    setShowFirstGuiaDialog(false);
+    toast({
+      title: "Guia criada!",
+      description: `Guia 1 com ${quantidade} roteiros criada.`,
+    });
+  };
 
   // Função para salvar
   const saveRoteiro = useCallback(
@@ -656,6 +668,46 @@ export const MentoradoRoteirosView = ({
             >
               <span>30</span>
               <span className="text-xs font-normal text-muted-foreground">roteiros</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para primeira guia */}
+      <Dialog open={showFirstGuiaDialog && !isLoading} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="font-poppins text-center">
+              Quantos roteiros na primeira guia?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-4 py-4">
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-20 text-xl font-bold flex-col gap-1 hover:bg-primary hover:text-primary-foreground"
+              onClick={() => handleCreateFirstGuia(15)}
+            >
+              <span>15</span>
+              <span className="text-xs font-normal opacity-70">roteiros</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-20 text-xl font-bold flex-col gap-1 hover:bg-primary hover:text-primary-foreground"
+              onClick={() => handleCreateFirstGuia(25)}
+            >
+              <span>25</span>
+              <span className="text-xs font-normal opacity-70">roteiros</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-20 text-xl font-bold flex-col gap-1 hover:bg-primary hover:text-primary-foreground"
+              onClick={() => handleCreateFirstGuia(30)}
+            >
+              <span>30</span>
+              <span className="text-xs font-normal opacity-70">roteiros</span>
             </Button>
           </div>
         </DialogContent>
