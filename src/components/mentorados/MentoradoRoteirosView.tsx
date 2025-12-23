@@ -15,9 +15,18 @@ import {
   useMentoradosRoteiros,
   useUpsertMentoradoRoteiro,
 } from "@/hooks/useMentoradosRoteiros";
+import { useMentorados } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 
-type SlashCommandMode = "menu" | "intensificadores" | "ctas";
+type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
+
+interface AvatarCategory {
+  id: string;
+  name: string;
+  subtitle: string;
+  color: string;
+  items: string[];
+}
 
 interface MentoradoRoteirosViewProps {
   mentoradoId: string;
@@ -68,7 +77,21 @@ export const MentoradoRoteirosView = ({
   const inputRefs = useRef<Map<string, HTMLInputElement | HTMLTextAreaElement>>(new Map());
 
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
+  const { data: mentorados = [] } = useMentorados();
   const upsertRoteiro = useUpsertMentoradoRoteiro();
+
+  // Buscar categorias do avatar do mentorado atual
+  const currentMentorado = mentorados.find(m => m.id === mentoradoId);
+  const avatarCategories: AvatarCategory[] = (() => {
+    if (!currentMentorado?.observacoes) return [];
+    try {
+      const parsed = JSON.parse(currentMentorado.observacoes);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // Not valid JSON
+    }
+    return [];
+  })();
 
   // Inicializar roteiros locais a partir do banco
   useEffect(() => {
@@ -524,6 +547,7 @@ export const MentoradoRoteirosView = ({
         onClose={() => setSlashCommand(prev => ({ ...prev, isOpen: false }))}
         onSelectItem={handleSlashSelectItem}
         position={slashCommand.position}
+        avatarCategories={avatarCategories}
       />
 
       {/* Dialog para nova guia */}
