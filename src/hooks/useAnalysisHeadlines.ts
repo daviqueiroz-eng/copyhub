@@ -21,7 +21,7 @@ export const useAnalysisHeadlines = () => {
         .from("progresso_roteiros")
         .select(`
           id,
-          estrutura_roteiro,
+          estrutura_invisivel,
           roteiros (
             id,
             titulo
@@ -41,7 +41,7 @@ export const useAnalysisHeadlines = () => {
         .map((item) => ({
           id: item.id,
           headline: (item.roteiros as any).titulo || "",
-          estrutura: item.estrutura_roteiro || null,
+          estrutura: item.estrutura_invisivel || null,
         }));
     },
     enabled: !!user?.id,

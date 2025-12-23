@@ -61,8 +61,8 @@ export const HeadlinesRandomDialog = ({
 
   const handleUse = () => {
     const selected = displayedHeadlines.find((h) => h.id === selectedId);
-    if (selected) {
-      onSelect(selected.headline);
+    if (selected && selected.estrutura) {
+      onSelect(selected.estrutura);
       onClose();
     }
   };
