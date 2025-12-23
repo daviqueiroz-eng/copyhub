@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useMentoradosRoteiros";
 import { useMentorados } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
+import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
 
@@ -55,6 +56,8 @@ export const MentoradoRoteirosView = ({
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   const [showNewGuiaDialog, setShowNewGuiaDialog] = useState(false);
+  const [showHeadlinesModal, setShowHeadlinesModal] = useState(false);
+  const [headlinesTargetKey, setHeadlinesTargetKey] = useState<string>("");
   
   // Slash command state
   const [slashCommand, setSlashCommand] = useState<{
@@ -313,7 +316,7 @@ export const MentoradoRoteirosView = ({
       top = window.innerHeight + window.scrollY - popoverHeight - 10;
     }
 
-    // Verificar se termina com /1 ou /2 - abrir diretamente no modo
+    // Verificar se termina com /1, /2 ou /3 - abrir diretamente no modo
     if (value.endsWith("/1")) {
       setSlashCommand({
         isOpen: true,
@@ -330,6 +333,15 @@ export const MentoradoRoteirosView = ({
         targetField: field,
         position: { top, left },
       });
+    } else if (value.endsWith("/3")) {
+      // Abrir modal de headlines aleatórias
+      // Limpar o /3 do valor
+      const cleanValue = value.slice(0, -2);
+      handleChange(guiaNumero, ordem, field, cleanValue);
+      setHeadlinesTargetKey(key);
+      setShowHeadlinesModal(true);
+      // Fechar o popover se estiver aberto
+      setSlashCommand(prev => ({ ...prev, isOpen: false }));
     } else if (slashCommand.isOpen) {
       // Manter popover aberto se já estiver
       setSlashCommand(prev => ({ ...prev, targetKey: key, targetField: field }));
@@ -594,6 +606,21 @@ export const MentoradoRoteirosView = ({
         onSelectItem={handleSlashSelectItem}
         position={slashCommand.position}
         avatarCategories={avatarCategories}
+      />
+
+      {/* Modal de Headlines Aleatórias (/3) */}
+      <HeadlinesRandomDialog
+        open={showHeadlinesModal}
+        onClose={() => setShowHeadlinesModal(false)}
+        onSelect={(headline) => {
+          // Inserir a headline no campo de headline do roteiro alvo
+          const [guiaStr, ordemStr] = headlinesTargetKey.split("-");
+          if (guiaStr && ordemStr) {
+            const roteiro = roteirosLocais.get(headlinesTargetKey) || { headline: "", estrutura: "" };
+            handleChange(parseInt(guiaStr), parseInt(ordemStr), "headline", roteiro.headline + headline);
+          }
+          setShowHeadlinesModal(false);
+        }}
       />
 
       {/* Dialog para nova guia */}
