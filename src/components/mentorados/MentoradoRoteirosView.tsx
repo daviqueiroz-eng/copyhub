@@ -15,6 +15,9 @@ import {
   useMentoradosRoteiros,
   useUpsertMentoradoRoteiro,
 } from "@/hooks/useMentoradosRoteiros";
+import { SlashCommandPopover } from "./SlashCommandPopover";
+
+type SlashCommandMode = "menu" | "intensificadores" | "ctas";
 
 interface MentoradoRoteirosViewProps {
   mentoradoId: string;
@@ -43,10 +46,26 @@ export const MentoradoRoteirosView = ({
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   const [showNewGuiaDialog, setShowNewGuiaDialog] = useState(false);
+  
+  // Slash command state
+  const [slashCommand, setSlashCommand] = useState<{
+    isOpen: boolean;
+    mode: SlashCommandMode;
+    targetKey: string;
+    targetField: "headline" | "estrutura";
+    position: { top: number; left: number };
+  }>({
+    isOpen: false,
+    mode: "menu",
+    targetKey: "",
+    targetField: "headline",
+    position: { top: 0, left: 0 },
+  });
 
   // Refs para debounce
   const debounceTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const pendingChangesRef = useRef<Map<string, RoteiroLocal>>(new Map());
+  const inputRefs = useRef<Map<string, HTMLInputElement | HTMLTextAreaElement>>(new Map());
 
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
   const upsertRoteiro = useUpsertMentoradoRoteiro();
@@ -189,6 +208,64 @@ export const MentoradoRoteirosView = ({
     
     debounceTimersRef.current.set(key, timer);
   }, [saveRoteiro]);
+
+  // Detectar "/" para abrir slash command
+  const handleInputKeyDown = useCallback((
+    e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+    guiaNumero: number,
+    ordem: number,
+    field: "headline" | "estrutura"
+  ) => {
+    if (e.key === "/") {
+      const target = e.currentTarget;
+      const rect = target.getBoundingClientRect();
+      const key = `${guiaNumero}-${ordem}`;
+      
+      setSlashCommand({
+        isOpen: true,
+        mode: "menu",
+        targetKey: key,
+        targetField: field,
+        position: {
+          top: rect.bottom + window.scrollY + 4,
+          left: rect.left + window.scrollX,
+        },
+      });
+    }
+  }, []);
+
+  // Inserir texto selecionado do slash command
+  const handleSlashSelectItem = useCallback((text: string) => {
+    const { targetKey, targetField } = slashCommand;
+    const roteiro = roteirosLocais.get(targetKey);
+    if (!roteiro) return;
+
+    const currentValue = roteiro[targetField];
+    // Remover o "/" do final
+    const cleanValue = currentValue.replace(/\/[12]?$/, "");
+    const newValue = cleanValue + text;
+
+    const [guiaStr, ordemStr] = targetKey.split("-");
+    handleChange(parseInt(guiaStr), parseInt(ordemStr), targetField, newValue);
+  }, [slashCommand, roteirosLocais, handleChange]);
+
+  // Detectar /1 ou /2 para mudar modo
+  const handleInputChange2 = useCallback((
+    guiaNumero: number,
+    ordem: number,
+    field: "headline" | "estrutura",
+    value: string,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    handleChange(guiaNumero, ordem, field, value);
+
+    // Verificar se termina com /1 ou /2
+    if (value.endsWith("/1") && slashCommand.isOpen) {
+      setSlashCommand(prev => ({ ...prev, mode: "intensificadores" }));
+    } else if (value.endsWith("/2") && slashCommand.isOpen) {
+      setSlashCommand(prev => ({ ...prev, mode: "ctas" }));
+    }
+  }, [handleChange, slashCommand.isOpen]);
 
   const handleClearRoteiro = (guiaNumero: number, ordem: number) => {
     const key = `${guiaNumero}-${ordem}`;
@@ -409,9 +486,10 @@ export const MentoradoRoteirosView = ({
                     <Input
                       value={roteiro.headline}
                       onChange={(e) =>
-                        handleChange(guiaAtiva, ordem, "headline", e.target.value)
+                        handleInputChange2(guiaAtiva, ordem, "headline", e.target.value, e)
                       }
-                      placeholder="Digite a headline..."
+                      onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "headline")}
+                      placeholder="Digite a headline... (use / para comandos)"
                       className="font-poppins text-[16px]"
                     />
                   </div>
@@ -424,9 +502,10 @@ export const MentoradoRoteirosView = ({
                     <Textarea
                       value={roteiro.estrutura}
                       onChange={(e) =>
-                        handleChange(guiaAtiva, ordem, "estrutura", e.target.value)
+                        handleInputChange2(guiaAtiva, ordem, "estrutura", e.target.value, e)
                       }
-                      placeholder="Digite a estrutura do roteiro..."
+                      onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "estrutura")}
+                      placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                       className="font-poppins text-[14px] min-h-[120px] border-b-2 border-b-blue-500"
                       rows={5}
                     />
@@ -437,6 +516,15 @@ export const MentoradoRoteirosView = ({
           </div>
         </ScrollArea>
       </div>
+
+      {/* Slash Command Popover */}
+      <SlashCommandPopover
+        isOpen={slashCommand.isOpen}
+        mode={slashCommand.mode}
+        onClose={() => setSlashCommand(prev => ({ ...prev, isOpen: false }))}
+        onSelectItem={handleSlashSelectItem}
+        position={slashCommand.position}
+      />
 
       {/* Dialog para nova guia */}
       <Dialog open={showNewGuiaDialog} onOpenChange={setShowNewGuiaDialog}>
