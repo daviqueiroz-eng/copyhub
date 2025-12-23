@@ -18,6 +18,7 @@ import {
 import { useMentorados } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
+import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
 
@@ -59,6 +60,7 @@ export const MentoradoRoteirosView = ({
   const [showNewGuiaDialog, setShowNewGuiaDialog] = useState(false);
   const [showHeadlinesModal, setShowHeadlinesModal] = useState(false);
   const [headlinesTargetKey, setHeadlinesTargetKey] = useState<string>("");
+  const [savedHeadlines, setSavedHeadlines] = useState<AnalysisHeadline[]>([]);
   
   // Slash command state
   const [slashCommand, setSlashCommand] = useState<{
@@ -624,6 +626,8 @@ export const MentoradoRoteirosView = ({
       <HeadlinesRandomDialog
         open={showHeadlinesModal}
         onClose={() => setShowHeadlinesModal(false)}
+        savedHeadlines={savedHeadlines}
+        onSaveHeadlines={setSavedHeadlines}
         onSelect={(headline) => {
           // Inserir a headline no campo de headline do roteiro alvo
           const [guiaStr, ordemStr] = headlinesTargetKey.split("-");
