@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Plus, Search, ExternalLink, Instagram, Trash2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +45,31 @@ import { GeralView } from "@/components/mentorados/GeralView";
 import { GrupoView } from "@/components/mentorados/GrupoView";
 import { OrdemPrioridadeView } from "@/components/mentorados/OrdemPrioridadeView";
 import { MentoradoRoteirosView } from "@/components/mentorados/MentoradoRoteirosView";
+import { MapaAvatarSection } from "@/components/mentorados/MapaAvatarSection";
 import { useAuth } from "@/contexts/AuthContext";
+
+interface AvatarCategory {
+  id: string;
+  name: string;
+  subtitle: string;
+  color: string;
+  items: string[];
+}
+
+const parseAvatarCategories = (mentorado: Mentorado | null): AvatarCategory[] => {
+  if (!mentorado) return [];
+  try {
+    // Store categories in the 'observacoes' field as JSON
+    const stored = mentorado.observacoes;
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // Not valid JSON, return empty
+  }
+  return [];
+};
 
 const Mentorados = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -142,6 +166,19 @@ const Mentorados = () => {
       },
     });
   };
+
+  const handleUpdateAvatarCategories = useCallback((categories: AvatarCategory[]) => {
+    if (!selectedMentorado) return;
+    
+    const jsonStr = JSON.stringify(categories);
+    const updated = { ...selectedMentorado, observacoes: jsonStr };
+    setSelectedMentorado(updated);
+    
+    updateMentorado.mutate({
+      id: selectedMentorado.id,
+      observacoes: jsonStr,
+    });
+  }, [selectedMentorado, updateMentorado]);
 
   return (
     <div className="space-y-6 w-full">
@@ -282,49 +319,10 @@ const Mentorados = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="dores">Principais Dores</Label>
-                <Textarea
-                  id="dores"
-                  value={selectedMentorado?.dores || ""}
-                  onChange={(e) => handleUpdateMentorado("dores", e.target.value)}
-                  placeholder="Descreva as principais dores e problemas..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="desejos">Desejos e Objetivos</Label>
-                <Textarea
-                  id="desejos"
-                  value={selectedMentorado?.desejos || ""}
-                  onChange={(e) => handleUpdateMentorado("desejos", e.target.value)}
-                  placeholder="O que ele realmente quer alcançar..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="objecoes">Objeções</Label>
-                <Textarea
-                  id="objecoes"
-                  value={selectedMentorado?.objecoes || ""}
-                  onChange={(e) => handleUpdateMentorado("objecoes", e.target.value)}
-                  placeholder="Principais objeções e bloqueios..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="crencas">Crenças Limitantes</Label>
-                <Textarea
-                  id="crencas"
-                  value={selectedMentorado?.crencas || ""}
-                  onChange={(e) => handleUpdateMentorado("crencas", e.target.value)}
-                  placeholder="Crenças que limitam o progresso..."
-                  rows={3}
-                />
-              </div>
+              <MapaAvatarSection
+                categories={parseAvatarCategories(selectedMentorado)}
+                onUpdateCategories={(cats) => handleUpdateAvatarCategories(cats)}
+              />
             </TabsContent>
 
             <TabsContent value="comunicacao" className="space-y-6">
