@@ -440,6 +440,21 @@ export const MentoradoRoteirosView = ({
     });
   };
 
+  const handleAddRoteiro = () => {
+    setGuias((prev) => 
+      prev.map((g) => 
+        g.numero === guiaAtiva 
+          ? { ...g, quantidade: g.quantidade + 1 } 
+          : g
+      )
+    );
+    
+    toast({
+      title: "Roteiro adicionado!",
+      description: `Roteiro ${guiaAtivaConfig.quantidade + 1} adicionado à Guia ${guiaAtiva}.`,
+    });
+  };
+
   const getFilledCount = (guiaNumero: number) => {
     const guiaConfig = guias.find(g => g.numero === guiaNumero);
     const quantidade = guiaConfig?.quantidade || 10;
@@ -608,6 +623,18 @@ export const MentoradoRoteirosView = ({
                 </div>
               );
             })}
+            
+            {/* Botão para adicionar mais roteiros */}
+            <div className="flex justify-center py-4">
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={handleAddRoteiro}
+              >
+                <Plus className="h-4 w-4" />
+                Adicionar roteiro
+              </Button>
+            </div>
           </div>
         </ScrollArea>
       </div>
