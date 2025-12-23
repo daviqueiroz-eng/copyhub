@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +6,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   useMentoradosRoteiros,
   useUpsertMentoradoRoteiro,
-  MentoradoRoteiro,
 } from "@/hooks/useMentoradosRoteiros";
 
 interface MentoradoRoteirosViewProps {
@@ -20,10 +25,12 @@ interface MentoradoRoteirosViewProps {
 type RoteiroLocal = {
   headline: string;
   estrutura: string;
-  isDirty: boolean;
 };
 
-const ROTEIROS_POR_GUIA = 10;
+type GuiaConfig = {
+  numero: number;
+  quantidade: number;
+};
 
 export const MentoradoRoteirosView = ({
   mentoradoId,
@@ -31,47 +38,59 @@ export const MentoradoRoteirosView = ({
   onClose,
 }: MentoradoRoteirosViewProps) => {
   const [guiaAtiva, setGuiaAtiva] = useState(1);
-  const [guias, setGuias] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+  const [guias, setGuias] = useState<GuiaConfig[]>([{ numero: 1, quantidade: 10 }]);
   const [roteirosLocais, setRoteirosLocais] = useState<Map<string, RoteiroLocal>>(new Map());
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
+  const [showNewGuiaDialog, setShowNewGuiaDialog] = useState(false);
+
+  // Refs para debounce
+  const debounceTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const pendingChangesRef = useRef<Map<string, RoteiroLocal>>(new Map());
 
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
   const upsertRoteiro = useUpsertMentoradoRoteiro();
 
   // Inicializar roteiros locais a partir do banco
   useEffect(() => {
+    if (isLoading) return;
+    
     const newMap = new Map<string, RoteiroLocal>();
     
-    // Para cada guia e ordem, verificar se existe no banco
-    guias.forEach((guiaNum) => {
-      for (let ordem = 1; ordem <= ROTEIROS_POR_GUIA; ordem++) {
-        const key = `${guiaNum}-${ordem}`;
-        const existing = roteiros.find(
-          (r) => r.guia_numero === guiaNum && r.ordem === ordem
-        );
-        
-        if (existing) {
-          newMap.set(key, {
-            headline: existing.headline || "",
-            estrutura: existing.estrutura || "",
-            isDirty: false,
-          });
-        } else {
-          // Manter o que já existe localmente se não tiver no banco
-          const localExisting = roteirosLocais.get(key);
-          if (localExisting) {
-            newMap.set(key, localExisting);
-          }
-        }
+    // Descobrir guias existentes a partir dos dados do banco
+    const guiasExistentes = new Set<number>();
+    roteiros.forEach((r) => guiasExistentes.add(r.guia_numero));
+    
+    // Atualizar lista de guias se houver mais no banco
+    if (guiasExistentes.size > 0) {
+      const maxGuia = Math.max(...guiasExistentes);
+      const guiasAtualizadas: GuiaConfig[] = [];
+      
+      for (let i = 1; i <= maxGuia; i++) {
+        const roteirosGuia = roteiros.filter(r => r.guia_numero === i);
+        const maxOrdem = roteirosGuia.length > 0 ? Math.max(...roteirosGuia.map(r => r.ordem)) : 10;
+        guiasAtualizadas.push({ numero: i, quantidade: Math.max(maxOrdem, 10) });
       }
+      
+      if (guiasAtualizadas.length > 0) {
+        setGuias(guiasAtualizadas);
+      }
+    }
+    
+    // Preencher com dados do banco
+    roteiros.forEach((r) => {
+      const key = `${r.guia_numero}-${r.ordem}`;
+      newMap.set(key, {
+        headline: r.headline || "",
+        estrutura: r.estrutura || "",
+      });
     });
     
     setRoteirosLocais(newMap);
-  }, [roteiros, guias]);
+  }, [roteiros, isLoading]);
 
-  // Debounce para auto-save
-  const debouncedSave = useCallback(
+  // Função para salvar
+  const saveRoteiro = useCallback(
     (guiaNumero: number, ordem: number, headline: string, estrutura: string) => {
       const key = `${guiaNumero}-${ordem}`;
       
@@ -129,10 +148,7 @@ export const MentoradoRoteirosView = ({
     [mentoradoId, upsertRoteiro]
   );
 
-  // Timer refs para debounce
-  const [debounceTimers] = useState<Map<string, NodeJS.Timeout>>(new Map());
-
-  const handleChange = (
+  const handleChange = useCallback((
     guiaNumero: number,
     ordem: number,
     field: "headline" | "estrutura",
@@ -140,45 +156,51 @@ export const MentoradoRoteirosView = ({
   ) => {
     const key = `${guiaNumero}-${ordem}`;
     
+    // Atualizar estado local imediatamente
     setRoteirosLocais((prev) => {
       const newMap = new Map(prev);
-      const existing = newMap.get(key) || { headline: "", estrutura: "", isDirty: false };
-      newMap.set(key, {
+      const existing = newMap.get(key) || { headline: "", estrutura: "" };
+      const updated = {
         ...existing,
         [field]: value,
-        isDirty: true,
-      });
+      };
+      newMap.set(key, updated);
+      
+      // Guardar na ref para o debounce usar o valor mais recente
+      pendingChangesRef.current.set(key, updated);
+      
       return newMap;
     });
 
     // Limpar timer anterior
-    const existingTimer = debounceTimers.get(key);
+    const existingTimer = debounceTimersRef.current.get(key);
     if (existingTimer) {
       clearTimeout(existingTimer);
     }
 
-    // Novo timer para auto-save (500ms)
+    // Novo timer para auto-save (1000ms)
     const timer = setTimeout(() => {
-      const current = roteirosLocais.get(key);
-      const headline = field === "headline" ? value : (current?.headline || "");
-      const estrutura = field === "estrutura" ? value : (current?.estrutura || "");
-      debouncedSave(guiaNumero, ordem, headline, estrutura);
-    }, 500);
+      const pending = pendingChangesRef.current.get(key);
+      if (pending) {
+        saveRoteiro(guiaNumero, ordem, pending.headline, pending.estrutura);
+        pendingChangesRef.current.delete(key);
+      }
+    }, 1000);
     
-    debounceTimers.set(key, timer);
-  };
+    debounceTimersRef.current.set(key, timer);
+  }, [saveRoteiro]);
 
   const handleClearRoteiro = (guiaNumero: number, ordem: number) => {
     const key = `${guiaNumero}-${ordem}`;
     
     setRoteirosLocais((prev) => {
       const newMap = new Map(prev);
-      newMap.set(key, { headline: "", estrutura: "", isDirty: true });
+      newMap.set(key, { headline: "", estrutura: "" });
       return newMap;
     });
 
-    // Salvar como vazio (ou deletar)
-    debouncedSave(guiaNumero, ordem, "", "");
+    // Salvar como vazio
+    saveRoteiro(guiaNumero, ordem, "", "");
   };
 
   const handleCopyRoteiro = (guiaNumero: number, ordem: number) => {
@@ -193,7 +215,7 @@ export const MentoradoRoteirosView = ({
       return;
     }
 
-    const text = `HEADLINE:\n${roteiro.headline}\n\nESTRUTURA:\n${roteiro.estrutura}`;
+    const text = `**HEADLINE ${ordem}:**\n\n${roteiro.headline}\n\n**ESTRUTURA ${ordem}:**\n\n${roteiro.estrutura}`;
     navigator.clipboard.writeText(text);
     
     toast({
@@ -203,15 +225,17 @@ export const MentoradoRoteirosView = ({
   };
 
   const handleCopyAllRoteiros = () => {
+    const guiaConfig = guias.find(g => g.numero === guiaAtiva);
+    const quantidade = guiaConfig?.quantidade || 10;
     const roteirosGuia: string[] = [];
     
-    for (let ordem = 1; ordem <= ROTEIROS_POR_GUIA; ordem++) {
+    for (let ordem = 1; ordem <= quantidade; ordem++) {
       const key = `${guiaAtiva}-${ordem}`;
       const roteiro = roteirosLocais.get(key);
       
       if (roteiro?.headline || roteiro?.estrutura) {
         roteirosGuia.push(
-          `--- ROTEIRO ${String(ordem).padStart(2, "0")} ---\nHEADLINE:\n${roteiro.headline}\n\nESTRUTURA:\n${roteiro.estrutura}`
+          `**HEADLINE ${ordem}:**\n\n${roteiro.headline || ""}\n\n**ESTRUTURA ${ordem}:**\n\n${roteiro.estrutura || ""}`
         );
       }
     }
@@ -224,7 +248,7 @@ export const MentoradoRoteirosView = ({
       return;
     }
 
-    navigator.clipboard.writeText(roteirosGuia.join("\n\n"));
+    navigator.clipboard.writeText(roteirosGuia.join("\n\n---\n\n"));
     
     toast({
       title: "Copiados!",
@@ -232,15 +256,24 @@ export const MentoradoRoteirosView = ({
     });
   };
 
-  const handleAddGuia = () => {
-    const nextGuia = Math.max(...guias) + 1;
-    setGuias((prev) => [...prev, nextGuia]);
+  const handleCreateGuia = (quantidade: number) => {
+    const nextGuia = guias.length > 0 ? Math.max(...guias.map(g => g.numero)) + 1 : 1;
+    setGuias((prev) => [...prev, { numero: nextGuia, quantidade }]);
     setGuiaAtiva(nextGuia);
+    setShowNewGuiaDialog(false);
+    
+    toast({
+      title: "Guia criada!",
+      description: `Guia ${nextGuia} com ${quantidade} roteiros criada.`,
+    });
   };
 
   const getFilledCount = (guiaNumero: number) => {
+    const guiaConfig = guias.find(g => g.numero === guiaNumero);
+    const quantidade = guiaConfig?.quantidade || 10;
     let count = 0;
-    for (let ordem = 1; ordem <= ROTEIROS_POR_GUIA; ordem++) {
+    
+    for (let ordem = 1; ordem <= quantidade; ordem++) {
       const key = `${guiaNumero}-${ordem}`;
       const roteiro = roteirosLocais.get(key);
       if (roteiro?.headline || roteiro?.estrutura) {
@@ -249,6 +282,8 @@ export const MentoradoRoteirosView = ({
     }
     return count;
   };
+
+  const guiaAtivaConfig = guias.find(g => g.numero === guiaAtiva) || { numero: 1, quantidade: 10 };
 
   if (isLoading) {
     return (
@@ -269,7 +304,7 @@ export const MentoradoRoteirosView = ({
           <div>
             <h1 className="text-xl font-bold font-poppins">Roteiros - {mentoradoNome}</h1>
             <p className="text-sm text-muted-foreground">
-              Guia {guiaAtiva} • {getFilledCount(guiaAtiva)}/{ROTEIROS_POR_GUIA} preenchidos
+              Guia {guiaAtiva} • {getFilledCount(guiaAtiva)}/{guiaAtivaConfig.quantidade} preenchidos
             </p>
           </div>
         </div>
@@ -285,16 +320,16 @@ export const MentoradoRoteirosView = ({
         <div className="w-48 border-r bg-muted/30 flex flex-col">
           <ScrollArea className="flex-1">
             <div className="p-3 space-y-1">
-              {guias.map((guiaNum) => (
+              {guias.map((guia) => (
                 <Button
-                  key={guiaNum}
-                  variant={guiaAtiva === guiaNum ? "default" : "ghost"}
+                  key={guia.numero}
+                  variant={guiaAtiva === guia.numero ? "default" : "ghost"}
                   className="w-full justify-start gap-2"
-                  onClick={() => setGuiaAtiva(guiaNum)}
+                  onClick={() => setGuiaAtiva(guia.numero)}
                 >
-                  <span>Guia {guiaNum}</span>
+                  <span>Guia {guia.numero}</span>
                   <span className="ml-auto text-xs opacity-70">
-                    {getFilledCount(guiaNum)}/{ROTEIROS_POR_GUIA}
+                    {getFilledCount(guia.numero)}/{guia.quantidade}
                   </span>
                 </Button>
               ))}
@@ -305,7 +340,7 @@ export const MentoradoRoteirosView = ({
               variant="outline"
               size="sm"
               className="w-full gap-2"
-              onClick={handleAddGuia}
+              onClick={() => setShowNewGuiaDialog(true)}
             >
               <Plus className="h-4 w-4" />
               Nova Guia
@@ -316,7 +351,7 @@ export const MentoradoRoteirosView = ({
         {/* Main - Roteiros */}
         <ScrollArea className="flex-1">
           <div className="p-6 space-y-6 max-w-4xl mx-auto">
-            {Array.from({ length: ROTEIROS_POR_GUIA }, (_, i) => i + 1).map((ordem) => {
+            {Array.from({ length: guiaAtivaConfig.quantidade }, (_, i) => i + 1).map((ordem) => {
               const key = `${guiaAtiva}-${ordem}`;
               const roteiro = roteirosLocais.get(key) || { headline: "", estrutura: "" };
               const isSaving = savingKeys.has(key);
@@ -369,7 +404,7 @@ export const MentoradoRoteirosView = ({
                   {/* Headline */}
                   <div className="space-y-2">
                     <label className="font-poppins font-bold text-[#B8860B] text-sm">
-                      HEADLINE {String(ordem).padStart(2, "0")}:
+                      HEADLINE {ordem}:
                     </label>
                     <Input
                       value={roteiro.headline}
@@ -384,7 +419,7 @@ export const MentoradoRoteirosView = ({
                   {/* Estrutura */}
                   <div className="space-y-2">
                     <label className="font-poppins font-bold text-[#B8860B] text-sm">
-                      ESTRUTURA {String(ordem).padStart(2, "0")}:
+                      ESTRUTURA {ordem}:
                     </label>
                     <Textarea
                       value={roteiro.estrutura}
@@ -402,6 +437,44 @@ export const MentoradoRoteirosView = ({
           </div>
         </ScrollArea>
       </div>
+
+      {/* Dialog para nova guia */}
+      <Dialog open={showNewGuiaDialog} onOpenChange={setShowNewGuiaDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-poppins">Quantos roteiros na nova guia?</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-4 py-4">
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-20 text-xl font-bold flex-col gap-1"
+              onClick={() => handleCreateGuia(15)}
+            >
+              <span>15</span>
+              <span className="text-xs font-normal text-muted-foreground">roteiros</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-20 text-xl font-bold flex-col gap-1"
+              onClick={() => handleCreateGuia(25)}
+            >
+              <span>25</span>
+              <span className="text-xs font-normal text-muted-foreground">roteiros</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-20 text-xl font-bold flex-col gap-1"
+              onClick={() => handleCreateGuia(30)}
+            >
+              <span>30</span>
+              <span className="text-xs font-normal text-muted-foreground">roteiros</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

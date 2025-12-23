@@ -1384,20 +1384,11 @@ const AnaliseRoteiroGame = () => {
                 <Button
                   variant={viewMode === "headlines" ? "default" : "ghost"}
                   size="sm"
-                  className="gap-1.5 rounded-none border-r"
+                  className="gap-1.5 rounded-none rounded-r-md"
                   onClick={() => setViewMode("headlines")}
                 >
                   <FileText className="h-4 w-4" />
                   Headlines
-                </Button>
-                <Button
-                  variant={viewMode === "criar" ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-1.5 rounded-none rounded-r-md"
-                  onClick={() => setViewMode("criar")}
-                >
-                  <PenTool className="h-4 w-4" />
-                  Criar Roteiro
                 </Button>
               </div>
             </div>
