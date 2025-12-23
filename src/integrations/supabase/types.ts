@@ -1224,6 +1224,50 @@ export type Database = {
         }
         Relationships: []
       }
+      mentorados_roteiros: {
+        Row: {
+          created_at: string
+          estrutura: string | null
+          guia_numero: number
+          headline: string | null
+          id: string
+          mentorado_id: string
+          ordem: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          estrutura?: string | null
+          guia_numero?: number
+          headline?: string | null
+          id?: string
+          mentorado_id: string
+          ordem: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          estrutura?: string | null
+          guia_numero?: number
+          headline?: string | null
+          id?: string
+          mentorado_id?: string
+          ordem?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorados_roteiros_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modulos: {
         Row: {
           created_at: string
