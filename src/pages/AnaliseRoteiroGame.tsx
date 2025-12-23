@@ -150,7 +150,7 @@ const AnaliseRoteiroGame = () => {
   const [novoNichoNome, setNovoNichoNome] = useState("");
   
   // Estado para modo de visualização (cards, tabela ou headlines)
-  const [viewMode, setViewMode] = useState<"cards" | "table" | "headlines" | "criar">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "headlines">("cards");
   
   // Estados para fotos de celebração
   const [showGerenciarFotosDialog, setShowGerenciarFotosDialog] = useState(false);
@@ -1619,13 +1619,6 @@ const AnaliseRoteiroGame = () => {
           {viewMode === "headlines" && (
             <div className="w-full mt-6">
               <HeadlinesCriadasView />
-            </div>
-          )}
-          
-          {/* Criar Roteiro - Nova aba */}
-          {viewMode === "criar" && (
-            <div className="w-full mt-6">
-              <CriarRoteiroView onBack={() => setViewMode("cards")} />
             </div>
           )}
         </div>

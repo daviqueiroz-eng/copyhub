@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, ExternalLink, Instagram, Trash2 } from "lucide-react";
+import { Plus, Search, ExternalLink, Instagram, Trash2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +44,7 @@ import {
 import { GeralView } from "@/components/mentorados/GeralView";
 import { GrupoView } from "@/components/mentorados/GrupoView";
 import { OrdemPrioridadeView } from "@/components/mentorados/OrdemPrioridadeView";
+import { MentoradoRoteirosView } from "@/components/mentorados/MentoradoRoteirosView";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Mentorados = () => {
@@ -52,6 +53,7 @@ const Mentorados = () => {
   const [newMentoradoName, setNewMentoradoName] = useState("");
   const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+  const [isRoteirosViewOpen, setIsRoteirosViewOpen] = useState(false);
 
   const { user } = useAuth();
   const { data: mentorados = [] } = useMentorados();
@@ -238,10 +240,11 @@ const Mentorados = () => {
           </SheetHeader>
 
           <Tabs defaultValue="avatar" className="mt-6">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="avatar">Avatar</TabsTrigger>
               <TabsTrigger value="comunicacao">Comunicação</TabsTrigger>
               <TabsTrigger value="materiais">Materiais</TabsTrigger>
+              <TabsTrigger value="roteiros">Roteiros</TabsTrigger>
             </TabsList>
 
             <TabsContent value="avatar" className="space-y-6">
@@ -418,6 +421,26 @@ const Mentorados = () => {
                 />
               </div>
             </TabsContent>
+
+            <TabsContent value="roteiros" className="space-y-6">
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Criar e Gerenciar Roteiros</h3>
+                <p className="text-muted-foreground mb-4">
+                  Crie roteiros organizados em guias para este mentorado
+                </p>
+                <Button
+                  className="gap-2"
+                  onClick={() => {
+                    setIsDetailSheetOpen(false);
+                    setIsRoteirosViewOpen(true);
+                  }}
+                >
+                  <FileText className="h-4 w-4" />
+                  Abrir Criador de Roteiros
+                </Button>
+              </div>
+            </TabsContent>
           </Tabs>
 
           <div className="mt-6 space-y-3">
@@ -458,6 +481,15 @@ const Mentorados = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* View de Roteiros em Tela Cheia */}
+      {isRoteirosViewOpen && selectedMentorado && (
+        <MentoradoRoteirosView
+          mentoradoId={selectedMentorado.id}
+          mentoradoNome={selectedMentorado.nome}
+          onClose={() => setIsRoteirosViewOpen(false)}
+        />
+      )}
     </div>
   );
 };
