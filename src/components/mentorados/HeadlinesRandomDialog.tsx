@@ -17,6 +17,8 @@ interface HeadlinesRandomDialogProps {
   onSelect: (headline: string) => void;
 }
 
+type QuantityOption = 15 | 25 | 30;
+
 // Fisher-Yates shuffle
 const shuffleArray = <T,>(array: T[]): T[] => {
   const shuffled = [...array];
@@ -35,29 +37,38 @@ export const HeadlinesRandomDialog = ({
   const { data: allHeadlines = [], isLoading } = useAnalysisHeadlines();
   const [displayedHeadlines, setDisplayedHeadlines] = useState<AnalysisHeadline[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState<QuantityOption | null>(null);
+  const [hasGenerated, setHasGenerated] = useState(false);
 
-  // Gerar 9 headlines aleatórias
-  const generateRandomHeadlines = useCallback(() => {
+  // Gerar headlines aleatórias com a quantidade selecionada
+  const generateRandomHeadlines = useCallback((count: number) => {
     if (allHeadlines.length === 0) return;
     const shuffled = shuffleArray(allHeadlines);
-    setDisplayedHeadlines(shuffled.slice(0, 9));
+    setDisplayedHeadlines(shuffled.slice(0, count));
     setSelectedId(null);
+    setHasGenerated(true);
   }, [allHeadlines]);
-
-  // Gerar na primeira abertura
-  useEffect(() => {
-    if (open && allHeadlines.length > 0 && displayedHeadlines.length === 0) {
-      generateRandomHeadlines();
-    }
-  }, [open, allHeadlines, displayedHeadlines.length, generateRandomHeadlines]);
 
   // Reset ao fechar
   useEffect(() => {
     if (!open) {
       setDisplayedHeadlines([]);
       setSelectedId(null);
+      setQuantity(null);
+      setHasGenerated(false);
     }
   }, [open]);
+
+  const handleSelectQuantity = (q: QuantityOption) => {
+    setQuantity(q);
+    generateRandomHeadlines(q);
+  };
+
+  const handleGenerateNew = () => {
+    if (quantity) {
+      generateRandomHeadlines(quantity);
+    }
+  };
 
   const handleUse = () => {
     const selected = displayedHeadlines.find((h) => h.id === selectedId);
@@ -75,27 +86,29 @@ export const HeadlinesRandomDialog = ({
             <DialogTitle className="text-xl font-bold font-poppins">
               Headlines das Análises
             </DialogTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={generateRandomHeadlines}
-                disabled={isLoading || allHeadlines.length === 0}
-              >
-                <RefreshCw className="h-4 w-4" />
-                Gerar novas headlines
-              </Button>
-              <Button
-                size="sm"
-                className="gap-2"
-                onClick={handleUse}
-                disabled={!selectedId}
-              >
-                <Check className="h-4 w-4" />
-                Usar
-              </Button>
-            </div>
+            {hasGenerated && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleGenerateNew}
+                  disabled={isLoading || allHeadlines.length === 0}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Gerar novas headlines
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleUse}
+                  disabled={!selectedId}
+                >
+                  <Check className="h-4 w-4" />
+                  Usar
+                </Button>
+              </div>
+            )}
           </div>
         </DialogHeader>
 
@@ -111,6 +124,25 @@ export const HeadlinesRandomDialog = ({
             <p className="text-sm text-muted-foreground mt-1">
               Complete análises para ter headlines disponíveis aqui.
             </p>
+          </div>
+        ) : !hasGenerated ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-6">
+            <p className="text-lg font-medium text-foreground">
+              Quantas headlines você quer gerar?
+            </p>
+            <div className="flex gap-4">
+              {([15, 25, 30] as QuantityOption[]).map((q) => (
+                <Button
+                  key={q}
+                  variant="outline"
+                  size="lg"
+                  className="w-20 h-20 text-2xl font-bold hover:bg-primary hover:text-primary-foreground"
+                  onClick={() => handleSelectQuantity(q)}
+                >
+                  {q}
+                </Button>
+              ))}
+            </div>
           </div>
         ) : (
           <ScrollArea className="flex-1">
