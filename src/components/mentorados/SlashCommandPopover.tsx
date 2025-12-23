@@ -156,7 +156,7 @@ export const SlashCommandPopover = ({
 
         <div className="border-t mt-2 pt-2">
           <p className="px-3 py-1 text-xs text-muted-foreground">
-            Digite <span className="font-mono">/1</span> para Intensificadores ou <span className="font-mono">/2</span> para CTAs
+            Digite <span className="font-mono">/1</span> para Intensificadores, <span className="font-mono">/2</span> para CTAs ou <span className="font-mono">/3</span> para Headlines Aleatórias
           </p>
         </div>
       </div>
