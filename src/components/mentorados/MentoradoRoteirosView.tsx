@@ -232,7 +232,7 @@ export const MentoradoRoteirosView = ({
     debounceTimersRef.current.set(key, timer);
   }, [saveRoteiro]);
 
-  // Detectar "/" para abrir slash command
+  // Detectar "/" para abrir slash command - posicionar ao lado e acima
   const handleInputKeyDown = useCallback((
     e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
     guiaNumero: number,
@@ -244,15 +244,29 @@ export const MentoradoRoteirosView = ({
       const rect = target.getBoundingClientRect();
       const key = `${guiaNumero}-${ordem}`;
       
+      // Posicionar ao lado direito e um pouco acima
+      const popoverWidth = 320;
+      const popoverHeight = 350;
+      
+      // Calcular posição - preferir à direita, senão à esquerda
+      let left = rect.right + window.scrollX + 8;
+      if (left + popoverWidth > window.innerWidth) {
+        left = rect.left + window.scrollX - popoverWidth - 8;
+      }
+      
+      // Posicionar mais acima
+      let top = rect.top + window.scrollY - popoverHeight / 2;
+      if (top < 10) top = 10;
+      if (top + popoverHeight > window.innerHeight + window.scrollY) {
+        top = window.innerHeight + window.scrollY - popoverHeight - 10;
+      }
+      
       setSlashCommand({
         isOpen: true,
         mode: "menu",
         targetKey: key,
         targetField: field,
-        position: {
-          top: rect.bottom + window.scrollY + 4,
-          left: rect.left + window.scrollX,
-        },
+        position: { top, left },
       });
     }
   }, []);
@@ -272,7 +286,7 @@ export const MentoradoRoteirosView = ({
     handleChange(parseInt(guiaStr), parseInt(ordemStr), targetField, newValue);
   }, [slashCommand, roteirosLocais, handleChange]);
 
-  // Detectar /1 ou /2 para mudar modo
+  // Detectar /1 ou /2 para abrir diretamente o modo correto
   const handleInputChange2 = useCallback((
     guiaNumero: number,
     ordem: number,
@@ -282,11 +296,43 @@ export const MentoradoRoteirosView = ({
   ) => {
     handleChange(guiaNumero, ordem, field, value);
 
-    // Verificar se termina com /1 ou /2
-    if (value.endsWith("/1") && slashCommand.isOpen) {
-      setSlashCommand(prev => ({ ...prev, mode: "intensificadores" }));
-    } else if (value.endsWith("/2") && slashCommand.isOpen) {
-      setSlashCommand(prev => ({ ...prev, mode: "ctas" }));
+    const target = e.currentTarget;
+    const rect = target.getBoundingClientRect();
+    const key = `${guiaNumero}-${ordem}`;
+
+    // Calcular posição do popover
+    const popoverWidth = 320;
+    const popoverHeight = 350;
+    let left = rect.right + window.scrollX + 8;
+    if (left + popoverWidth > window.innerWidth) {
+      left = rect.left + window.scrollX - popoverWidth - 8;
+    }
+    let top = rect.top + window.scrollY - popoverHeight / 2;
+    if (top < 10) top = 10;
+    if (top + popoverHeight > window.innerHeight + window.scrollY) {
+      top = window.innerHeight + window.scrollY - popoverHeight - 10;
+    }
+
+    // Verificar se termina com /1 ou /2 - abrir diretamente no modo
+    if (value.endsWith("/1")) {
+      setSlashCommand({
+        isOpen: true,
+        mode: "intensificadores",
+        targetKey: key,
+        targetField: field,
+        position: { top, left },
+      });
+    } else if (value.endsWith("/2")) {
+      setSlashCommand({
+        isOpen: true,
+        mode: "ctas",
+        targetKey: key,
+        targetField: field,
+        position: { top, left },
+      });
+    } else if (slashCommand.isOpen) {
+      // Manter popover aberto se já estiver
+      setSlashCommand(prev => ({ ...prev, targetKey: key, targetField: field }));
     }
   }, [handleChange, slashCommand.isOpen]);
 

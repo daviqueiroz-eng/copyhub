@@ -96,51 +96,72 @@ export const SlashCommandPopover = ({
   // Categorias do avatar que têm pelo menos 1 item
   const categoriesWithItems = avatarCategories.filter((cat) => cat.items.length > 0);
 
-  const renderMenu = () => (
-    <div className="py-2">
-      <p className="px-3 py-1 text-xs text-muted-foreground font-semibold">Análises de Roteiro</p>
-      <button
-        className="w-full text-left px-3 py-2 hover:bg-green-500 hover:text-white transition-colors flex items-center gap-2"
-        onClick={() => handleCommandClick("intensificadores")}
-      >
-        <span className="font-mono text-sm">/1</span>
-        <span>Intensificadores</span>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {intensificadores.length} itens
-        </span>
-      </button>
-      <button
-        className="w-full text-left px-3 py-2 hover:bg-green-500 hover:text-white transition-colors flex items-center gap-2"
-        onClick={() => handleCommandClick("ctas")}
-      >
-        <span className="font-mono text-sm">/2</span>
-        <span>CTAs</span>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {ctas.length} itens
-        </span>
-      </button>
-
-      {categoriesWithItems.length > 0 && (
-        <>
-          <div className="my-2 border-t" />
-          <p className="px-3 py-1 text-xs text-muted-foreground font-semibold">Mapa do Avatar</p>
-          {categoriesWithItems.map((cat, index) => (
-            <button
-              key={cat.id}
-              className="w-full text-left px-3 py-2 hover:bg-green-500 hover:text-white transition-colors flex items-center gap-2"
-              onClick={() => handleCommandClick(`avatar_${cat.id}`)}
-            >
-              <span className="font-mono text-sm">/{index + 3}</span>
-              <span className="truncate">{cat.name}</span>
-              <span className="ml-auto text-xs text-muted-foreground">
-                {cat.items.length} itens
-              </span>
-            </button>
-          ))}
-        </>
-      )}
-    </div>
+  // Agrupar todos os itens do Avatar para exibição direta
+  const allAvatarItems = categoriesWithItems.flatMap(cat => 
+    cat.items.map(item => ({ item, category: cat }))
   );
+
+  const filterAllAvatarItems = () => {
+    if (!search.trim()) return allAvatarItems;
+    return allAvatarItems.filter(({ item }) =>
+      item.toLowerCase().includes(search.toLowerCase())
+    );
+  };
+
+  const renderMenu = () => {
+    const filteredAvatarItems = filterAllAvatarItems();
+    
+    // Agrupar itens filtrados por categoria
+    const groupedItems = new Map<string, { category: AvatarCategory; items: string[] }>();
+    filteredAvatarItems.forEach(({ item, category }) => {
+      if (!groupedItems.has(category.id)) {
+        groupedItems.set(category.id, { category, items: [] });
+      }
+      groupedItems.get(category.id)!.items.push(item);
+    });
+
+    return (
+      <div className="py-2">
+        <p className="px-3 py-1 text-xs text-muted-foreground font-semibold">Mapa do Avatar</p>
+        
+        {groupedItems.size === 0 ? (
+          <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+            {categoriesWithItems.length === 0 
+              ? "Nenhum item no Mapa do Avatar." 
+              : "Nenhum resultado encontrado."}
+          </p>
+        ) : (
+          <ScrollArea className="max-h-[300px]">
+            {Array.from(groupedItems.values()).map(({ category, items }) => (
+              <div key={category.id} className="mb-2">
+                <p className="px-3 py-1 text-xs font-semibold" style={{ color: category.color }}>
+                  {category.name} ({items.length})
+                </p>
+                {items.map((item, idx) => (
+                  <button
+                    key={`${category.id}-${idx}`}
+                    className="w-full text-left px-4 py-1.5 hover:bg-primary/10 transition-colors text-sm"
+                    onClick={() => {
+                      onSelectItem(item);
+                      onClose();
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </ScrollArea>
+        )}
+
+        <div className="border-t mt-2 pt-2">
+          <p className="px-3 py-1 text-xs text-muted-foreground">
+            Digite <span className="font-mono">/1</span> para Intensificadores ou <span className="font-mono">/2</span> para CTAs
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   const renderItems = (items: HighlightItem[], title: string) => {
     const filtered = filterItems(items);
@@ -249,7 +270,6 @@ export const SlashCommandPopover = ({
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar item..."
             className="pl-8 h-8"
-            autoFocus
           />
         </div>
       </div>
