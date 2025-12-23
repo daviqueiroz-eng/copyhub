@@ -4,7 +4,15 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIntensificadores, useCTAs, HighlightItem } from "@/hooks/useAnalysisHighlights";
 
-type SlashCommandMode = "menu" | "intensificadores" | "ctas";
+type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
+
+interface AvatarCategory {
+  id: string;
+  name: string;
+  subtitle: string;
+  color: string;
+  items: string[];
+}
 
 interface SlashCommandPopoverProps {
   isOpen: boolean;
@@ -12,6 +20,7 @@ interface SlashCommandPopoverProps {
   onClose: () => void;
   onSelectItem: (text: string) => void;
   position: { top: number; left: number };
+  avatarCategories?: AvatarCategory[];
 }
 
 export const SlashCommandPopover = ({
@@ -20,6 +29,7 @@ export const SlashCommandPopover = ({
   onClose,
   onSelectItem,
   position,
+  avatarCategories = [],
 }: SlashCommandPopoverProps) => {
   const [search, setSearch] = useState("");
   const [internalMode, setInternalMode] = useState<SlashCommandMode>(mode);
@@ -76,9 +86,19 @@ export const SlashCommandPopover = ({
     );
   };
 
+  const filterStringItems = (items: string[]) => {
+    if (!search.trim()) return items;
+    return items.filter((item) =>
+      item.toLowerCase().includes(search.toLowerCase())
+    );
+  };
+
+  // Categorias do avatar que têm pelo menos 1 item
+  const categoriesWithItems = avatarCategories.filter((cat) => cat.items.length > 0);
+
   const renderMenu = () => (
     <div className="py-2">
-      <p className="px-3 py-1 text-xs text-muted-foreground font-semibold">Comandos</p>
+      <p className="px-3 py-1 text-xs text-muted-foreground font-semibold">Análises de Roteiro</p>
       <button
         className="w-full text-left px-3 py-2 hover:bg-green-500 hover:text-white transition-colors flex items-center gap-2"
         onClick={() => handleCommandClick("intensificadores")}
@@ -99,6 +119,26 @@ export const SlashCommandPopover = ({
           {ctas.length} itens
         </span>
       </button>
+
+      {categoriesWithItems.length > 0 && (
+        <>
+          <div className="my-2 border-t" />
+          <p className="px-3 py-1 text-xs text-muted-foreground font-semibold">Mapa do Avatar</p>
+          {categoriesWithItems.map((cat, index) => (
+            <button
+              key={cat.id}
+              className="w-full text-left px-3 py-2 hover:bg-green-500 hover:text-white transition-colors flex items-center gap-2"
+              onClick={() => handleCommandClick(`avatar_${cat.id}`)}
+            >
+              <span className="font-mono text-sm">/{index + 3}</span>
+              <span className="truncate">{cat.name}</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {cat.items.length} itens
+              </span>
+            </button>
+          ))}
+        </>
+      )}
     </div>
   );
 
@@ -145,6 +185,55 @@ export const SlashCommandPopover = ({
     );
   };
 
+  const renderAvatarItems = (category: AvatarCategory) => {
+    const filtered = filterStringItems(category.items);
+    
+    return (
+      <div className="py-2">
+        <p className="px-3 py-1 text-xs text-muted-foreground font-semibold flex items-center justify-between">
+          <span>{category.name}</span>
+          <button
+            className="text-xs text-primary hover:underline"
+            onClick={() => setInternalMode("menu")}
+          >
+            ← Voltar
+          </button>
+        </p>
+        {filtered.length === 0 ? (
+          <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+            Nenhum resultado para a busca.
+          </p>
+        ) : (
+          <ScrollArea className="max-h-[250px]">
+            {filtered.map((item, index) => (
+              <button
+                key={index}
+                className="w-full text-left px-3 py-2 hover:bg-green-500 hover:text-white transition-colors"
+                onClick={() => {
+                  onSelectItem(item);
+                  onClose();
+                }}
+              >
+                <p className="text-sm">{item}</p>
+              </button>
+            ))}
+          </ScrollArea>
+        )}
+      </div>
+    );
+  };
+
+  // Encontrar categoria do avatar pelo mode
+  const getAvatarCategory = () => {
+    if (internalMode.startsWith("avatar_")) {
+      const catId = internalMode.replace("avatar_", "");
+      return avatarCategories.find((cat) => cat.id === catId);
+    }
+    return null;
+  };
+
+  const avatarCategory = getAvatarCategory();
+
   return (
     <div
       ref={containerRef}
@@ -169,6 +258,7 @@ export const SlashCommandPopover = ({
       {internalMode === "menu" && renderMenu()}
       {internalMode === "intensificadores" && renderItems(intensificadores, "Intensificadores")}
       {internalMode === "ctas" && renderItems(ctas, "CTAs")}
+      {avatarCategory && renderAvatarItems(avatarCategory)}
     </div>
   );
 };
