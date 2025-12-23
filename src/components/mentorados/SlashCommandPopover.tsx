@@ -121,7 +121,7 @@ export const SlashCommandPopover = ({
     });
 
     return (
-      <div className="py-2 flex flex-col max-h-[400px]">
+      <div className="py-2 flex flex-col">
         <p className="px-3 py-1 text-xs text-muted-foreground font-semibold shrink-0">Mapa do Avatar</p>
         
         {groupedItems.size === 0 ? (
@@ -131,29 +131,27 @@ export const SlashCommandPopover = ({
               : "Nenhum resultado encontrado."}
           </p>
         ) : (
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="pr-3">
-              {Array.from(groupedItems.values()).map(({ category, items }) => (
-                <div key={category.id} className="mb-2">
-                  <p className="px-3 py-1 text-xs font-semibold" style={{ color: category.color }}>
-                    {category.name} ({items.length})
-                  </p>
-                  {items.map((item, idx) => (
-                    <button
-                      key={`${category.id}-${idx}`}
-                      className="w-full text-left px-4 py-1.5 hover:bg-primary/10 transition-colors text-sm"
-                      onClick={() => {
-                        onSelectItem(item);
-                        onClose();
-                      }}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="h-[280px] overflow-y-auto pr-1">
+            {Array.from(groupedItems.values()).map(({ category, items }) => (
+              <div key={category.id} className="mb-2">
+                <p className="px-3 py-1 text-xs font-semibold" style={{ color: category.color }}>
+                  {category.name} ({items.length})
+                </p>
+                {items.map((item, idx) => (
+                  <button
+                    key={`${category.id}-${idx}`}
+                    className="w-full text-left px-4 py-1.5 hover:bg-primary/10 transition-colors text-sm"
+                    onClick={() => {
+                      onSelectItem(item);
+                      onClose();
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
         )}
 
         <div className="border-t mt-2 pt-2 shrink-0">
