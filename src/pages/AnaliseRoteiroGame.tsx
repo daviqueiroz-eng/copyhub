@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, BookOpen, ExternalLink, Copy, FileUp, FileEdit, ArrowLeft, Trash2, Flame, Filter, Plus, Eye, User, Table2, LayoutGrid, Image, FileText } from "lucide-react";
+import { Loader2, BookOpen, ExternalLink, Copy, FileUp, FileEdit, ArrowLeft, Trash2, Flame, Filter, Plus, Eye, User, Table2, LayoutGrid, Image, FileText, PenTool } from "lucide-react";
 import { detectVideoType, extractYouTubeId, extractGoogleDriveId } from "@/lib/videoUtils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoteiroAnaliseView } from "@/components/RoteiroAnaliseView";
@@ -34,6 +34,7 @@ import { AnalysesTableView } from "@/components/AnalysesTableView";
 import { GerenciarFotosDialog } from "@/components/GerenciarFotosDialog";
 import { CelebracaoDialog } from "@/components/CelebracaoDialog";
 import { HeadlinesCriadasView } from "@/components/HeadlinesCriadasView";
+import { CriarRoteiroView } from "@/components/CriarRoteiroView";
 import confetti from "canvas-confetti";
 
 import { format } from "date-fns";
@@ -149,7 +150,7 @@ const AnaliseRoteiroGame = () => {
   const [novoNichoNome, setNovoNichoNome] = useState("");
   
   // Estado para modo de visualização (cards, tabela ou headlines)
-  const [viewMode, setViewMode] = useState<"cards" | "table" | "headlines">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "headlines" | "criar">("cards");
   
   // Estados para fotos de celebração
   const [showGerenciarFotosDialog, setShowGerenciarFotosDialog] = useState(false);
@@ -1383,11 +1384,20 @@ const AnaliseRoteiroGame = () => {
                 <Button
                   variant={viewMode === "headlines" ? "default" : "ghost"}
                   size="sm"
-                  className="gap-1.5 rounded-none rounded-r-md"
+                  className="gap-1.5 rounded-none border-r"
                   onClick={() => setViewMode("headlines")}
                 >
                   <FileText className="h-4 w-4" />
                   Headlines
+                </Button>
+                <Button
+                  variant={viewMode === "criar" ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-1.5 rounded-none rounded-r-md"
+                  onClick={() => setViewMode("criar")}
+                >
+                  <PenTool className="h-4 w-4" />
+                  Criar Roteiro
                 </Button>
               </div>
             </div>
@@ -1609,6 +1619,13 @@ const AnaliseRoteiroGame = () => {
           {viewMode === "headlines" && (
             <div className="w-full mt-6">
               <HeadlinesCriadasView />
+            </div>
+          )}
+          
+          {/* Criar Roteiro - Nova aba */}
+          {viewMode === "criar" && (
+            <div className="w-full mt-6">
+              <CriarRoteiroView onBack={() => setViewMode("cards")} />
             </div>
           )}
         </div>
