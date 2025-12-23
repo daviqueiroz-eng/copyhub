@@ -139,16 +139,14 @@ export const HeadlinesRandomDialog = ({
                   </h3>
 
                   {/* Estrutura */}
-                  {item.estrutura && (
-                    <div className="mt-2 pt-2 border-t">
-                      <p className="text-xs text-muted-foreground font-medium mb-1">
-                        Estrutura:
-                      </p>
-                      <p className="text-xs text-muted-foreground line-clamp-4">
-                        {item.estrutura}
-                      </p>
-                    </div>
-                  )}
+                  <div className="mt-2 pt-2 border-t">
+                    <p className="text-xs text-muted-foreground font-medium mb-1">
+                      Retire a estrutura da headline
+                    </p>
+                    <p className="text-sm text-foreground">
+                      {item.estrutura || "—"}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
