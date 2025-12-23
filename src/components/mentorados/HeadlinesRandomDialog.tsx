@@ -15,6 +15,8 @@ interface HeadlinesRandomDialogProps {
   open: boolean;
   onClose: () => void;
   onSelect: (headline: string) => void;
+  savedHeadlines: AnalysisHeadline[];
+  onSaveHeadlines: (headlines: AnalysisHeadline[]) => void;
 }
 
 
@@ -33,35 +35,33 @@ export const HeadlinesRandomDialog = ({
   open,
   onClose,
   onSelect,
+  savedHeadlines,
+  onSaveHeadlines,
 }: HeadlinesRandomDialogProps) => {
   const { data: allHeadlines = [], isLoading } = useAnalysisHeadlines();
-  const [displayedHeadlines, setDisplayedHeadlines] = useState<AnalysisHeadline[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [hasGenerated, setHasGenerated] = useState(false);
   const countRef = useRef(9);
 
   // Gerar headlines aleatórias
   const generateRandomHeadlines = useCallback(() => {
     if (allHeadlines.length === 0) return;
     const shuffled = shuffleArray(allHeadlines);
-    setDisplayedHeadlines(shuffled.slice(0, countRef.current));
+    const newHeadlines = shuffled.slice(0, countRef.current);
+    onSaveHeadlines(newHeadlines);
     setSelectedId(null);
-    setHasGenerated(true);
-  }, [allHeadlines]);
+  }, [allHeadlines, onSaveHeadlines]);
 
-  // Gerar ao abrir (sem pergunta de quantidade)
+  // Gerar pela primeira vez se não houver headlines salvas
   useEffect(() => {
-    if (open && allHeadlines.length > 0 && !hasGenerated) {
+    if (open && allHeadlines.length > 0 && savedHeadlines.length === 0) {
       generateRandomHeadlines();
     }
-  }, [open, allHeadlines, hasGenerated, generateRandomHeadlines]);
+  }, [open, allHeadlines.length, savedHeadlines.length, generateRandomHeadlines]);
 
-  // Reset ao fechar
+  // Limpar seleção ao fechar
   useEffect(() => {
     if (!open) {
-      setDisplayedHeadlines([]);
       setSelectedId(null);
-      setHasGenerated(false);
     }
   }, [open]);
 
@@ -70,12 +70,14 @@ export const HeadlinesRandomDialog = ({
   };
 
   const handleUse = () => {
-    const selected = displayedHeadlines.find((h) => h.id === selectedId);
+    const selected = savedHeadlines.find((h) => h.id === selectedId);
     if (selected && selected.estrutura) {
       onSelect(selected.estrutura);
       onClose();
     }
   };
+
+  const hasHeadlines = savedHeadlines.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -85,7 +87,7 @@ export const HeadlinesRandomDialog = ({
             <DialogTitle className="text-xl font-bold font-poppins">
               Headlines das Análises
             </DialogTitle>
-            {hasGenerated && (
+            {hasHeadlines && (
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -127,7 +129,7 @@ export const HeadlinesRandomDialog = ({
         ) : (
           <ScrollArea className="flex-1">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-              {displayedHeadlines.map((item) => (
+              {savedHeadlines.map((item) => (
                 <div
                   key={item.id}
                   className={`relative border rounded-lg p-4 cursor-pointer transition-all hover:border-primary ${
