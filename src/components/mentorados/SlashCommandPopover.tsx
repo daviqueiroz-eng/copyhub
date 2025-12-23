@@ -121,8 +121,8 @@ export const SlashCommandPopover = ({
     });
 
     return (
-      <div className="py-2">
-        <p className="px-3 py-1 text-xs text-muted-foreground font-semibold">Mapa do Avatar</p>
+      <div className="py-2 flex flex-col max-h-[400px]">
+        <p className="px-3 py-1 text-xs text-muted-foreground font-semibold shrink-0">Mapa do Avatar</p>
         
         {groupedItems.size === 0 ? (
           <p className="px-3 py-4 text-sm text-muted-foreground text-center">
@@ -131,30 +131,32 @@ export const SlashCommandPopover = ({
               : "Nenhum resultado encontrado."}
           </p>
         ) : (
-          <ScrollArea className="max-h-[300px]">
-            {Array.from(groupedItems.values()).map(({ category, items }) => (
-              <div key={category.id} className="mb-2">
-                <p className="px-3 py-1 text-xs font-semibold" style={{ color: category.color }}>
-                  {category.name} ({items.length})
-                </p>
-                {items.map((item, idx) => (
-                  <button
-                    key={`${category.id}-${idx}`}
-                    className="w-full text-left px-4 py-1.5 hover:bg-primary/10 transition-colors text-sm"
-                    onClick={() => {
-                      onSelectItem(item);
-                      onClose();
-                    }}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            ))}
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="pr-3">
+              {Array.from(groupedItems.values()).map(({ category, items }) => (
+                <div key={category.id} className="mb-2">
+                  <p className="px-3 py-1 text-xs font-semibold" style={{ color: category.color }}>
+                    {category.name} ({items.length})
+                  </p>
+                  {items.map((item, idx) => (
+                    <button
+                      key={`${category.id}-${idx}`}
+                      className="w-full text-left px-4 py-1.5 hover:bg-primary/10 transition-colors text-sm"
+                      onClick={() => {
+                        onSelectItem(item);
+                        onClose();
+                      }}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
           </ScrollArea>
         )}
 
-        <div className="border-t mt-2 pt-2">
+        <div className="border-t mt-2 pt-2 shrink-0">
           <p className="px-3 py-1 text-xs text-muted-foreground">
             Digite <span className="font-mono">/1</span> para Intensificadores, <span className="font-mono">/2</span> para CTAs ou <span className="font-mono">/3</span> para Headlines Aleatórias
           </p>
