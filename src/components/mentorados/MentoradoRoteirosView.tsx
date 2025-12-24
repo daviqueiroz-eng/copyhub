@@ -593,14 +593,23 @@ export const MentoradoRoteirosView = ({
                     <label className="font-poppins font-bold text-[#B8860B] text-sm">
                       HEADLINE {ordem}:
                     </label>
-                    <Input
+                    <Textarea
                       value={roteiro.headline}
-                      onChange={(e) =>
-                        handleInputChange2(guiaAtiva, ordem, "headline", e.target.value, e)
-                      }
+                      onChange={(e) => {
+                        // Auto-resize
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
+                        handleInputChange2(guiaAtiva, ordem, "headline", e.target.value, e);
+                      }}
                       onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "headline")}
                       placeholder="Digite a headline... (use / para comandos)"
-                      className="font-poppins text-[16px]"
+                      className="font-poppins text-[16px] min-h-[44px] resize-none overflow-hidden"
+                      ref={(el) => {
+                        if (el && roteiro.headline) {
+                          el.style.height = 'auto';
+                          el.style.height = el.scrollHeight + 'px';
+                        }
+                      }}
                     />
                   </div>
 
