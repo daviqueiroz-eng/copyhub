@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { useWebSpeechTTS } from "@/hooks/useWebSpeechTTS";
+import { TTSConfigPopover } from "./TTSConfigPopover";
 import {
   Dialog,
   DialogContent,
@@ -78,8 +79,19 @@ export const MentoradoRoteirosView = ({
     position: { top: 0, left: 0 },
   });
 
-  // TTS hook
-  const { speak, stop, isSpeaking } = useWebSpeechTTS({ rate: 1.0 });
+  // TTS hook with configurable rate, pitch, voice
+  const { 
+    speak, 
+    stop, 
+    isSpeaking, 
+    voices, 
+    selectedVoice, 
+    setSelectedVoice,
+    rate,
+    setRate,
+    pitch,
+    setPitch 
+  } = useWebSpeechTTS({ rate: 1.0, pitch: 1.0 });
   
   // Estado para guardar posição do cursor por roteiro
   const cursorPositionRef = useRef<Map<string, number>>(new Map());
@@ -652,10 +664,19 @@ export const MentoradoRoteirosView = ({
                         }
                       }}
                     />
-                    <div className="flex justify-end items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
+                    <div className="flex justify-end items-center gap-1">
+                      <span className="text-xs text-muted-foreground mr-1">
                         {roteiro.estrutura?.length || 0}
                       </span>
+                      <TTSConfigPopover
+                        rate={rate}
+                        pitch={pitch}
+                        onRateChange={setRate}
+                        onPitchChange={setPitch}
+                        voices={voices}
+                        selectedVoice={selectedVoice}
+                        onVoiceChange={setSelectedVoice}
+                      />
                       <Button
                         variant="ghost"
                         size="icon"

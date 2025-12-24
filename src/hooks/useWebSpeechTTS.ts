@@ -8,12 +8,14 @@ interface UseWebSpeechTTSOptions {
 }
 
 export const useWebSpeechTTS = (options: UseWebSpeechTTSOptions = {}) => {
-  const { rate = 1, pitch = 1, volume = 1, lang = "pt-BR" } = options;
+  const { volume = 1, lang = "pt-BR" } = options;
   
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [rate, setRate] = useState(options.rate ?? 1);
+  const [pitch, setPitch] = useState(options.pitch ?? 1);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // Carregar vozes disponíveis
@@ -125,5 +127,9 @@ export const useWebSpeechTTS = (options: UseWebSpeechTTSOptions = {}) => {
     voices,
     selectedVoice,
     setSelectedVoice,
+    rate,
+    setRate,
+    pitch,
+    setPitch,
   };
 };
