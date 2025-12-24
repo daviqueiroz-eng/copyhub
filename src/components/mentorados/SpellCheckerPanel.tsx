@@ -23,6 +23,8 @@ interface SpellError {
   message: string;
 }
 
+export type { SpellError };
+
 interface SpellCheckerPanelProps {
   open: boolean;
   onClose: () => void;
@@ -30,6 +32,9 @@ interface SpellCheckerPanelProps {
   guias: { numero: number; quantidade: number }[];
   guiaAtiva: number;
   onFix: (guiaNumero: number, ordem: number, field: "headline" | "estrutura", newValue: string) => void;
+  onErrorsChange?: (errors: SpellError[]) => void;
+  showInlineErrors?: boolean;
+  onToggleInlineErrors?: () => void;
 }
 
 export const SpellCheckerPanel = ({
@@ -39,6 +44,9 @@ export const SpellCheckerPanel = ({
   guias,
   guiaAtiva,
   onFix,
+  onErrorsChange,
+  showInlineErrors = false,
+  onToggleInlineErrors,
 }: SpellCheckerPanelProps) => {
   const [errors, setErrors] = useState<SpellError[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -251,6 +259,7 @@ export const SpellCheckerPanel = ({
     }
 
     setErrors(allErrors);
+    onErrorsChange?.(allErrors);
     setIsAnalyzing(false);
 
     if (allErrors.length === 0) {
@@ -264,7 +273,7 @@ export const SpellCheckerPanel = ({
         description: `${allErrors.length} problemas encontrados.`,
       });
     }
-  }, [roteirosLocais, guias, guiaAtiva, checkAllGuias, runLocalChecks, runAICheck]);
+  }, [roteirosLocais, guias, guiaAtiva, checkAllGuias, runLocalChecks, runAICheck, onErrorsChange]);
 
   const handleFix = (error: SpellError) => {
     const key = `${error.guiaNumero}-${error.ordem}`;
@@ -288,7 +297,11 @@ export const SpellCheckerPanel = ({
     onFix(error.guiaNumero, error.ordem, error.field, newValue);
     
     // Remove this error from list
-    setErrors(prev => prev.filter(e => e.id !== error.id));
+    setErrors(prev => {
+      const newErrors = prev.filter(e => e.id !== error.id);
+      onErrorsChange?.(newErrors);
+      return newErrors;
+    });
 
     toast({
       title: "Corrigido",
@@ -341,6 +354,7 @@ export const SpellCheckerPanel = ({
 
     const fixedCount = visibleErrors.length;
     setErrors([]);
+    onErrorsChange?.([]);
     
     toast({
       title: "Correções aplicadas",
@@ -435,7 +449,7 @@ export const SpellCheckerPanel = ({
           )}
         </div>
         
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm flex-wrap">
           <Button
             variant={checkAllGuias ? "default" : "outline"}
             size="sm"
@@ -454,6 +468,17 @@ export const SpellCheckerPanel = ({
               </>
             )}
           </Button>
+          
+          {onToggleInlineErrors && visibleErrors.length > 0 && (
+            <Button
+              variant={showInlineErrors ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={onToggleInlineErrors}
+            >
+              {showInlineErrors ? "Ocultar no texto" : "Mostrar no texto"}
+            </Button>
+          )}
         </div>
       </div>
 

@@ -8,7 +8,8 @@ import { toast } from "@/hooks/use-toast";
 import { useWebSpeechTTS } from "@/hooks/useWebSpeechTTS";
 import { TTSConfigPopover } from "./TTSConfigPopover";
 import { FindReplaceDialog } from "./FindReplaceDialog";
-import { SpellCheckerPanel } from "./SpellCheckerPanel";
+import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
+import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
 import {
   Dialog,
   DialogContent,
@@ -67,6 +68,9 @@ export const MentoradoRoteirosView = ({
   const [savedHeadlines, setSavedHeadlines] = useState<AnalysisHeadline[]>([]);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showSpellChecker, setShowSpellChecker] = useState(false);
+  const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
+  const [showInlineErrors, setShowInlineErrors] = useState(false);
+  const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
   const [highlightedMatch, setHighlightedMatch] = useState<{
     guiaNumero: number;
     ordem: number;
@@ -503,6 +507,56 @@ export const MentoradoRoteirosView = ({
     return count;
   };
 
+  // Get errors for a specific roteiro field
+  const getErrorsForField = useCallback((guiaNumero: number, ordem: number, field: "headline" | "estrutura") => {
+    if (!showInlineErrors) return [];
+    return spellErrors
+      .filter(e => e.guiaNumero === guiaNumero && e.ordem === ordem && e.field === field && !ignoredErrorIds.has(e.id))
+      .map(e => ({
+        id: e.id,
+        type: e.type,
+        original: e.original,
+        suggestion: e.suggestion,
+        startIndex: e.startIndex,
+        endIndex: e.endIndex,
+        message: e.message,
+      }));
+  }, [spellErrors, showInlineErrors, ignoredErrorIds]);
+
+  // Handle fixing an error inline
+  const handleInlineFixError = useCallback((guiaNumero: number, ordem: number, field: "headline" | "estrutura", error: InlineSpellError) => {
+    const key = `${guiaNumero}-${ordem}`;
+    const roteiro = roteirosLocais.get(key);
+    if (!roteiro) return;
+
+    let currentValue = roteiro[field];
+    let newValue: string;
+
+    if (error.type === "trim") {
+      newValue = error.suggestion;
+    } else {
+      newValue = 
+        currentValue.substring(0, error.startIndex) +
+        error.suggestion +
+        currentValue.substring(error.endIndex);
+    }
+
+    handleChange(guiaNumero, ordem, field, newValue);
+    
+    // Remove error from list
+    setSpellErrors(prev => prev.filter(e => e.id !== error.id));
+    
+    toast({
+      title: "Corrigido",
+      description: `"${error.original}" → "${error.suggestion}"`,
+    });
+  }, [roteirosLocais, handleChange]);
+
+  // Handle ignoring an error
+  const handleIgnoreError = useCallback((errorId: string) => {
+    setIgnoredErrorIds(prev => new Set(prev).add(errorId));
+  }, []);
+
   const guiaAtivaConfig = guias.find(g => g.numero === guiaAtiva) || { numero: 1, quantidade: 10 };
 
   if (isLoading) {
@@ -644,23 +698,18 @@ export const MentoradoRoteirosView = ({
                     <label className="font-poppins font-bold text-[#B8860B] text-sm">
                       HEADLINE {ordem}:
                     </label>
-                    <Textarea
+                    <InlineSpellCheckEditor
                       value={roteiro.headline}
-                      onChange={(e) => {
-                        // Auto-resize
-                        e.target.style.height = 'auto';
-                        e.target.style.height = e.target.scrollHeight + 'px';
-                        handleInputChange2(guiaAtiva, ordem, "headline", e.target.value, e);
+                      onChange={(value) => {
+                        handleChange(guiaAtiva, ordem, "headline", value);
                       }}
                       onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "headline")}
                       placeholder="Digite a headline... (use / para comandos)"
-                      className="font-poppins text-[16px] min-h-[44px] resize-none overflow-hidden"
-                      ref={(el) => {
-                        if (el && roteiro.headline) {
-                          el.style.height = 'auto';
-                          el.style.height = el.scrollHeight + 'px';
-                        }
-                      }}
+                      className="text-[16px] min-h-[44px] p-3 border rounded-md"
+                      errors={getErrorsForField(guiaAtiva, ordem, "headline")}
+                      showErrors={showInlineErrors}
+                      onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "headline", error)}
+                      onIgnoreError={handleIgnoreError}
                     />
                   </div>
 
@@ -669,29 +718,22 @@ export const MentoradoRoteirosView = ({
                     <label className="font-poppins font-bold text-[#B8860B] text-sm">
                       ESTRUTURA {ordem}:
                     </label>
-                    <Textarea
+                    <InlineSpellCheckEditor
                       value={roteiro.estrutura}
-                      onChange={(e) => {
-                        // Auto-resize
-                        e.target.style.height = 'auto';
-                        e.target.style.height = e.target.scrollHeight + 'px';
-                        handleInputChange2(guiaAtiva, ordem, "estrutura", e.target.value, e);
+                      onChange={(value) => {
+                        handleChange(guiaAtiva, ordem, "estrutura", value);
                       }}
                       onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "estrutura")}
                       onSelect={(e) => {
-                        // Guardar posição do cursor quando o usuário seleciona/clica
                         const target = e.currentTarget;
                         cursorPositionRef.current.set(key, target.selectionStart || 0);
                       }}
                       placeholder="Digite a estrutura do roteiro... (use / para comandos)"
-                      className="font-poppins text-[14px] min-h-[80px] border-b-2 border-b-blue-500 resize-none overflow-hidden"
-                      ref={(el) => {
-                        // Auto-resize on mount if there's content
-                        if (el && roteiro.estrutura) {
-                          el.style.height = 'auto';
-                          el.style.height = el.scrollHeight + 'px';
-                        }
-                      }}
+                      className="text-[14px] min-h-[80px] p-3 border rounded-md border-b-2 border-b-blue-500"
+                      errors={getErrorsForField(guiaAtiva, ordem, "estrutura")}
+                      showErrors={showInlineErrors}
+                      onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
+                      onIgnoreError={handleIgnoreError}
                     />
                     <div className="flex justify-end items-center gap-1">
                       <span className="text-xs text-muted-foreground mr-1">
@@ -887,13 +929,23 @@ export const MentoradoRoteirosView = ({
       {/* Spell Checker Panel */}
       <SpellCheckerPanel
         open={showSpellChecker}
-        onClose={() => setShowSpellChecker(false)}
+        onClose={() => {
+          setShowSpellChecker(false);
+        }}
         roteirosLocais={roteirosLocais}
         guias={guias}
         guiaAtiva={guiaAtiva}
         onFix={(guiaNumero, ordem, field, newValue) => {
           handleChange(guiaNumero, ordem, field, newValue);
         }}
+        onErrorsChange={(errors) => {
+          setSpellErrors(errors);
+          if (errors.length > 0) {
+            setShowInlineErrors(true);
+          }
+        }}
+        showInlineErrors={showInlineErrors}
+        onToggleInlineErrors={() => setShowInlineErrors(prev => !prev)}
       />
     </div>
   );
