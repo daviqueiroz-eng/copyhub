@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,6 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { useWebSpeechTTS } from "@/hooks/useWebSpeechTTS";
 import { TTSConfigPopover } from "./TTSConfigPopover";
+import { FindReplaceDialog } from "./FindReplaceDialog";
+import { SpellCheckerPanel } from "./SpellCheckerPanel";
 import {
   Dialog,
   DialogContent,
@@ -63,6 +65,15 @@ export const MentoradoRoteirosView = ({
   const [showHeadlinesModal, setShowHeadlinesModal] = useState(false);
   const [headlinesTargetKey, setHeadlinesTargetKey] = useState<string>("");
   const [savedHeadlines, setSavedHeadlines] = useState<AnalysisHeadline[]>([]);
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [showSpellChecker, setShowSpellChecker] = useState(false);
+  const [highlightedMatch, setHighlightedMatch] = useState<{
+    guiaNumero: number;
+    ordem: number;
+    field: "headline" | "estrutura";
+    startIndex: number;
+    endIndex: number;
+  } | null>(null);
   
   // Slash command state
   const [slashCommand, setSlashCommand] = useState<{
@@ -517,10 +528,28 @@ export const MentoradoRoteirosView = ({
             </p>
           </div>
         </div>
-        <Button variant="outline" className="gap-2" onClick={handleCopyAllRoteiros}>
-          <ClipboardCopy className="h-4 w-4" />
-          Copiar todos os roteiros
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setShowFindReplace(true)}
+            title="Localizar e Substituir (Ctrl+H)"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setShowSpellChecker(true)}
+            title="Corretor Automático"
+          >
+            <FileEdit className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={handleCopyAllRoteiros}>
+            <ClipboardCopy className="h-4 w-4" />
+            Copiar todos
+          </Button>
+        </div>
       </div>
 
       {/* Content */}
@@ -832,6 +861,40 @@ export const MentoradoRoteirosView = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Find and Replace Dialog */}
+      <FindReplaceDialog
+        open={showFindReplace}
+        onClose={() => {
+          setShowFindReplace(false);
+          setHighlightedMatch(null);
+        }}
+        roteirosLocais={roteirosLocais}
+        guias={guias}
+        onReplace={(guiaNumero, ordem, field, newValue) => {
+          handleChange(guiaNumero, ordem, field, newValue);
+        }}
+        onHighlightMatch={(match) => {
+          if (match) {
+            setHighlightedMatch(match);
+            setGuiaAtiva(match.guiaNumero);
+          } else {
+            setHighlightedMatch(null);
+          }
+        }}
+      />
+
+      {/* Spell Checker Panel */}
+      <SpellCheckerPanel
+        open={showSpellChecker}
+        onClose={() => setShowSpellChecker(false)}
+        roteirosLocais={roteirosLocais}
+        guias={guias}
+        guiaAtiva={guiaAtiva}
+        onFix={(guiaNumero, ordem, field, newValue) => {
+          handleChange(guiaNumero, ordem, field, newValue);
+        }}
+      />
     </div>
   );
 };

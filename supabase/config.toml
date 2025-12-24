@@ -2,3 +2,6 @@ project_id = "wndwbcbykcmfzpgbxgho"
 
 [functions.google-calendar]
 verify_jwt = true
+
+[functions.spell-check]
+verify_jwt = false
