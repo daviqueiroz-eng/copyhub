@@ -605,20 +605,34 @@ export const MentoradoRoteirosView = ({
                   </div>
 
                   {/* Estrutura */}
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <label className="font-poppins font-bold text-[#B8860B] text-sm">
                       ESTRUTURA {ordem}:
                     </label>
                     <Textarea
                       value={roteiro.estrutura}
-                      onChange={(e) =>
-                        handleInputChange2(guiaAtiva, ordem, "estrutura", e.target.value, e)
-                      }
+                      onChange={(e) => {
+                        // Auto-resize
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
+                        handleInputChange2(guiaAtiva, ordem, "estrutura", e.target.value, e);
+                      }}
                       onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "estrutura")}
                       placeholder="Digite a estrutura do roteiro... (use / para comandos)"
-                      className="font-poppins text-[14px] min-h-[120px] border-b-2 border-b-blue-500"
-                      rows={5}
+                      className="font-poppins text-[14px] min-h-[80px] border-b-2 border-b-blue-500 resize-none overflow-hidden"
+                      ref={(el) => {
+                        // Auto-resize on mount if there's content
+                        if (el && roteiro.estrutura) {
+                          el.style.height = 'auto';
+                          el.style.height = el.scrollHeight + 'px';
+                        }
+                      }}
                     />
+                    <div className="flex justify-end">
+                      <span className="text-xs text-muted-foreground">
+                        {roteiro.estrutura?.length || 0}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
