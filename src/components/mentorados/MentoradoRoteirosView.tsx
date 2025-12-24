@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
+import { useWebSpeechTTS } from "@/hooks/useWebSpeechTTS";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +77,15 @@ export const MentoradoRoteirosView = ({
     targetField: "headline",
     position: { top: 0, left: 0 },
   });
+
+  // TTS hook
+  const { speak, stop, isSpeaking } = useWebSpeechTTS({ rate: 1.0 });
+  
+  // Estado para guardar posição do cursor por roteiro
+  const cursorPositionRef = useRef<Map<string, number>>(new Map());
+  
+  // Ref para o key do roteiro que está sendo falado
+  const speakingKeyRef = useRef<string | null>(null);
 
   // Refs para debounce
   const debounceTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
@@ -627,6 +637,11 @@ export const MentoradoRoteirosView = ({
                         handleInputChange2(guiaAtiva, ordem, "estrutura", e.target.value, e);
                       }}
                       onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "estrutura")}
+                      onSelect={(e) => {
+                        // Guardar posição do cursor quando o usuário seleciona/clica
+                        const target = e.currentTarget;
+                        cursorPositionRef.current.set(key, target.selectionStart || 0);
+                      }}
                       placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                       className="font-poppins text-[14px] min-h-[80px] border-b-2 border-b-blue-500 resize-none overflow-hidden"
                       ref={(el) => {
@@ -637,10 +652,40 @@ export const MentoradoRoteirosView = ({
                         }
                       }}
                     />
-                    <div className="flex justify-end">
+                    <div className="flex justify-end items-center gap-2">
                       <span className="text-xs text-muted-foreground">
                         {roteiro.estrutura?.length || 0}
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        title={isSpeaking && speakingKeyRef.current === key ? "Parar leitura" : "Ler a partir do cursor"}
+                        onClick={() => {
+                          if (isSpeaking && speakingKeyRef.current === key) {
+                            stop();
+                            speakingKeyRef.current = null;
+                          } else {
+                            const cursorPos = cursorPositionRef.current.get(key) || 0;
+                            const textToSpeak = roteiro.estrutura?.substring(cursorPos) || roteiro.estrutura || "";
+                            if (textToSpeak.trim()) {
+                              speakingKeyRef.current = key;
+                              speak(textToSpeak);
+                            } else {
+                              toast({
+                                title: "Sem texto",
+                                description: "Não há texto a partir do cursor para ler.",
+                              });
+                            }
+                          }
+                        }}
+                      >
+                        {isSpeaking && speakingKeyRef.current === key ? (
+                          <Square className="h-3.5 w-3.5" />
+                        ) : (
+                          <Volume2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
                     </div>
                   </div>
                 </div>
