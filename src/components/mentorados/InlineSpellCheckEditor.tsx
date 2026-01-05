@@ -172,12 +172,12 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
         ref={overlayRef}
         className={cn(
           "absolute inset-0 pointer-events-none whitespace-pre-wrap break-words overflow-hidden",
-          "font-poppins p-3 border border-transparent",
+          "font-poppins",
           className
         )}
         style={{ 
           wordBreak: "break-word",
-          lineHeight: "1.5",
+          lineHeight: "1.6",
         }}
         aria-hidden="true"
       >
@@ -230,7 +230,7 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
         )}
       </div>
 
-      {/* Actual textarea */}
+      {/* Actual textarea - borderless for document style */}
       <textarea
         ref={textareaRef}
         value={value}
@@ -244,12 +244,12 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
         placeholder={placeholder}
         className={cn(
           "w-full resize-none overflow-hidden bg-transparent relative z-10",
-          "font-poppins",
+          "font-poppins focus:outline-none",
           className
         )}
         style={{ 
           caretColor: "currentColor",
-          lineHeight: "1.5",
+          lineHeight: "1.6",
         }}
       />
 

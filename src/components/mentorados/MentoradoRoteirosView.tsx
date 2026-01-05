@@ -640,160 +640,167 @@ export const MentoradoRoteirosView = ({
           </div>
         </div>
 
-        {/* Main - Roteiros */}
-        <ScrollArea className="flex-1">
-          <div className="p-6 space-y-6 max-w-4xl mx-auto">
-            {Array.from({ length: guiaAtivaConfig.quantidade }, (_, i) => i + 1).map((ordem) => {
-              const key = `${guiaAtiva}-${ordem}`;
-              const roteiro = roteirosLocais.get(key) || { headline: "", estrutura: "" };
-              const isSaving = savingKeys.has(key);
-              const isSaved = savedKeys.has(key);
+        {/* Main - Documento estilo Google Docs */}
+        <ScrollArea className="flex-1 bg-muted/20">
+          <div className="py-8 px-4">
+            {/* Paper container */}
+            <div className="max-w-[816px] mx-auto bg-background shadow-md rounded-sm" style={{ minHeight: 'calc(100vh - 200px)' }}>
+              <div className="px-16 py-12">
+                {Array.from({ length: guiaAtivaConfig.quantidade }, (_, i) => i + 1).map((ordem) => {
+                  const key = `${guiaAtiva}-${ordem}`;
+                  const roteiro = roteirosLocais.get(key) || { headline: "", estrutura: "" };
+                  const isSaving = savingKeys.has(key);
+                  const isSaved = savedKeys.has(key);
 
-              return (
-                <div
-                  key={key}
-                  className="bg-card rounded-lg border p-4 space-y-4"
-                >
-                  {/* Header do roteiro */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="font-poppins font-bold text-lg text-primary">
-                        {String(ordem).padStart(2, "0")}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleCopyRoteiro(guiaAtiva, ordem)}
-                        title="Copiar roteiro"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      {isSaving && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Salvando...
-                        </span>
-                      )}
-                      {isSaved && (
-                        <span className="text-xs text-green-500 flex items-center gap-1">
-                          <Check className="h-3 w-3" />
-                          Salvo
-                        </span>
-                      )}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleClearRoteiro(guiaAtiva, ordem)}
-                      title="Limpar roteiro"
+                  return (
+                    <div
+                      key={key}
+                      className="group relative mb-8"
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  {/* Headline */}
-                  <div className="space-y-2">
-                    <label className="font-poppins font-bold text-[#B8860B] text-sm">
-                      HEADLINE {ordem}:
-                    </label>
-                    <InlineSpellCheckEditor
-                      value={roteiro.headline}
-                      onChange={(value) => {
-                        handleChange(guiaAtiva, ordem, "headline", value);
-                      }}
-                      onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "headline")}
-                      placeholder="Digite a headline... (use / para comandos)"
-                      className="text-[16px] min-h-[44px] p-3 border rounded-md"
-                      errors={getErrorsForField(guiaAtiva, ordem, "headline")}
-                      showErrors={showInlineErrors}
-                      onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "headline", error)}
-                      onIgnoreError={handleIgnoreError}
-                    />
-                  </div>
-
-                  {/* Estrutura */}
-                  <div className="space-y-1">
-                    <label className="font-poppins font-bold text-[#B8860B] text-sm">
-                      ESTRUTURA {ordem}:
-                    </label>
-                    <InlineSpellCheckEditor
-                      value={roteiro.estrutura}
-                      onChange={(value) => {
-                        handleChange(guiaAtiva, ordem, "estrutura", value);
-                      }}
-                      onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "estrutura")}
-                      onSelect={(e) => {
-                        const target = e.currentTarget;
-                        cursorPositionRef.current.set(key, target.selectionStart || 0);
-                      }}
-                      placeholder="Digite a estrutura do roteiro... (use / para comandos)"
-                      className="text-[14px] min-h-[80px] p-3 border rounded-md border-b-2 border-b-blue-500"
-                      errors={getErrorsForField(guiaAtiva, ordem, "estrutura")}
-                      showErrors={showInlineErrors}
-                      onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
-                      onIgnoreError={handleIgnoreError}
-                    />
-                    <div className="flex justify-end items-center gap-1">
-                      <span className="text-xs text-muted-foreground mr-1">
-                        {roteiro.estrutura?.length || 0}
-                      </span>
-                      <TTSConfigPopover
-                        rate={rate}
-                        pitch={pitch}
-                        onRateChange={setRate}
-                        onPitchChange={setPitch}
-                        voices={voices}
-                        selectedVoice={selectedVoice}
-                        onVoiceChange={setSelectedVoice}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        title={isSpeaking && speakingKeyRef.current === key ? "Parar leitura" : "Ler a partir do cursor"}
-                        onClick={() => {
-                          if (isSpeaking && speakingKeyRef.current === key) {
-                            stop();
-                            speakingKeyRef.current = null;
-                          } else {
-                            const cursorPos = cursorPositionRef.current.get(key) || 0;
-                            const textToSpeak = roteiro.estrutura?.substring(cursorPos) || roteiro.estrutura || "";
-                            if (textToSpeak.trim()) {
-                              speakingKeyRef.current = key;
-                              speak(textToSpeak);
+                      {/* Floating toolbar - appears on hover */}
+                      <div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleCopyRoteiro(guiaAtiva, ordem)}
+                          title="Copiar roteiro"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => handleClearRoteiro(guiaAtiva, ordem)}
+                          title="Limpar roteiro"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <TTSConfigPopover
+                          rate={rate}
+                          pitch={pitch}
+                          onRateChange={setRate}
+                          onPitchChange={setPitch}
+                          voices={voices}
+                          selectedVoice={selectedVoice}
+                          onVoiceChange={setSelectedVoice}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title={isSpeaking && speakingKeyRef.current === key ? "Parar leitura" : "Ler estrutura"}
+                          onClick={() => {
+                            if (isSpeaking && speakingKeyRef.current === key) {
+                              stop();
+                              speakingKeyRef.current = null;
                             } else {
-                              toast({
-                                title: "Sem texto",
-                                description: "Não há texto a partir do cursor para ler.",
-                              });
+                              const cursorPos = cursorPositionRef.current.get(key) || 0;
+                              const textToSpeak = roteiro.estrutura?.substring(cursorPos) || roteiro.estrutura || "";
+                              if (textToSpeak.trim()) {
+                                speakingKeyRef.current = key;
+                                speak(textToSpeak);
+                              } else {
+                                toast({
+                                  title: "Sem texto",
+                                  description: "Não há texto para ler.",
+                                });
+                              }
                             }
-                          }
-                        }}
-                      >
-                        {isSpeaking && speakingKeyRef.current === key ? (
-                          <Square className="h-3.5 w-3.5" />
-                        ) : (
-                          <Volume2 className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
+                          }}
+                        >
+                          {isSpeaking && speakingKeyRef.current === key ? (
+                            <Square className="h-3.5 w-3.5" />
+                          ) : (
+                            <Volume2 className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
+
+                      {/* Status indicators */}
+                      {(isSaving || isSaved) && (
+                        <div className="absolute -left-14 top-0 text-xs">
+                          {isSaving && (
+                            <span className="text-muted-foreground flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            </span>
+                          )}
+                          {isSaved && (
+                            <span className="text-green-500 flex items-center gap-1">
+                              <Check className="h-3 w-3" />
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Headline */}
+                      <div className="mb-2">
+                        <span className="font-poppins font-bold text-[#B8860B] text-base">
+                          HEADLINE {String(ordem).padStart(2, "0")}:
+                        </span>
+                        <InlineSpellCheckEditor
+                          value={roteiro.headline}
+                          onChange={(value) => {
+                            handleChange(guiaAtiva, ordem, "headline", value);
+                          }}
+                          onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "headline")}
+                          placeholder="Digite a headline... (use / para comandos)"
+                          className="text-[15px] min-h-[28px] mt-1"
+                          errors={getErrorsForField(guiaAtiva, ordem, "headline")}
+                          showErrors={showInlineErrors}
+                          onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "headline", error)}
+                          onIgnoreError={handleIgnoreError}
+                        />
+                      </div>
+
+                      {/* Estrutura */}
+                      <div className="mb-4">
+                        <span className="font-poppins font-bold text-[#B8860B] text-base">
+                          ESTRUTURA {String(ordem).padStart(2, "0")}:
+                        </span>
+                        <InlineSpellCheckEditor
+                          value={roteiro.estrutura}
+                          onChange={(value) => {
+                            handleChange(guiaAtiva, ordem, "estrutura", value);
+                          }}
+                          onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "estrutura")}
+                          onSelect={(e) => {
+                            const target = e.currentTarget;
+                            cursorPositionRef.current.set(key, target.selectionStart || 0);
+                          }}
+                          placeholder="Digite a estrutura do roteiro... (use / para comandos)"
+                          className="text-[14px] min-h-[60px] mt-1"
+                          errors={getErrorsForField(guiaAtiva, ordem, "estrutura")}
+                          showErrors={showInlineErrors}
+                          onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
+                          onIgnoreError={handleIgnoreError}
+                        />
+                        <div className="text-right text-xs text-muted-foreground mt-1">
+                          {roteiro.estrutura?.length || 0} caracteres
+                        </div>
+                      </div>
+
+                      {/* Separator line */}
+                      {ordem < guiaAtivaConfig.quantidade && (
+                        <hr className="border-t border-border/50 mt-6" />
+                      )}
                     </div>
-                  </div>
+                  );
+                })}
+                
+                {/* Botão para adicionar mais roteiros */}
+                <div className="flex justify-center pt-8 pb-4">
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={handleAddRoteiro}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Adicionar roteiro
+                  </Button>
                 </div>
-              );
-            })}
-            
-            {/* Botão para adicionar mais roteiros */}
-            <div className="flex justify-center py-4">
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={handleAddRoteiro}
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar roteiro
-              </Button>
+              </div>
             </div>
           </div>
         </ScrollArea>
