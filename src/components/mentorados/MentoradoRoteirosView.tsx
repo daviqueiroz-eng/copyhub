@@ -274,14 +274,14 @@ export const MentoradoRoteirosView = ({
       clearTimeout(existingTimer);
     }
 
-    // Novo timer para auto-save (1000ms)
+    // Novo timer para auto-save (1500ms - mais tempo para evitar conflitos)
     const timer = setTimeout(() => {
       const pending = pendingChangesRef.current.get(key);
       if (pending) {
         saveRoteiro(guiaNumero, ordem, pending.headline, pending.estrutura);
         pendingChangesRef.current.delete(key);
       }
-    }, 1000);
+    }, 1500);
     
     debounceTimersRef.current.set(key, timer);
   }, [saveRoteiro]);

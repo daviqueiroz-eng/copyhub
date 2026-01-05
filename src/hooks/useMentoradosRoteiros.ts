@@ -75,10 +75,9 @@ export const useUpsertMentoradoRoteiro = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["mentorados_roteiros", variables.mentoradoId],
-      });
+    onSuccess: () => {
+      // Não invalidar queries para evitar sobrescrever dados locais durante digitação
+      // Os dados já estão sincronizados localmente
     },
   });
 };
