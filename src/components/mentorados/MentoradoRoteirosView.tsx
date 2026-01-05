@@ -412,7 +412,7 @@ export const MentoradoRoteirosView = ({
     saveRoteiro(guiaNumero, ordem, "", "");
   };
 
-  const handleCopyRoteiro = (guiaNumero: number, ordem: number) => {
+  const handleCopyRoteiro = async (guiaNumero: number, ordem: number) => {
     const key = `${guiaNumero}-${ordem}`;
     const roteiro = roteirosLocais.get(key);
     
@@ -424,32 +424,53 @@ export const MentoradoRoteirosView = ({
       return;
     }
 
-    const text = `**HEADLINE ${ordem}:**\n\n${roteiro.headline}\n\n**ESTRUTURA ${ordem}:**\n\n${roteiro.estrutura}`;
-    navigator.clipboard.writeText(text);
+    const ordemFormatada = String(ordem).padStart(2, '0');
+    
+    // HTML formatado para editores ricos (Google Docs, Word)
+    const html = `<p><b style="color: #B8860B;">HEADLINE ${ordemFormatada}:</b></p><p>${roteiro.headline || ''}</p><br/><p><b style="color: #B8860B;">ESTRUTURA ${ordemFormatada}:</b></p><p>${(roteiro.estrutura || '').replace(/\n/g, '<br/>')}</p>`;
+
+    // Texto limpo para editores simples
+    const plainText = `HEADLINE ${ordemFormatada}:\n\n${roteiro.headline || ''}\n\nESTRUTURA ${ordemFormatada}:\n\n${roteiro.estrutura || ''}`;
+
+    try {
+      const htmlBlob = new Blob([html], { type: 'text/html' });
+      const textBlob = new Blob([plainText], { type: 'text/plain' });
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': htmlBlob,
+          'text/plain': textBlob
+        })
+      ]);
+    } catch {
+      navigator.clipboard.writeText(plainText);
+    }
     
     toast({
       title: "Copiado!",
-      description: `Roteiro ${String(ordem).padStart(2, "0")} copiado.`,
+      description: `Roteiro ${ordemFormatada} copiado.`,
     });
   };
 
-  const handleCopyAllRoteiros = () => {
+  const handleCopyAllRoteiros = async () => {
     const guiaConfig = guias.find(g => g.numero === guiaAtiva);
     const quantidade = guiaConfig?.quantidade || 10;
-    const roteirosGuia: string[] = [];
+    const htmlParts: string[] = [];
+    const textParts: string[] = [];
     
     for (let ordem = 1; ordem <= quantidade; ordem++) {
       const key = `${guiaAtiva}-${ordem}`;
       const roteiro = roteirosLocais.get(key);
       
       if (roteiro?.headline || roteiro?.estrutura) {
-        roteirosGuia.push(
-          `**HEADLINE ${ordem}:**\n\n${roteiro.headline || ""}\n\n**ESTRUTURA ${ordem}:**\n\n${roteiro.estrutura || ""}`
-        );
+        const ordemFormatada = String(ordem).padStart(2, '0');
+        
+        htmlParts.push(`<p><b style="color: #B8860B;">HEADLINE ${ordemFormatada}:</b></p><p>${roteiro.headline || ''}</p><br/><p><b style="color: #B8860B;">ESTRUTURA ${ordemFormatada}:</b></p><p>${(roteiro.estrutura || '').replace(/\n/g, '<br/>')}</p><hr style="border: 1px solid #e5e5e5; margin: 16px 0;"/>`);
+        
+        textParts.push(`HEADLINE ${ordemFormatada}:\n\n${roteiro.headline || ''}\n\nESTRUTURA ${ordemFormatada}:\n\n${roteiro.estrutura || ''}`);
       }
     }
 
-    if (roteirosGuia.length === 0) {
+    if (htmlParts.length === 0) {
       toast({
         title: "Guia vazia",
         description: "Não há roteiros para copiar nesta guia.",
@@ -457,11 +478,25 @@ export const MentoradoRoteirosView = ({
       return;
     }
 
-    navigator.clipboard.writeText(roteirosGuia.join("\n\n---\n\n"));
+    const html = htmlParts.join('');
+    const plainText = textParts.join('\n\n---\n\n');
+
+    try {
+      const htmlBlob = new Blob([html], { type: 'text/html' });
+      const textBlob = new Blob([plainText], { type: 'text/plain' });
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': htmlBlob,
+          'text/plain': textBlob
+        })
+      ]);
+    } catch {
+      navigator.clipboard.writeText(plainText);
+    }
     
     toast({
       title: "Copiados!",
-      description: `${roteirosGuia.length} roteiros da Guia ${guiaAtiva} copiados.`,
+      description: `${htmlParts.length} roteiros da Guia ${guiaAtiva} copiados.`,
     });
   };
 
