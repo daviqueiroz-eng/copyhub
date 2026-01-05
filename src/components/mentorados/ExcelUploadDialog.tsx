@@ -7,21 +7,21 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Upload, FileSpreadsheet, Trash2, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Upload, FileSpreadsheet, Trash2, Loader2, CheckCircle2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useImportExcelHeadlines, useUserHeadlinesExcel, useDeleteHeadlinesByFile } from "@/hooks/useUserHeadlinesExcel";
 
 interface ExcelUploadDialogProps {
   open: boolean;
   onClose: () => void;
+}
+
+interface SheetInfo {
+  name: string;
+  headlines: string[];
+  headlineColumnName: string;
 }
 
 // Detecta se um valor parece ser URL
@@ -38,13 +38,26 @@ const isLikelyUrl = (value: string): boolean => {
   return urlPatterns.some(pattern => pattern.test(value));
 };
 
+// Encontrar coluna de headline em um array de headers
+const findHeadlineColumn = (headers: string[]): { index: number; name: string } => {
+  const headlineKeywords = ['headline', 'titulo', 'título', 'headlines'];
+  
+  for (let i = 0; i < headers.length; i++) {
+    const header = String(headers[i] || '').toLowerCase().trim();
+    if (headlineKeywords.some(kw => header.includes(kw))) {
+      return { index: i, name: String(headers[i]) };
+    }
+  }
+  
+  // Se não encontrar, usar a primeira coluna
+  return { index: 0, name: String(headers[0] || 'Coluna A') };
+};
+
 export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => {
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string[][]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [headlineColumn, setHeadlineColumn] = useState<string>("");
-  const [estruturaColumn, setEstruturaColumn] = useState<string>("");
-  const [allRows, setAllRows] = useState<string[][]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [sheetsInfo, setSheetsInfo] = useState<SheetInfo[]>([]);
+  const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
 
   const { data: existingHeadlines = [] } = useUserHeadlinesExcel();
   const importMutation = useImportExcelHeadlines();
@@ -58,67 +71,66 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
     return acc;
   }, {} as Record<string, typeof existingHeadlines>);
 
-  // Auto-detectar coluna de headline
-  useEffect(() => {
-    if (headers.length > 0 && !headlineColumn) {
-      const headlineCol = headers.find(h => 
-        h.toLowerCase().includes('headline') || 
-        h.toLowerCase().includes('titulo') ||
-        h.toLowerCase().includes('título')
-      );
-      if (headlineCol) {
-        setHeadlineColumn(headlineCol);
-      }
-    }
-  }, [headers, headlineColumn]);
-
-  // Verificar se coluna selecionada parece conter URLs
-  const selectedColumnHasUrls = useMemo(() => {
-    if (!headlineColumn || allRows.length === 0) return false;
-    const colIdx = headers.indexOf(headlineColumn);
-    if (colIdx < 0) return false;
+  // Processar arquivo Excel e extrair info de todas as abas
+  const processExcelFile = async (selectedFile: File) => {
+    setIsProcessing(true);
     
-    // Verificar primeiras 10 linhas
-    const sampleValues = allRows.slice(0, 10).map(row => row[colIdx]).filter(Boolean);
-    const urlCount = sampleValues.filter(isLikelyUrl).length;
-    return urlCount > sampleValues.length * 0.5; // Mais de 50% são URLs
-  }, [headlineColumn, allRows, headers]);
-
-  // Preview das headlines selecionadas
-  const headlinePreview = useMemo(() => {
-    if (!headlineColumn) return [];
-    const colIdx = headers.indexOf(headlineColumn);
-    if (colIdx < 0) return [];
-    return allRows
-      .slice(0, 5)
-      .map(row => row[colIdx])
-      .filter(v => v?.trim());
-  }, [headlineColumn, allRows, headers]);
+    try {
+      const data = await selectedFile.arrayBuffer();
+      const workbook = XLSX.read(data, { type: "array" });
+      
+      const sheets: SheetInfo[] = [];
+      
+      for (const sheetName of workbook.SheetNames) {
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
+        
+        if (jsonData.length < 2) continue; // Pular abas vazias ou só com cabeçalho
+        
+        const headers = (jsonData[0] || []).map(h => String(h || ''));
+        const { index: headlineColIdx, name: headlineColName } = findHeadlineColumn(headers);
+        
+        // Extrair headlines válidas (não vazias, não URLs)
+        const validHeadlines: string[] = [];
+        
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = jsonData[i];
+          const cellValue = row?.[headlineColIdx];
+          
+          if (cellValue) {
+            const trimmed = String(cellValue).trim();
+            if (trimmed.length > 0 && !isLikelyUrl(trimmed)) {
+              validHeadlines.push(trimmed);
+            }
+          }
+        }
+        
+        if (validHeadlines.length > 0) {
+          sheets.push({
+            name: sheetName,
+            headlines: validHeadlines,
+            headlineColumnName: headlineColName
+          });
+        }
+      }
+      
+      setSheetsInfo(sheets);
+      // Selecionar todas as abas por padrão
+      setSelectedSheets(sheets.map(s => s.name));
+      
+    } catch (error) {
+      console.error("Erro ao processar Excel:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
     setFile(selectedFile);
-
-    try {
-      const data = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
-
-      if (jsonData.length > 0) {
-        const headerRow = jsonData[0].map((h) => String(h || ""));
-        setHeaders(headerRow);
-        setPreview(jsonData.slice(1, 6).map((row) => row.map((cell) => String(cell || ""))));
-        setAllRows(jsonData.slice(1).map((row) => row.map((cell) => String(cell || ""))));
-        setHeadlineColumn("");
-        setEstruturaColumn("");
-      }
-    } catch (error) {
-      console.error("Erro ao ler arquivo:", error);
-    }
+    await processExcelFile(selectedFile);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -134,29 +146,51 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
     }
   }, [handleFileChange]);
 
+  const toggleSheet = (sheetName: string) => {
+    setSelectedSheets(prev => 
+      prev.includes(sheetName) 
+        ? prev.filter(s => s !== sheetName)
+        : [...prev, sheetName]
+    );
+  };
+
+  const selectAllSheets = () => {
+    setSelectedSheets(sheetsInfo.map(s => s.name));
+  };
+
+  const deselectAllSheets = () => {
+    setSelectedSheets([]);
+  };
+
+  // Calcular total de headlines selecionadas
+  const totalSelectedHeadlines = useMemo(() => {
+    return sheetsInfo
+      .filter(s => selectedSheets.includes(s.name))
+      .reduce((acc, s) => acc + s.headlines.length, 0);
+  }, [sheetsInfo, selectedSheets]);
+
   const handleImport = async () => {
-    if (!file || !headlineColumn) return;
-
-    const headlineIdx = headers.indexOf(headlineColumn);
-    const estruturaIdx = estruturaColumn ? headers.indexOf(estruturaColumn) : -1;
-
-    const headlines = allRows
-      .filter((row) => row[headlineIdx]?.trim())
-      .map((row) => ({
-        headline: row[headlineIdx].trim(),
-        estrutura: estruturaIdx >= 0 ? row[estruturaIdx]?.trim() : undefined,
-        arquivo_origem: file.name,
-      }));
-
-    await importMutation.mutateAsync(headlines);
+    if (!file || selectedSheets.length === 0) return;
+    
+    const headlinesToImport: { headline: string; estrutura?: string; arquivo_origem: string }[] = [];
+    
+    for (const sheet of sheetsInfo) {
+      if (!selectedSheets.includes(sheet.name)) continue;
+      
+      for (const headline of sheet.headlines) {
+        headlinesToImport.push({
+          headline,
+          arquivo_origem: `${file.name} - ${sheet.name}`
+        });
+      }
+    }
+    
+    await importMutation.mutateAsync(headlinesToImport);
     
     // Reset
     setFile(null);
-    setPreview([]);
-    setHeaders([]);
-    setAllRows([]);
-    setHeadlineColumn("");
-    setEstruturaColumn("");
+    setSheetsInfo([]);
+    setSelectedSheets([]);
   };
 
   const handleDeleteFile = async (fileName: string) => {
@@ -165,9 +199,14 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
     }
   };
 
-  const totalHeadlinesToImport = headlineColumn
-    ? allRows.filter((row) => row[headers.indexOf(headlineColumn)]?.trim()).length
-    : 0;
+  // Limpar estado ao fechar
+  useEffect(() => {
+    if (!open) {
+      setFile(null);
+      setSheetsInfo([]);
+      setSelectedSheets([]);
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -203,149 +242,115 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
             )}
           </div>
 
-          {/* Preview e seleção de colunas */}
-          {headers.length > 0 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    Coluna de Headline *
-                    {headlineColumn && !selectedColumnHasUrls && (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    )}
-                  </Label>
-                  <Select value={headlineColumn} onValueChange={setHeadlineColumn}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {headers.map((h, i) => {
-                        const isAutoDetected = h.toLowerCase().includes('headline') || 
-                          h.toLowerCase().includes('titulo') ||
-                          h.toLowerCase().includes('título');
-                        return (
-                          <SelectItem key={i} value={h}>
-                            <span className={isAutoDetected ? "font-medium text-primary" : ""}>
-                              {h}
-                              {isAutoDetected && " ✓"}
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Coluna de Estrutura (opcional)</Label>
-                  <Select value={estruturaColumn} onValueChange={(v) => setEstruturaColumn(v === "__none__" ? "" : v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Nenhuma" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Nenhuma</SelectItem>
-                      {headers.filter((h) => h !== headlineColumn).map((h, i) => (
-                        <SelectItem key={i} value={h}>
-                          {h}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Aviso se coluna parece conter URLs */}
-              {selectedColumnHasUrls && (
-                <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-yellow-600 dark:text-yellow-400">
-                      Esta coluna parece conter links/URLs
-                    </p>
-                    <p className="text-muted-foreground mt-1">
-                      Verifique se selecionou a coluna correta. Headlines geralmente são textos descritivos.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Preview das headlines a serem importadas */}
-              {headlineColumn && headlinePreview.length > 0 && !selectedColumnHasUrls && (
-                <div className="border rounded-lg overflow-hidden border-green-500/30 bg-green-500/5">
-                  <div className="bg-green-500/10 px-3 py-2 text-xs font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" />
-                    Headlines a serem importadas (preview)
-                  </div>
-                  <div className="p-3 space-y-1.5">
-                    {headlinePreview.map((headline, i) => (
-                      <p key={i} className="text-sm text-foreground/80 truncate">
-                        {i + 1}. "{headline}"
-                      </p>
-                    ))}
-                    {totalHeadlinesToImport > 5 && (
-                      <p className="text-xs text-muted-foreground pt-1">
-                        + {totalHeadlinesToImport - 5} mais...
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Preview das primeiras linhas (tabela completa) */}
-              <div className="border rounded-lg overflow-hidden">
-                <div className="bg-muted px-3 py-2 text-xs font-medium">
-                  Dados do Excel (primeiras 5 linhas)
-                </div>
-                <ScrollArea className="h-32">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        {headers.map((h, i) => (
-                          <th 
-                            key={i} 
-                            className={`px-2 py-1 text-left font-medium ${
-                              h === headlineColumn 
-                                ? "bg-primary/20 text-primary" 
-                                : ""
-                            }`}
-                          >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {preview.map((row, i) => (
-                        <tr key={i} className="border-b">
-                          {row.map((cell, j) => (
-                            <td 
-                              key={j} 
-                              className={`px-2 py-1 truncate max-w-[150px] ${
-                                headers[j] === headlineColumn 
-                                  ? "bg-primary/10 font-medium" 
-                                  : ""
-                              }`}
-                            >
-                              {cell}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </ScrollArea>
-              </div>
-
-              <Button
-                onClick={handleImport}
-                disabled={!headlineColumn || importMutation.isPending || selectedColumnHasUrls}
-                className="w-full"
-              >
-                {importMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
-                Importar {totalHeadlinesToImport} headlines
-              </Button>
+          {/* Loading */}
+          {isProcessing && (
+            <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Processando arquivo...
             </div>
+          )}
+
+          {/* Seleção de Abas */}
+          {sheetsInfo.length > 0 && !isProcessing && (
+            <div className="space-y-3 border rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">
+                  Abas do Excel ({sheetsInfo.length} encontradas)
+                </Label>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={selectAllSheets}
+                    disabled={selectedSheets.length === sheetsInfo.length}
+                  >
+                    Todas
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={deselectAllSheets}
+                    disabled={selectedSheets.length === 0}
+                  >
+                    Nenhuma
+                  </Button>
+                </div>
+              </div>
+              
+              <ScrollArea className="h-[180px] border rounded-md">
+                <div className="p-2 space-y-1">
+                  {sheetsInfo.map((sheet) => (
+                    <div 
+                      key={sheet.name}
+                      className={`flex items-center gap-3 p-2 rounded-md transition-colors cursor-pointer ${
+                        selectedSheets.includes(sheet.name) 
+                          ? 'bg-primary/10' 
+                          : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => toggleSheet(sheet.name)}
+                    >
+                      <Checkbox
+                        id={`sheet-${sheet.name}`}
+                        checked={selectedSheets.includes(sheet.name)}
+                        onCheckedChange={() => toggleSheet(sheet.name)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-sm">{sheet.name}</span>
+                        <span className="text-muted-foreground text-xs ml-2">
+                          ({sheet.headlines.length} headlines)
+                        </span>
+                      </div>
+                      {selectedSheets.includes(sheet.name) && (
+                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              {/* Resumo das headlines selecionadas */}
+              {selectedSheets.length > 0 && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span className="font-medium text-sm">
+                      Total: {totalSelectedHeadlines} headlines de {selectedSheets.length} aba(s)
+                    </span>
+                  </div>
+                  
+                  {/* Preview das primeiras headlines */}
+                  <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                    {sheetsInfo
+                      .filter(s => selectedSheets.includes(s.name))
+                      .slice(0, 3)
+                      .map(sheet => (
+                        <div key={sheet.name} className="truncate">
+                          • <span className="font-medium">{sheet.name}</span>: "{sheet.headlines[0]?.substring(0, 50)}..."
+                        </div>
+                      ))}
+                    {selectedSheets.length > 3 && (
+                      <div className="text-muted-foreground">
+                        ... e mais {selectedSheets.length - 3} aba(s)
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Botão de Importar */}
+          {sheetsInfo.length > 0 && selectedSheets.length > 0 && !isProcessing && (
+            <Button
+              onClick={handleImport}
+              disabled={importMutation.isPending}
+              className="w-full"
+            >
+              {importMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Importar {totalSelectedHeadlines} headlines
+            </Button>
           )}
 
           {/* Lista de arquivos já importados */}
