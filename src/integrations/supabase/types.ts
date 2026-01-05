@@ -1685,6 +1685,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_headlines_excel: {
+        Row: {
+          arquivo_origem: string | null
+          created_at: string | null
+          estrutura: string | null
+          headline: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          arquivo_origem?: string | null
+          created_at?: string | null
+          estrutura?: string | null
+          headline: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          arquivo_origem?: string | null
+          created_at?: string | null
+          estrutura?: string | null
+          headline?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
