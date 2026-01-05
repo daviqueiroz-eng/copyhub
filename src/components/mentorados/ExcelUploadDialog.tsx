@@ -173,12 +173,12 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
                 </div>
                 <div className="space-y-2">
                   <Label>Coluna de Estrutura (opcional)</Label>
-                  <Select value={estruturaColumn} onValueChange={setEstruturaColumn}>
+                  <Select value={estruturaColumn} onValueChange={(v) => setEstruturaColumn(v === "__none__" ? "" : v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Nenhuma" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma</SelectItem>
+                      <SelectItem value="__none__">Nenhuma</SelectItem>
                       {headers.filter((h) => h !== headlineColumn).map((h, i) => (
                         <SelectItem key={i} value={h}>
                           {h}
