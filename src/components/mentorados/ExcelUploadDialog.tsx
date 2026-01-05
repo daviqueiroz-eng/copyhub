@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Upload, FileSpreadsheet, Trash2, Loader2 } from "lucide-react";
+import { Upload, FileSpreadsheet, Trash2, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useImportExcelHeadlines, useUserHeadlinesExcel, useDeleteHeadlinesByFile } from "@/hooks/useUserHeadlinesExcel";
 
@@ -23,6 +23,20 @@ interface ExcelUploadDialogProps {
   open: boolean;
   onClose: () => void;
 }
+
+// Detecta se um valor parece ser URL
+const isLikelyUrl = (value: string): boolean => {
+  if (!value) return false;
+  const urlPatterns = [
+    /^https?:\/\//i,
+    /^www\./i,
+    /\.(com|net|org|io|br|gov|edu)/i,
+    /instagram\.com/i,
+    /youtube\.com/i,
+    /tiktok\.com/i,
+  ];
+  return urlPatterns.some(pattern => pattern.test(value));
+};
 
 export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => {
   const [file, setFile] = useState<File | null>(null);
@@ -43,6 +57,43 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
     acc[key].push(h);
     return acc;
   }, {} as Record<string, typeof existingHeadlines>);
+
+  // Auto-detectar coluna de headline
+  useEffect(() => {
+    if (headers.length > 0 && !headlineColumn) {
+      const headlineCol = headers.find(h => 
+        h.toLowerCase().includes('headline') || 
+        h.toLowerCase().includes('titulo') ||
+        h.toLowerCase().includes('título')
+      );
+      if (headlineCol) {
+        setHeadlineColumn(headlineCol);
+      }
+    }
+  }, [headers, headlineColumn]);
+
+  // Verificar se coluna selecionada parece conter URLs
+  const selectedColumnHasUrls = useMemo(() => {
+    if (!headlineColumn || allRows.length === 0) return false;
+    const colIdx = headers.indexOf(headlineColumn);
+    if (colIdx < 0) return false;
+    
+    // Verificar primeiras 10 linhas
+    const sampleValues = allRows.slice(0, 10).map(row => row[colIdx]).filter(Boolean);
+    const urlCount = sampleValues.filter(isLikelyUrl).length;
+    return urlCount > sampleValues.length * 0.5; // Mais de 50% são URLs
+  }, [headlineColumn, allRows, headers]);
+
+  // Preview das headlines selecionadas
+  const headlinePreview = useMemo(() => {
+    if (!headlineColumn) return [];
+    const colIdx = headers.indexOf(headlineColumn);
+    if (colIdx < 0) return [];
+    return allRows
+      .slice(0, 5)
+      .map(row => row[colIdx])
+      .filter(v => v?.trim());
+  }, [headlineColumn, allRows, headers]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -157,17 +208,30 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Coluna de Headline *</Label>
+                  <Label className="flex items-center gap-2">
+                    Coluna de Headline *
+                    {headlineColumn && !selectedColumnHasUrls && (
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    )}
+                  </Label>
                   <Select value={headlineColumn} onValueChange={setHeadlineColumn}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {headers.map((h, i) => (
-                        <SelectItem key={i} value={h}>
-                          {h}
-                        </SelectItem>
-                      ))}
+                      {headers.map((h, i) => {
+                        const isAutoDetected = h.toLowerCase().includes('headline') || 
+                          h.toLowerCase().includes('titulo') ||
+                          h.toLowerCase().includes('título');
+                        return (
+                          <SelectItem key={i} value={h}>
+                            <span className={isAutoDetected ? "font-medium text-primary" : ""}>
+                              {h}
+                              {isAutoDetected && " ✓"}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -189,17 +253,61 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
                 </div>
               </div>
 
-              {/* Preview das primeiras linhas */}
+              {/* Aviso se coluna parece conter URLs */}
+              {selectedColumnHasUrls && (
+                <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-yellow-600 dark:text-yellow-400">
+                      Esta coluna parece conter links/URLs
+                    </p>
+                    <p className="text-muted-foreground mt-1">
+                      Verifique se selecionou a coluna correta. Headlines geralmente são textos descritivos.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Preview das headlines a serem importadas */}
+              {headlineColumn && headlinePreview.length > 0 && !selectedColumnHasUrls && (
+                <div className="border rounded-lg overflow-hidden border-green-500/30 bg-green-500/5">
+                  <div className="bg-green-500/10 px-3 py-2 text-xs font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Headlines a serem importadas (preview)
+                  </div>
+                  <div className="p-3 space-y-1.5">
+                    {headlinePreview.map((headline, i) => (
+                      <p key={i} className="text-sm text-foreground/80 truncate">
+                        {i + 1}. "{headline}"
+                      </p>
+                    ))}
+                    {totalHeadlinesToImport > 5 && (
+                      <p className="text-xs text-muted-foreground pt-1">
+                        + {totalHeadlinesToImport - 5} mais...
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Preview das primeiras linhas (tabela completa) */}
               <div className="border rounded-lg overflow-hidden">
                 <div className="bg-muted px-3 py-2 text-xs font-medium">
-                  Preview (primeiras 5 linhas)
+                  Dados do Excel (primeiras 5 linhas)
                 </div>
                 <ScrollArea className="h-32">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b bg-muted/50">
                         {headers.map((h, i) => (
-                          <th key={i} className="px-2 py-1 text-left font-medium">
+                          <th 
+                            key={i} 
+                            className={`px-2 py-1 text-left font-medium ${
+                              h === headlineColumn 
+                                ? "bg-primary/20 text-primary" 
+                                : ""
+                            }`}
+                          >
                             {h}
                           </th>
                         ))}
@@ -209,7 +317,14 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
                       {preview.map((row, i) => (
                         <tr key={i} className="border-b">
                           {row.map((cell, j) => (
-                            <td key={j} className="px-2 py-1 truncate max-w-[150px]">
+                            <td 
+                              key={j} 
+                              className={`px-2 py-1 truncate max-w-[150px] ${
+                                headers[j] === headlineColumn 
+                                  ? "bg-primary/10 font-medium" 
+                                  : ""
+                              }`}
+                            >
                               {cell}
                             </td>
                           ))}
@@ -222,7 +337,7 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
 
               <Button
                 onClick={handleImport}
-                disabled={!headlineColumn || importMutation.isPending}
+                disabled={!headlineColumn || importMutation.isPending || selectedColumnHasUrls}
                 className="w-full"
               >
                 {importMutation.isPending ? (
