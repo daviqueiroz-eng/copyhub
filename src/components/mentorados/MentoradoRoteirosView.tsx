@@ -345,27 +345,17 @@ export const MentoradoRoteirosView = ({
     guiaNumero: number,
     ordem: number,
     field: "headline" | "estrutura",
-    value: string,
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    value: string
   ) => {
     handleChange(guiaNumero, ordem, field, value);
 
-    const target = e.currentTarget;
-    const rect = target.getBoundingClientRect();
     const key = `${guiaNumero}-${ordem}`;
 
-    // Calcular posição do popover
+    // Calcular posição do popover baseado na posição fixa
     const popoverWidth = 320;
     const popoverHeight = 350;
-    let left = rect.right + window.scrollX + 8;
-    if (left + popoverWidth > window.innerWidth) {
-      left = rect.left + window.scrollX - popoverWidth - 8;
-    }
-    let top = rect.top + window.scrollY - popoverHeight / 2;
-    if (top < 10) top = 10;
-    if (top + popoverHeight > window.innerHeight + window.scrollY) {
-      top = window.innerHeight + window.scrollY - popoverHeight - 10;
-    }
+    let left = window.innerWidth - popoverWidth - 20;
+    let top = 200;
 
     // Verificar se termina com /1, /2 ou /3 - abrir diretamente no modo
     if (value.endsWith("/1")) {
@@ -777,7 +767,7 @@ export const MentoradoRoteirosView = ({
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
                           onChange={(value) => {
-                            handleChange(guiaAtiva, ordem, "headline", value);
+                            handleInputChange2(guiaAtiva, ordem, "headline", value);
                           }}
                           onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "headline")}
                           placeholder="Digite a headline... (use / para comandos)"
@@ -797,7 +787,7 @@ export const MentoradoRoteirosView = ({
                         <InlineSpellCheckEditor
                           value={roteiro.estrutura}
                           onChange={(value) => {
-                            handleChange(guiaAtiva, ordem, "estrutura", value);
+                            handleInputChange2(guiaAtiva, ordem, "estrutura", value);
                           }}
                           onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "estrutura")}
                           onSelect={(e) => {
