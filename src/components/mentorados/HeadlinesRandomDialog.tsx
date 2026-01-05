@@ -18,7 +18,7 @@ import { ExcelUploadDialog } from "./ExcelUploadDialog";
 interface HeadlinesRandomDialogProps {
   open: boolean;
   onClose: () => void;
-  onSelect: (headline: string) => void;
+  onSelectMultiple: (headlines: string[]) => void;
   savedHeadlines: AnalysisHeadline[];
   onSaveHeadlines: (headlines: AnalysisHeadline[]) => void;
 }
@@ -36,14 +36,14 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 export const HeadlinesRandomDialog = ({
   open,
   onClose,
-  onSelect,
+  onSelectMultiple,
   savedHeadlines,
   onSaveHeadlines,
 }: HeadlinesRandomDialogProps) => {
   const { data: analysisHeadlines = [], isLoading: isLoadingAnalysis } = useAnalysisHeadlines();
   const { data: excelHeadlines = [], isLoading: isLoadingExcel } = useUserHeadlinesExcel();
   
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [useExcelSource, setUseExcelSource] = useState(() => {
     const saved = localStorage.getItem("headlines-source-preference");
     return saved === "excel";
@@ -68,13 +68,26 @@ export const HeadlinesRandomDialog = ({
   const allHeadlines = useExcelSource ? excelHeadlinesFormatted : analysisHeadlines;
   const isLoading = useExcelSource ? isLoadingExcel : isLoadingAnalysis;
 
+  // Toggle seleção
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
   // Gerar headlines aleatórias
   const generateRandomHeadlines = useCallback(() => {
     if (allHeadlines.length === 0) return;
     const shuffled = shuffleArray(allHeadlines);
     const newHeadlines = shuffled.slice(0, countRef.current);
     onSaveHeadlines(newHeadlines);
-    setSelectedId(null);
+    setSelectedIds(new Set());
   }, [allHeadlines, onSaveHeadlines]);
 
   // Gerar pela primeira vez se não houver headlines salvas ou ao trocar fonte
@@ -87,7 +100,7 @@ export const HeadlinesRandomDialog = ({
   // Limpar seleção ao fechar
   useEffect(() => {
     if (!open) {
-      setSelectedId(null);
+      setSelectedIds(new Set());
     }
   }, [open]);
 
@@ -102,9 +115,11 @@ export const HeadlinesRandomDialog = ({
   };
 
   const handleUse = () => {
-    const selected = savedHeadlines.find((h) => h.id === selectedId);
-    if (selected && selected.estrutura) {
-      onSelect(selected.estrutura);
+    const selected = savedHeadlines
+      .filter(h => selectedIds.has(h.id))
+      .map(h => h.headline);
+    if (selected.length > 0) {
+      onSelectMultiple(selected);
       onClose();
     }
   };
@@ -160,10 +175,10 @@ export const HeadlinesRandomDialog = ({
                       size="sm"
                       className="gap-2"
                       onClick={handleUse}
-                      disabled={!selectedId}
+                      disabled={selectedIds.size === 0}
                     >
                       <Check className="h-4 w-4" />
-                      Usar
+                      Usar {selectedIds.size > 0 && `(${selectedIds.size})`}
                     </Button>
                   </>
                 )}
@@ -212,17 +227,17 @@ export const HeadlinesRandomDialog = ({
                   <div
                     key={item.id}
                     className={`relative border rounded-lg p-4 cursor-pointer transition-all hover:border-primary ${
-                      selectedId === item.id
+                      selectedIds.has(item.id)
                         ? "border-primary bg-primary/5 ring-2 ring-primary"
                         : "bg-card"
                     }`}
-                    onClick={() => setSelectedId(item.id)}
+                    onClick={() => toggleSelection(item.id)}
                   >
                     {/* Checkbox */}
                     <div className="absolute top-3 right-3">
                       <Checkbox
-                        checked={selectedId === item.id}
-                        onCheckedChange={() => setSelectedId(item.id)}
+                        checked={selectedIds.has(item.id)}
+                        onCheckedChange={() => toggleSelection(item.id)}
                       />
                     </div>
 

@@ -847,14 +847,33 @@ export const MentoradoRoteirosView = ({
         onClose={() => setShowHeadlinesModal(false)}
         savedHeadlines={savedHeadlines}
         onSaveHeadlines={setSavedHeadlines}
-        onSelect={(headline) => {
-          // Inserir a headline no campo de headline do roteiro alvo
-          const [guiaStr, ordemStr] = headlinesTargetKey.split("-");
-          if (guiaStr && ordemStr) {
-            const roteiro = roteirosLocais.get(headlinesTargetKey) || { headline: "", estrutura: "" };
-            handleChange(parseInt(guiaStr), parseInt(ordemStr), "headline", roteiro.headline + headline);
+        onSelectMultiple={(headlines) => {
+          // Encontrar roteiros vazios na guia atual para preencher
+          const guiaConfig = guias.find(g => g.numero === guiaAtiva);
+          if (!guiaConfig) return;
+          
+          const roteirosVazios: { guia: number; ordem: number }[] = [];
+          for (let ordem = 1; ordem <= guiaConfig.quantidade; ordem++) {
+            const key = `${guiaAtiva}-${ordem}`;
+            const roteiro = roteirosLocais.get(key);
+            if (!roteiro?.headline?.trim()) {
+              roteirosVazios.push({ guia: guiaAtiva, ordem });
+            }
           }
+          
+          // Preencher roteiros vazios em sequência
+          headlines.forEach((headline, index) => {
+            if (index < roteirosVazios.length) {
+              handleChange(roteirosVazios[index].guia, roteirosVazios[index].ordem, "headline", headline);
+            }
+          });
+          
           setShowHeadlinesModal(false);
+          
+          toast({
+            title: "Headlines inseridas!",
+            description: `${Math.min(headlines.length, roteirosVazios.length)} headlines adicionadas aos roteiros vazios.`,
+          });
         }}
       />
 
