@@ -823,12 +823,12 @@ export const MentoradoRoteirosView = ({
                   </Button>
                 )}
                 
-                {trelloCard?.cardUrl && (
+                {(trelloCard?.cardUrl || currentMentorado?.link_trello) && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 text-blue-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-950"
-                    onClick={() => window.open(trelloCard.cardUrl, '_blank')}
+                    onClick={() => window.open(trelloCard?.cardUrl || currentMentorado?.link_trello || '', '_blank')}
                     title="Abrir no Trello"
                   >
                     <ExternalLink className="h-4 w-4" />

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Plus, Search, ExternalLink, Instagram, Trash2, FileText } from "lucide-react";
+import { Plus, Search, ExternalLink, Instagram, Trash2, FileText, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,6 +128,7 @@ const Mentorados = () => {
         link_drive: null,
         referencias: null,
         instagram: null,
+        link_trello: null,
       },
       {
         onSuccess: () => {
@@ -316,6 +317,30 @@ const Mentorados = () => {
                   value={selectedMentorado?.instagram || ""}
                   onChange={(e) => handleUpdateMentorado("instagram", e.target.value)}
                   placeholder="@usuario"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="link_trello" className="flex items-center gap-2">
+                  <LayoutGrid className="h-4 w-4 text-blue-500" />
+                  Trello
+                  {selectedMentorado?.link_trello && (
+                    <a
+                      href={selectedMentorado.link_trello}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary/80"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                </Label>
+                <Input
+                  id="link_trello"
+                  value={selectedMentorado?.link_trello || ""}
+                  onChange={(e) => handleUpdateMentorado("link_trello", e.target.value)}
+                  placeholder="https://trello.com/c/..."
                 />
               </div>
 
