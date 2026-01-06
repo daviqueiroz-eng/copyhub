@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 interface ChecklistItem {
   id: string;
@@ -199,6 +200,28 @@ export const RoteiroChecklist = ({
   
   // Calcular tempo total
   const totalSegundos = Object.values(timers).reduce((acc, t) => acc + t.segundos, 0);
+
+  // Mensagens de conclusão do checklist
+  const mensagensConclusao = [
+    "🎉 Checklist completo! Parabéns pelo trabalho!",
+    "🏆 Todos os itens concluídos! Excelente trabalho!",
+    "✨ Missão cumprida! Você finalizou tudo!",
+    "🚀 100% do checklist! Você arrasou!",
+  ];
+
+  // Efeito para mensagem de conclusão do checklist
+  useEffect(() => {
+    if (completedCount !== items.length) return;
+    
+    const celebratedKey = `checklist-completed-${mentoradoId}-${guiaNumero}`;
+    const alreadyCelebrated = localStorage.getItem(celebratedKey);
+    
+    if (!alreadyCelebrated) {
+      localStorage.setItem(celebratedKey, "true");
+      const randomMsg = mensagensConclusao[Math.floor(Math.random() * mensagensConclusao.length)];
+      toast({ title: randomMsg });
+    }
+  }, [completedCount, items.length, mentoradoId, guiaNumero]);
 
   return (
     <div className="w-72 shrink-0">
