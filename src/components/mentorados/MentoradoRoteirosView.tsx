@@ -485,28 +485,25 @@ export const MentoradoRoteirosView = ({
     if (!roteiro) return;
 
     const currentValue = roteiro[targetField];
-    const cursorPos = cursorPositionRef.current.get(targetKey) || currentValue.length;
+    const cursorPos = cursorPositionRef.current.get(targetKey) ?? currentValue.length;
     
-    // Encontrar onde o comando "/" começa (pode ser /, /1, /2, /3)
-    // O cursor está no final do comando, então voltamos para encontrar o /
-    let slashStart = cursorPos - 1;
-    // Verifica se tem um número depois do /
-    if (slashStart > 0 && /[123]/.test(currentValue[slashStart - 1] || "")) {
-      // Era /1, /2 ou /3 - o número já foi removido pelo handleInputChange2 para /3
-    }
-    // Encontrar o início do /
+    // Encontrar o início do comando "/" olhando para trás a partir do cursor
+    let slashStart = cursorPos;
+    
+    // Volta até encontrar o "/" ou chegar ao início
     while (slashStart > 0 && currentValue[slashStart - 1] !== '/') {
       slashStart--;
     }
-    if (slashStart > 0) slashStart--; // Incluir o /
+    
+    // Se encontrou o /, inclui ele na remoção
+    if (slashStart > 0 && currentValue[slashStart - 1] === '/') {
+      slashStart--;
+    }
     
     const beforeSlash = currentValue.slice(0, slashStart);
     const afterCursor = currentValue.slice(cursorPos);
     
-    // Limpar possíveis restos do comando (/, /1, /2)
-    const cleanAfter = afterCursor.replace(/^[123]?/, "");
-    
-    const newValue = beforeSlash + text + cleanAfter;
+    const newValue = beforeSlash + text + afterCursor;
 
     const [guiaStr, ordemStr] = targetKey.split("-");
     handleChange(parseInt(guiaStr), parseInt(ordemStr), targetField, newValue);
