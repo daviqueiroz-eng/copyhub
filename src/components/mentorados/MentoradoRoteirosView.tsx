@@ -610,7 +610,7 @@ export const MentoradoRoteirosView = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <RoteiroTimer />
+          <RoteiroTimer mentoradoId={mentoradoId} guiaNumero={guiaAtiva} />
           <Button
             variant="outline"
             size="icon"
