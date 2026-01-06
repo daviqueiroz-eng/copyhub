@@ -25,17 +25,21 @@ interface RoteiroChecklistProps {
 export const RoteiroChecklist = ({ mentoradoId, guiaNumero }: RoteiroChecklistProps) => {
   const storageKey = `roteiro-checklist-${mentoradoId}-${guiaNumero}`;
   
-  const [items, setItems] = useState<ChecklistItem[]>(() => {
+  const [items, setItems] = useState<ChecklistItem[]>(DEFAULT_ITEMS);
+
+  // Recarregar quando mudar de guia
+  useEffect(() => {
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        setItems(JSON.parse(saved));
       } catch {
-        return DEFAULT_ITEMS;
+        setItems(DEFAULT_ITEMS.map(i => ({ ...i, checked: false })));
       }
+    } else {
+      setItems(DEFAULT_ITEMS.map(i => ({ ...i, checked: false })));
     }
-    return DEFAULT_ITEMS;
-  });
+  }, [storageKey]);
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(items));
