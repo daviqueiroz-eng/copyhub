@@ -10,8 +10,8 @@ import { TTSConfigPopover } from "./TTSConfigPopover";
 import { FindReplaceDialog } from "./FindReplaceDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
-import { RoteiroTimer } from "./RoteiroTimer";
 import { RoteiroChecklist } from "./RoteiroChecklist";
+import { RoteiroProgressBar } from "./RoteiroProgressBar";
 import {
   Dialog,
   DialogContent,
@@ -594,43 +594,72 @@ export const MentoradoRoteirosView = ({
     );
   }
 
+  // Calcular progresso
+  const calcularProgresso = () => {
+    const guiaConfig = guias.find(g => g.numero === guiaAtiva);
+    const quantidade = guiaConfig?.quantidade || 10;
+    let headlinesPreenchidas = 0;
+    let roteirosPreenchidos = 0;
+    
+    for (let ordem = 1; ordem <= quantidade; ordem++) {
+      const key = `${guiaAtiva}-${ordem}`;
+      const roteiro = roteirosLocais.get(key);
+      if (roteiro?.headline?.trim()) headlinesPreenchidas++;
+      if (roteiro?.estrutura?.trim()) roteirosPreenchidos++;
+    }
+    
+    return { headlinesPreenchidas, roteirosPreenchidos, total: quantidade };
+  };
+  
+  const progresso = calcularProgresso();
+
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b bg-card">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold font-poppins">Roteiros - {mentoradoNome}</h1>
-            <p className="text-sm text-muted-foreground">
-              Guia {guiaAtiva} • {getFilledCount(guiaAtiva)}/{guiaAtivaConfig.quantidade} preenchidos
-            </p>
+      <div className="flex flex-col border-b bg-card">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold font-poppins">Roteiros - {mentoradoNome}</h1>
+              <p className="text-sm text-muted-foreground">
+                Guia {guiaAtiva} • {getFilledCount(guiaAtiva)}/{guiaAtivaConfig.quantidade} preenchidos
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowFindReplace(true)}
+              title="Localizar e Substituir (Ctrl+H)"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowSpellChecker(true)}
+              title="Corretor Automático"
+            >
+              <FileEdit className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={handleCopyAllRoteiros}>
+              <ClipboardCopy className="h-4 w-4" />
+              Copiar todos
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <RoteiroTimer mentoradoId={mentoradoId} guiaNumero={guiaAtiva} />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setShowFindReplace(true)}
-            title="Localizar e Substituir (Ctrl+H)"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setShowSpellChecker(true)}
-            title="Corretor Automático"
-          >
-            <FileEdit className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" className="gap-2" onClick={handleCopyAllRoteiros}>
-            <ClipboardCopy className="h-4 w-4" />
-            Copiar todos
-          </Button>
+        
+        {/* Progress Bar */}
+        <div className="px-6 pb-3">
+          <RoteiroProgressBar
+            headlinesPreenchidas={progresso.headlinesPreenchidas}
+            roteirosPreenchidos={progresso.roteirosPreenchidos}
+            total={progresso.total}
+          />
         </div>
       </div>
 
@@ -670,9 +699,9 @@ export const MentoradoRoteirosView = ({
 
         {/* Main - Documento estilo Google Docs */}
         <ScrollArea className="flex-1 bg-muted/20">
-          <div className="flex justify-center gap-6 py-8 px-4">
+          <div className="flex justify-center py-8 px-4">
             {/* Paper container */}
-            <div className="max-w-[816px] flex-1 bg-background shadow-md rounded-sm" style={{ minHeight: 'calc(100vh - 200px)' }}>
+            <div className="max-w-[816px] flex-1 bg-background shadow-md rounded-sm" style={{ minHeight: 'calc(100vh - 250px)' }}>
               <div className="px-16 py-12">
                 {Array.from({ length: guiaAtivaConfig.quantidade }, (_, i) => i + 1).map((ordem) => {
                   const key = `${guiaAtiva}-${ordem}`;
@@ -830,11 +859,13 @@ export const MentoradoRoteirosView = ({
                 </div>
               </div>
             </div>
-
-            {/* Checklist do lado direito */}
-            <RoteiroChecklist mentoradoId={mentoradoId} guiaNumero={guiaAtiva} />
           </div>
         </ScrollArea>
+        
+        {/* Checklist fixo à direita */}
+        <div className="shrink-0 border-l bg-muted/30 overflow-y-auto py-4 px-4">
+          <RoteiroChecklist mentoradoId={mentoradoId} guiaNumero={guiaAtiva} />
+        </div>
       </div>
 
       {/* Slash Command Popover */}
