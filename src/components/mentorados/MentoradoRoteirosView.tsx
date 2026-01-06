@@ -12,7 +12,6 @@ import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
 import { RoteiroChecklist, TimersRecord } from "./RoteiroChecklist";
 import { RoteiroProgressBar } from "./RoteiroProgressBar";
-import { RoteiroTimer } from "./RoteiroTimer";
 import {
   Dialog,
   DialogContent,
@@ -214,37 +213,8 @@ export const MentoradoRoteirosView = ({
     setActiveTimerId(null);
   }, [mentoradoId, guiaAtiva]);
 
-  // Handler para play/pause do cronômetro geral
-  const handleGeneralPlayPause = useCallback(() => {
-    const isAnyRunning = Object.values(timers).some(t => t.isRunning);
-    
-    if (isAnyRunning) {
-      // Pausar todos
-      const newTimers = { ...timers };
-      Object.keys(newTimers).forEach(key => {
-        newTimers[key] = { ...newTimers[key], isRunning: false };
-      });
-      setTimers(newTimers);
-      setActiveTimerId(null);
-    } else {
-      // Iniciar o primeiro não-finalizado, ou o ativo anterior
-      const timerOrder = ["headlines", "roteiros", "revisar"];
-      let targetId = activeTimerId;
-      
-      if (!targetId || timers[targetId]?.finalizado) {
-        // Encontrar primeiro não-finalizado
-        targetId = timerOrder.find(id => !timers[id]?.finalizado) || null;
-      }
-      
-      if (targetId && timers[targetId]) {
-        setTimers(prev => ({
-          ...prev,
-          [targetId!]: { ...prev[targetId!], isRunning: true }
-        }));
-        setActiveTimerId(targetId);
-      }
-    }
-  }, [timers, activeTimerId]);
+  // Estados para controlar marcos de motivação já celebrados
+  const [celebratedMilestones, setCelebratedMilestones] = useState<Set<string>>(new Set());
 
   // Handler para criar primeira guia
   const handleCreateFirstGuia = (quantidade: number) => {
@@ -682,6 +652,61 @@ export const MentoradoRoteirosView = ({
   
   const progresso = calcularProgresso();
 
+  // Mensagens motivacionais
+  const mensagensHeadlines50 = [
+    "🔥 Metade das headlines prontas! Continue assim!",
+    "💪 50% concluído! Você está voando!",
+    "🚀 Meio caminho andado nas headlines!",
+    "⚡ Excelente ritmo! Metade feita!",
+  ];
+  const mensagensHeadlines100 = [
+    "🎉 Todas as headlines prontas! Agora é hora dos roteiros!",
+    "✨ Headlines finalizadas! Mandou bem!",
+    "🏆 100% das headlines! Próximo passo: roteiros!",
+  ];
+  const mensagensRoteiros50 = [
+    "🔥 Metade dos roteiros prontos!",
+    "💪 50% dos roteiros! Continue firme!",
+    "🚀 Você está na metade! Não pare agora!",
+  ];
+  const mensagensRoteiros100 = [
+    "🎉 Todos os roteiros prontos! Hora de revisar!",
+    "🏆 100% concluído! Você é demais!",
+    "✨ Roteiros finalizados! Missão cumprida!",
+  ];
+
+  const getRandomMessage = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+  // Efeito para mensagens motivacionais de progresso
+  useEffect(() => {
+    if (progresso.total === 0) return;
+    
+    const headlinesPercent = (progresso.headlinesPreenchidas / progresso.total) * 100;
+    const roteirosPercent = (progresso.roteirosPreenchidos / progresso.total) * 100;
+    const guiaKey = `${mentoradoId}-${guiaAtiva}`;
+
+    // Headlines 50%
+    if (headlinesPercent >= 50 && headlinesPercent < 100 && !celebratedMilestones.has(`${guiaKey}-headlines-50`)) {
+      setCelebratedMilestones(prev => new Set(prev).add(`${guiaKey}-headlines-50`));
+      toast({ title: getRandomMessage(mensagensHeadlines50) });
+    }
+    // Headlines 100%
+    if (headlinesPercent >= 100 && !celebratedMilestones.has(`${guiaKey}-headlines-100`)) {
+      setCelebratedMilestones(prev => new Set(prev).add(`${guiaKey}-headlines-100`));
+      toast({ title: getRandomMessage(mensagensHeadlines100) });
+    }
+    // Roteiros 50%
+    if (roteirosPercent >= 50 && roteirosPercent < 100 && !celebratedMilestones.has(`${guiaKey}-roteiros-50`)) {
+      setCelebratedMilestones(prev => new Set(prev).add(`${guiaKey}-roteiros-50`));
+      toast({ title: getRandomMessage(mensagensRoteiros50) });
+    }
+    // Roteiros 100%
+    if (roteirosPercent >= 100 && !celebratedMilestones.has(`${guiaKey}-roteiros-100`)) {
+      setCelebratedMilestones(prev => new Set(prev).add(`${guiaKey}-roteiros-100`));
+      toast({ title: getRandomMessage(mensagensRoteiros100) });
+    }
+  }, [progresso.headlinesPreenchidas, progresso.roteirosPreenchidos, progresso.total, mentoradoId, guiaAtiva, celebratedMilestones]);
+
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
@@ -699,12 +724,6 @@ export const MentoradoRoteirosView = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Cronômetro geral */}
-            <RoteiroTimer
-              timers={timers}
-              activeTimerId={activeTimerId}
-              onPlayPause={handleGeneralPlayPause}
-            />
             <Button
               variant="outline"
               size="icon"
