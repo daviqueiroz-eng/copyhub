@@ -5,35 +5,46 @@ import { cn } from "@/lib/utils";
 
 interface RoteiroTimerProps {
   className?: string;
+  mentoradoId: string;
+  guiaNumero: number;
 }
 
-export const RoteiroTimer = ({ className }: RoteiroTimerProps) => {
+export const RoteiroTimer = ({ className, mentoradoId, guiaNumero }: RoteiroTimerProps) => {
+  const storageKey = `roteiro-timer-${mentoradoId}-${guiaNumero}`;
+  
   const [segundos, setSegundos] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinalizado, setIsFinalizado] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Carregar do localStorage
+  // Carregar quando mudar de guia
   useEffect(() => {
-    const saved = localStorage.getItem("roteiro_timer");
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         const data = JSON.parse(saved);
         setSegundos(data.segundos || 0);
         setIsFinalizado(data.finalizado || false);
+        setIsRunning(false); // Sempre pausado ao carregar
       } catch {
-        // ignore
+        setSegundos(0);
+        setIsFinalizado(false);
+        setIsRunning(false);
       }
+    } else {
+      setSegundos(0);
+      setIsFinalizado(false);
+      setIsRunning(false);
     }
-  }, []);
+  }, [storageKey]);
 
   // Salvar no localStorage quando muda
   useEffect(() => {
-    localStorage.setItem("roteiro_timer", JSON.stringify({
+    localStorage.setItem(storageKey, JSON.stringify({
       segundos,
       finalizado: isFinalizado,
     }));
-  }, [segundos, isFinalizado]);
+  }, [segundos, isFinalizado, storageKey]);
 
   // Timer interval
   useEffect(() => {
