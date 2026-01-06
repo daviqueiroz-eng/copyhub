@@ -67,8 +67,13 @@ export const RoteiroTimer = ({ className }: RoteiroTimerProps) => {
   };
 
   const handlePlayPause = () => {
-    if (isFinalizado) return;
-    setIsRunning(!isRunning);
+    if (isFinalizado) {
+      // Retomar de onde parou
+      setIsFinalizado(false);
+      setIsRunning(true);
+    } else {
+      setIsRunning(!isRunning);
+    }
   };
 
   const handleFinalizar = () => {
@@ -106,8 +111,7 @@ export const RoteiroTimer = ({ className }: RoteiroTimerProps) => {
         size="icon"
         className="h-9 w-9"
         onClick={handlePlayPause}
-        disabled={isFinalizado}
-        title={isRunning ? "Pausar" : "Iniciar"}
+        title={isFinalizado ? "Retomar" : isRunning ? "Pausar" : "Iniciar"}
       >
         {isRunning ? (
           <Pause className="h-4 w-4" />
