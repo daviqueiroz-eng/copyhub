@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { TTSConfigPopover } from "./TTSConfigPopover";
 import { FindReplaceDialog } from "./FindReplaceDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
+import { RoteiroTimer } from "./RoteiroTimer";
 import {
   Dialog,
   DialogContent,
@@ -135,6 +136,16 @@ export const MentoradoRoteirosView = ({
     }
     return [];
   })();
+
+  // Mapa de key (guia-ordem) para roteiro_id do banco
+  const roteiroIdsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    roteiros.forEach((r) => {
+      const key = `${r.guia_numero}-${r.ordem}`;
+      map.set(key, r.id);
+    });
+    return map;
+  }, [roteiros]);
 
   // Inicializar roteiros locais a partir do banco
   useEffect(() => {
@@ -761,9 +772,12 @@ export const MentoradoRoteirosView = ({
 
                       {/* Headline */}
                       <div className="mb-2">
-                        <span className="font-poppins font-bold text-[#B8860B] text-base">
-                          HEADLINE {String(ordem).padStart(2, "0")}:
-                        </span>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-poppins font-bold text-[#B8860B] text-base">
+                            HEADLINE {String(ordem).padStart(2, "0")}:
+                          </span>
+                          <RoteiroTimer roteiroId={roteiroIdsMap.get(key) || null} />
+                        </div>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
                           onChange={(value) => {
