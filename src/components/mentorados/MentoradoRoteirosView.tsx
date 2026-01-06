@@ -11,6 +11,7 @@ import { FindReplaceDialog } from "./FindReplaceDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
 import { RoteiroTimer } from "./RoteiroTimer";
+import { RoteiroChecklist } from "./RoteiroChecklist";
 import {
   Dialog,
   DialogContent,
@@ -669,9 +670,9 @@ export const MentoradoRoteirosView = ({
 
         {/* Main - Documento estilo Google Docs */}
         <ScrollArea className="flex-1 bg-muted/20">
-          <div className="py-8 px-4">
+          <div className="flex justify-center gap-6 py-8 px-4">
             {/* Paper container */}
-            <div className="max-w-[816px] mx-auto bg-background shadow-md rounded-sm" style={{ minHeight: 'calc(100vh - 200px)' }}>
+            <div className="max-w-[816px] flex-1 bg-background shadow-md rounded-sm" style={{ minHeight: 'calc(100vh - 200px)' }}>
               <div className="px-16 py-12">
                 {Array.from({ length: guiaAtivaConfig.quantidade }, (_, i) => i + 1).map((ordem) => {
                   const key = `${guiaAtiva}-${ordem}`;
@@ -829,6 +830,9 @@ export const MentoradoRoteirosView = ({
                 </div>
               </div>
             </div>
+
+            {/* Checklist do lado direito */}
+            <RoteiroChecklist mentoradoId={mentoradoId} guiaNumero={guiaAtiva} />
           </div>
         </ScrollArea>
       </div>
