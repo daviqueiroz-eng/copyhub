@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useMentorados } from "@/hooks/useMentorados";
+import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
@@ -148,6 +148,7 @@ export const MentoradoRoteirosView = ({
   const { data: trelloImport } = useTrelloImport();
   const upsertRoteiro = useUpsertMentoradoRoteiro();
   const deleteGuia = useDeleteGuia();
+  const updateMentorado = useUpdateMentorado();
   
   // Estado para confirmação de deletar guia
   const [guiaToDelete, setGuiaToDelete] = useState<number | null>(null);
@@ -457,16 +458,35 @@ export const MentoradoRoteirosView = ({
     }
   }, []);
 
-  // Inserir texto selecionado do slash command
+  // Inserir texto selecionado do slash command - na posição do cursor
   const handleSlashSelectItem = useCallback((text: string) => {
     const { targetKey, targetField } = slashCommand;
     const roteiro = roteirosLocais.get(targetKey);
     if (!roteiro) return;
 
     const currentValue = roteiro[targetField];
-    // Remover o "/" do final
-    const cleanValue = currentValue.replace(/\/[12]?$/, "");
-    const newValue = cleanValue + text;
+    const cursorPos = cursorPositionRef.current.get(targetKey) || currentValue.length;
+    
+    // Encontrar onde o comando "/" começa (pode ser /, /1, /2, /3)
+    // O cursor está no final do comando, então voltamos para encontrar o /
+    let slashStart = cursorPos - 1;
+    // Verifica se tem um número depois do /
+    if (slashStart > 0 && /[123]/.test(currentValue[slashStart - 1] || "")) {
+      // Era /1, /2 ou /3 - o número já foi removido pelo handleInputChange2 para /3
+    }
+    // Encontrar o início do /
+    while (slashStart > 0 && currentValue[slashStart - 1] !== '/') {
+      slashStart--;
+    }
+    if (slashStart > 0) slashStart--; // Incluir o /
+    
+    const beforeSlash = currentValue.slice(0, slashStart);
+    const afterCursor = currentValue.slice(cursorPos);
+    
+    // Limpar possíveis restos do comando (/, /1, /2)
+    const cleanAfter = afterCursor.replace(/^[123]?/, "");
+    
+    const newValue = beforeSlash + text + cleanAfter;
 
     const [guiaStr, ordemStr] = targetKey.split("-");
     handleChange(parseInt(guiaStr), parseInt(ordemStr), targetField, newValue);
@@ -488,6 +508,9 @@ export const MentoradoRoteirosView = ({
     const popoverHeight = 350;
     let left = window.innerWidth - popoverWidth - 20;
     let top = 200;
+
+    // Salvar posição do cursor para inserção correta
+    cursorPositionRef.current.set(key, value.length);
 
     // Verificar se termina com /1, /2 ou /3 - abrir diretamente no modo
     if (value.endsWith("/1")) {
@@ -520,6 +543,52 @@ export const MentoradoRoteirosView = ({
       setSlashCommand(prev => ({ ...prev, targetKey: key, targetField: field }));
     }
   }, [handleChange, slashCommand.isOpen]);
+
+  // Handlers para CRUD do Mapa do Avatar diretamente no popover
+  const handleAddAvatarItem = useCallback((categoryId: string, text: string) => {
+    if (!currentMentorado) return;
+    
+    const updatedCategories = avatarCategories.map(cat => 
+      cat.id === categoryId 
+        ? { ...cat, items: [...cat.items, text] }
+        : cat
+    );
+    
+    updateMentorado.mutate({
+      id: currentMentorado.id,
+      observacoes: JSON.stringify(updatedCategories),
+    });
+  }, [currentMentorado, avatarCategories, updateMentorado]);
+
+  const handleEditAvatarItem = useCallback((categoryId: string, oldText: string, newText: string) => {
+    if (!currentMentorado) return;
+    
+    const updatedCategories = avatarCategories.map(cat => 
+      cat.id === categoryId 
+        ? { ...cat, items: cat.items.map(item => item === oldText ? newText : item) }
+        : cat
+    );
+    
+    updateMentorado.mutate({
+      id: currentMentorado.id,
+      observacoes: JSON.stringify(updatedCategories),
+    });
+  }, [currentMentorado, avatarCategories, updateMentorado]);
+
+  const handleDeleteAvatarItem = useCallback((categoryId: string, text: string) => {
+    if (!currentMentorado) return;
+    
+    const updatedCategories = avatarCategories.map(cat => 
+      cat.id === categoryId 
+        ? { ...cat, items: cat.items.filter(item => item !== text) }
+        : cat
+    );
+    
+    updateMentorado.mutate({
+      id: currentMentorado.id,
+      observacoes: JSON.stringify(updatedCategories),
+    });
+  }, [currentMentorado, avatarCategories, updateMentorado]);
 
   const handleClearRoteiro = (guiaNumero: number, ordem: number) => {
     const key = `${guiaNumero}-${ordem}`;
@@ -1112,6 +1181,9 @@ export const MentoradoRoteirosView = ({
         onSelectItem={handleSlashSelectItem}
         position={slashCommand.position}
         avatarCategories={avatarCategories}
+        onAddAvatarItem={handleAddAvatarItem}
+        onEditAvatarItem={handleEditAvatarItem}
+        onDeleteAvatarItem={handleDeleteAvatarItem}
       />
 
       {/* Modal de Headlines Aleatórias (/3) */}

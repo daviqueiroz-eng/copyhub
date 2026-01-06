@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { Search } from "lucide-react";
+import { Search, Plus, Pencil, X, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { useIntensificadores, useCTAs, HighlightItem } from "@/hooks/useAnalysisHighlights";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
@@ -21,6 +22,9 @@ interface SlashCommandPopoverProps {
   onSelectItem: (text: string) => void;
   position: { top: number; left: number };
   avatarCategories?: AvatarCategory[];
+  onAddAvatarItem?: (categoryId: string, text: string) => void;
+  onEditAvatarItem?: (categoryId: string, oldText: string, newText: string) => void;
+  onDeleteAvatarItem?: (categoryId: string, text: string) => void;
 }
 
 export const SlashCommandPopover = ({
@@ -30,10 +34,19 @@ export const SlashCommandPopover = ({
   onSelectItem,
   position,
   avatarCategories = [],
+  onAddAvatarItem,
+  onEditAvatarItem,
+  onDeleteAvatarItem,
 }: SlashCommandPopoverProps) => {
   const [search, setSearch] = useState("");
   const [internalMode, setInternalMode] = useState<SlashCommandMode>(mode);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Estados para adicionar/editar itens
+  const [addingToCategory, setAddingToCategory] = useState<string | null>(null);
+  const [newItemText, setNewItemText] = useState("");
+  const [editingItem, setEditingItem] = useState<{ categoryId: string; oldText: string } | null>(null);
+  const [editItemText, setEditItemText] = useState("");
 
   const { data: intensificadores = [] } = useIntensificadores();
   const { data: ctas = [] } = useCTAs();
@@ -41,6 +54,8 @@ export const SlashCommandPopover = ({
   useEffect(() => {
     setInternalMode(mode);
     setSearch("");
+    setAddingToCategory(null);
+    setEditingItem(null);
   }, [mode]);
 
   // Fechar ao clicar fora
@@ -61,7 +76,14 @@ export const SlashCommandPopover = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        if (addingToCategory || editingItem) {
+          setAddingToCategory(null);
+          setEditingItem(null);
+          setNewItemText("");
+          setEditItemText("");
+        } else {
+          onClose();
+        }
       }
     };
 
@@ -69,7 +91,7 @@ export const SlashCommandPopover = ({
       document.addEventListener("keydown", handleKeyDown);
     }
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, addingToCategory, editingItem]);
 
   if (!isOpen) return null;
 
@@ -93,11 +115,11 @@ export const SlashCommandPopover = ({
     );
   };
 
-  // Categorias do avatar que têm pelo menos 1 item
-  const categoriesWithItems = avatarCategories.filter((cat) => cat.items.length > 0);
+  // Categorias do avatar que têm pelo menos 1 item ou podem receber novos
+  const categoriesWithItems = avatarCategories.filter((cat) => cat.items.length > 0 || onAddAvatarItem);
 
   // Agrupar todos os itens do Avatar para exibição direta
-  const allAvatarItems = categoriesWithItems.flatMap(cat => 
+  const allAvatarItems = avatarCategories.flatMap(cat => 
     cat.items.map(item => ({ item, category: cat }))
   );
 
@@ -106,6 +128,25 @@ export const SlashCommandPopover = ({
     return allAvatarItems.filter(({ item }) =>
       item.toLowerCase().includes(search.toLowerCase())
     );
+  };
+
+  const handleAddItem = (categoryId: string) => {
+    if (!newItemText.trim() || !onAddAvatarItem) return;
+    onAddAvatarItem(categoryId, newItemText.trim());
+    setNewItemText("");
+    setAddingToCategory(null);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingItem || !editItemText.trim() || !onEditAvatarItem) return;
+    onEditAvatarItem(editingItem.categoryId, editingItem.oldText, editItemText.trim());
+    setEditingItem(null);
+    setEditItemText("");
+  };
+
+  const startEditing = (categoryId: string, text: string) => {
+    setEditingItem({ categoryId, oldText: text });
+    setEditItemText(text);
   };
 
   const renderMenu = () => {
@@ -120,34 +161,139 @@ export const SlashCommandPopover = ({
       groupedItems.get(category.id)!.items.push(item);
     });
 
+    // Se pesquisando, mostrar só as categorias com resultados
+    // Se não pesquisando, mostrar todas as categorias (para poder adicionar)
+    const categoriesToShow = search.trim() 
+      ? Array.from(groupedItems.values())
+      : avatarCategories.map(cat => ({
+          category: cat,
+          items: cat.items
+        }));
+
     return (
       <div className="py-2 flex flex-col">
         <p className="px-3 py-1 text-xs text-muted-foreground font-semibold shrink-0">Mapa do Avatar</p>
         
-        {groupedItems.size === 0 ? (
+        {categoriesToShow.length === 0 ? (
           <p className="px-3 py-4 text-sm text-muted-foreground text-center">
-            {categoriesWithItems.length === 0 
+            {avatarCategories.length === 0 
               ? "Nenhum item no Mapa do Avatar." 
               : "Nenhum resultado encontrado."}
           </p>
         ) : (
-          <div className="h-[280px] overflow-y-auto pr-1">
-            {Array.from(groupedItems.values()).map(({ category, items }) => (
-              <div key={category.id} className="mb-2">
-                <p className="px-3 py-1 text-xs font-semibold" style={{ color: category.color }}>
-                  {category.name} ({items.length})
-                </p>
+          <div className="h-[400px] overflow-y-auto pr-1">
+            {categoriesToShow.map(({ category, items }) => (
+              <div key={category.id} className="mb-3">
+                <div className="flex items-center justify-between px-3 py-1">
+                  <p className="text-xs font-semibold" style={{ color: category.color }}>
+                    {category.name} ({items.length})
+                  </p>
+                  {onAddAvatarItem && (
+                    <button
+                      className="p-1 hover:bg-primary/10 rounded transition-colors"
+                      onClick={() => {
+                        setAddingToCategory(category.id);
+                        setNewItemText("");
+                      }}
+                      title="Adicionar item"
+                    >
+                      <Plus className="h-3 w-3 text-muted-foreground" />
+                    </button>
+                  )}
+                </div>
+                
+                {/* Input para adicionar novo item */}
+                {addingToCategory === category.id && (
+                  <div className="flex gap-1 px-3 py-1">
+                    <Input
+                      value={newItemText}
+                      onChange={e => setNewItemText(e.target.value)}
+                      placeholder="Novo item..."
+                      className="h-7 text-sm flex-1"
+                      autoFocus
+                      onKeyDown={e => {
+                        if (e.key === "Enter") handleAddItem(category.id);
+                        if (e.key === "Escape") {
+                          setAddingToCategory(null);
+                          setNewItemText("");
+                        }
+                      }}
+                    />
+                    <Button size="sm" className="h-7 px-2" onClick={() => handleAddItem(category.id)}>
+                      <Check className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setAddingToCategory(null)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+                
                 {items.map((item, idx) => (
-                  <button
-                    key={`${category.id}-${idx}`}
-                    className="w-full text-left px-4 py-1.5 hover:bg-primary/10 transition-colors text-sm"
-                    onClick={() => {
-                      onSelectItem(item);
-                      onClose();
-                    }}
-                  >
-                    {item}
-                  </button>
+                  <div key={`${category.id}-${idx}`} className="group">
+                    {editingItem?.categoryId === category.id && editingItem?.oldText === item ? (
+                      <div className="flex gap-1 px-3 py-1">
+                        <Input
+                          value={editItemText}
+                          onChange={e => setEditItemText(e.target.value)}
+                          className="h-7 text-sm flex-1"
+                          autoFocus
+                          onKeyDown={e => {
+                            if (e.key === "Enter") handleSaveEdit();
+                            if (e.key === "Escape") {
+                              setEditingItem(null);
+                              setEditItemText("");
+                            }
+                          }}
+                        />
+                        <Button size="sm" className="h-7 px-2" onClick={handleSaveEdit}>
+                          <Check className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditingItem(null)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between px-4 py-1.5 hover:bg-primary/10 transition-colors">
+                        <button
+                          className="flex-1 text-left text-sm truncate"
+                          onClick={() => {
+                            onSelectItem(item);
+                            onClose();
+                          }}
+                        >
+                          {item}
+                        </button>
+                        {(onEditAvatarItem || onDeleteAvatarItem) && (
+                          <div className="hidden group-hover:flex items-center gap-0.5 ml-2">
+                            {onEditAvatarItem && (
+                              <button
+                                className="p-1 hover:bg-background rounded transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(category.id, item);
+                                }}
+                                title="Editar"
+                              >
+                                <Pencil className="h-3 w-3 text-muted-foreground" />
+                              </button>
+                            )}
+                            {onDeleteAvatarItem && (
+                              <button
+                                className="p-1 hover:bg-destructive/10 rounded transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteAvatarItem(category.id, item);
+                                }}
+                                title="Remover"
+                              >
+                                <X className="h-3 w-3 text-destructive" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             ))}
@@ -184,7 +330,7 @@ export const SlashCommandPopover = ({
               : "Nenhum resultado para a busca."}
           </p>
         ) : (
-          <ScrollArea className="max-h-[250px]">
+          <ScrollArea className="max-h-[350px]">
             {filtered.map((item) => (
               <button
                 key={item.id}
@@ -225,7 +371,7 @@ export const SlashCommandPopover = ({
             Nenhum resultado para a busca.
           </p>
         ) : (
-          <ScrollArea className="max-h-[250px]">
+          <ScrollArea className="max-h-[350px]">
             {filtered.map((item, index) => (
               <button
                 key={index}
@@ -258,7 +404,7 @@ export const SlashCommandPopover = ({
   return (
     <div
       ref={containerRef}
-      className="fixed z-[100] bg-background border rounded-lg shadow-lg w-80"
+      className="fixed z-[100] bg-background border rounded-lg shadow-lg w-96"
       style={{ top: position.top, left: position.left }}
     >
       {/* Campo de busca */}
