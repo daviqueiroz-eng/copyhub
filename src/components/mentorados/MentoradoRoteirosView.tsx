@@ -217,9 +217,32 @@ export const MentoradoRoteirosView = ({
     setRoteirosLocais(newMap);
   }, [roteiros, isLoading]);
 
+  // Função para mudar de guia com limpeza de estado
+  const handleGuiaChange = useCallback((novaGuia: number) => {
+    // Parar timer ativo antes de mudar
+    if (activeTimerId) {
+      setTimers(prev => ({
+        ...prev,
+        [activeTimerId]: { ...prev[activeTimerId], isRunning: false }
+      }));
+      setActiveTimerId(null);
+    }
+    
+    setGuiaAtiva(novaGuia);
+  }, [activeTimerId]);
+
   // Carregar timers do localStorage quando mudar de guia
   useEffect(() => {
     setTimersLoaded(false); // Indicar que está carregando
+    
+    // IMPORTANTE: Resetar timers para valores zerados ANTES de carregar
+    // Isso evita que valores antigos vazem para outra guia
+    setTimers({
+      headlines: { segundos: 0, isRunning: false, finalizado: false },
+      roteiros: { segundos: 0, isRunning: false, finalizado: false },
+      revisar: { segundos: 0, isRunning: false, finalizado: false },
+    });
+    setActiveTimerId(null);
     
     const timerIds = ["headlines", "roteiros", "revisar"];
     const loadedTimers: TimersRecord = {};
@@ -244,7 +267,6 @@ export const MentoradoRoteirosView = ({
     });
     
     setTimers(loadedTimers);
-    setActiveTimerId(null);
     setTimersLoaded(true); // Indicar que terminou de carregar
   }, [mentoradoId, guiaAtiva]);
 
@@ -994,7 +1016,7 @@ export const MentoradoRoteirosView = ({
                   <Button
                     variant={guiaAtiva === guia.numero ? "default" : "ghost"}
                     className="flex-1 justify-start gap-2"
-                    onClick={() => setGuiaAtiva(guia.numero)}
+                    onClick={() => handleGuiaChange(guia.numero)}
                   >
                     <span>Guia {guia.numero}</span>
                     <span className="ml-auto text-xs opacity-70">

@@ -52,10 +52,13 @@ export const RoteiroChecklist = ({
   const checklistStorageKey = `roteiro-checklist-${mentoradoId}-${guiaNumero}`;
   
   const [items, setItems] = useState<ChecklistItem[]>(DEFAULT_ITEMS);
+  const [checklistLoaded, setChecklistLoaded] = useState(false);
   const intervalsRef = useRef<Record<string, NodeJS.Timeout | null>>({});
 
   // Carregar checklist quando mudar de guia
   useEffect(() => {
+    setChecklistLoaded(false); // Indicar que está carregando
+    
     const saved = localStorage.getItem(checklistStorageKey);
     if (saved) {
       try {
@@ -66,12 +69,16 @@ export const RoteiroChecklist = ({
     } else {
       setItems(DEFAULT_ITEMS.map(i => ({ ...i, checked: false })));
     }
+    
+    setChecklistLoaded(true); // Carregamento concluído
   }, [checklistStorageKey]);
 
-  // Salvar checklist
+  // Salvar checklist - SÓ quando já carregou
   useEffect(() => {
+    if (!checklistLoaded) return; // Não salvar enquanto não carregou
+    
     localStorage.setItem(checklistStorageKey, JSON.stringify(items));
-  }, [items, checklistStorageKey]);
+  }, [items, checklistStorageKey, checklistLoaded]);
 
   // Salvar timers no localStorage - SÓ quando já carregou
   useEffect(() => {
