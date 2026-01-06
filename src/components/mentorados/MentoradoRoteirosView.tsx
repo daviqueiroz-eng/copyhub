@@ -101,6 +101,7 @@ export const MentoradoRoteirosView = ({
     revisar: { segundos: 0, isRunning: false, finalizado: false },
   });
   const [activeTimerId, setActiveTimerId] = useState<string | null>(null);
+  const [timersLoaded, setTimersLoaded] = useState(false);
   
   // Slash command state
   const [slashCommand, setSlashCommand] = useState<{
@@ -217,6 +218,8 @@ export const MentoradoRoteirosView = ({
 
   // Carregar timers do localStorage quando mudar de guia
   useEffect(() => {
+    setTimersLoaded(false); // Indicar que está carregando
+    
     const timerIds = ["headlines", "roteiros", "revisar"];
     const loadedTimers: TimersRecord = {};
     
@@ -241,6 +244,7 @@ export const MentoradoRoteirosView = ({
     
     setTimers(loadedTimers);
     setActiveTimerId(null);
+    setTimersLoaded(true); // Indicar que terminou de carregar
   }, [mentoradoId, guiaAtiva]);
 
   // Estados para controlar marcos de motivação já celebrados
@@ -1095,6 +1099,7 @@ export const MentoradoRoteirosView = ({
             onTimersChange={setTimers}
             activeTimerId={activeTimerId}
             onActiveTimerChange={setActiveTimerId}
+            timersLoaded={timersLoaded}
           />
         </div>
       </div>
