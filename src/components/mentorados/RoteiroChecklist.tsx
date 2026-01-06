@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Clock, RotateCcw } from "lucide-react";
+import { Play, Pause, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChecklistItem {
@@ -215,81 +215,80 @@ export const RoteiroChecklist = ({
             const timer = timers[item.id];
             
             return (
-              <div key={item.id} className="space-y-1.5">
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id={item.id}
-                    checked={item.checked}
-                    onCheckedChange={() => handleToggle(item.id)}
-                    className="mt-0.5"
-                  />
-                  <Label
-                    htmlFor={item.id}
-                    className={cn(
-                      "text-sm cursor-pointer leading-tight flex-1",
-                      item.checked && "line-through text-muted-foreground"
-                    )}
-                  >
-                    {item.label}
-                  </Label>
-                </div>
+              <div key={item.id} className="flex items-center gap-2">
+                <Checkbox
+                  id={item.id}
+                  checked={item.checked}
+                  onCheckedChange={() => handleToggle(item.id)}
+                />
+                <Label
+                  htmlFor={item.id}
+                  className={cn(
+                    "text-sm cursor-pointer leading-tight flex-1",
+                    item.checked && "line-through text-muted-foreground"
+                  )}
+                >
+                  {item.label}
+                </Label>
                 
-                {/* Timer inline para itens com timing */}
+                {/* Play/Pause button inline para itens com timing */}
                 {item.hasTiming && timer && (
-                  <div className="flex items-center gap-1 ml-6">
-                    <div
-                      className={cn(
-                        "flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono border transition-colors",
-                        timer.finalizado
-                          ? "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30"
-                          : timer.isRunning
-                          ? "bg-primary/10 text-primary border-primary/30"
-                          : "bg-muted text-muted-foreground border-border"
-                      )}
-                    >
-                      <Clock className="h-3 w-3" />
-                      <span className="min-w-[40px] text-center">{formatTime(timer.segundos)}</span>
-                      {timer.finalizado && <span className="text-[10px]">✓</span>}
-                    </div>
-                    
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleTimerToggle(item.id)}
-                      title={timer.finalizado ? "Retomar" : timer.isRunning ? "Pausar" : "Iniciar"}
-                    >
-                      {timer.isRunning ? (
-                        <Pause className="h-3 w-3" />
-                      ) : (
-                        <Play className="h-3 w-3" />
-                      )}
-                    </Button>
-                    
-                    {(timer.segundos > 0 || timer.finalizado) && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleTimerReset(item.id)}
-                        title="Resetar"
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                      </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-7 w-7 shrink-0",
+                      timer.isRunning && "text-primary"
                     )}
-                  </div>
+                    onClick={() => handleTimerToggle(item.id)}
+                    title={timer.finalizado ? "Retomar" : timer.isRunning ? "Pausar" : "Iniciar"}
+                  >
+                    {timer.isRunning ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                  </Button>
                 )}
               </div>
             );
           })}
         </div>
         
-        {/* Total time */}
+        {/* Tempos individuais e total */}
         {totalSegundos > 0 && (
-          <div className="mt-4 pt-3 border-t">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Tempo total:</span>
-              <span className="font-mono font-medium">{formatTime(totalSegundos)}</span>
+          <div className="mt-4 pt-3 border-t space-y-1.5">
+            {Object.entries(timers).map(([id, timer]) => {
+              if (timer.segundos === 0) return null;
+              const label = id === "headlines" ? "Headlines" : id === "roteiros" ? "Roteiros" : "Revisar";
+              return (
+                <div key={id} className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">{label}:</span>
+                  <div className="flex items-center gap-1">
+                    <span className={cn(
+                      "font-mono",
+                      timer.finalizado && "text-green-600 dark:text-green-400"
+                    )}>
+                      {formatTime(timer.segundos)}
+                    </span>
+                    {timer.segundos > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => handleTimerReset(id)}
+                        title="Resetar"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <div className="flex items-center justify-between text-sm font-medium pt-1 border-t">
+              <span>Total:</span>
+              <span className="font-mono">{formatTime(totalSegundos)}</span>
             </div>
           </div>
         )}
