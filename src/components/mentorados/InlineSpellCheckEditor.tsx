@@ -16,7 +16,7 @@ export interface SpellError {
 
 interface InlineSpellCheckEditorProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, cursorPosition?: number) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onSelect?: (e: React.SyntheticEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
@@ -235,7 +235,8 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
         ref={textareaRef}
         value={value}
         onChange={(e) => {
-          onChange(e.target.value);
+          const cursorPos = e.target.selectionStart;
+          onChange(e.target.value, cursorPos);
           autoResize();
         }}
         onKeyDown={onKeyDown}

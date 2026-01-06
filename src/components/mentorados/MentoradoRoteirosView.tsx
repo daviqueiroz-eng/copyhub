@@ -540,7 +540,8 @@ export const MentoradoRoteirosView = ({
     guiaNumero: number,
     ordem: number,
     field: "headline" | "estrutura",
-    value: string
+    value: string,
+    cursorPosition?: number
   ) => {
     handleChange(guiaNumero, ordem, field, value);
 
@@ -552,11 +553,17 @@ export const MentoradoRoteirosView = ({
     let left = window.innerWidth - popoverWidth - 20;
     let top = 200;
 
-    // Salvar posição do cursor para inserção correta
-    cursorPositionRef.current.set(key, value.length);
+    // Usar a posição do cursor passada, ou a posição salva, ou o final do texto
+    const cursorPos = cursorPosition ?? cursorPositionRef.current.get(key) ?? value.length;
+    
+    // Atualizar a posição do cursor
+    cursorPositionRef.current.set(key, cursorPos);
+    
+    // Verificar o texto antes do cursor para detectar comandos
+    const textBeforeCursor = value.slice(0, cursorPos);
 
-    // Verificar se termina com /1, /2 ou /3 - abrir diretamente no modo
-    if (value.endsWith("/1")) {
+    // Verificar se termina com /1, /2 ou /3 antes do cursor
+    if (textBeforeCursor.endsWith("/1")) {
       setSlashCommand({
         isOpen: true,
         mode: "intensificadores",
@@ -564,7 +571,7 @@ export const MentoradoRoteirosView = ({
         targetField: field,
         position: { top, left },
       });
-    } else if (value.endsWith("/2")) {
+    } else if (textBeforeCursor.endsWith("/2")) {
       setSlashCommand({
         isOpen: true,
         mode: "ctas",
@@ -572,11 +579,14 @@ export const MentoradoRoteirosView = ({
         targetField: field,
         position: { top, left },
       });
-    } else if (value.endsWith("/3")) {
+    } else if (textBeforeCursor.endsWith("/3")) {
       // Abrir modal de headlines aleatórias
-      // Limpar o /3 do valor
-      const cleanValue = value.slice(0, -2);
+      // Limpar o /3 do valor - preservando o texto após o cursor
+      const textAfterCursor = value.slice(cursorPos);
+      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
       handleChange(guiaNumero, ordem, field, cleanValue);
+      // Atualizar posição do cursor para refletir a remoção do /3
+      cursorPositionRef.current.set(key, cursorPos - 2);
       setHeadlinesTargetKey(key);
       setShowHeadlinesModal(true);
       // Fechar o popover se estiver aberto
@@ -1157,8 +1167,8 @@ export const MentoradoRoteirosView = ({
                         </span>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
-                          onChange={(value) => {
-                            handleInputChange2(guiaAtiva, ordem, "headline", value);
+                          onChange={(value, cursorPos) => {
+                            handleInputChange2(guiaAtiva, ordem, "headline", value, cursorPos);
                           }}
                           onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "headline")}
                           placeholder="Digite a headline... (use / para comandos)"
@@ -1177,8 +1187,8 @@ export const MentoradoRoteirosView = ({
                         </span>
                         <InlineSpellCheckEditor
                           value={roteiro.estrutura}
-                          onChange={(value) => {
-                            handleInputChange2(guiaAtiva, ordem, "estrutura", value);
+                          onChange={(value, cursorPos) => {
+                            handleInputChange2(guiaAtiva, ordem, "estrutura", value, cursorPos);
                           }}
                           onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "estrutura")}
                           onSelect={(e) => {
