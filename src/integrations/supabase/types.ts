@@ -1268,6 +1268,41 @@ export type Database = {
           },
         ]
       }
+      mentorados_roteiros_tempos: {
+        Row: {
+          created_at: string
+          finalizado: boolean
+          id: string
+          roteiro_id: string
+          tempo_segundos: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          finalizado?: boolean
+          id?: string
+          roteiro_id: string
+          tempo_segundos?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          finalizado?: boolean
+          id?: string
+          roteiro_id?: string
+          tempo_segundos?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorados_roteiros_tempos_roteiro_id_fkey"
+            columns: ["roteiro_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados_roteiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modulos: {
         Row: {
           created_at: string
