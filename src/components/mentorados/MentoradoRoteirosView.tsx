@@ -228,6 +228,10 @@ export const MentoradoRoteirosView = ({
       setActiveTimerId(null);
     }
     
+    // IMPORTANTE: Marcar timers como não carregados ANTES de mudar de guia
+    // Isso impede que o RoteiroChecklist salve dados incorretos
+    setTimersLoaded(false);
+    
     setGuiaAtiva(novaGuia);
   }, [activeTimerId]);
 

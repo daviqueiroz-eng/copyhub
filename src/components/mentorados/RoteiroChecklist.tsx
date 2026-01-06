@@ -54,6 +54,7 @@ export const RoteiroChecklist = ({
   const [items, setItems] = useState<ChecklistItem[]>(DEFAULT_ITEMS);
   const [checklistLoaded, setChecklistLoaded] = useState(false);
   const intervalsRef = useRef<Record<string, NodeJS.Timeout | null>>({});
+  const prevGuiaRef = useRef<number | null>(null);
 
   // Carregar checklist quando mudar de guia
   useEffect(() => {
@@ -70,8 +71,10 @@ export const RoteiroChecklist = ({
       setItems(DEFAULT_ITEMS.map(i => ({ ...i, checked: false })));
     }
     
+    // Atualizar referência da guia atual APÓS carregar
+    prevGuiaRef.current = guiaNumero;
     setChecklistLoaded(true); // Carregamento concluído
-  }, [checklistStorageKey]);
+  }, [checklistStorageKey, guiaNumero]);
 
   // Salvar checklist - SÓ quando já carregou
   useEffect(() => {
@@ -80,9 +83,13 @@ export const RoteiroChecklist = ({
     localStorage.setItem(checklistStorageKey, JSON.stringify(items));
   }, [items, checklistStorageKey, checklistLoaded]);
 
-  // Salvar timers no localStorage - SÓ quando já carregou
+  // Salvar timers no localStorage - SÓ quando já carregou E guia está sincronizada
   useEffect(() => {
-    if (!timersLoaded) return; // Não salvar enquanto não carregou
+    // Não salvar se:
+    // 1. Os timers ainda não foram carregados
+    // 2. O guiaNumero mudou mas os dados ainda não foram carregados (dessincronizado)
+    if (!timersLoaded) return;
+    if (prevGuiaRef.current !== guiaNumero) return;
     
     Object.entries(timers).forEach(([id, timer]) => {
       const timerKey = `roteiro-timer-${mentoradoId}-${guiaNumero}-${id}`;
