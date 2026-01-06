@@ -253,6 +253,24 @@ export const MentoradoRoteirosView = ({
 
   // Handler para criar primeira guia
   const handleCreateFirstGuia = (quantidade: number) => {
+    // Limpar qualquer dado antigo no localStorage para guia 1
+    const timerIds = ["headlines", "roteiros", "revisar"];
+    timerIds.forEach((id) => {
+      const timerKey = `roteiro-timer-${mentoradoId}-1-${id}`;
+      localStorage.removeItem(timerKey);
+    });
+    localStorage.removeItem(`roteiro-checklist-${mentoradoId}-1`);
+    localStorage.removeItem(`checklist-completed-${mentoradoId}-1`);
+
+    // Resetar timers no estado
+    setTimers({
+      headlines: { segundos: 0, isRunning: false, finalizado: false },
+      roteiros: { segundos: 0, isRunning: false, finalizado: false },
+      revisar: { segundos: 0, isRunning: false, finalizado: false },
+    });
+    setActiveTimerId(null);
+    setTimersLoaded(true);
+
     setGuias([{ numero: 1, quantidade }]);
     setShowFirstGuiaDialog(false);
     toast({
@@ -293,12 +311,14 @@ export const MentoradoRoteirosView = ({
             }
           }
 
-          // Limpar timers do localStorage
+          // Limpar timers, checklist e celebração do localStorage
           const timerIds = ["headlines", "roteiros", "revisar"];
           timerIds.forEach((id) => {
             const timerKey = `roteiro-timer-${mentoradoId}-${guiaNumero}-${id}`;
             localStorage.removeItem(timerKey);
           });
+          localStorage.removeItem(`roteiro-checklist-${mentoradoId}-${guiaNumero}`);
+          localStorage.removeItem(`checklist-completed-${mentoradoId}-${guiaNumero}`);
 
           toast({
             title: "Guia apagada",
@@ -693,6 +713,25 @@ export const MentoradoRoteirosView = ({
 
   const handleCreateGuia = (quantidade: number) => {
     const nextGuia = guias.length > 0 ? Math.max(...guias.map(g => g.numero)) + 1 : 1;
+    
+    // Limpar qualquer dado antigo no localStorage para esta guia
+    const timerIds = ["headlines", "roteiros", "revisar"];
+    timerIds.forEach((id) => {
+      const timerKey = `roteiro-timer-${mentoradoId}-${nextGuia}-${id}`;
+      localStorage.removeItem(timerKey);
+    });
+    localStorage.removeItem(`roteiro-checklist-${mentoradoId}-${nextGuia}`);
+    localStorage.removeItem(`checklist-completed-${mentoradoId}-${nextGuia}`);
+
+    // Resetar timers no estado
+    setTimers({
+      headlines: { segundos: 0, isRunning: false, finalizado: false },
+      roteiros: { segundos: 0, isRunning: false, finalizado: false },
+      revisar: { segundos: 0, isRunning: false, finalizado: false },
+    });
+    setActiveTimerId(null);
+    setTimersLoaded(true);
+    
     setGuias((prev) => [...prev, { numero: nextGuia, quantidade }]);
     setGuiaAtiva(nextGuia);
     setShowNewGuiaDialog(false);
