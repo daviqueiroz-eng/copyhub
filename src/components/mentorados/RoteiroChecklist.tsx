@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, RotateCcw } from "lucide-react";
+import { Play, Pause, RotateCcw, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -101,13 +101,18 @@ export const RoteiroChecklist = ({
         }
       }
     });
+    // NÃO limpar no cleanup - apenas no unmount final
+  }, [timers, onTimersChange]);
 
+  // Cleanup separado para unmount do componente
+  useEffect(() => {
     return () => {
       Object.values(intervalsRef.current).forEach(interval => {
         if (interval) clearInterval(interval);
       });
+      intervalsRef.current = {};
     };
-  }, [timers, onTimersChange]);
+  }, []);
 
   const formatTime = (totalSegundos: number) => {
     const hrs = Math.floor(totalSegundos / 3600);
@@ -196,6 +201,27 @@ export const RoteiroChecklist = ({
     );
   };
 
+  const handleTimerFinalize = (id: string) => {
+    const timer = timers[id];
+    if (!timer) return;
+    
+    onTimersChange({
+      ...timers,
+      [id]: { ...timer, isRunning: false, finalizado: true }
+    });
+    
+    if (activeTimerId === id) {
+      onActiveTimerChange(null);
+    }
+    
+    // Marcar checkbox como concluído
+    setItems(prevItems => 
+      prevItems.map(item => 
+        item.id === id ? { ...item, checked: true } : item
+      )
+    );
+  };
+
   const completedCount = items.filter(i => i.checked).length;
   
   // Calcular tempo total
@@ -254,25 +280,53 @@ export const RoteiroChecklist = ({
                   {item.label}
                 </Label>
                 
-                {/* Play/Pause button inline para itens com timing */}
-                {item.hasTiming && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-7 w-7 shrink-0",
-                      timer?.isRunning && "text-primary"
+                {/* Timer controls inline para itens com timing */}
+                {item.hasTiming && timer && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {/* Play/Pause */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-6 w-6",
+                        timer.isRunning && "text-primary"
+                      )}
+                      onClick={() => handleTimerToggle(item.id)}
+                      title={timer.finalizado ? "Retomar" : timer.isRunning ? "Pausar" : "Iniciar"}
+                    >
+                      {timer.isRunning ? (
+                        <Pause className="h-3.5 w-3.5" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    
+                    {/* Finalizar - mostra quando tem tempo e não está finalizado */}
+                    {timer.segundos > 0 && !timer.finalizado && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                        onClick={() => handleTimerFinalize(item.id)}
+                        title="Finalizar"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
                     )}
-                    onClick={() => handleTimerToggle(item.id)}
-                    title={timer?.finalizado ? "Retomar" : timer?.isRunning ? "Pausar" : "Iniciar"}
-                    disabled={!timer}
-                  >
-                    {timer?.isRunning ? (
-                      <Pause className="h-4 w-4" />
-                    ) : (
-                      <Play className="h-4 w-4" />
+                    
+                    {/* Reiniciar - mostra quando tem tempo */}
+                    {timer.segundos > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground"
+                        onClick={() => handleTimerReset(item.id)}
+                        title="Reiniciar"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                      </Button>
                     )}
-                  </Button>
+                  </div>
                 )}
               </div>
             );
