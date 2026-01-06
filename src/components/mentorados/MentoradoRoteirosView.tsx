@@ -10,8 +10,9 @@ import { TTSConfigPopover } from "./TTSConfigPopover";
 import { FindReplaceDialog } from "./FindReplaceDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
-import { RoteiroChecklist } from "./RoteiroChecklist";
+import { RoteiroChecklist, TimersRecord } from "./RoteiroChecklist";
 import { RoteiroProgressBar } from "./RoteiroProgressBar";
+import { RoteiroTimer } from "./RoteiroTimer";
 import {
   Dialog,
   DialogContent,
@@ -80,6 +81,14 @@ export const MentoradoRoteirosView = ({
     startIndex: number;
     endIndex: number;
   } | null>(null);
+  
+  // Timer state - elevado para comunicar entre RoteiroTimer e RoteiroChecklist
+  const [timers, setTimers] = useState<TimersRecord>({
+    headlines: { segundos: 0, isRunning: false, finalizado: false },
+    roteiros: { segundos: 0, isRunning: false, finalizado: false },
+    revisar: { segundos: 0, isRunning: false, finalizado: false },
+  });
+  const [activeTimerId, setActiveTimerId] = useState<string | null>(null);
   
   // Slash command state
   const [slashCommand, setSlashCommand] = useState<{
@@ -176,6 +185,66 @@ export const MentoradoRoteirosView = ({
     
     setRoteirosLocais(newMap);
   }, [roteiros, isLoading]);
+
+  // Carregar timers do localStorage quando mudar de guia
+  useEffect(() => {
+    const timerIds = ["headlines", "roteiros", "revisar"];
+    const loadedTimers: TimersRecord = {};
+    
+    timerIds.forEach(id => {
+      const timerKey = `roteiro-timer-${mentoradoId}-${guiaAtiva}-${id}`;
+      const saved = localStorage.getItem(timerKey);
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          loadedTimers[id] = {
+            segundos: data.segundos || 0,
+            isRunning: false, // Sempre pausado ao carregar
+            finalizado: data.finalizado || false,
+          };
+        } catch {
+          loadedTimers[id] = { segundos: 0, isRunning: false, finalizado: false };
+        }
+      } else {
+        loadedTimers[id] = { segundos: 0, isRunning: false, finalizado: false };
+      }
+    });
+    
+    setTimers(loadedTimers);
+    setActiveTimerId(null);
+  }, [mentoradoId, guiaAtiva]);
+
+  // Handler para play/pause do cronômetro geral
+  const handleGeneralPlayPause = useCallback(() => {
+    const isAnyRunning = Object.values(timers).some(t => t.isRunning);
+    
+    if (isAnyRunning) {
+      // Pausar todos
+      const newTimers = { ...timers };
+      Object.keys(newTimers).forEach(key => {
+        newTimers[key] = { ...newTimers[key], isRunning: false };
+      });
+      setTimers(newTimers);
+      setActiveTimerId(null);
+    } else {
+      // Iniciar o primeiro não-finalizado, ou o ativo anterior
+      const timerOrder = ["headlines", "roteiros", "revisar"];
+      let targetId = activeTimerId;
+      
+      if (!targetId || timers[targetId]?.finalizado) {
+        // Encontrar primeiro não-finalizado
+        targetId = timerOrder.find(id => !timers[id]?.finalizado) || null;
+      }
+      
+      if (targetId && timers[targetId]) {
+        setTimers(prev => ({
+          ...prev,
+          [targetId!]: { ...prev[targetId!], isRunning: true }
+        }));
+        setActiveTimerId(targetId);
+      }
+    }
+  }, [timers, activeTimerId]);
 
   // Handler para criar primeira guia
   const handleCreateFirstGuia = (quantidade: number) => {
@@ -630,6 +699,12 @@ export const MentoradoRoteirosView = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Cronômetro geral */}
+            <RoteiroTimer
+              timers={timers}
+              activeTimerId={activeTimerId}
+              onPlayPause={handleGeneralPlayPause}
+            />
             <Button
               variant="outline"
               size="icon"
@@ -864,7 +939,14 @@ export const MentoradoRoteirosView = ({
         
         {/* Checklist fixo à direita */}
         <div className="shrink-0 border-l bg-muted/30 overflow-y-auto py-4 px-4">
-          <RoteiroChecklist mentoradoId={mentoradoId} guiaNumero={guiaAtiva} />
+          <RoteiroChecklist 
+            mentoradoId={mentoradoId} 
+            guiaNumero={guiaAtiva}
+            timers={timers}
+            onTimersChange={setTimers}
+            activeTimerId={activeTimerId}
+            onActiveTimerChange={setActiveTimerId}
+          />
         </div>
       </div>
 

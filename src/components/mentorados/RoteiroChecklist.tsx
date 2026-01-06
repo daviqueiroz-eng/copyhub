@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -21,29 +21,34 @@ const DEFAULT_ITEMS: ChecklistItem[] = [
   { id: "datas", label: "Atualizar datas", checked: false, hasTiming: false },
 ];
 
-interface TimerState {
+export interface TimerState {
   segundos: number;
   isRunning: boolean;
   finalizado: boolean;
 }
 
+export type TimersRecord = Record<string, TimerState>;
+
 interface RoteiroChecklistProps {
   mentoradoId: string;
   guiaNumero: number;
+  timers: TimersRecord;
+  onTimersChange: (timers: TimersRecord) => void;
+  activeTimerId: string | null;
+  onActiveTimerChange: (id: string | null) => void;
 }
 
-export const RoteiroChecklist = ({ mentoradoId, guiaNumero }: RoteiroChecklistProps) => {
+export const RoteiroChecklist = ({ 
+  mentoradoId, 
+  guiaNumero,
+  timers,
+  onTimersChange,
+  activeTimerId,
+  onActiveTimerChange,
+}: RoteiroChecklistProps) => {
   const checklistStorageKey = `roteiro-checklist-${mentoradoId}-${guiaNumero}`;
   
   const [items, setItems] = useState<ChecklistItem[]>(DEFAULT_ITEMS);
-  
-  // Timers separados para cada fase
-  const [timers, setTimers] = useState<Record<string, TimerState>>({
-    headlines: { segundos: 0, isRunning: false, finalizado: false },
-    roteiros: { segundos: 0, isRunning: false, finalizado: false },
-    revisar: { segundos: 0, isRunning: false, finalizado: false },
-  });
-  
   const intervalsRef = useRef<Record<string, NodeJS.Timeout | null>>({});
 
   // Carregar checklist quando mudar de guia
@@ -60,39 +65,12 @@ export const RoteiroChecklist = ({ mentoradoId, guiaNumero }: RoteiroChecklistPr
     }
   }, [checklistStorageKey]);
 
-  // Carregar timers quando mudar de guia
-  useEffect(() => {
-    const timerIds = ["headlines", "roteiros", "revisar"];
-    const loadedTimers: Record<string, TimerState> = {};
-    
-    timerIds.forEach(id => {
-      const timerKey = `roteiro-timer-${mentoradoId}-${guiaNumero}-${id}`;
-      const saved = localStorage.getItem(timerKey);
-      if (saved) {
-        try {
-          const data = JSON.parse(saved);
-          loadedTimers[id] = {
-            segundos: data.segundos || 0,
-            isRunning: false, // Sempre pausado ao carregar
-            finalizado: data.finalizado || false,
-          };
-        } catch {
-          loadedTimers[id] = { segundos: 0, isRunning: false, finalizado: false };
-        }
-      } else {
-        loadedTimers[id] = { segundos: 0, isRunning: false, finalizado: false };
-      }
-    });
-    
-    setTimers(loadedTimers);
-  }, [mentoradoId, guiaNumero]);
-
   // Salvar checklist
   useEffect(() => {
     localStorage.setItem(checklistStorageKey, JSON.stringify(items));
   }, [items, checklistStorageKey]);
 
-  // Salvar timers
+  // Salvar timers no localStorage
   useEffect(() => {
     Object.entries(timers).forEach(([id, timer]) => {
       const timerKey = `roteiro-timer-${mentoradoId}-${guiaNumero}-${id}`;
@@ -109,10 +87,10 @@ export const RoteiroChecklist = ({ mentoradoId, guiaNumero }: RoteiroChecklistPr
       if (timer.isRunning && !timer.finalizado) {
         if (!intervalsRef.current[id]) {
           intervalsRef.current[id] = setInterval(() => {
-            setTimers(prev => ({
-              ...prev,
-              [id]: { ...prev[id], segundos: prev[id].segundos + 1 }
-            }));
+            onTimersChange({
+              ...timers,
+              [id]: { ...timers[id], segundos: timers[id].segundos + 1 }
+            });
           }, 1000);
         }
       } else {
@@ -128,7 +106,7 @@ export const RoteiroChecklist = ({ mentoradoId, guiaNumero }: RoteiroChecklistPr
         if (interval) clearInterval(interval);
       });
     };
-  }, [timers]);
+  }, [timers, onTimersChange]);
 
   const formatTime = (totalSegundos: number) => {
     const hrs = Math.floor(totalSegundos / 3600);
@@ -148,11 +126,14 @@ export const RoteiroChecklist = ({ mentoradoId, guiaNumero }: RoteiroChecklistPr
           const newChecked = !item.checked;
           
           // Se marcar como concluído e tem timer, finalizar o timer
-          if (newChecked && item.hasTiming) {
-            setTimers(prevTimers => ({
-              ...prevTimers,
-              [id]: { ...prevTimers[id], isRunning: false, finalizado: true }
-            }));
+          if (newChecked && item.hasTiming && timers[id]) {
+            onTimersChange({
+              ...timers,
+              [id]: { ...timers[id], isRunning: false, finalizado: true }
+            });
+            if (activeTimerId === id) {
+              onActiveTimerChange(null);
+            }
           }
           
           return { ...item, checked: newChecked };
@@ -163,21 +144,49 @@ export const RoteiroChecklist = ({ mentoradoId, guiaNumero }: RoteiroChecklistPr
   };
 
   const handleTimerToggle = (id: string) => {
-    setTimers(prev => {
-      const timer = prev[id];
-      if (timer.finalizado) {
-        // Retomar
-        return { ...prev, [id]: { ...timer, finalizado: false, isRunning: true } };
-      }
-      return { ...prev, [id]: { ...timer, isRunning: !timer.isRunning } };
-    });
+    const timer = timers[id];
+    if (!timer) return;
+
+    if (timer.finalizado) {
+      // Retomar - pausar outros e ativar este
+      const newTimers = { ...timers };
+      Object.keys(newTimers).forEach(key => {
+        if (key !== id && newTimers[key].isRunning) {
+          newTimers[key] = { ...newTimers[key], isRunning: false };
+        }
+      });
+      newTimers[id] = { ...timer, finalizado: false, isRunning: true };
+      onTimersChange(newTimers);
+      onActiveTimerChange(id);
+    } else if (timer.isRunning) {
+      // Pausar
+      onTimersChange({
+        ...timers,
+        [id]: { ...timer, isRunning: false }
+      });
+      onActiveTimerChange(null);
+    } else {
+      // Iniciar - pausar outros primeiro
+      const newTimers = { ...timers };
+      Object.keys(newTimers).forEach(key => {
+        if (key !== id && newTimers[key].isRunning) {
+          newTimers[key] = { ...newTimers[key], isRunning: false };
+        }
+      });
+      newTimers[id] = { ...timer, isRunning: true };
+      onTimersChange(newTimers);
+      onActiveTimerChange(id);
+    }
   };
 
   const handleTimerReset = (id: string) => {
-    setTimers(prev => ({
-      ...prev,
+    onTimersChange({
+      ...timers,
       [id]: { segundos: 0, isRunning: false, finalizado: false }
-    }));
+    });
+    if (activeTimerId === id) {
+      onActiveTimerChange(null);
+    }
     // Desmarcar o checkbox também
     setItems(prevItems => 
       prevItems.map(item => 
