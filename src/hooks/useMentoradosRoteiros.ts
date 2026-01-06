@@ -112,6 +112,33 @@ export const useDeleteMentoradoRoteiro = () => {
   });
 };
 
+export const useDeleteGuia = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      mentoradoId,
+      guiaNumero,
+    }: {
+      mentoradoId: string;
+      guiaNumero: number;
+    }) => {
+      const { error } = await supabase
+        .from("mentorados_roteiros")
+        .delete()
+        .eq("mentorado_id", mentoradoId)
+        .eq("guia_numero", guiaNumero);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["mentorados_roteiros", variables.mentoradoId],
+      });
+    },
+  });
+};
+
 export const useGetGuiasCount = (mentoradoId: string | undefined) => {
   return useQuery({
     queryKey: ["mentorados_roteiros_guias_count", mentoradoId],

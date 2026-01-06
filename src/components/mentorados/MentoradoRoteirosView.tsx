@@ -21,7 +21,18 @@ import {
 import {
   useMentoradosRoteiros,
   useUpsertMentoradoRoteiro,
+  useDeleteGuia,
 } from "@/hooks/useMentoradosRoteiros";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useMentorados } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
@@ -132,6 +143,10 @@ export const MentoradoRoteirosView = ({
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
   const { data: mentorados = [] } = useMentorados();
   const upsertRoteiro = useUpsertMentoradoRoteiro();
+  const deleteGuia = useDeleteGuia();
+  
+  // Estado para confirmação de deletar guia
+  const [guiaToDelete, setGuiaToDelete] = useState<number | null>(null);
 
   // Buscar categorias do avatar do mentorado atual
   const currentMentorado = mentorados.find(m => m.id === mentoradoId);
@@ -225,6 +240,63 @@ export const MentoradoRoteirosView = ({
       description: `Guia 1 com ${quantidade} roteiros criada.`,
     });
   };
+
+  // Handler para deletar guia
+  const handleDeleteGuia = useCallback((guiaNumero: number) => {
+    // Deletar do banco
+    deleteGuia.mutate(
+      { mentoradoId, guiaNumero },
+      {
+        onSuccess: () => {
+          // Remover roteiros locais da guia
+          setRoteirosLocais((prev) => {
+            const newMap = new Map(prev);
+            for (const key of Array.from(newMap.keys())) {
+              if (key.startsWith(`${guiaNumero}-`)) {
+                newMap.delete(key);
+              }
+            }
+            return newMap;
+          });
+
+          // Remover guia do estado
+          setGuias((prev) => prev.filter((g) => g.numero !== guiaNumero));
+
+          // Se a guia ativa foi deletada, mudar para a primeira guia disponível
+          if (guiaAtiva === guiaNumero) {
+            const remaining = guias.filter((g) => g.numero !== guiaNumero);
+            if (remaining.length > 0) {
+              setGuiaAtiva(remaining[0].numero);
+            } else {
+              // Se não sobrou nenhuma guia, mostrar dialog para criar nova
+              setShowFirstGuiaDialog(true);
+            }
+          }
+
+          // Limpar timers do localStorage
+          const timerIds = ["headlines", "roteiros", "revisar"];
+          timerIds.forEach((id) => {
+            const timerKey = `roteiro-timer-${mentoradoId}-${guiaNumero}-${id}`;
+            localStorage.removeItem(timerKey);
+          });
+
+          toast({
+            title: "Guia apagada",
+            description: `Guia ${guiaNumero} foi removida com sucesso.`,
+          });
+        },
+        onError: () => {
+          toast({
+            title: "Erro ao apagar",
+            description: "Não foi possível apagar a guia.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+
+    setGuiaToDelete(null);
+  }, [deleteGuia, mentoradoId, guiaAtiva, guias]);
 
   // Função para salvar
   const saveRoteiro = useCallback(
@@ -765,17 +837,30 @@ export const MentoradoRoteirosView = ({
           <ScrollArea className="flex-1">
             <div className="p-3 space-y-1">
               {guias.map((guia) => (
-                <Button
-                  key={guia.numero}
-                  variant={guiaAtiva === guia.numero ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => setGuiaAtiva(guia.numero)}
-                >
-                  <span>Guia {guia.numero}</span>
-                  <span className="ml-auto text-xs opacity-70">
-                    {getFilledCount(guia.numero)}/{guia.quantidade}
-                  </span>
-                </Button>
+                <div key={guia.numero} className="group flex items-center gap-1">
+                  <Button
+                    variant={guiaAtiva === guia.numero ? "default" : "ghost"}
+                    className="flex-1 justify-start gap-2"
+                    onClick={() => setGuiaAtiva(guia.numero)}
+                  >
+                    <span>Guia {guia.numero}</span>
+                    <span className="ml-auto text-xs opacity-70">
+                      {getFilledCount(guia.numero)}/{guia.quantidade}
+                    </span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setGuiaToDelete(guia.numero);
+                    }}
+                    title="Apagar guia"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               ))}
             </div>
           </ScrollArea>
@@ -1137,6 +1222,27 @@ export const MentoradoRoteirosView = ({
         showInlineErrors={showInlineErrors}
         onToggleInlineErrors={() => setShowInlineErrors(prev => !prev)}
       />
+
+      {/* Alert Dialog para confirmar deleção de guia */}
+      <AlertDialog open={guiaToDelete !== null} onOpenChange={(open) => !open && setGuiaToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar Guia {guiaToDelete}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Todos os roteiros desta guia serão permanentemente removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => guiaToDelete && handleDeleteGuia(guiaToDelete)}
+            >
+              Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
