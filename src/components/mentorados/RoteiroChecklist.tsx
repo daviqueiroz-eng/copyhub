@@ -34,7 +34,7 @@ interface RoteiroChecklistProps {
   mentoradoId: string;
   guiaNumero: number;
   timers: TimersRecord;
-  onTimersChange: (timers: TimersRecord) => void;
+  onTimersChange: (timers: TimersRecord | ((prev: TimersRecord) => TimersRecord)) => void;
   activeTimerId: string | null;
   onActiveTimerChange: (id: string | null) => void;
 }
@@ -82,16 +82,16 @@ export const RoteiroChecklist = ({
     });
   }, [timers, mentoradoId, guiaNumero]);
 
-  // Gerenciar intervals dos timers
+  // Gerenciar intervals dos timers - usando functional update para evitar stale closures
   useEffect(() => {
     Object.entries(timers).forEach(([id, timer]) => {
       if (timer.isRunning && !timer.finalizado) {
         if (!intervalsRef.current[id]) {
           intervalsRef.current[id] = setInterval(() => {
-            onTimersChange({
-              ...timers,
-              [id]: { ...timers[id], segundos: timers[id].segundos + 1 }
-            });
+            onTimersChange(prevTimers => ({
+              ...prevTimers,
+              [id]: { ...prevTimers[id], segundos: prevTimers[id].segundos + 1 }
+            }));
           }, 1000);
         }
       } else {
@@ -255,18 +255,19 @@ export const RoteiroChecklist = ({
                 </Label>
                 
                 {/* Play/Pause button inline para itens com timing */}
-                {item.hasTiming && timer && (
+                {item.hasTiming && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className={cn(
                       "h-7 w-7 shrink-0",
-                      timer.isRunning && "text-primary"
+                      timer?.isRunning && "text-primary"
                     )}
                     onClick={() => handleTimerToggle(item.id)}
-                    title={timer.finalizado ? "Retomar" : timer.isRunning ? "Pausar" : "Iniciar"}
+                    title={timer?.finalizado ? "Retomar" : timer?.isRunning ? "Pausar" : "Iniciar"}
+                    disabled={!timer}
                   >
-                    {timer.isRunning ? (
+                    {timer?.isRunning ? (
                       <Pause className="h-4 w-4" />
                     ) : (
                       <Play className="h-4 w-4" />
