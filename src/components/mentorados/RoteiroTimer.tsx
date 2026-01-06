@@ -1,34 +1,39 @@
 import { useState, useEffect, useRef } from "react";
-import { Play, Pause, Square, Clock } from "lucide-react";
+import { Play, Pause, Square, RotateCcw, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRoteiroTempo, useUpsertRoteiroTempo } from "@/hooks/useRoteiroTempo";
 import { cn } from "@/lib/utils";
 
 interface RoteiroTimerProps {
-  roteiroId: string | null;
+  className?: string;
 }
 
-export const RoteiroTimer = ({ roteiroId }: RoteiroTimerProps) => {
+export const RoteiroTimer = ({ className }: RoteiroTimerProps) => {
   const [segundos, setSegundos] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinalizado, setIsFinalizado] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSaveRef = useRef<number>(0);
 
-  const { data: tempoSalvo, isLoading } = useRoteiroTempo(roteiroId);
-  const upsertTempo = useUpsertRoteiroTempo();
-
-  // Carregar tempo salvo
+  // Carregar do localStorage
   useEffect(() => {
-    if (tempoSalvo) {
-      setSegundos(tempoSalvo.tempo_segundos);
-      setIsFinalizado(tempoSalvo.finalizado);
-    } else {
-      setSegundos(0);
-      setIsFinalizado(false);
+    const saved = localStorage.getItem("roteiro_timer");
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        setSegundos(data.segundos || 0);
+        setIsFinalizado(data.finalizado || false);
+      } catch {
+        // ignore
+      }
     }
-    setIsRunning(false);
-  }, [tempoSalvo]);
+  }, []);
+
+  // Salvar no localStorage quando muda
+  useEffect(() => {
+    localStorage.setItem("roteiro_timer", JSON.stringify({
+      segundos,
+      finalizado: isFinalizado,
+    }));
+  }, [segundos, isFinalizado]);
 
   // Timer interval
   useEffect(() => {
@@ -50,18 +55,6 @@ export const RoteiroTimer = ({ roteiroId }: RoteiroTimerProps) => {
     };
   }, [isRunning, isFinalizado]);
 
-  // Auto-save a cada 30 segundos enquanto roda
-  useEffect(() => {
-    if (isRunning && roteiroId && segundos - lastSaveRef.current >= 30) {
-      lastSaveRef.current = segundos;
-      upsertTempo.mutate({
-        roteiroId,
-        tempoSegundos: segundos,
-        finalizado: false,
-      });
-    }
-  }, [segundos, isRunning, roteiroId, upsertTempo]);
-
   const formatTime = (totalSegundos: number) => {
     const hrs = Math.floor(totalSegundos / 3600);
     const mins = Math.floor((totalSegundos % 3600) / 60);
@@ -75,100 +68,78 @@ export const RoteiroTimer = ({ roteiroId }: RoteiroTimerProps) => {
 
   const handlePlayPause = () => {
     if (isFinalizado) return;
-    
-    if (isRunning && roteiroId) {
-      // Pausando - salvar tempo atual
-      upsertTempo.mutate({
-        roteiroId,
-        tempoSegundos: segundos,
-        finalizado: false,
-      });
-    }
-    
     setIsRunning(!isRunning);
   };
 
   const handleFinalizar = () => {
-    if (!roteiroId) return;
-    
     setIsRunning(false);
     setIsFinalizado(true);
-    
-    upsertTempo.mutate({
-      roteiroId,
-      tempoSegundos: segundos,
-      finalizado: true,
-    });
   };
 
-  if (!roteiroId) {
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground text-sm">
-        <Clock className="h-4 w-4" />
-        <span className="font-mono">--:--</span>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground text-sm">
-        <Clock className="h-4 w-4 animate-pulse" />
-        <span className="font-mono">--:--</span>
-      </div>
-    );
-  }
+  const handleResetar = () => {
+    setIsRunning(false);
+    setIsFinalizado(false);
+    setSegundos(0);
+  };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className={cn("flex items-center gap-1", className)}>
       {/* Timer display */}
       <div
         className={cn(
-          "flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-mono transition-colors",
+          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-mono border transition-colors",
           isFinalizado
-            ? "bg-green-500/10 text-green-600 dark:text-green-400"
+            ? "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30"
             : isRunning
-            ? "bg-primary/10 text-primary"
-            : "bg-muted text-muted-foreground"
+            ? "bg-primary/10 text-primary border-primary/30"
+            : "bg-background text-muted-foreground border-border"
         )}
       >
-        <Clock className="h-3.5 w-3.5" />
-        <span>{formatTime(segundos)}</span>
+        <Clock className="h-4 w-4" />
+        <span className="min-w-[52px] text-center">{formatTime(segundos)}</span>
+        {isFinalizado && <span className="text-xs">✓</span>}
       </div>
 
-      {/* Controls */}
-      {!isFinalizado && (
-        <>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handlePlayPause}
-          >
-            {isRunning ? (
-              <Pause className="h-3.5 w-3.5" />
-            ) : (
-              <Play className="h-3.5 w-3.5" />
-            )}
-          </Button>
+      {/* Play/Pause */}
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-9 w-9"
+        onClick={handlePlayPause}
+        disabled={isFinalizado}
+        title={isRunning ? "Pausar" : "Iniciar"}
+      >
+        {isRunning ? (
+          <Pause className="h-4 w-4" />
+        ) : (
+          <Play className="h-4 w-4" />
+        )}
+      </Button>
 
-          {segundos > 0 && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-destructive hover:text-destructive"
-              onClick={handleFinalizar}
-            >
-              <Square className="h-3.5 w-3.5" />
-            </Button>
-          )}
-        </>
+      {/* Finalizar */}
+      {segundos > 0 && !isFinalizado && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9"
+          onClick={handleFinalizar}
+          title="Finalizar"
+        >
+          <Square className="h-4 w-4" />
+        </Button>
       )}
 
-      {isFinalizado && (
-        <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-          ✓
-        </span>
+      {/* Resetar */}
+      {(segundos > 0 || isFinalizado) && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9"
+          onClick={handleResetar}
+          title="Resetar"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       )}
     </div>
   );
