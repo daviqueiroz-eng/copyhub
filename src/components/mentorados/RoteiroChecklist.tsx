@@ -37,6 +37,7 @@ interface RoteiroChecklistProps {
   onTimersChange: (timers: TimersRecord | ((prev: TimersRecord) => TimersRecord)) => void;
   activeTimerId: string | null;
   onActiveTimerChange: (id: string | null) => void;
+  timersLoaded: boolean;
 }
 
 export const RoteiroChecklist = ({ 
@@ -46,6 +47,7 @@ export const RoteiroChecklist = ({
   onTimersChange,
   activeTimerId,
   onActiveTimerChange,
+  timersLoaded,
 }: RoteiroChecklistProps) => {
   const checklistStorageKey = `roteiro-checklist-${mentoradoId}-${guiaNumero}`;
   
@@ -71,8 +73,10 @@ export const RoteiroChecklist = ({
     localStorage.setItem(checklistStorageKey, JSON.stringify(items));
   }, [items, checklistStorageKey]);
 
-  // Salvar timers no localStorage
+  // Salvar timers no localStorage - SÓ quando já carregou
   useEffect(() => {
+    if (!timersLoaded) return; // Não salvar enquanto não carregou
+    
     Object.entries(timers).forEach(([id, timer]) => {
       const timerKey = `roteiro-timer-${mentoradoId}-${guiaNumero}-${id}`;
       localStorage.setItem(timerKey, JSON.stringify({
@@ -80,7 +84,7 @@ export const RoteiroChecklist = ({
         finalizado: timer.finalizado,
       }));
     });
-  }, [timers, mentoradoId, guiaNumero]);
+  }, [timers, mentoradoId, guiaNumero, timersLoaded]);
 
   // Gerenciar intervals dos timers - usando functional update para evitar stale closures
   useEffect(() => {
