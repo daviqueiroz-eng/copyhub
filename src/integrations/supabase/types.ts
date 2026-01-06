@@ -1143,6 +1143,7 @@ export type Database = {
           iniciais: string
           instagram: string | null
           link_drive: string | null
+          link_trello: string | null
           links_chats: string | null
           nome: string
           objecoes: string | null
@@ -1164,6 +1165,7 @@ export type Database = {
           iniciais: string
           instagram?: string | null
           link_drive?: string | null
+          link_trello?: string | null
           links_chats?: string | null
           nome: string
           objecoes?: string | null
@@ -1185,6 +1187,7 @@ export type Database = {
           iniciais?: string
           instagram?: string | null
           link_drive?: string | null
+          link_trello?: string | null
           links_chats?: string | null
           nome?: string
           objecoes?: string | null
