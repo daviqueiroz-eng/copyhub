@@ -625,16 +625,8 @@ export const MentoradoRoteirosView = ({
 
   const guiaAtivaConfig = guias.find(g => g.numero === guiaAtiva) || { numero: 1, quantidade: 10 };
 
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-50 bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Calcular progresso
-  const calcularProgresso = () => {
+  // Calcular progresso - deve estar antes do useEffect
+  const calcularProgresso = useCallback(() => {
     const guiaConfig = guias.find(g => g.numero === guiaAtiva);
     const quantidade = guiaConfig?.quantidade || 10;
     let headlinesPreenchidas = 0;
@@ -648,7 +640,7 @@ export const MentoradoRoteirosView = ({
     }
     
     return { headlinesPreenchidas, roteirosPreenchidos, total: quantidade };
-  };
+  }, [guias, guiaAtiva, roteirosLocais]);
   
   const progresso = calcularProgresso();
 
@@ -677,7 +669,7 @@ export const MentoradoRoteirosView = ({
 
   const getRandomMessage = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
-  // Efeito para mensagens motivacionais de progresso
+  // Efeito para mensagens motivacionais de progresso - DEVE estar antes de qualquer return
   useEffect(() => {
     if (progresso.total === 0) return;
     
@@ -706,6 +698,15 @@ export const MentoradoRoteirosView = ({
       toast({ title: getRandomMessage(mensagensRoteiros100) });
     }
   }, [progresso.headlinesPreenchidas, progresso.roteirosPreenchidos, progresso.total, mentoradoId, guiaAtiva, celebratedMilestones]);
+
+  // Return de loading DEPOIS de todos os hooks
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
