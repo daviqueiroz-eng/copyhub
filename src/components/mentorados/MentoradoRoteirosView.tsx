@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink } from "lucide-react";
+import { useMemo } from "react";
+import { useTrelloImport, TrelloCard } from "@/hooks/useTrelloImport";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -142,6 +144,7 @@ export const MentoradoRoteirosView = ({
 
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
   const { data: mentorados = [] } = useMentorados();
+  const { data: trelloImport } = useTrelloImport();
   const upsertRoteiro = useUpsertMentoradoRoteiro();
   const deleteGuia = useDeleteGuia();
   
@@ -160,6 +163,18 @@ export const MentoradoRoteirosView = ({
     }
     return [];
   })();
+
+  // Buscar card do Trello pelo nome do mentorado
+  const trelloCard = useMemo(() => {
+    if (!trelloImport?.dados || !mentoradoNome) return null;
+    const cards = trelloImport.dados as unknown as TrelloCard[];
+    
+    return cards.find(card => {
+      const cardNameLower = card.cardName.toLowerCase().trim();
+      const mentoradoLower = mentoradoNome.toLowerCase().trim();
+      return cardNameLower.includes(mentoradoLower) || mentoradoLower.includes(cardNameLower);
+    });
+  }, [trelloImport, mentoradoNome]);
 
   // Inicializar roteiros locais a partir do banco
   useEffect(() => {
@@ -790,7 +805,36 @@ export const MentoradoRoteirosView = ({
               <X className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-xl font-bold font-poppins">Roteiros - {mentoradoNome}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold font-poppins">Roteiros - {mentoradoNome}</h1>
+                
+                {currentMentorado?.instagram && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-pink-500 hover:text-pink-600 hover:bg-pink-100 dark:hover:bg-pink-950"
+                    onClick={() => {
+                      const handle = currentMentorado.instagram!.replace('@', '');
+                      window.open(`https://instagram.com/${handle}`, '_blank');
+                    }}
+                    title={`@${currentMentorado.instagram.replace('@', '')}`}
+                  >
+                    <Instagram className="h-4 w-4" />
+                  </Button>
+                )}
+                
+                {trelloCard?.cardUrl && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-blue-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-950"
+                    onClick={() => window.open(trelloCard.cardUrl, '_blank')}
+                    title="Abrir no Trello"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
                 Guia {guiaAtiva} • {getFilledCount(guiaAtiva)}/{guiaAtivaConfig.quantidade} preenchidos
               </p>
