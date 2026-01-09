@@ -1,16 +1,24 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { RefreshCw, Check, Loader2, Upload } from "lucide-react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { RefreshCw, Check, Loader2, Upload, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAnalysisHeadlines, AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { useUserHeadlinesExcel } from "@/hooks/useUserHeadlinesExcel";
 import { ExcelUploadDialog } from "./ExcelUploadDialog";
@@ -49,6 +57,8 @@ export const HeadlinesRandomDialog = ({
     return saved === "excel";
   });
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedNicho, setSelectedNicho] = useState<string | null>(null);
   
   const countRef = useRef(9);
 
@@ -57,12 +67,31 @@ export const HeadlinesRandomDialog = ({
     localStorage.setItem("headlines-source-preference", useExcelSource ? "excel" : "analysis");
   }, [useExcelSource]);
 
-  // Converter Excel headlines para o formato esperado
-  const excelHeadlinesFormatted: AnalysisHeadline[] = excelHeadlines.map((h) => ({
+  // Converter Excel headlines para o formato esperado (incluindo arquivo_origem para filtro)
+  const excelHeadlinesFormatted: (AnalysisHeadline & { arquivo_origem?: string })[] = excelHeadlines.map((h) => ({
     id: h.id,
     headline: h.headline,
     estrutura: h.estrutura || "",
+    arquivo_origem: h.arquivo_origem || undefined,
   }));
+
+  // Extrair nichos únicos das headlines do Excel
+  const availableNichos = useMemo(() => {
+    if (!useExcelSource) return [];
+    
+    const nichos = new Set<string>();
+    excelHeadlines.forEach(h => {
+      if (h.arquivo_origem) {
+        // Extrair nicho do arquivo_origem (ex: "Arquivo.xlsx - Cristão" => "Cristão")
+        const parts = h.arquivo_origem.split(" - ");
+        if (parts.length > 1) {
+          nichos.add(parts.slice(1).join(" - "));
+        }
+      }
+    });
+    
+    return Array.from(nichos).sort();
+  }, [excelHeadlines, useExcelSource]);
 
   // Usar headlines baseado no toggle
   const allHeadlines = useExcelSource ? excelHeadlinesFormatted : analysisHeadlines;
@@ -107,8 +136,35 @@ export const HeadlinesRandomDialog = ({
   // Regerar ao trocar fonte
   const handleSourceChange = (checked: boolean) => {
     setUseExcelSource(checked);
+    setSearchTerm("");
+    setSelectedNicho(null);
     onSaveHeadlines([]);
   };
+
+  // Filtrar headlines baseado na busca e nicho
+  const filteredHeadlines = useMemo(() => {
+    let filtered = savedHeadlines;
+    
+    // Filtro de busca
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(h => 
+        h.headline.toLowerCase().includes(term)
+      );
+    }
+    
+    // Filtro de nicho (apenas para Excel)
+    if (useExcelSource && selectedNicho) {
+      const headlineIdsInNicho = new Set(
+        excelHeadlinesFormatted
+          .filter(h => h.arquivo_origem?.includes(` - ${selectedNicho}`))
+          .map(h => h.id)
+      );
+      filtered = filtered.filter(h => headlineIdsInNicho.has(h.id));
+    }
+    
+    return filtered;
+  }, [savedHeadlines, searchTerm, selectedNicho, useExcelSource, excelHeadlinesFormatted]);
 
   const handleGenerateNew = () => {
     generateRandomHeadlines();
@@ -137,6 +193,37 @@ export const HeadlinesRandomDialog = ({
               </DialogTitle>
               
               <div className="flex items-center gap-3">
+                {/* Campo de busca */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Buscar headline..."
+                    className="pl-8 w-44 h-8"
+                  />
+                </div>
+
+                {/* Filtro de nicho (apenas para Excel) */}
+                {useExcelSource && availableNichos.length > 0 && (
+                  <Select
+                    value={selectedNicho || "all"}
+                    onValueChange={(v) => setSelectedNicho(v === "all" ? null : v)}
+                  >
+                    <SelectTrigger className="w-40 h-8">
+                      <SelectValue placeholder="Todos os nichos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os nichos</SelectItem>
+                      {availableNichos.map(nicho => (
+                        <SelectItem key={nicho} value={nicho}>
+                          {nicho}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
                 {/* Toggle de fonte */}
                 <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5">
                   <Label className="text-xs text-muted-foreground">Análises</Label>
@@ -223,7 +310,7 @@ export const HeadlinesRandomDialog = ({
           ) : (
             <ScrollArea className="flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-                {savedHeadlines.map((item) => (
+                {filteredHeadlines.map((item) => (
                   <div
                     key={item.id}
                     className={`relative border rounded-lg p-4 cursor-pointer transition-all hover:border-primary ${
