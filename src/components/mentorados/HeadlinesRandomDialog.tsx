@@ -162,37 +162,38 @@ export const HeadlinesRandomDialog = ({
     }
   };
 
-  // Se nicho selecionado, mostrar TODAS as headlines do nicho
-  // Se não, usar as 9 aleatórias salvas
+  // Headlines to display - when searching, search ALL headlines from active source
   const displayHeadlines = useMemo(() => {
-    if (useExcelSource && selectedNicho) {
-      // Mostrar TODAS as headlines do nicho selecionado
-      let nichoHeadlines = excelHeadlinesFormatted.filter(h => 
-        h.arquivo_origem?.includes(` - ${selectedNicho}`)
-      );
-      
-      // Aplicar filtro de busca se houver
-      if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        nichoHeadlines = nichoHeadlines.filter(h => 
-          h.headline.toLowerCase().includes(term)
-        );
-      }
-      
-      return nichoHeadlines;
-    }
-    
-    // Sem nicho selecionado, usar as salvas (9 aleatórias) com filtro de busca
-    let filtered = savedHeadlines;
+    // If there's a search term, search across ALL headlines from active source
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(h => 
+      
+      if (useExcelSource) {
+        // Excel source: search in selected niche or ALL Excel headlines
+        const source = selectedNicho 
+          ? excelHeadlinesFormatted.filter(h => h.arquivo_origem?.includes(` - ${selectedNicho}`))
+          : excelHeadlinesFormatted; // ALL Excel headlines
+        
+        return source.filter(h => h.headline.toLowerCase().includes(term));
+      }
+      
+      // Analysis source: search in ALL analysis headlines
+      return analysisHeadlines.filter(h => 
         h.headline.toLowerCase().includes(term)
       );
     }
     
-    return filtered;
-  }, [useExcelSource, selectedNicho, excelHeadlinesFormatted, savedHeadlines, searchTerm]);
+    // No search: use existing behavior
+    if (useExcelSource && selectedNicho) {
+      // Show ALL headlines from selected niche
+      return excelHeadlinesFormatted.filter(h => 
+        h.arquivo_origem?.includes(` - ${selectedNicho}`)
+      );
+    }
+    
+    // No search and no niche: show saved random headlines
+    return savedHeadlines;
+  }, [useExcelSource, selectedNicho, excelHeadlinesFormatted, analysisHeadlines, savedHeadlines, searchTerm]);
 
   const handleGenerateNew = () => {
     generateRandomHeadlines();
