@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Save, Trash2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Save, Trash2, ArrowLeft, ChevronLeft, ChevronRight, Undo2, Redo2 } from "lucide-react";
 
 type RoteiroItem = {
   headline: string;
@@ -22,18 +22,55 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
   const [quantidade, setQuantidade] = useState<number | null>(null);
   const [roteiros, setRoteiros] = useState<RoteiroItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Sistema de histórico para undo/redo
+  const [history, setHistory] = useState<RoteiroItem[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const isUndoRedoRef = useRef(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleSelectQuantidade = (qtd: number) => {
+    const initialRoteiros = Array.from({ length: qtd }, () => ({ headline: "", estrutura: "" }));
     setQuantidade(qtd);
-    setRoteiros(Array.from({ length: qtd }, () => ({ headline: "", estrutura: "" })));
+    setRoteiros(initialRoteiros);
     setCurrentIndex(0);
+    // Inicializar histórico com estado inicial
+    setHistory([initialRoteiros.map(r => ({ ...r }))]);
+    setHistoryIndex(0);
     setShowQuantidadeDialog(false);
   };
+
+  // Salvar estado no histórico com debounce
+  const saveToHistory = useCallback((newRoteiros: RoteiroItem[]) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      setHistory(prev => {
+        const newHistory = prev.slice(0, historyIndex + 1);
+        newHistory.push(newRoteiros.map(r => ({ ...r })));
+        // Limitar histórico a 50 entradas
+        if (newHistory.length > 50) {
+          newHistory.shift();
+          return newHistory;
+        }
+        return newHistory;
+      });
+      setHistoryIndex(prev => Math.min(prev + 1, 49));
+    }, 500);
+  }, [historyIndex]);
 
   const handleUpdateRoteiro = (index: number, field: keyof RoteiroItem, value: string) => {
     setRoteiros(prev => {
       const newRoteiros = [...prev];
       newRoteiros[index] = { ...newRoteiros[index], [field]: value };
+      
+      if (!isUndoRedoRef.current) {
+        saveToHistory(newRoteiros);
+      }
+      isUndoRedoRef.current = false;
+      
       return newRoteiros;
     });
   };
@@ -42,9 +79,33 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
     setRoteiros(prev => {
       const newRoteiros = [...prev];
       newRoteiros[index] = { headline: "", estrutura: "" };
+      
+      if (!isUndoRedoRef.current) {
+        saveToHistory(newRoteiros);
+      }
+      
       return newRoteiros;
     });
   };
+
+  // Funções de Undo e Redo
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      isUndoRedoRef.current = true;
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setRoteiros(history[newIndex].map(r => ({ ...r })));
+    }
+  }, [historyIndex, history]);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      isUndoRedoRef.current = true;
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setRoteiros(history[newIndex].map(r => ({ ...r })));
+    }
+  }, [historyIndex, history]);
 
   const handleSalvarTodos = () => {
     const preenchidos = roteiros.filter(r => r.headline.trim() || r.estrutura.trim());
@@ -67,6 +128,8 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
     setQuantidade(null);
     setRoteiros([]);
     setCurrentIndex(0);
+    setHistory([]);
+    setHistoryIndex(-1);
     setShowQuantidadeDialog(true);
   };
 
@@ -85,6 +148,7 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
   // Atalhos de teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Navegação
       if (e.ctrlKey && e.key === 'ArrowLeft') {
         e.preventDefault();
         handlePrevious();
@@ -93,11 +157,23 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
         e.preventDefault();
         handleNext();
       }
+      
+      // Undo: Ctrl+Z
+      if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+      
+      // Redo: Ctrl+Shift+Z ou Ctrl+Y
+      if ((e.ctrlKey && e.shiftKey && e.key === 'z') || (e.ctrlKey && e.key === 'y')) {
+        e.preventDefault();
+        handleRedo();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePrevious, handleNext]);
+  }, [handlePrevious, handleNext, handleUndo, handleRedo]);
 
   const preenchidosCount = roteiros.filter(r => r.headline.trim() || r.estrutura.trim()).length;
   const currentRoteiro = roteiros[currentIndex];
@@ -148,7 +224,31 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {/* Botões Undo/Redo */}
+              <div className="flex items-center gap-1 mr-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleUndo}
+                  disabled={historyIndex <= 0}
+                  className="h-8 w-8"
+                  title="Desfazer (Ctrl+Z)"
+                >
+                  <Undo2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRedo}
+                  disabled={historyIndex >= history.length - 1}
+                  className="h-8 w-8"
+                  title="Refazer (Ctrl+Shift+Z)"
+                >
+                  <Redo2 className="w-4 h-4" />
+                </Button>
+              </div>
+              
               <Button variant="outline" onClick={handleReset}>
                 Reiniciar
               </Button>
@@ -284,7 +384,7 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              Dica: Use Ctrl + ← / → para navegar
+              Dica: Ctrl+Z desfazer | Ctrl+Shift+Z refazer | Ctrl+← / → navegar
             </p>
           </div>
         </Card>
