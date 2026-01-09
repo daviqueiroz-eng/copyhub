@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2 } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare } from "lucide-react";
 import { useMemo } from "react";
 import { useTrelloImport, TrelloCard } from "@/hooks/useTrelloImport";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
@@ -158,6 +164,9 @@ export const MentoradoRoteirosView = ({
   
   // Estado para confirmação de deletar guia
   const [guiaToDelete, setGuiaToDelete] = useState<number | null>(null);
+  
+  // Estado para checklist mobile
+  const [showChecklistMobile, setShowChecklistMobile] = useState(false);
 
   // Buscar categorias do avatar do mentorado atual
   const currentMentorado = mentorados.find(m => m.id === mentoradoId);
@@ -1144,25 +1153,26 @@ export const MentoradoRoteirosView = ({
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Guias */}
-        <div className="w-48 border-r bg-muted/30 flex flex-col">
+        <div className="w-14 lg:w-48 border-r bg-muted/30 flex flex-col shrink-0">
           <ScrollArea className="flex-1">
-            <div className="p-3 space-y-1">
+            <div className="p-2 lg:p-3 space-y-1">
               {guias.map((guia) => (
                 <div key={guia.numero} className="group flex items-center gap-1">
                   <Button
                     variant={guiaAtiva === guia.numero ? "default" : "ghost"}
-                    className="flex-1 justify-start gap-2"
+                    className="flex-1 justify-center lg:justify-start gap-2 px-2 lg:px-4"
                     onClick={() => handleGuiaChange(guia.numero)}
                   >
-                    <span>Guia {guia.numero}</span>
-                    <span className="ml-auto text-xs opacity-70">
+                    <span className="lg:hidden">{guia.numero}</span>
+                    <span className="hidden lg:inline">Guia {guia.numero}</span>
+                    <span className="ml-auto text-xs opacity-70 hidden lg:inline">
                       {getFilledCount(guia.numero)}/{guia.quantidade}
                     </span>
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 hidden lg:flex"
                     onClick={(e) => {
                       e.stopPropagation();
                       setGuiaToDelete(guia.numero);
@@ -1175,7 +1185,7 @@ export const MentoradoRoteirosView = ({
               ))}
             </div>
           </ScrollArea>
-          <div className="p-3 border-t">
+          <div className="p-2 lg:p-3 border-t">
             <Button
               variant="outline"
               size="sm"
@@ -1183,17 +1193,17 @@ export const MentoradoRoteirosView = ({
               onClick={() => setShowNewGuiaDialog(true)}
             >
               <Plus className="h-4 w-4" />
-              Nova Guia
+              <span className="hidden lg:inline">Nova Guia</span>
             </Button>
           </div>
         </div>
 
         {/* Main - Documento estilo Google Docs */}
         <ScrollArea className="flex-1 bg-muted/20">
-          <div className="flex justify-center py-8 px-4">
+          <div className="flex justify-center py-4 lg:py-8 px-2 lg:px-4">
             {/* Paper container */}
-            <div className="max-w-[816px] flex-1 bg-background shadow-md rounded-sm" style={{ minHeight: 'calc(100vh - 250px)' }}>
-              <div className="px-16 py-12">
+            <div className="w-full max-w-[816px] bg-background shadow-md rounded-sm" style={{ minHeight: 'calc(100vh - 250px)' }}>
+              <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
                 {Array.from({ length: guiaAtivaConfig.quantidade }, (_, i) => i + 1).map((ordem) => {
                   const key = `${guiaAtiva}-${ordem}`;
                   const roteiro = roteirosLocais.get(key) || { headline: "", estrutura: "" };
@@ -1353,8 +1363,8 @@ export const MentoradoRoteirosView = ({
           </div>
         </ScrollArea>
         
-        {/* Checklist fixo à direita */}
-        <div className="shrink-0 border-l bg-muted/30 overflow-y-auto py-4 px-4">
+        {/* Checklist fixo à direita - escondido em telas pequenas */}
+        <div className="shrink-0 border-l bg-muted/30 overflow-y-auto py-4 px-4 hidden lg:block w-72">
           <RoteiroChecklist 
             mentoradoId={mentoradoId} 
             guiaNumero={guiaAtiva}
@@ -1366,6 +1376,34 @@ export const MentoradoRoteirosView = ({
           />
         </div>
       </div>
+      
+      {/* Botão flutuante para abrir checklist em telas pequenas */}
+      <Button
+        className="lg:hidden fixed bottom-4 right-4 z-40 h-14 w-14 rounded-full shadow-lg"
+        onClick={() => setShowChecklistMobile(true)}
+      >
+        <CheckSquare className="h-6 w-6" />
+      </Button>
+      
+      {/* Sheet do Checklist para mobile */}
+      <Sheet open={showChecklistMobile} onOpenChange={setShowChecklistMobile}>
+        <SheetContent side="right" className="w-80 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Checklist - Guia {guiaAtiva}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">
+            <RoteiroChecklist 
+              mentoradoId={mentoradoId} 
+              guiaNumero={guiaAtiva}
+              timers={timers}
+              onTimersChange={setTimers}
+              activeTimerId={activeTimerId}
+              onActiveTimerChange={setActiveTimerId}
+              timersLoaded={timersLoaded}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Slash Command Popover */}
       <SlashCommandPopover
