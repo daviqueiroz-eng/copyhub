@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Save, Trash2, ArrowLeft } from "lucide-react";
+import { FileText, Save, Trash2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 
 type RoteiroItem = {
   headline: string;
@@ -22,10 +21,12 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
   const [showQuantidadeDialog, setShowQuantidadeDialog] = useState(true);
   const [quantidade, setQuantidade] = useState<number | null>(null);
   const [roteiros, setRoteiros] = useState<RoteiroItem[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleSelectQuantidade = (qtd: number) => {
     setQuantidade(qtd);
     setRoteiros(Array.from({ length: qtd }, () => ({ headline: "", estrutura: "" })));
+    setCurrentIndex(0);
     setShowQuantidadeDialog(false);
   };
 
@@ -56,7 +57,6 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
       return;
     }
 
-    // Aqui você pode adicionar a lógica de salvar no banco de dados
     toast({
       title: "Roteiros salvos!",
       description: `${preenchidos.length} roteiro(s) foram salvos com sucesso.`,
@@ -66,10 +66,41 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
   const handleReset = () => {
     setQuantidade(null);
     setRoteiros([]);
+    setCurrentIndex(0);
     setShowQuantidadeDialog(true);
   };
 
+  const handlePrevious = useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+    }
+  }, [currentIndex]);
+
+  const handleNext = useCallback(() => {
+    if (currentIndex < roteiros.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    }
+  }, [currentIndex, roteiros.length]);
+
+  // Atalhos de teclado
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrevious();
+      }
+      if (e.ctrlKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handlePrevious, handleNext]);
+
   const preenchidosCount = roteiros.filter(r => r.headline.trim() || r.estrutura.trim()).length;
+  const currentRoteiro = roteiros[currentIndex];
 
   return (
     <div className="w-full">
@@ -100,7 +131,7 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
       </Dialog>
 
       {/* Conteúdo principal */}
-      {quantidade && (
+      {quantidade && currentRoteiro && (
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -128,66 +159,117 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
             </div>
           </div>
 
-          <ScrollArea className="h-[calc(100vh-300px)]">
-            <div className="space-y-6 pr-4">
-              {roteiros.map((roteiro, index) => (
-                <Card key={index} className="p-5 border-2 border-border hover:border-primary/30 transition-colors">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-bold text-primary font-poppins">
-                          {String(index + 1).padStart(2, '0')}
-                        </span>
-                      </div>
-                      <FileText className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleLimparRoteiro(index)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Headline */}
-                    <div>
-                      <label 
-                        className="block text-sm font-bold mb-2 font-poppins"
-                        style={{ color: '#B8860B' }}
-                      >
-                        HEADLINE {String(index + 1).padStart(2, '0')}:
-                      </label>
-                      <Input
-                        value={roteiro.headline}
-                        onChange={(e) => handleUpdateRoteiro(index, "headline", e.target.value)}
-                        placeholder="Digite a headline do roteiro..."
-                        className="font-poppins text-[16px] border-b-2 border-b-blue-500/50 rounded-b-none focus:border-b-blue-500"
-                      />
-                    </div>
-
-                    {/* Estrutura */}
-                    <div>
-                      <label 
-                        className="block text-sm font-bold mb-2 font-poppins"
-                        style={{ color: '#B8860B' }}
-                      >
-                        ESTRUTURA {String(index + 1).padStart(2, '0')}:
-                      </label>
-                      <Textarea
-                        value={roteiro.estrutura}
-                        onChange={(e) => handleUpdateRoteiro(index, "estrutura", e.target.value)}
-                        placeholder="Digite a estrutura do roteiro..."
-                        className="font-poppins text-[14px] min-h-[100px] border-b-2 border-b-blue-500/50 rounded-b-none focus:border-b-blue-500 resize-none"
-                      />
-                    </div>
-                  </div>
-                </Card>
-              ))}
+          {/* Navegação entre roteiros */}
+          <div className="flex items-center justify-center gap-4 mb-6">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handlePrevious}
+              disabled={currentIndex === 0}
+              className="h-10 w-10"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            
+            <div className="flex items-center gap-2 min-w-[100px] justify-center">
+              <span className="text-lg font-bold font-poppins">
+                {String(currentIndex + 1).padStart(2, '0')}
+              </span>
+              <span className="text-muted-foreground">/</span>
+              <span className="text-muted-foreground">
+                {String(quantidade).padStart(2, '0')}
+              </span>
             </div>
-          </ScrollArea>
+            
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleNext}
+              disabled={currentIndex === roteiros.length - 1}
+              className="h-10 w-10"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* Roteiro atual */}
+          <Card className="p-5 border-2 border-primary/30">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-base font-bold text-primary font-poppins">
+                    {String(currentIndex + 1).padStart(2, '0')}
+                  </span>
+                </div>
+                <FileText className="w-5 h-5 text-muted-foreground" />
+                {(currentRoteiro.headline.trim() || currentRoteiro.estrutura.trim()) && (
+                  <span className="text-xs bg-green-500/20 text-green-600 px-2 py-0.5 rounded-full">
+                    Preenchido
+                  </span>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => handleLimparRoteiro(currentIndex)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Headline */}
+              <div>
+                <label 
+                  className="block text-sm font-bold mb-2 font-poppins"
+                  style={{ color: '#B8860B' }}
+                >
+                  HEADLINE {String(currentIndex + 1).padStart(2, '0')}:
+                </label>
+                <Input
+                  value={currentRoteiro.headline}
+                  onChange={(e) => handleUpdateRoteiro(currentIndex, "headline", e.target.value)}
+                  placeholder="Digite a headline do roteiro..."
+                  className="font-poppins text-[16px] border-b-2 border-b-blue-500/50 rounded-b-none focus:border-b-blue-500"
+                />
+              </div>
+
+              {/* Estrutura */}
+              <div>
+                <label 
+                  className="block text-sm font-bold mb-2 font-poppins"
+                  style={{ color: '#B8860B' }}
+                >
+                  ESTRUTURA {String(currentIndex + 1).padStart(2, '0')}:
+                </label>
+                <Textarea
+                  value={currentRoteiro.estrutura}
+                  onChange={(e) => handleUpdateRoteiro(currentIndex, "estrutura", e.target.value)}
+                  placeholder="Digite a estrutura do roteiro..."
+                  className="font-poppins text-[14px] min-h-[200px] border-b-2 border-b-blue-500/50 rounded-b-none focus:border-b-blue-500 resize-none"
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* Indicadores de progresso (dots) */}
+          <div className="flex items-center justify-center gap-1 mt-4 flex-wrap max-w-full">
+            {roteiros.map((r, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentIndex(idx)}
+                className={`w-3 h-3 rounded-full transition-all ${
+                  idx === currentIndex 
+                    ? 'bg-primary scale-125' 
+                    : (r.headline.trim() || r.estrutura.trim())
+                      ? 'bg-green-500/60 hover:bg-green-500'
+                      : 'bg-muted hover:bg-muted-foreground/30'
+                }`}
+                title={`Roteiro ${idx + 1}`}
+              />
+            ))}
+          </div>
 
           {/* Barra de progresso fixa */}
           <div className="mt-6 pt-4 border-t">
@@ -201,6 +283,9 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
                 style={{ width: `${(preenchidosCount / quantidade) * 100}%` }}
               />
             </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Dica: Use Ctrl + ← / → para navegar
+            </p>
           </div>
         </Card>
       )}
