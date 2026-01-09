@@ -126,10 +126,16 @@ export const HeadlinesRandomDialog = ({
     const sourceHeadlines = headlinesForCurrentNicho;
     if (sourceHeadlines.length === 0) return;
     const shuffled = shuffleArray(sourceHeadlines);
-    const newHeadlines = shuffled.slice(0, countRef.current);
+    
+    // Se há nicho selecionado, mostrar TODAS (embaralhadas)
+    // Se não, limitar a 9
+    const newHeadlines = (useExcelSource && selectedNicho)
+      ? shuffled // Todas as headlines do nicho, embaralhadas
+      : shuffled.slice(0, countRef.current); // Limite de 9
+    
     onSaveHeadlines(newHeadlines);
     setSelectedIds(new Set());
-  }, [headlinesForCurrentNicho, onSaveHeadlines]);
+  }, [headlinesForCurrentNicho, onSaveHeadlines, useExcelSource, selectedNicho]);
 
   // Gerar pela primeira vez se não houver headlines salvas ou ao trocar fonte
   useEffect(() => {
@@ -156,8 +162,15 @@ export const HeadlinesRandomDialog = ({
   // Handler para troca de nicho
   const handleNichoChange = (nicho: string | null) => {
     setSelectedNicho(nicho);
-    // Se voltou para "Todos", limpar para gerar novas aleatórias
-    if (!nicho) {
+    
+    if (nicho) {
+      // Carregar TODAS as headlines do nicho selecionado
+      const nichoHeadlines = excelHeadlinesFormatted.filter(h => 
+        h.arquivo_origem?.includes(` - ${nicho}`)
+      );
+      onSaveHeadlines(nichoHeadlines);
+    } else {
+      // Voltou para "Todos", limpar para gerar novas aleatórias
       onSaveHeadlines([]);
     }
   };
@@ -183,9 +196,13 @@ export const HeadlinesRandomDialog = ({
       );
     }
     
-    // No search: use existing behavior
+    // No search: use saved headlines (which now include all niche headlines when niche is selected)
+    if (useExcelSource && selectedNicho && savedHeadlines.length > 0) {
+      return savedHeadlines;
+    }
+    
+    // Fallback: filter directly if savedHeadlines not yet populated
     if (useExcelSource && selectedNicho) {
-      // Show ALL headlines from selected niche
       return excelHeadlinesFormatted.filter(h => 
         h.arquivo_origem?.includes(` - ${selectedNicho}`)
       );
