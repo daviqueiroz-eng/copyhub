@@ -1364,7 +1364,7 @@ export const MentoradoRoteirosView = ({
         </ScrollArea>
         
         {/* Checklist fixo à direita - escondido em telas pequenas */}
-        <div className="shrink-0 border-l bg-muted/30 overflow-y-auto py-4 px-6 hidden lg:block w-72 mr-2">
+        <div className="shrink-0 border-l bg-muted/30 overflow-y-auto py-4 pl-4 pr-6 hidden lg:block w-80 mr-4">
           <RoteiroChecklist 
             mentoradoId={mentoradoId} 
             guiaNumero={guiaAtiva}
