@@ -232,21 +232,72 @@ export const HeadlinesRandomDialog = ({
     <>
       <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
         <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <div className="flex items-center justify-between gap-4">
-              <DialogTitle className="text-xl font-bold font-poppins">
-                Headlines {useExcelSource ? "dos Excels" : "das Análises"}
-              </DialogTitle>
+          <DialogHeader className="pb-4">
+            <div className="flex flex-col gap-3">
+              {/* Primeira linha: Título + Toggle + Botões de ação */}
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <DialogTitle className="text-xl font-bold font-poppins">
+                  Headlines {useExcelSource ? "dos Excels" : "das Análises"}
+                </DialogTitle>
+                
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Toggle de fonte */}
+                  <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5">
+                    <Label className="text-xs text-muted-foreground">Análises</Label>
+                    <Switch
+                      checked={useExcelSource}
+                      onCheckedChange={handleSourceChange}
+                    />
+                    <Label className="text-xs text-muted-foreground">Excels</Label>
+                  </div>
+
+                  {/* Botão upload Excel */}
+                  {useExcelSource && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowUploadDialog(true)}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Excel
+                    </Button>
+                  )}
+
+                  {hasHeadlines && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={handleGenerateNew}
+                        disabled={isLoading || allHeadlines.length === 0}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Gerar novas
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="gap-2"
+                        onClick={handleUse}
+                        disabled={selectedIds.size === 0}
+                      >
+                        <Check className="h-4 w-4" />
+                        Usar {selectedIds.size > 0 && `(${selectedIds.size})`}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
               
-              <div className="flex items-center gap-3">
-                {/* Campo de busca */}
+              {/* Segunda linha: Campo de busca + Filtro de nicho */}
+              <div className="flex items-center gap-3 flex-wrap">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Buscar headline..."
-                    className="pl-8 w-44 h-8"
+                    className="pl-8 w-56 h-8"
                   />
                 </div>
 
@@ -273,52 +324,6 @@ export const HeadlinesRandomDialog = ({
                       })}
                     </SelectContent>
                   </Select>
-                )}
-
-                {/* Toggle de fonte */}
-                <div className="flex items-center gap-2 border rounded-lg px-3 py-1.5">
-                  <Label className="text-xs text-muted-foreground">Análises</Label>
-                  <Switch
-                    checked={useExcelSource}
-                    onCheckedChange={handleSourceChange}
-                  />
-                  <Label className="text-xs text-muted-foreground">Excels</Label>
-                </div>
-
-                {/* Botão upload Excel */}
-                {useExcelSource && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowUploadDialog(true)}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Excel
-                  </Button>
-                )}
-
-                {hasHeadlines && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={handleGenerateNew}
-                      disabled={isLoading || allHeadlines.length === 0}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      Gerar novas
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="gap-2"
-                      onClick={handleUse}
-                      disabled={selectedIds.size === 0}
-                    >
-                      <Check className="h-4 w-4" />
-                      Usar {selectedIds.size > 0 && `(${selectedIds.size})`}
-                    </Button>
-                  </>
                 )}
               </div>
             </div>
