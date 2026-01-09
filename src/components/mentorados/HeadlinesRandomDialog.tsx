@@ -110,14 +110,26 @@ export const HeadlinesRandomDialog = ({
     });
   }, []);
 
-  // Gerar headlines aleatórias
+  // Headlines filtradas pelo nicho selecionado (antes de gerar aleatórias)
+  const headlinesForCurrentNicho = useMemo(() => {
+    if (!useExcelSource || !selectedNicho) {
+      return allHeadlines;
+    }
+    
+    return excelHeadlinesFormatted.filter(h => 
+      h.arquivo_origem?.includes(` - ${selectedNicho}`)
+    );
+  }, [useExcelSource, selectedNicho, allHeadlines, excelHeadlinesFormatted]);
+
+  // Gerar headlines aleatórias (do nicho selecionado se houver)
   const generateRandomHeadlines = useCallback(() => {
-    if (allHeadlines.length === 0) return;
-    const shuffled = shuffleArray(allHeadlines);
+    const sourceHeadlines = headlinesForCurrentNicho;
+    if (sourceHeadlines.length === 0) return;
+    const shuffled = shuffleArray(sourceHeadlines);
     const newHeadlines = shuffled.slice(0, countRef.current);
     onSaveHeadlines(newHeadlines);
     setSelectedIds(new Set());
-  }, [allHeadlines, onSaveHeadlines]);
+  }, [headlinesForCurrentNicho, onSaveHeadlines]);
 
   // Gerar pela primeira vez se não houver headlines salvas ou ao trocar fonte
   useEffect(() => {
@@ -141,11 +153,37 @@ export const HeadlinesRandomDialog = ({
     onSaveHeadlines([]);
   };
 
-  // Filtrar headlines baseado na busca e nicho
-  const filteredHeadlines = useMemo(() => {
-    let filtered = savedHeadlines;
+  // Handler para troca de nicho
+  const handleNichoChange = (nicho: string | null) => {
+    setSelectedNicho(nicho);
+    // Se voltou para "Todos", limpar para gerar novas aleatórias
+    if (!nicho) {
+      onSaveHeadlines([]);
+    }
+  };
+
+  // Se nicho selecionado, mostrar TODAS as headlines do nicho
+  // Se não, usar as 9 aleatórias salvas
+  const displayHeadlines = useMemo(() => {
+    if (useExcelSource && selectedNicho) {
+      // Mostrar TODAS as headlines do nicho selecionado
+      let nichoHeadlines = excelHeadlinesFormatted.filter(h => 
+        h.arquivo_origem?.includes(` - ${selectedNicho}`)
+      );
+      
+      // Aplicar filtro de busca se houver
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        nichoHeadlines = nichoHeadlines.filter(h => 
+          h.headline.toLowerCase().includes(term)
+        );
+      }
+      
+      return nichoHeadlines;
+    }
     
-    // Filtro de busca
+    // Sem nicho selecionado, usar as salvas (9 aleatórias) com filtro de busca
+    let filtered = savedHeadlines;
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(h => 
@@ -153,18 +191,8 @@ export const HeadlinesRandomDialog = ({
       );
     }
     
-    // Filtro de nicho (apenas para Excel)
-    if (useExcelSource && selectedNicho) {
-      const headlineIdsInNicho = new Set(
-        excelHeadlinesFormatted
-          .filter(h => h.arquivo_origem?.includes(` - ${selectedNicho}`))
-          .map(h => h.id)
-      );
-      filtered = filtered.filter(h => headlineIdsInNicho.has(h.id));
-    }
-    
     return filtered;
-  }, [savedHeadlines, searchTerm, selectedNicho, useExcelSource, excelHeadlinesFormatted]);
+  }, [useExcelSource, selectedNicho, excelHeadlinesFormatted, savedHeadlines, searchTerm]);
 
   const handleGenerateNew = () => {
     generateRandomHeadlines();
@@ -208,18 +236,23 @@ export const HeadlinesRandomDialog = ({
                 {useExcelSource && availableNichos.length > 0 && (
                   <Select
                     value={selectedNicho || "all"}
-                    onValueChange={(v) => setSelectedNicho(v === "all" ? null : v)}
+                    onValueChange={(v) => handleNichoChange(v === "all" ? null : v)}
                   >
-                    <SelectTrigger className="w-40 h-8">
+                    <SelectTrigger className="w-48 h-8">
                       <SelectValue placeholder="Todos os nichos" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os nichos</SelectItem>
-                      {availableNichos.map(nicho => (
-                        <SelectItem key={nicho} value={nicho}>
-                          {nicho}
-                        </SelectItem>
-                      ))}
+                      {availableNichos.map(nicho => {
+                        const count = excelHeadlinesFormatted.filter(h => 
+                          h.arquivo_origem?.includes(` - ${nicho}`)
+                        ).length;
+                        return (
+                          <SelectItem key={nicho} value={nicho}>
+                            {nicho} ({count})
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 )}
@@ -310,7 +343,7 @@ export const HeadlinesRandomDialog = ({
           ) : (
             <ScrollArea className="flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-                {filteredHeadlines.map((item) => (
+                {displayHeadlines.map((item) => (
                   <div
                     key={item.id}
                     className={`relative border rounded-lg p-4 cursor-pointer transition-all hover:border-primary ${
