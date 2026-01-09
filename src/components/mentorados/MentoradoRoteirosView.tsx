@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2 } from "lucide-react";
 import { useMemo } from "react";
 import { useTrelloImport, TrelloCard } from "@/hooks/useTrelloImport";
 import { Button } from "@/components/ui/button";
@@ -143,6 +143,12 @@ export const MentoradoRoteirosView = ({
   const pendingChangesRef = useRef<Map<string, RoteiroLocal>>(new Map());
   const inputRefs = useRef<Map<string, HTMLInputElement | HTMLTextAreaElement>>(new Map());
 
+  // Estado para histórico de undo/redo
+  const [history, setHistory] = useState<Map<string, RoteiroLocal>[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const isUndoRedoRef = useRef(false);
+  const historyDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
   const { data: mentorados = [] } = useMentorados();
   const { data: trelloImport } = useTrelloImport();
@@ -215,6 +221,15 @@ export const MentoradoRoteirosView = ({
     });
     
     setRoteirosLocais(newMap);
+    
+    // Inicializar histórico com estado inicial
+    if (newMap.size > 0) {
+      const initialState = new Map(
+        Array.from(newMap.entries()).map(([k, v]) => [k, { ...v }])
+      );
+      setHistory([initialState]);
+      setHistoryIndex(0);
+    }
   }, [roteiros, isLoading]);
 
   // Função para mudar de guia com limpeza de estado
@@ -423,6 +438,86 @@ export const MentoradoRoteirosView = ({
     [mentoradoId, upsertRoteiro]
   );
 
+  // Função para salvar snapshot no histórico (debounced)
+  const saveToHistory = useCallback((newState: Map<string, RoteiroLocal>) => {
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      return;
+    }
+    
+    // Debounce para agrupar edições rápidas
+    if (historyDebounceRef.current) {
+      clearTimeout(historyDebounceRef.current);
+    }
+    
+    historyDebounceRef.current = setTimeout(() => {
+      setHistory(prev => {
+        const newHistory = prev.slice(0, historyIndex + 1);
+        // Deep clone do Map
+        const clonedState = new Map(
+          Array.from(newState.entries()).map(([k, v]) => [k, { ...v }])
+        );
+        newHistory.push(clonedState);
+        // Limitar histórico a 50 estados
+        if (newHistory.length > 50) newHistory.shift();
+        return newHistory;
+      });
+      setHistoryIndex(prev => Math.min(prev + 1, 49));
+    }, 500);
+  }, [historyIndex]);
+
+  // Função de Undo
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      isUndoRedoRef.current = true;
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      const previousState = history[newIndex];
+      if (previousState) {
+        setRoteirosLocais(new Map(
+          Array.from(previousState.entries()).map(([k, v]) => [k, { ...v }])
+        ));
+      }
+      toast({ title: "Ação desfeita", description: "Ctrl+Shift+Z para refazer" });
+    }
+  }, [historyIndex, history]);
+
+  // Função de Redo
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      isUndoRedoRef.current = true;
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      const nextState = history[newIndex];
+      if (nextState) {
+        setRoteirosLocais(new Map(
+          Array.from(nextState.entries()).map(([k, v]) => [k, { ...v }])
+        ));
+      }
+      toast({ title: "Ação refeita" });
+    }
+  }, [historyIndex, history]);
+
+  // Atalhos de teclado para Undo/Redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Undo: Ctrl+Z (não Shift)
+      if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+      
+      // Redo: Ctrl+Shift+Z
+      if (e.ctrlKey && e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
+
   const handleChange = useCallback((
     guiaNumero: number,
     ordem: number,
@@ -444,6 +539,9 @@ export const MentoradoRoteirosView = ({
       // Guardar na ref para o debounce usar o valor mais recente
       pendingChangesRef.current.set(key, updated);
       
+      // Salvar no histórico
+      saveToHistory(newMap);
+      
       return newMap;
     });
 
@@ -463,7 +561,7 @@ export const MentoradoRoteirosView = ({
     }, 1500);
     
     debounceTimersRef.current.set(key, timer);
-  }, [saveRoteiro]);
+  }, [saveRoteiro, saveToHistory]);
 
   // Detectar "/" para abrir slash command - posicionar ao lado e acima
   const handleInputKeyDown = useCallback((
@@ -986,6 +1084,30 @@ export const MentoradoRoteirosView = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Botões Undo/Redo */}
+            <div className="flex items-center gap-1 border-r pr-2 mr-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleUndo}
+                disabled={historyIndex <= 0}
+                title="Desfazer (Ctrl+Z)"
+                className="h-9 w-9"
+              >
+                <Undo2 className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRedo}
+                disabled={historyIndex >= history.length - 1}
+                title="Refazer (Ctrl+Shift+Z)"
+                className="h-9 w-9"
+              >
+                <Redo2 className="h-5 w-5" />
+              </Button>
+            </div>
+            
             <Button
               variant="outline"
               size="icon"
