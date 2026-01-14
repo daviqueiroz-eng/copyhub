@@ -739,6 +739,21 @@ export const MentoradoRoteirosView = ({
       setShowHeadlinesModal(true);
       // Fechar o popover se estiver aberto
       setSlashCommand(prev => ({ ...prev, isOpen: false }));
+    } else if (textBeforeCursor.endsWith("/p")) {
+      // Abrir popover de prompts
+      // Limpar o /p do valor - preservando o texto após o cursor
+      const textAfterCursor = value.slice(cursorPos);
+      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
+      handleChange(guiaNumero, ordem, field, cleanValue);
+      // Atualizar posição do cursor para refletir a remoção do /p
+      cursorPositionRef.current.set(key, cursorPos - 2);
+      setSlashCommand({
+        isOpen: true,
+        mode: "prompts",
+        targetKey: key,
+        targetField: field,
+        position: { top, left },
+      });
     } else if (slashCommand.isOpen) {
       // Manter popover aberto se já estiver
       setSlashCommand(prev => ({ ...prev, targetKey: key, targetField: field }));

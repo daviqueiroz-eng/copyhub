@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useIntensificadores, useCTAs, HighlightItem } from "@/hooks/useAnalysisHighlights";
+import { usePrompts, Prompt } from "@/hooks/usePrompts";
 
-type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
+type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | string;
 
 interface AvatarCategory {
   id: string;
@@ -50,6 +51,7 @@ export const SlashCommandPopover = ({
 
   const { data: intensificadores = [] } = useIntensificadores();
   const { data: ctas = [] } = useCTAs();
+  const { data: prompts = [] } = usePrompts();
 
   useEffect(() => {
     setInternalMode(mode);
@@ -302,7 +304,7 @@ export const SlashCommandPopover = ({
 
         <div className="border-t mt-2 pt-2 shrink-0">
           <p className="px-3 py-1 text-xs text-muted-foreground">
-            Digite <span className="font-mono">/1</span> para Intensificadores, <span className="font-mono">/2</span> para CTAs ou <span className="font-mono">/3</span> para Headlines Aleatórias
+            <span className="font-mono">/1</span> Intensificadores, <span className="font-mono">/2</span> CTAs, <span className="font-mono">/3</span> Headlines ou <span className="font-mono">/p</span> Prompts
           </p>
         </div>
       </div>
@@ -390,6 +392,58 @@ export const SlashCommandPopover = ({
     );
   };
 
+  const filterPrompts = (items: Prompt[]) => {
+    if (!search.trim()) return items;
+    return items.filter(
+      (item) =>
+        item.titulo.toLowerCase().includes(search.toLowerCase()) ||
+        item.descricao.toLowerCase().includes(search.toLowerCase()) ||
+        item.nicho.toLowerCase().includes(search.toLowerCase())
+    );
+  };
+
+  const renderPrompts = () => {
+    const filtered = filterPrompts(prompts);
+    
+    return (
+      <div className="py-2">
+        <p className="px-3 py-1 text-xs text-muted-foreground font-semibold flex items-center justify-between">
+          <span>Banco de Prompts ({filtered.length})</span>
+          <button
+            className="text-xs text-primary hover:underline"
+            onClick={() => setInternalMode("menu")}
+          >
+            ← Voltar
+          </button>
+        </p>
+        {filtered.length === 0 ? (
+          <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+            Nenhum prompt encontrado.
+          </p>
+        ) : (
+          <ScrollArea className="max-h-[400px]">
+            {filtered.map((prompt) => (
+              <button
+                key={prompt.id}
+                className="w-full text-left px-3 py-3 hover:bg-primary/10 transition-colors border-b border-border/50 last:border-0"
+                onClick={() => {
+                  onSelectItem(prompt.conteudo);
+                  onClose();
+                }}
+              >
+                <p className="text-sm font-medium line-clamp-1">{prompt.titulo}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{prompt.descricao}</p>
+                <span className="inline-block mt-1.5 px-2 py-0.5 text-xs bg-primary/10 text-primary rounded">
+                  {prompt.nicho}
+                </span>
+              </button>
+            ))}
+          </ScrollArea>
+        )}
+      </div>
+    );
+  };
+
   // Encontrar categoria do avatar pelo mode
   const getAvatarCategory = () => {
     if (internalMode.startsWith("avatar_")) {
@@ -424,6 +478,7 @@ export const SlashCommandPopover = ({
       {internalMode === "menu" && renderMenu()}
       {internalMode === "intensificadores" && renderItems(intensificadores, "Intensificadores")}
       {internalMode === "ctas" && renderItems(ctas, "CTAs")}
+      {internalMode === "prompts" && renderPrompts()}
       {avatarCategory && renderAvatarItems(avatarCategory)}
     </div>
   );
