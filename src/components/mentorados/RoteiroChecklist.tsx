@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, RotateCcw, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+
+const INACTIVITY_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutos em ms
 
 interface ChecklistItem {
   id: string;
@@ -57,6 +59,10 @@ export const RoteiroChecklist = ({
   const [checklistLoaded, setChecklistLoaded] = useState(false);
   const intervalsRef = useRef<Record<string, NodeJS.Timeout | null>>({});
   const prevGuiaRef = useRef<number | null>(null);
+  
+  // Refs para timer baseado em timestamp (persistente mesmo minimizado)
+  const startTimestampsRef = useRef<Record<string, number | null>>({});
+  const baseSecondsRef = useRef<Record<string, number>>({});
 
   // Carregar checklist quando mudar de guia
   useEffect(() => {
@@ -102,27 +108,110 @@ export const RoteiroChecklist = ({
     });
   }, [timers, mentoradoId, guiaNumero, timersLoaded]);
 
-  // Gerenciar intervals dos timers - usando functional update para evitar stale closures
+  // Gerenciar intervals dos timers - usando timestamp para persistir mesmo minimizado
   useEffect(() => {
     Object.entries(timers).forEach(([id, timer]) => {
       if (timer.isRunning && !timer.finalizado) {
+        // Iniciar timer se não estava rodando
         if (!intervalsRef.current[id]) {
+          // Se não tem timestamp de início, definir agora
+          if (!startTimestampsRef.current[id]) {
+            startTimestampsRef.current[id] = Date.now();
+            baseSecondsRef.current[id] = timer.segundos;
+          }
+          
           intervalsRef.current[id] = setInterval(() => {
-            onTimersChange(prevTimers => ({
-              ...prevTimers,
-              [id]: { ...prevTimers[id], segundos: prevTimers[id].segundos + 1 }
-            }));
+            const startTime = startTimestampsRef.current[id];
+            if (startTime) {
+              const elapsed = Math.floor((Date.now() - startTime) / 1000);
+              const totalSeconds = baseSecondsRef.current[id] + elapsed;
+              onTimersChange(prevTimers => ({
+                ...prevTimers,
+                [id]: { ...prevTimers[id], segundos: totalSeconds }
+              }));
+            }
           }, 1000);
         }
       } else {
+        // Parar timer
         if (intervalsRef.current[id]) {
           clearInterval(intervalsRef.current[id]!);
           intervalsRef.current[id] = null;
         }
+        // Limpar refs de timestamp quando parar
+        startTimestampsRef.current[id] = null;
       }
     });
-    // NÃO limpar no cleanup - apenas no unmount final
   }, [timers, onTimersChange]);
+
+  // Listener para visibilitychange - sincronizar ao voltar e pausar após 25min
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        // Salvar timestamp de quando saiu
+        localStorage.setItem('timer-hidden-at', Date.now().toString());
+      } else if (document.visibilityState === 'visible') {
+        const hiddenAt = localStorage.getItem('timer-hidden-at');
+        
+        if (hiddenAt) {
+          const msAway = Date.now() - parseInt(hiddenAt);
+          
+          // Verificar se ficou mais de 25 minutos ausente
+          if (msAway > INACTIVITY_TIMEOUT_MS) {
+            // Pausar todos os timers ativos
+            let hadRunningTimer = false;
+            const newTimers = { ...timers };
+            
+            Object.entries(newTimers).forEach(([id, timer]) => {
+              if (timer.isRunning) {
+                hadRunningTimer = true;
+                // Atualizar segundos antes de pausar
+                const startTime = startTimestampsRef.current[id];
+                if (startTime) {
+                  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                  newTimers[id] = { 
+                    ...timer, 
+                    segundos: baseSecondsRef.current[id] + elapsed,
+                    isRunning: false 
+                  };
+                } else {
+                  newTimers[id] = { ...timer, isRunning: false };
+                }
+                // Limpar refs
+                startTimestampsRef.current[id] = null;
+              }
+            });
+            
+            if (hadRunningTimer) {
+              onTimersChange(newTimers);
+              onActiveTimerChange(null);
+              toast({ 
+                title: "Timer pausado", 
+                description: "Você ficou mais de 25 minutos ausente." 
+              });
+            }
+          } else {
+            // Sincronizar timers que estavam rodando
+            Object.entries(timers).forEach(([id, timer]) => {
+              if (timer.isRunning && startTimestampsRef.current[id]) {
+                const elapsed = Math.floor((Date.now() - startTimestampsRef.current[id]!) / 1000);
+                const totalSeconds = baseSecondsRef.current[id] + elapsed;
+                onTimersChange(prevTimers => ({
+                  ...prevTimers,
+                  [id]: { ...prevTimers[id], segundos: totalSeconds }
+                }));
+              }
+            });
+          }
+          
+          localStorage.removeItem('timer-hidden-at');
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [timers, onTimersChange, onActiveTimerChange]);
 
   // Cleanup separado para unmount do componente
   useEffect(() => {
@@ -131,6 +220,7 @@ export const RoteiroChecklist = ({
         if (interval) clearInterval(interval);
       });
       intervalsRef.current = {};
+      startTimestampsRef.current = {};
     };
   }, []);
 
