@@ -427,9 +427,10 @@ export const SlashCommandPopover = ({
                 key={prompt.id}
                 className="w-full text-left px-3 py-3 hover:bg-primary/10 transition-colors border-b border-border/50 last:border-0"
                 onClick={() => {
-                  onSelectItem(prompt.conteudo);
+                  navigator.clipboard.writeText(prompt.conteudo);
                   onClose();
                 }}
+                title="Clique para copiar"
               >
                 <p className="text-sm font-medium line-clamp-1">{prompt.titulo}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{prompt.descricao}</p>
