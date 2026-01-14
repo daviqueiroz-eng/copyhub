@@ -2,12 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import Mural from "./pages/Mural";
-import Perfil from "./pages/Perfil";
+import Acompanhamento from "./pages/Acompanhamento";
 import Mentorados from "./pages/Mentorados";
 import Prompts from "./pages/Prompts";
 import Headlines from "./pages/Headlines";
@@ -38,7 +38,8 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<ProtectedRoute><Mural /></ProtectedRoute>} />
               <Route path="/dash-geral" element={<ProtectedRoute><DashGeral /></ProtectedRoute>} />
-              <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
+              <Route path="/acompanhamento" element={<ProtectedRoute><Acompanhamento /></ProtectedRoute>} />
+              <Route path="/perfil" element={<Navigate to="/acompanhamento" replace />} />
               <Route path="/mentorados" element={<ProtectedRoute><Mentorados /></ProtectedRoute>} />
               <Route path="/prompts" element={<ProtectedRoute><Prompts /></ProtectedRoute>} />
               <Route path="/headlines" element={<ProtectedRoute><Headlines /></ProtectedRoute>} />

@@ -13,6 +13,7 @@ import { FindReplaceDialog } from "./FindReplaceDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
 import { RoteiroChecklist, TimersRecord } from "./RoteiroChecklist";
+import { RoteiroFeedbackDialog } from "./RoteiroFeedbackDialog";
 import { RoteiroProgressBar } from "./RoteiroProgressBar";
 import {
   Dialog,
@@ -92,6 +93,8 @@ export const MentoradoRoteirosView = ({
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [feedbackTimers, setFeedbackTimers] = useState<TimersRecord | null>(null);
   const [highlightedMatch, setHighlightedMatch] = useState<{
     guiaNumero: number;
     ordem: number;
@@ -1373,6 +1376,10 @@ export const MentoradoRoteirosView = ({
             activeTimerId={activeTimerId}
             onActiveTimerChange={setActiveTimerId}
             timersLoaded={timersLoaded}
+            onComplete={(t) => {
+              setFeedbackTimers(t);
+              setShowFeedbackDialog(true);
+            }}
           />
         </div>
       </div>
@@ -1400,6 +1407,10 @@ export const MentoradoRoteirosView = ({
               activeTimerId={activeTimerId}
               onActiveTimerChange={setActiveTimerId}
               timersLoaded={timersLoaded}
+              onComplete={(t) => {
+                setFeedbackTimers(t);
+                setShowFeedbackDialog(true);
+              }}
             />
           </div>
         </SheetContent>
@@ -1596,6 +1607,16 @@ export const MentoradoRoteirosView = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Feedback Dialog após completar checklist */}
+      <RoteiroFeedbackDialog
+        open={showFeedbackDialog}
+        onOpenChange={setShowFeedbackDialog}
+        mentoradoId={mentoradoId}
+        mentoradoNome={mentoradoNome}
+        guiaNumero={guiaAtiva}
+        timers={feedbackTimers}
+      />
     </div>
   );
 };

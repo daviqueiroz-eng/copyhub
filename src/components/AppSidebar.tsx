@@ -9,7 +9,7 @@ import {
   Calendar,
   Lightbulb,
   UserCog,
-  User,
+  BarChart3,
   Zap,
   LayoutDashboard,
 } from "lucide-react";
@@ -30,7 +30,7 @@ import { useAtividadesNaoVisualizadas } from "@/hooks/useAtividadesGerais";
 const menuItems = [
   { title: "Mural", url: "/", icon: MessageSquare },
   { title: "Dash Geral", url: "/dash-geral", icon: LayoutDashboard },
-  { title: "Meu Perfil", url: "/perfil", icon: User },
+  { title: "Acompanhamento", url: "/acompanhamento", icon: BarChart3 },
   { title: "Meus Mentorados", url: "/mentorados", icon: Users },
   { title: "Banco de Prompts", url: "/prompts", icon: Sparkles },
   { title: "Planilhas Importantes", url: "/headlines", icon: FileText },
