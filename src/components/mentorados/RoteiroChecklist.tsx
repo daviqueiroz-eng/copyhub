@@ -57,12 +57,6 @@ export const RoteiroChecklist = ({
   const [checklistLoaded, setChecklistLoaded] = useState(false);
   const intervalsRef = useRef<Record<string, NodeJS.Timeout | null>>({});
   const prevGuiaRef = useRef<number | null>(null);
-  const timersRef = useRef<TimersRecord>(timers);
-  
-  // Manter ref atualizada com o valor mais recente dos timers
-  useEffect(() => {
-    timersRef.current = timers;
-  }, [timers]);
 
   // Carregar checklist quando mudar de guia
   useEffect(() => {
@@ -152,23 +146,27 @@ export const RoteiroChecklist = ({
   };
 
   const handleToggle = (id: string) => {
+    // Calcular os timers atualizados ANTES de qualquer atualização de estado
+    const currentItem = items.find(i => i.id === id);
+    const willBeChecked = currentItem ? !currentItem.checked : false;
+    
+    // Se vai marcar como concluído e tem timer, preparar o timer finalizado
+    let updatedTimers = { ...timers };
+    if (willBeChecked && currentItem?.hasTiming && timers[id]) {
+      updatedTimers = {
+        ...timers,
+        [id]: { ...timers[id], isRunning: false, finalizado: true }
+      };
+      onTimersChange(updatedTimers);
+      if (activeTimerId === id) {
+        onActiveTimerChange(null);
+      }
+    }
+    
     setItems(prev => {
       const newItems = prev.map(item => {
         if (item.id === id) {
-          const newChecked = !item.checked;
-          
-          // Se marcar como concluído e tem timer, finalizar o timer
-          if (newChecked && item.hasTiming && timers[id]) {
-            onTimersChange({
-              ...timers,
-              [id]: { ...timers[id], isRunning: false, finalizado: true }
-            });
-            if (activeTimerId === id) {
-              onActiveTimerChange(null);
-            }
-          }
-          
-          return { ...item, checked: newChecked };
+          return { ...item, checked: !item.checked };
         }
         return item;
       });
@@ -186,8 +184,8 @@ export const RoteiroChecklist = ({
             const randomMsg = mensagensConclusao[Math.floor(Math.random() * mensagensConclusao.length)];
             toast({ title: randomMsg });
             
-            // Chamar callback para abrir dialog de feedback com timers atualizados
-            onComplete?.(timersRef.current);
+            // Passar os timers calculados localmente
+            onComplete?.(updatedTimers);
           }
         }, 0);
       }
@@ -252,10 +250,13 @@ export const RoteiroChecklist = ({
     const timer = timers[id];
     if (!timer) return;
     
-    onTimersChange({
+    // Calcular os timers atualizados ANTES de chamar os callbacks
+    const updatedTimers = {
       ...timers,
       [id]: { ...timer, isRunning: false, finalizado: true }
-    });
+    };
+    
+    onTimersChange(updatedTimers);
     
     if (activeTimerId === id) {
       onActiveTimerChange(null);
@@ -278,7 +279,8 @@ export const RoteiroChecklist = ({
             localStorage.setItem(celebratedKey, "true");
             const randomMsg = mensagensConclusao[Math.floor(Math.random() * mensagensConclusao.length)];
             toast({ title: randomMsg });
-            onComplete?.(timersRef.current);
+            // Passar os timers atualizados calculados localmente
+            onComplete?.(updatedTimers);
           }
         }, 0);
       }
