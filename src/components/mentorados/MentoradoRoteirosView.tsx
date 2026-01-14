@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw } from "lucide-react";
 import { useMemo } from "react";
 import { useTrelloImport, TrelloCard } from "@/hooks/useTrelloImport";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ import {
   useMentoradosRoteiros,
   useUpsertMentoradoRoteiro,
   useDeleteGuia,
+  useDeletedGuias,
+  useRestoreGuia,
 } from "@/hooks/useMentoradosRoteiros";
 import {
   AlertDialog,
@@ -169,9 +171,12 @@ export const MentoradoRoteirosView = ({
   const upsertRoteiro = useUpsertMentoradoRoteiro();
   const deleteGuia = useDeleteGuia();
   const updateMentorado = useUpdateMentorado();
+  const { data: deletedGuias = [] } = useDeletedGuias(mentoradoId);
+  const restoreGuia = useRestoreGuia();
   
   // Estado para confirmação de deletar guia
   const [guiaToDelete, setGuiaToDelete] = useState<number | null>(null);
+  const [showTrashDropdown, setShowTrashDropdown] = useState(false);
   
   // Estado para checklist mobile
   const [showChecklistMobile, setShowChecklistMobile] = useState(false);
@@ -360,6 +365,10 @@ export const MentoradoRoteirosView = ({
 
           // Se a guia ativa foi deletada, mudar para a primeira guia disponível
           if (guiaAtiva === guiaNumero) {
+            // IMPORTANTE: Marcar timers como não carregados ANTES de mudar de guia
+            // Isso impede que o RoteiroChecklist salve dados incorretos
+            setTimersLoaded(false);
+            
             const remaining = guias.filter((g) => g.numero !== guiaNumero);
             if (remaining.length > 0) {
               setGuiaAtiva(remaining[0].numero);
@@ -1217,7 +1226,65 @@ export const MentoradoRoteirosView = ({
               ))}
             </div>
           </ScrollArea>
-          <div className="p-2 lg:p-3 border-t">
+          <div className="p-2 lg:p-3 border-t space-y-2">
+            {/* Lixeira com guias deletadas */}
+            {deletedGuias.length > 0 && (
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full gap-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowTrashDropdown(!showTrashDropdown)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="hidden lg:inline">Lixeira ({deletedGuias.length})</span>
+                </Button>
+                
+                {showTrashDropdown && (
+                  <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border rounded-lg shadow-lg z-50 p-2 space-y-1">
+                    <div className="text-xs text-muted-foreground px-2 py-1 font-medium">
+                      Guias deletadas (expira em 2 dias)
+                    </div>
+                    {deletedGuias.map((guia) => (
+                      <div key={guia.guia_numero} className="flex items-center justify-between gap-2 px-2 py-1.5 hover:bg-muted rounded">
+                        <span className="text-sm">Guia {guia.guia_numero}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 text-xs"
+                          onClick={() => {
+                            restoreGuia.mutate(
+                              { mentoradoId, guiaNumero: guia.guia_numero },
+                              {
+                                onSuccess: () => {
+                                  toast({
+                                    title: "Guia restaurada!",
+                                    description: `Guia ${guia.guia_numero} foi restaurada.`,
+                                  });
+                                  setShowTrashDropdown(false);
+                                },
+                                onError: () => {
+                                  toast({
+                                    title: "Erro ao restaurar",
+                                    description: "Não foi possível restaurar a guia.",
+                                    variant: "destructive",
+                                  });
+                                },
+                              }
+                            );
+                          }}
+                          disabled={restoreGuia.isPending}
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Restaurar
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            
             <Button
               variant="outline"
               size="sm"
