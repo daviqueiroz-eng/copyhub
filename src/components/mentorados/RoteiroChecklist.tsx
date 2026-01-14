@@ -146,8 +146,8 @@ export const RoteiroChecklist = ({
   };
 
   const handleToggle = (id: string) => {
-    setItems(prev => 
-      prev.map(item => {
+    setItems(prev => {
+      const newItems = prev.map(item => {
         if (item.id === id) {
           const newChecked = !item.checked;
           
@@ -165,8 +165,29 @@ export const RoteiroChecklist = ({
           return { ...item, checked: newChecked };
         }
         return item;
-      })
-    );
+      });
+      
+      // APÓS atualizar items, verificar se TODOS estão marcados
+      const allCompleted = newItems.every(item => item.checked);
+      if (allCompleted) {
+        // Usar setTimeout para garantir que o estado foi atualizado
+        setTimeout(() => {
+          const celebratedKey = `checklist-completed-${mentoradoId}-${guiaNumero}`;
+          const alreadyCelebrated = localStorage.getItem(celebratedKey);
+          
+          if (!alreadyCelebrated) {
+            localStorage.setItem(celebratedKey, "true");
+            const randomMsg = mensagensConclusao[Math.floor(Math.random() * mensagensConclusao.length)];
+            toast({ title: randomMsg });
+            
+            // Chamar callback para abrir dialog de feedback
+            onComplete?.(timers);
+          }
+        }, 0);
+      }
+      
+      return newItems;
+    });
   };
 
   const handleTimerToggle = (id: string) => {
@@ -234,12 +255,30 @@ export const RoteiroChecklist = ({
       onActiveTimerChange(null);
     }
     
-    // Marcar checkbox como concluído
-    setItems(prevItems => 
-      prevItems.map(item => 
+    // Marcar checkbox como concluído e verificar se todos estão completos
+    setItems(prevItems => {
+      const newItems = prevItems.map(item => 
         item.id === id ? { ...item, checked: true } : item
-      )
-    );
+      );
+      
+      // Verificar se todos estão completos APÓS esta marcação
+      const allCompleted = newItems.every(item => item.checked);
+      if (allCompleted) {
+        setTimeout(() => {
+          const celebratedKey = `checklist-completed-${mentoradoId}-${guiaNumero}`;
+          const alreadyCelebrated = localStorage.getItem(celebratedKey);
+          
+          if (!alreadyCelebrated) {
+            localStorage.setItem(celebratedKey, "true");
+            const randomMsg = mensagensConclusao[Math.floor(Math.random() * mensagensConclusao.length)];
+            toast({ title: randomMsg });
+            onComplete?.(timers);
+          }
+        }, 0);
+      }
+      
+      return newItems;
+    });
   };
 
   const completedCount = items.filter(i => i.checked).length;
@@ -255,24 +294,6 @@ export const RoteiroChecklist = ({
     "🚀 100% do checklist! Você arrasou!",
   ];
 
-  // Efeito para mensagem de conclusão do checklist
-  useEffect(() => {
-    // Garantir que só mostra quando TODOS os 6 itens estão marcados
-    const allCompleted = items.every(item => item.checked);
-    if (!allCompleted) return;
-    
-    const celebratedKey = `checklist-completed-${mentoradoId}-${guiaNumero}`;
-    const alreadyCelebrated = localStorage.getItem(celebratedKey);
-    
-    if (!alreadyCelebrated) {
-      localStorage.setItem(celebratedKey, "true");
-      const randomMsg = mensagensConclusao[Math.floor(Math.random() * mensagensConclusao.length)];
-      toast({ title: randomMsg });
-      
-      // Chamar callback para abrir dialog de feedback
-      onComplete?.(timers);
-    }
-  }, [items, mentoradoId, guiaNumero, timers, onComplete]);
 
   return (
     <div className="w-72 shrink-0">
