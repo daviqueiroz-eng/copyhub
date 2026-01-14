@@ -38,6 +38,7 @@ interface RoteiroChecklistProps {
   activeTimerId: string | null;
   onActiveTimerChange: (id: string | null) => void;
   timersLoaded: boolean;
+  onComplete?: (timers: TimersRecord) => void;
 }
 
 export const RoteiroChecklist = ({ 
@@ -48,6 +49,7 @@ export const RoteiroChecklist = ({
   activeTimerId,
   onActiveTimerChange,
   timersLoaded,
+  onComplete,
 }: RoteiroChecklistProps) => {
   const checklistStorageKey = `roteiro-checklist-${mentoradoId}-${guiaNumero}`;
   
@@ -264,8 +266,11 @@ export const RoteiroChecklist = ({
       localStorage.setItem(celebratedKey, "true");
       const randomMsg = mensagensConclusao[Math.floor(Math.random() * mensagensConclusao.length)];
       toast({ title: randomMsg });
+      
+      // Chamar callback para abrir dialog de feedback
+      onComplete?.(timers);
     }
-  }, [completedCount, items.length, mentoradoId, guiaNumero]);
+  }, [completedCount, items.length, mentoradoId, guiaNumero, timers, onComplete]);
 
   return (
     <div className="w-72 shrink-0">

@@ -1565,6 +1565,50 @@ export type Database = {
         }
         Relationships: []
       }
+      roteiro_feedbacks: {
+        Row: {
+          created_at: string
+          dificuldades: string | null
+          guia_numero: number
+          id: string
+          mentorado_id: string
+          tempo_headlines: number | null
+          tempo_revisao: number | null
+          tempo_roteiros: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dificuldades?: string | null
+          guia_numero: number
+          id?: string
+          mentorado_id: string
+          tempo_headlines?: number | null
+          tempo_revisao?: number | null
+          tempo_roteiros?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dificuldades?: string | null
+          guia_numero?: number
+          id?: string
+          mentorado_id?: string
+          tempo_headlines?: number | null
+          tempo_revisao?: number | null
+          tempo_roteiros?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roteiro_feedbacks_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roteiros: {
         Row: {
           conteudo: string
