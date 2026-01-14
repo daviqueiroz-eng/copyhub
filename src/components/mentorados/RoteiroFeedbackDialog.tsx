@@ -42,9 +42,9 @@ export const RoteiroFeedbackDialog = ({
   // Preencher com valores dos timers (convertendo segundos para minutos)
   useEffect(() => {
     if (timers && open) {
-      const headlinesMin = Math.round((timers.headlines?.segundos || 0) / 60);
-      const roteirosMin = Math.round((timers.roteiros?.segundos || 0) / 60);
-      const revisaoMin = Math.round((timers.revisar?.segundos || 0) / 60);
+      const headlinesMin = Math.ceil((timers.headlines?.segundos || 0) / 60);
+      const roteirosMin = Math.ceil((timers.roteiros?.segundos || 0) / 60);
+      const revisaoMin = Math.ceil((timers.revisar?.segundos || 0) / 60);
       
       setTempoHeadlines(headlinesMin);
       setTempoRoteiros(roteirosMin);
