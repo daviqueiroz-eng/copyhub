@@ -48,7 +48,8 @@ export const useCreateHeadlinesCriadas = () => {
       user_id: string;
       progresso_id?: string;
       roteiro_id?: string;
-      nicho_id: string;
+      nicho_id?: string | null;
+      mentorado_id?: string | null;
       headline: string;
       estrutura_base?: string;
     }[]) => {

@@ -984,6 +984,7 @@ export type Database = {
           estrutura_base: string | null
           headline: string
           id: string
+          mentorado_id: string | null
           nicho_id: string | null
           progresso_id: string | null
           roteiro_id: string | null
@@ -994,6 +995,7 @@ export type Database = {
           estrutura_base?: string | null
           headline: string
           id?: string
+          mentorado_id?: string | null
           nicho_id?: string | null
           progresso_id?: string | null
           roteiro_id?: string | null
@@ -1004,12 +1006,20 @@ export type Database = {
           estrutura_base?: string | null
           headline?: string
           id?: string
+          mentorado_id?: string | null
           nicho_id?: string | null
           progresso_id?: string | null
           roteiro_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "headlines_criadas_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "headlines_criadas_nicho_id_fkey"
             columns: ["nicho_id"]

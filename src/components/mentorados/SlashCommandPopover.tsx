@@ -1,12 +1,18 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Plus, Pencil, X, Check } from "lucide-react";
+import { Search, Plus, Pencil, X, Check, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useIntensificadores, useCTAs, HighlightItem } from "@/hooks/useAnalysisHighlights";
 import { usePrompts, Prompt } from "@/hooks/usePrompts";
+import { useMentorados, Mentorado } from "@/hooks/useMentorados";
+import { useCreateHeadlinesCriadas } from "@/hooks/useHeadlinesCriadas";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
-type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | string;
+type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | "mentorados" | string;
 
 interface AvatarCategory {
   id: string;
@@ -48,16 +54,25 @@ export const SlashCommandPopover = ({
   const [newItemText, setNewItemText] = useState("");
   const [editingItem, setEditingItem] = useState<{ categoryId: string; oldText: string } | null>(null);
   const [editItemText, setEditItemText] = useState("");
+  
+  // Estados para modo mentorados
+  const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
+  const [headlineInput, setHeadlineInput] = useState("");
 
   const { data: intensificadores = [] } = useIntensificadores();
   const { data: ctas = [] } = useCTAs();
   const { data: prompts = [] } = usePrompts();
+  const { data: mentorados = [] } = useMentorados();
+  const createHeadline = useCreateHeadlinesCriadas();
+  const { user } = useAuth();
 
   useEffect(() => {
     setInternalMode(mode);
     setSearch("");
     setAddingToCategory(null);
     setEditingItem(null);
+    setSelectedMentorado(null);
+    setHeadlineInput("");
   }, [mode]);
 
   // Fechar ao clicar fora
@@ -304,7 +319,7 @@ export const SlashCommandPopover = ({
 
         <div className="border-t mt-2 pt-2 shrink-0">
           <p className="px-3 py-1 text-xs text-muted-foreground">
-            <span className="font-mono">/1</span> Intensificadores, <span className="font-mono">/2</span> CTAs, <span className="font-mono">/3</span> Headlines ou <span className="font-mono">/p</span> Prompts
+            <span className="font-mono">/1</span> Intensificadores, <span className="font-mono">/2</span> CTAs, <span className="font-mono">/3</span> Headlines, <span className="font-mono">/p</span> Prompts, <span className="font-mono">/m</span> Mentorados
           </p>
         </div>
       </div>
@@ -454,6 +469,137 @@ export const SlashCommandPopover = ({
     return null;
   };
 
+  // Função para salvar headline para mentorado
+  const handleSaveHeadline = async () => {
+    if (!selectedMentorado || !headlineInput.trim() || !user) return;
+    
+    try {
+      await createHeadline.mutateAsync([{
+        user_id: user.id,
+        mentorado_id: selectedMentorado.id,
+        headline: headlineInput.trim(),
+      }]);
+      
+      toast({ 
+        title: "Headline salva!", 
+        description: `Para ${selectedMentorado.nome}` 
+      });
+      setHeadlineInput("");
+      setSelectedMentorado(null);
+      onClose();
+    } catch (error) {
+      // Erro já tratado pelo hook
+    }
+  };
+
+  // Renderizar lista de mentorados
+  const renderMentorados = () => {
+    // Se tem mentorado selecionado, mostrar input para headline
+    if (selectedMentorado) {
+      return (
+        <div className="p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={selectedMentorado.avatar || undefined} />
+              <AvatarFallback className="text-xs bg-primary/10">
+                {selectedMentorado.iniciais}
+              </AvatarFallback>
+            </Avatar>
+            <span className="font-medium text-sm flex-1">{selectedMentorado.nome}</span>
+            <button
+              className="p-1 hover:bg-muted rounded"
+              onClick={() => {
+                setSelectedMentorado(null);
+                setHeadlineInput("");
+              }}
+            >
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
+          <Textarea
+            placeholder="Digite a headline..."
+            value={headlineInput}
+            onChange={(e) => setHeadlineInput(e.target.value)}
+            className="min-h-[80px]"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.ctrlKey) {
+                e.preventDefault();
+                handleSaveHeadline();
+              }
+            }}
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Ctrl+Enter para salvar</span>
+            <Button 
+              size="sm"
+              onClick={handleSaveHeadline}
+              disabled={!headlineInput.trim() || createHeadline.isPending}
+            >
+              {createHeadline.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Check className="h-4 w-4 mr-1" />
+              )}
+              Salvar Headline
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    
+    // Lista de mentorados para selecionar
+    const filtered = mentorados.filter(m =>
+      m.nome.toLowerCase().includes(search.toLowerCase()) ||
+      m.iniciais.toLowerCase().includes(search.toLowerCase()) ||
+      (m.instagram && m.instagram.toLowerCase().includes(search.toLowerCase()))
+    );
+    
+    return (
+      <div className="py-2">
+        <p className="px-3 py-1 text-xs text-muted-foreground font-semibold flex items-center justify-between">
+          <span>Selecione um Mentorado ({filtered.length})</span>
+          <button
+            className="text-xs text-primary hover:underline"
+            onClick={() => setInternalMode("menu")}
+          >
+            ← Voltar
+          </button>
+        </p>
+        {filtered.length === 0 ? (
+          <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+            {mentorados.length === 0 
+              ? "Nenhum mentorado cadastrado."
+              : "Nenhum resultado para a busca."}
+          </p>
+        ) : (
+          <ScrollArea className="max-h-[350px]">
+            {filtered.map((mentorado) => (
+              <button
+                key={mentorado.id}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors"
+                onClick={() => setSelectedMentorado(mentorado)}
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={mentorado.avatar || undefined} />
+                  <AvatarFallback className="text-xs bg-primary/10">
+                    {mentorado.iniciais}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-left flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{mentorado.nome}</p>
+                  {mentorado.instagram && (
+                    <p className="text-xs text-muted-foreground truncate">@{mentorado.instagram}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </ScrollArea>
+        )}
+      </div>
+    );
+  };
+
   const avatarCategory = getAvatarCategory();
 
   return (
@@ -462,24 +608,27 @@ export const SlashCommandPopover = ({
       className="fixed z-[100] bg-background border rounded-lg shadow-lg w-96"
       style={{ top: position.top, left: position.left }}
     >
-      {/* Campo de busca */}
-      <div className="p-2 border-b">
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar item..."
-            className="pl-8 h-8"
-          />
+      {/* Campo de busca - esconder quando estiver digitando headline */}
+      {!(internalMode === "mentorados" && selectedMentorado) && (
+        <div className="p-2 border-b">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar item..."
+              className="pl-8 h-8"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Conteúdo */}
       {internalMode === "menu" && renderMenu()}
       {internalMode === "intensificadores" && renderItems(intensificadores, "Intensificadores")}
       {internalMode === "ctas" && renderItems(ctas, "CTAs")}
       {internalMode === "prompts" && renderPrompts()}
+      {internalMode === "mentorados" && renderMentorados()}
       {avatarCategory && renderAvatarItems(avatarCategory)}
     </div>
   );
