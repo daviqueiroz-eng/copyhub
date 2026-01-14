@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { BarChart3, User, Users, Clock, AlertTriangle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { BarChart3, User, Users, Clock, AlertTriangle, X } from "lucide-react";
+import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -14,6 +14,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, useProfile } from "@/hooks/useAuth";
 import { useRoteiroFeedbacks, useAllRoteiroFeedbacks, RoteiroFeedback } from "@/hooks/useRoteiroFeedback";
@@ -49,6 +57,10 @@ const Acompanhamento = () => {
   const { data: allFeedbacks, isLoading: allFeedbacksLoading } = useAllRoteiroFeedbacks();
   const { data: mentorados } = useMentorados();
   const { data: allProfiles } = useAllProfiles();
+
+  // Estados de filtro
+  const [filterUser, setFilterUser] = useState<string | null>(null);
+  const [filterMentorado, setFilterMentorado] = useState<string | null>(null);
 
   const isAdmin = role === "admin";
 
@@ -194,7 +206,23 @@ const Acompanhamento = () => {
   };
 
   const myStats = calcStats(myFeedbacks || []);
-  const allStats = calcStats(allFeedbacks || []);
+  
+  // Filtrar feedbacks para admin
+  const filteredFeedbacks = useMemo(() => {
+    let result = allFeedbacks || [];
+    
+    if (filterUser) {
+      result = result.filter(f => f.user_id === filterUser);
+    }
+    if (filterMentorado) {
+      result = result.filter(f => f.mentorado_id === filterMentorado);
+    }
+    
+    return result;
+  }, [allFeedbacks, filterUser, filterMentorado]);
+  
+  // Recalcular stats baseado nos feedbacks filtrados
+  const filteredStats = useMemo(() => calcStats(filteredFeedbacks), [filteredFeedbacks]);
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-6">
@@ -266,14 +294,57 @@ const Acompanhamento = () => {
               <Skeleton className="h-64 w-full" />
             ) : (
               <>
-                {/* Stats Cards para todos */}
+                {/* Filtros */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Select 
+                    value={filterUser || "all"} 
+                    onValueChange={(v) => setFilterUser(v === "all" ? null : v)}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Filtrar por usuário" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os usuários</SelectItem>
+                      {allProfiles?.map(p => (
+                        <SelectItem key={p.user_id} value={p.user_id}>{p.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select 
+                    value={filterMentorado || "all"} 
+                    onValueChange={(v) => setFilterMentorado(v === "all" ? null : v)}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Filtrar por mentorado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os mentorados</SelectItem>
+                      {mentorados?.map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {(filterUser || filterMentorado) && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => { setFilterUser(null); setFilterMentorado(null); }}
+                    >
+                      <X className="h-4 w-4 mr-1" /> Limpar filtros
+                    </Button>
+                  )}
+                </div>
+
+                {/* Stats Cards para todos (filtrado) */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardDescription>Total Registros</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">{allStats.totalFeedbacks}</p>
+                      <p className="text-2xl font-bold">{filteredStats.totalFeedbacks}</p>
                     </CardContent>
                   </Card>
                   <Card>
@@ -281,7 +352,7 @@ const Acompanhamento = () => {
                       <CardDescription>Média Headlines</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">{allStats.avgHeadlines} min</p>
+                      <p className="text-2xl font-bold">{filteredStats.avgHeadlines} min</p>
                     </CardContent>
                   </Card>
                   <Card>
@@ -289,7 +360,7 @@ const Acompanhamento = () => {
                       <CardDescription>Média Roteiros</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">{allStats.avgRoteiros} min</p>
+                      <p className="text-2xl font-bold">{filteredStats.avgRoteiros} min</p>
                     </CardContent>
                   </Card>
                   <Card>
@@ -297,12 +368,12 @@ const Acompanhamento = () => {
                       <CardDescription>Média Total</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold text-primary">{allStats.avgTotal} min</p>
+                      <p className="text-2xl font-bold text-primary">{filteredStats.avgTotal} min</p>
                     </CardContent>
                   </Card>
                 </div>
 
-                {renderFeedbackTable(allFeedbacks || [], true)}
+                {renderFeedbackTable(filteredFeedbacks, true)}
               </>
             )}
           </TabsContent>

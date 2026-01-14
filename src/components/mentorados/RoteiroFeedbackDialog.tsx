@@ -35,16 +35,24 @@ export const RoteiroFeedbackDialog = ({
   const [tempoRoteiros, setTempoRoteiros] = useState(0);
   const [tempoRevisao, setTempoRevisao] = useState(0);
   const [dificuldades, setDificuldades] = useState("");
+  const [autoFilled, setAutoFilled] = useState(false);
 
   const createFeedback = useCreateRoteiroFeedback();
 
   // Preencher com valores dos timers (convertendo segundos para minutos)
   useEffect(() => {
     if (timers && open) {
-      setTempoHeadlines(Math.round((timers.headlines?.segundos || 0) / 60));
-      setTempoRoteiros(Math.round((timers.roteiros?.segundos || 0) / 60));
-      setTempoRevisao(Math.round((timers.revisar?.segundos || 0) / 60));
+      const headlinesMin = Math.round((timers.headlines?.segundos || 0) / 60);
+      const roteirosMin = Math.round((timers.roteiros?.segundos || 0) / 60);
+      const revisaoMin = Math.round((timers.revisar?.segundos || 0) / 60);
+      
+      setTempoHeadlines(headlinesMin);
+      setTempoRoteiros(roteirosMin);
+      setTempoRevisao(revisaoMin);
       setDificuldades("");
+      
+      // Indica se algum tempo foi puxado do cronômetro
+      setAutoFilled(headlinesMin > 0 || roteirosMin > 0 || revisaoMin > 0);
     }
   }, [timers, open]);
 
@@ -77,10 +85,18 @@ export const RoteiroFeedbackDialog = ({
 
         <div className="space-y-4 py-4">
           <div className="space-y-3">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Quanto tempo levou? (minutos)
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Quanto tempo levou? (minutos)
+              </Label>
+              {autoFilled && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Tempos do cronômetro
+                </span>
+              )}
+            </div>
 
             <div className="grid gap-3">
               <div className="flex items-center gap-3">
