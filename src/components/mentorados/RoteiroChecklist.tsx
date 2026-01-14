@@ -257,7 +257,9 @@ export const RoteiroChecklist = ({
 
   // Efeito para mensagem de conclusão do checklist
   useEffect(() => {
-    if (completedCount !== items.length) return;
+    // Garantir que só mostra quando TODOS os 6 itens estão marcados
+    const allCompleted = items.every(item => item.checked);
+    if (!allCompleted) return;
     
     const celebratedKey = `checklist-completed-${mentoradoId}-${guiaNumero}`;
     const alreadyCelebrated = localStorage.getItem(celebratedKey);
@@ -270,7 +272,7 @@ export const RoteiroChecklist = ({
       // Chamar callback para abrir dialog de feedback
       onComplete?.(timers);
     }
-  }, [completedCount, items.length, mentoradoId, guiaNumero, timers, onComplete]);
+  }, [items, mentoradoId, guiaNumero, timers, onComplete]);
 
   return (
     <div className="w-72 shrink-0">
