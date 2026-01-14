@@ -1230,6 +1230,7 @@ export type Database = {
       mentorados_roteiros: {
         Row: {
           created_at: string
+          deleted_at: string | null
           estrutura: string | null
           guia_numero: number
           headline: string | null
@@ -1241,6 +1242,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           estrutura?: string | null
           guia_numero?: number
           headline?: string | null
@@ -1252,6 +1254,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           estrutura?: string | null
           guia_numero?: number
           headline?: string | null

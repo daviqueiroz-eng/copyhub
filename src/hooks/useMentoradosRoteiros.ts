@@ -12,6 +12,7 @@ export type MentoradoRoteiro = {
   estrutura: string;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 };
 
 export const useMentoradosRoteiros = (mentoradoId: string | undefined) => {
@@ -24,11 +25,54 @@ export const useMentoradosRoteiros = (mentoradoId: string | undefined) => {
         .from("mentorados_roteiros")
         .select("*")
         .eq("mentorado_id", mentoradoId)
+        .is("deleted_at", null) // Filtrar apenas não deletados
         .order("guia_numero", { ascending: true })
         .order("ordem", { ascending: true });
 
       if (error) throw error;
       return data as MentoradoRoteiro[];
+    },
+    enabled: !!mentoradoId,
+  });
+};
+
+// Hook para buscar guias deletadas (últimos 2 dias)
+export const useDeletedGuias = (mentoradoId: string | undefined) => {
+  return useQuery({
+    queryKey: ["mentorados_roteiros_deleted", mentoradoId],
+    queryFn: async () => {
+      if (!mentoradoId) return [];
+      
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      
+      const { data, error } = await supabase
+        .from("mentorados_roteiros")
+        .select("*")
+        .eq("mentorado_id", mentoradoId)
+        .not("deleted_at", "is", null)
+        .gte("deleted_at", twoDaysAgo.toISOString())
+        .order("guia_numero", { ascending: true })
+        .order("ordem", { ascending: true });
+
+      if (error) throw error;
+      
+      // Agrupar por guia_numero
+      const guiasMap = new Map<number, { guia_numero: number; deleted_at: string; count: number }>();
+      (data as MentoradoRoteiro[]).forEach((r) => {
+        const existing = guiasMap.get(r.guia_numero);
+        if (!existing || (r.deleted_at && r.deleted_at > existing.deleted_at)) {
+          guiasMap.set(r.guia_numero, {
+            guia_numero: r.guia_numero,
+            deleted_at: r.deleted_at || "",
+            count: (existing?.count || 0) + 1,
+          });
+        } else if (existing) {
+          guiasMap.set(r.guia_numero, { ...existing, count: existing.count + 1 });
+        }
+      });
+      
+      return Array.from(guiasMap.values());
     },
     enabled: !!mentoradoId,
   });
@@ -64,6 +108,7 @@ export const useUpsertMentoradoRoteiro = () => {
             ordem,
             headline,
             estrutura,
+            deleted_at: null, // Garantir que ao salvar, não esteja marcado como deletado
           },
           {
             onConflict: "mentorado_id,guia_numero,ordem",
@@ -112,6 +157,7 @@ export const useDeleteMentoradoRoteiro = () => {
   });
 };
 
+// Soft delete - marca com deleted_at ao invés de deletar permanentemente
 export const useDeleteGuia = () => {
   const queryClient = useQueryClient();
 
@@ -125,7 +171,7 @@ export const useDeleteGuia = () => {
     }) => {
       const { error } = await supabase
         .from("mentorados_roteiros")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("mentorado_id", mentoradoId)
         .eq("guia_numero", guiaNumero);
 
@@ -134,6 +180,40 @@ export const useDeleteGuia = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["mentorados_roteiros", variables.mentoradoId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["mentorados_roteiros_deleted", variables.mentoradoId],
+      });
+    },
+  });
+};
+
+// Restaurar guia deletada
+export const useRestoreGuia = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      mentoradoId,
+      guiaNumero,
+    }: {
+      mentoradoId: string;
+      guiaNumero: number;
+    }) => {
+      const { error } = await supabase
+        .from("mentorados_roteiros")
+        .update({ deleted_at: null })
+        .eq("mentorado_id", mentoradoId)
+        .eq("guia_numero", guiaNumero);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["mentorados_roteiros", variables.mentoradoId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["mentorados_roteiros_deleted", variables.mentoradoId],
       });
     },
   });
@@ -149,6 +229,7 @@ export const useGetGuiasCount = (mentoradoId: string | undefined) => {
         .from("mentorados_roteiros")
         .select("guia_numero")
         .eq("mentorado_id", mentoradoId)
+        .is("deleted_at", null) // Só contar guias não deletadas
         .order("guia_numero", { ascending: false })
         .limit(1);
 
