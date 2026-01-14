@@ -78,14 +78,43 @@ const Acompanhamento = () => {
 
   const isLoading = roleLoading || profileLoading || myFeedbacksLoading;
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-8 px-4 space-y-6">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-64 w-full" />
-      </div>
+  // Calcular estatísticas
+  const calcStats = (feedbacks: RoteiroFeedback[]) => {
+    if (!feedbacks || feedbacks.length === 0) {
+      return { totalFeedbacks: 0, avgTotal: 0, avgHeadlines: 0, avgRoteiros: 0, avgRevisao: 0 };
+    }
+
+    const totals = feedbacks.map(f => 
+      (f.tempo_headlines || 0) + (f.tempo_roteiros || 0) + (f.tempo_revisao || 0)
     );
-  }
+    
+    return {
+      totalFeedbacks: feedbacks.length,
+      avgTotal: Math.round(totals.reduce((a, b) => a + b, 0) / feedbacks.length),
+      avgHeadlines: Math.round(feedbacks.reduce((a, f) => a + (f.tempo_headlines || 0), 0) / feedbacks.length),
+      avgRoteiros: Math.round(feedbacks.reduce((a, f) => a + (f.tempo_roteiros || 0), 0) / feedbacks.length),
+      avgRevisao: Math.round(feedbacks.reduce((a, f) => a + (f.tempo_revisao || 0), 0) / feedbacks.length),
+    };
+  };
+
+  const myStats = calcStats(myFeedbacks || []);
+  
+  // Filtrar feedbacks para admin - HOOKS DEVEM VIR ANTES DO EARLY RETURN
+  const filteredFeedbacks = useMemo(() => {
+    let result = allFeedbacks || [];
+    
+    if (filterUser) {
+      result = result.filter(f => f.user_id === filterUser);
+    }
+    if (filterMentorado) {
+      result = result.filter(f => f.mentorado_id === filterMentorado);
+    }
+    
+    return result;
+  }, [allFeedbacks, filterUser, filterMentorado]);
+  
+  // Recalcular stats baseado nos feedbacks filtrados
+  const filteredStats = useMemo(() => calcStats(filteredFeedbacks), [filteredFeedbacks]);
 
   const renderFeedbackTable = (feedbacks: RoteiroFeedback[], showUser: boolean = false) => {
     if (!feedbacks || feedbacks.length === 0) {
@@ -186,43 +215,14 @@ const Acompanhamento = () => {
     );
   };
 
-  // Calcular estatísticas
-  const calcStats = (feedbacks: RoteiroFeedback[]) => {
-    if (!feedbacks || feedbacks.length === 0) {
-      return { totalFeedbacks: 0, avgTotal: 0, avgHeadlines: 0, avgRoteiros: 0, avgRevisao: 0 };
-    }
-
-    const totals = feedbacks.map(f => 
-      (f.tempo_headlines || 0) + (f.tempo_roteiros || 0) + (f.tempo_revisao || 0)
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 px-4 space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-64 w-full" />
+      </div>
     );
-    
-    return {
-      totalFeedbacks: feedbacks.length,
-      avgTotal: Math.round(totals.reduce((a, b) => a + b, 0) / feedbacks.length),
-      avgHeadlines: Math.round(feedbacks.reduce((a, f) => a + (f.tempo_headlines || 0), 0) / feedbacks.length),
-      avgRoteiros: Math.round(feedbacks.reduce((a, f) => a + (f.tempo_roteiros || 0), 0) / feedbacks.length),
-      avgRevisao: Math.round(feedbacks.reduce((a, f) => a + (f.tempo_revisao || 0), 0) / feedbacks.length),
-    };
-  };
-
-  const myStats = calcStats(myFeedbacks || []);
-  
-  // Filtrar feedbacks para admin
-  const filteredFeedbacks = useMemo(() => {
-    let result = allFeedbacks || [];
-    
-    if (filterUser) {
-      result = result.filter(f => f.user_id === filterUser);
-    }
-    if (filterMentorado) {
-      result = result.filter(f => f.mentorado_id === filterMentorado);
-    }
-    
-    return result;
-  }, [allFeedbacks, filterUser, filterMentorado]);
-  
-  // Recalcular stats baseado nos feedbacks filtrados
-  const filteredStats = useMemo(() => calcStats(filteredFeedbacks), [filteredFeedbacks]);
+  }
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-6">
