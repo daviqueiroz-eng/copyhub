@@ -112,6 +112,11 @@ export const MentoradoRoteirosView = ({
   const [activeTimerId, setActiveTimerId] = useState<string | null>(null);
   const [timersLoaded, setTimersLoaded] = useState(false);
   
+  // Timer alert state - para avisar quando digitar sem timer ativo
+  const [showTimerAlert, setShowTimerAlert] = useState(false);
+  const [timerAlertField, setTimerAlertField] = useState<"headlines" | "roteiros" | null>(null);
+  const lastAlertTimeRef = useRef<number>(0);
+  
   // Slash command state
   const [slashCommand, setSlashCommand] = useState<{
     isOpen: boolean;
@@ -645,6 +650,27 @@ export const MentoradoRoteirosView = ({
     handleChange(parseInt(guiaStr), parseInt(ordemStr), targetField, newValue);
   }, [slashCommand, roteirosLocais, handleChange]);
 
+  // Função para verificar se o timer está ativo e mostrar alerta
+  const checkTimerAndAlert = useCallback((field: "headline" | "estrutura") => {
+    // Mapear campo para timer ID
+    const timerId = field === "headline" ? "headlines" : "roteiros";
+    const timer = timers[timerId];
+    
+    // Se o timer não está rodando e não está finalizado, mostrar alerta
+    if (!timer?.isRunning && !timer?.finalizado) {
+      // Evitar spam de alertas (só mostrar a cada 30 segundos)
+      const now = Date.now();
+      if (now - lastAlertTimeRef.current > 30000) {
+        lastAlertTimeRef.current = now;
+        setTimerAlertField(timerId);
+        setShowTimerAlert(true);
+        
+        // Auto-fechar após 5 segundos
+        setTimeout(() => setShowTimerAlert(false), 5000);
+      }
+    }
+  }, [timers]);
+
   // Detectar /1 ou /2 para abrir diretamente o modo correto
   const handleInputChange2 = useCallback((
     guiaNumero: number,
@@ -653,6 +679,9 @@ export const MentoradoRoteirosView = ({
     value: string,
     cursorPosition?: number
   ) => {
+    // Verificar se o timer está ativo antes de processar a mudança
+    checkTimerAndAlert(field);
+    
     handleChange(guiaNumero, ordem, field, value);
 
     const key = `${guiaNumero}-${ordem}`;
@@ -705,7 +734,7 @@ export const MentoradoRoteirosView = ({
       // Manter popover aberto se já estiver
       setSlashCommand(prev => ({ ...prev, targetKey: key, targetField: field }));
     }
-  }, [handleChange, slashCommand.isOpen]);
+  }, [handleChange, slashCommand.isOpen, checkTimerAndAlert]);
 
   // Handlers para CRUD do Mapa do Avatar diretamente no popover
   const handleAddAvatarItem = useCallback((categoryId: string, text: string) => {
@@ -1617,6 +1646,26 @@ export const MentoradoRoteirosView = ({
         guiaNumero={guiaAtiva}
         timers={feedbackTimers}
       />
+
+      {/* Alerta de Timer Inativo - Centralizado */}
+      {showTimerAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-amber-500 text-white px-10 py-8 rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-300 pointer-events-auto max-w-lg text-center">
+            <p className="text-2xl font-bold mb-3">⏰ Atenção!</p>
+            <p className="text-xl">
+              Você já começou a criar, lembre de ativar o cronômetro!!
+            </p>
+            <Button 
+              variant="secondary" 
+              size="lg"
+              className="mt-6 text-lg font-semibold"
+              onClick={() => setShowTimerAlert(false)}
+            >
+              Entendi
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
