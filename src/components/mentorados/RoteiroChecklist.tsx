@@ -240,6 +240,12 @@ export const RoteiroChecklist = ({
     const currentItem = items.find(i => i.id === id);
     const willBeChecked = currentItem ? !currentItem.checked : false;
     
+    // Se vai DESMARCAR um item, limpar a flag de "já celebrou" para permitir re-exibição
+    if (!willBeChecked) {
+      const celebratedKey = `checklist-completed-${mentoradoId}-${guiaNumero}`;
+      localStorage.removeItem(celebratedKey);
+    }
+    
     // Se vai marcar como concluído e tem timer, preparar o timer finalizado
     let updatedTimers = { ...timers };
     if (willBeChecked && currentItem?.hasTiming && timers[id]) {
@@ -271,10 +277,8 @@ export const RoteiroChecklist = ({
           
           if (!alreadyCelebrated) {
             localStorage.setItem(celebratedKey, "true");
-            const randomMsg = mensagensConclusao[Math.floor(Math.random() * mensagensConclusao.length)];
-            toast({ title: randomMsg });
-            
-            // Passar os timers calculados localmente
+            // Não mostrar toast aqui - o Dialog já mostra a mensagem de celebração
+            // Apenas chamar onComplete que abre o Dialog
             onComplete?.(updatedTimers);
           }
         }, 0);
@@ -321,6 +325,10 @@ export const RoteiroChecklist = ({
   };
 
   const handleTimerReset = (id: string) => {
+    // Limpar flag de celebração ao resetar timer (para permitir re-exibição do feedback)
+    const celebratedKey = `checklist-completed-${mentoradoId}-${guiaNumero}`;
+    localStorage.removeItem(celebratedKey);
+    
     onTimersChange({
       ...timers,
       [id]: { segundos: 0, isRunning: false, finalizado: false }
@@ -367,9 +375,8 @@ export const RoteiroChecklist = ({
           
           if (!alreadyCelebrated) {
             localStorage.setItem(celebratedKey, "true");
-            const randomMsg = mensagensConclusao[Math.floor(Math.random() * mensagensConclusao.length)];
-            toast({ title: randomMsg });
-            // Passar os timers atualizados calculados localmente
+            // Não mostrar toast aqui - o Dialog já mostra a mensagem de celebração
+            // Apenas chamar onComplete que abre o Dialog
             onComplete?.(updatedTimers);
           }
         }, 0);
