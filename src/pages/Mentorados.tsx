@@ -182,8 +182,9 @@ const Mentorados = () => {
   }, [selectedMentorado, updateMentorado]);
 
   return (
-    <div className="space-y-6 w-full">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-[calc(100vh-10rem)] w-full">
+      {/* Header fixo - Título + Botão */}
+      <div className="flex items-center justify-between shrink-0 pb-4">
         <div>
           <h2 className="text-3xl font-bold text-foreground">Meus Mentorados</h2>
           <p className="text-muted-foreground mt-1">
@@ -196,7 +197,8 @@ const Mentorados = () => {
         </Button>
       </div>
 
-      <div className="relative">
+      {/* Busca fixa */}
+      <div className="relative shrink-0 pb-4">
         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Buscar mentorado..."
@@ -206,16 +208,17 @@ const Mentorados = () => {
         />
       </div>
 
-      <div className="flex flex-col xl:flex-row gap-6">
+      {/* Área principal com scroll interno */}
+      <div className="flex-1 flex flex-col xl:flex-row gap-6 min-h-0">
         {/* Lado esquerdo: Tabs Geral/Grupo com mentorados */}
-        <div className="xl:w-[320px] 2xl:w-[360px] shrink-0">
-          <Tabs defaultValue="geral" className="w-full">
-            <TabsList className="grid w-full max-w-xs grid-cols-2">
+        <div className="xl:w-[320px] 2xl:w-[360px] shrink-0 flex flex-col min-h-0">
+          <Tabs defaultValue="geral" className="flex flex-col flex-1 min-h-0">
+            <TabsList className="grid w-full max-w-xs grid-cols-2 shrink-0">
               <TabsTrigger value="geral">Geral</TabsTrigger>
               <TabsTrigger value="grupo">Grupo</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="geral" className="mt-4">
+            <TabsContent value="geral" className="mt-4 flex-1 min-h-0 overflow-y-auto">
               <GeralView 
                 mentorados={mentorados}
                 searchTerm={searchTerm}
@@ -223,16 +226,18 @@ const Mentorados = () => {
               />
             </TabsContent>
 
-            <TabsContent value="grupo" className="mt-4">
+            <TabsContent value="grupo" className="mt-4 flex-1 min-h-0 overflow-y-auto">
               <GrupoView />
             </TabsContent>
           </Tabs>
         </div>
 
         {/* Lado direito: Ordem de Prioridade sempre visível */}
-        <div className="flex-1 min-w-0 border-l pl-6 hidden xl:block">
-          <h3 className="text-lg font-semibold mb-4">Ordem de Prioridade</h3>
-          <OrdemPrioridadeView />
+        <div className="flex-1 min-w-0 border-l pl-6 hidden xl:flex flex-col min-h-0">
+          <h3 className="text-lg font-semibold mb-4 shrink-0">Ordem de Prioridade</h3>
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <OrdemPrioridadeView />
+          </div>
         </div>
       </div>
 
