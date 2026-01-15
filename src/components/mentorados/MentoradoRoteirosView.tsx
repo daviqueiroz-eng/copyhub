@@ -699,7 +699,8 @@ export const MentoradoRoteirosView = ({
     // Calcular posição do popover baseado na posição fixa
     const popoverWidth = 320;
     const popoverHeight = 350;
-    let left = window.innerWidth - popoverWidth - 20;
+    // Centralizar o popover horizontalmente na tela
+    let left = Math.max(20, (window.innerWidth - popoverWidth) / 2);
     let top = 200;
 
     // Usar a posição do cursor passada, ou a posição salva, ou o final do texto
@@ -711,8 +712,8 @@ export const MentoradoRoteirosView = ({
     // Verificar o texto antes do cursor para detectar comandos
     const textBeforeCursor = value.slice(0, cursorPos);
 
-    // Verificar se termina com /1, /2 ou /3 antes do cursor
-    if (textBeforeCursor.endsWith("/1")) {
+    // Verificar se termina com /i, /c ou /3 antes do cursor
+    if (textBeforeCursor.endsWith("/i")) {
       setSlashCommand({
         isOpen: true,
         mode: "intensificadores",
@@ -720,7 +721,7 @@ export const MentoradoRoteirosView = ({
         targetField: field,
         position: { top, left },
       });
-    } else if (textBeforeCursor.endsWith("/2")) {
+    } else if (textBeforeCursor.endsWith("/c")) {
       setSlashCommand({
         isOpen: true,
         mode: "ctas",
@@ -1325,6 +1326,18 @@ export const MentoradoRoteirosView = ({
               <Plus className="h-4 w-4" />
               <span className="hidden lg:inline">Nova Guia</span>
             </Button>
+
+            {/* Seção de Atalhos */}
+            <div className="mt-4 pt-4 border-t hidden lg:block">
+              <p className="text-sm font-semibold mb-2 text-muted-foreground">Atalhos</p>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p><span className="font-mono bg-muted px-1 rounded">/:</span> mapa do avatar</p>
+                <p><span className="font-mono bg-muted px-1 rounded">/c</span> CTAs</p>
+                <p><span className="font-mono bg-muted px-1 rounded">/i</span> intensificadores</p>
+                <p><span className="font-mono bg-muted px-1 rounded">/p</span> prompts</p>
+                <p><span className="font-mono bg-muted px-1 rounded">/m</span> registra heads</p>
+              </div>
+            </div>
           </div>
         </div>
 

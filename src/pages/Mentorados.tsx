@@ -183,35 +183,46 @@ const Mentorados = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] w-full">
-      {/* Header fixo - Título */}
-      <div className="shrink-0 pb-2">
-        <h2 className="text-3xl font-bold text-foreground">Meus Mentorados</h2>
-        <p className="text-muted-foreground mt-1">
-          Repositório de perfis e diagnósticos
-        </p>
-      </div>
-
-      {/* Busca + Botão Novo */}
-      <div className="flex items-center gap-2 shrink-0 pb-4">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar mentorado..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      {/* Header com Títulos lado a lado */}
+      <div className="flex items-start justify-between gap-6 shrink-0 pb-4">
+        {/* Lado esquerdo - Meus Mentorados */}
+        <div className="xl:w-[320px] 2xl:w-[360px] shrink-0">
+          <h2 className="text-3xl font-bold text-foreground">Meus Mentorados</h2>
+          <p className="text-muted-foreground mt-1">
+            Repositório de perfis e diagnósticos
+          </p>
         </div>
-        <Button size="sm" className="gap-1" onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Novo
-        </Button>
+        
+        {/* Lado direito - Ordem de Prioridade (título) */}
+        <div className="flex-1 hidden xl:block">
+          <h2 className="text-3xl font-bold text-foreground">Ordem de Prioridade</h2>
+          <p className="text-muted-foreground mt-1">
+            Entregas organizadas por data
+          </p>
+        </div>
       </div>
 
       {/* Área principal com scroll interno */}
       <div className="flex-1 flex flex-col xl:flex-row gap-6 min-h-0">
         {/* Lado esquerdo: Tabs Geral/Grupo com mentorados */}
         <div className="xl:w-[320px] 2xl:w-[360px] shrink-0 flex flex-col min-h-0">
+          {/* Busca + Botão Novo */}
+          <div className="flex items-center gap-2 shrink-0 pb-4">
+            <div className="relative w-48">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar mentorado..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button size="sm" className="gap-1" onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Novo
+            </Button>
+          </div>
+
           <Tabs defaultValue="geral" className="flex flex-col flex-1 min-h-0">
             <TabsList className="grid w-full max-w-xs grid-cols-2 shrink-0">
               <TabsTrigger value="geral">Geral</TabsTrigger>
@@ -234,7 +245,6 @@ const Mentorados = () => {
 
         {/* Lado direito: Ordem de Prioridade sempre visível */}
         <div className="flex-1 min-w-0 border-l pl-6 hidden xl:flex flex-col min-h-0">
-          <h3 className="text-lg font-semibold mb-4 shrink-0">Ordem de Prioridade</h3>
           <div className="flex-1 min-h-0 overflow-y-auto">
             <OrdemPrioridadeView />
           </div>
