@@ -55,56 +55,49 @@ export function PrioridadeCard({ card }: PrioridadeCardProps) {
 
   return (
     <div 
-      className={`relative flex flex-col bg-card border rounded-lg overflow-hidden transition-all hover:shadow-lg ${card.cardUrl ? "cursor-pointer hover:scale-[1.02]" : ""}`}
+      className={`relative flex flex-col bg-card border rounded-lg overflow-hidden transition-all hover:shadow-md ${card.cardUrl ? "cursor-pointer hover:scale-[1.01]" : ""}`}
       onClick={handleClick}
     >
-      {/* Badge de urgência no topo - estilo da imagem */}
-      <div className={`w-full py-2 px-3 text-center text-xs font-bold uppercase tracking-wider ${urgencyStyles[urgency]}`}>
+      {/* Badge de urgência no topo - compacto */}
+      <div className={`w-full py-1 px-2 text-center text-[10px] font-bold uppercase tracking-wider ${urgencyStyles[urgency]}`}>
         {urgencyLabels[urgency]}
       </div>
 
-      <div className="p-4 flex flex-col flex-1">
+      <div className="p-2 flex flex-col flex-1">
         {/* Nome do card */}
-        <h3 className="font-semibold text-sm leading-tight line-clamp-2 mb-2">
+        <h3 className="font-semibold text-xs leading-tight line-clamp-2 mb-1">
           {card.cardName}
         </h3>
         
         {/* Instagram */}
         {instagram && (
-          <p className="text-xs text-muted-foreground mb-2">{instagram}</p>
+          <p className="text-[10px] text-muted-foreground mb-1">{instagram}</p>
         )}
 
         {/* Etapa/Lista */}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-          <Tag className="h-3 w-3 flex-shrink-0" />
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+          <Tag className="h-2.5 w-2.5 flex-shrink-0" />
           <span className="truncate">{card.listName}</span>
         </div>
 
         {/* Prazo */}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-          <Calendar className="h-3 w-3 flex-shrink-0" />
-          <span>Prazo: {formatDate(card.prazoMaxRoteiros)}</span>
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+          <Calendar className="h-2.5 w-2.5 flex-shrink-0" />
+          <span>{formatDate(card.prazoMaxRoteiros)}</span>
         </div>
 
         {/* Copywriter */}
         {card.members && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-            <User className="h-3 w-3 flex-shrink-0" />
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
+            <User className="h-2.5 w-2.5 flex-shrink-0" />
             <span className="truncate">{card.members}</span>
           </div>
         )}
 
-        {/* Plano */}
-        {card.planoMentoria && (
-          <p className="text-xs text-muted-foreground truncate">
-            {card.planoMentoria}
-          </p>
-        )}
-
         {/* Indicador de link */}
         {card.cardUrl && (
-          <div className="mt-auto pt-3 flex items-center justify-end text-xs text-muted-foreground">
-            <ExternalLink className="h-3.5 w-3.5" />
+          <div className="mt-auto pt-1 flex items-center justify-end text-muted-foreground">
+            <ExternalLink className="h-3 w-3" />
           </div>
         )}
       </div>
