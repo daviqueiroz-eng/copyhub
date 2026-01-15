@@ -104,27 +104,27 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
   return (
     <>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <ScrollArea className="h-[calc(100vh-12rem)]">
+        <ScrollArea className="h-[calc(100vh-14rem)]">
           <div className="min-w-max">
             {/* Header */}
-            <div className="grid grid-cols-[300px_repeat(6,120px)] gap-4 mb-4 pb-2 border-b sticky top-0 bg-background z-10">
+            <div className="grid grid-cols-[200px_repeat(6,70px)] gap-2 mb-3 pb-2 border-b sticky top-0 bg-background z-10">
               <div className="font-semibold text-sm flex items-center gap-2">
                 <span>Mentorado</span>
                 {mentoradosWithInstagram.length > 0 && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1.5 h-7 text-xs"
+                    className="gap-1 h-6 text-xs px-2"
                     onClick={handleOpenAllInstagrams}
                   >
-                    <Instagram className="h-3.5 w-3.5 text-pink-500" />
-                    Abrir todos ({mentoradosWithInstagram.length})
+                    <Instagram className="h-3 w-3 text-pink-500" />
+                    ({mentoradosWithInstagram.length})
                   </Button>
                 )}
               </div>
               {[1, 2, 3, 4, 5, 6].map((num) => (
-                <div key={num} className="text-center font-semibold text-sm">
-                  {num}ª Leva
+                <div key={num} className="text-center font-semibold text-xs">
+                  {num}ª
                 </div>
               ))}
             </div>
@@ -136,11 +136,11 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
                   (e) => e.mentorado_id === mentorado.id
                 );
 
-                return (
-                  <div
-                    key={mentorado.id}
-                    className="grid grid-cols-[300px_repeat(6,120px)] gap-4 items-center"
-                  >
+                  return (
+                    <div
+                      key={mentorado.id}
+                      className="grid grid-cols-[200px_repeat(6,70px)] gap-2 items-center"
+                    >
                     {/* Card do Mentorado */}
                     <div>
                       <MentoradoCard
