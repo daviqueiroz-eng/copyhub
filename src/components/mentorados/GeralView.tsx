@@ -1,11 +1,6 @@
-import { useState } from "react";
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { MentoradoCard } from "./MentoradoCard";
-import { LevaCircle } from "./LevaCircle";
-import { EntregaDialog } from "./EntregaDialog";
 import { Mentorado } from "@/hooks/useMentorados";
-import { useEntregas, useMoveEntrega } from "@/hooks/useEntregas";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Instagram } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -17,52 +12,13 @@ interface GeralViewProps {
 }
 
 export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralViewProps) {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
-  const [selectedLeva, setSelectedLeva] = useState(1);
   const { toast } = useToast();
-
-  const { data: entregas = [] } = useEntregas();
-  const moveEntrega = useMoveEntrega();
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
 
   const filteredMentorados = mentorados.filter((m) =>
     m.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const mentoradosWithInstagram = filteredMentorados.filter(m => m.instagram);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (!over) return;
-
-    const mentoradoId = active.id as string;
-    const overData = over.data.current as { numeroLeva: number } | undefined;
-
-    if (overData?.numeroLeva) {
-      moveEntrega.mutate({
-        mentoradoId,
-        novaLeva: overData.numeroLeva,
-      });
-    }
-  };
-
-  const handleCircleClick = (mentoradoId: string, numeroLeva: number) => {
-    const mentorado = mentorados.find((m) => m.id === mentoradoId);
-    if (mentorado) {
-      setSelectedMentorado(mentorado);
-      setSelectedLeva(numeroLeva);
-      setDialogOpen(true);
-    }
-  };
 
   const handleOpenAllInstagrams = async () => {
     if (mentoradosWithInstagram.length === 0) {
@@ -79,7 +35,6 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
       description: "Se o navegador bloquear, permita pop-ups para este site.",
     });
 
-    // Função para abrir link usando técnica de elemento <a>
     const openInstagramLink = (handle: string) => {
       const link = document.createElement('a');
       link.href = `https://instagram.com/${handle}`;
@@ -90,98 +45,45 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
       document.body.removeChild(link);
     };
 
-    // Abre todos com pequeno delay entre cada
     for (let i = 0; i < mentoradosWithInstagram.length; i++) {
       const handle = mentoradosWithInstagram[i]?.instagram?.replace(/^@/, "");
       if (handle) {
         openInstagramLink(handle);
-        // Pequeno delay para navegador processar
         await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
   };
 
   return (
-    <>
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <ScrollArea className="h-[calc(100vh-14rem)]">
-          <div className="min-w-max">
-            {/* Header */}
-            <div className="grid grid-cols-[200px_repeat(6,70px)] gap-2 mb-3 pb-2 border-b sticky top-0 bg-background z-10">
-              <div className="font-semibold text-sm flex items-center gap-2">
-                <span>Mentorado</span>
-                {mentoradosWithInstagram.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1 h-6 text-xs px-2"
-                    onClick={handleOpenAllInstagrams}
-                  >
-                    <Instagram className="h-3 w-3 text-pink-500" />
-                    ({mentoradosWithInstagram.length})
-                  </Button>
-                )}
-              </div>
-              {[1, 2, 3, 4, 5, 6].map((num) => (
-                <div key={num} className="text-center font-semibold text-xs">
-                  {num}ª
-                </div>
-              ))}
-            </div>
+    <ScrollArea className="h-[calc(100vh-14rem)]">
+      <div className="space-y-2">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-3 pb-2 border-b sticky top-0 bg-background z-10">
+          <span className="font-semibold text-sm">Mentorados</span>
+          {mentoradosWithInstagram.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 h-6 text-xs px-2"
+              onClick={handleOpenAllInstagrams}
+            >
+              <Instagram className="h-3 w-3 text-pink-500" />
+              ({mentoradosWithInstagram.length})
+            </Button>
+          )}
+        </div>
 
-            {/* Grid de Mentorados e Levas */}
-            <div className="space-y-3">
-              {filteredMentorados.map((mentorado) => {
-                const entregasMentorado = entregas.filter(
-                  (e) => e.mentorado_id === mentorado.id
-                );
-
-                  return (
-                    <div
-                      key={mentorado.id}
-                      className="grid grid-cols-[200px_repeat(6,70px)] gap-2 items-center"
-                    >
-                    {/* Card do Mentorado */}
-                    <div>
-                      <MentoradoCard
-                        mentorado={mentorado}
-                        onClick={() => onMentoradoClick(mentorado)}
-                      />
-                    </div>
-
-                    {/* Círculos das Levas */}
-                    {[1, 2, 3, 4, 5, 6].map((numeroLeva) => {
-                      const entrega = entregasMentorado.find(
-                        (e) => e.numero_leva === numeroLeva
-                      );
-
-                      return (
-                        <div key={numeroLeva} className="flex justify-center">
-                          <LevaCircle
-                            mentoradoId={mentorado.id}
-                            numeroLeva={numeroLeva}
-                            dataEntrega={entrega?.data_entrega}
-                            concluida={entrega?.concluida}
-                            onClick={() => handleCircleClick(mentorado.id, numeroLeva)}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-      </DndContext>
-
-      <EntregaDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        mentorado={selectedMentorado}
-        numeroLeva={selectedLeva}
-      />
-    </>
+        {/* Lista de Mentorados */}
+        <div className="space-y-2">
+          {filteredMentorados.map((mentorado) => (
+            <MentoradoCard
+              key={mentorado.id}
+              mentorado={mentorado}
+              onClick={() => onMentoradoClick(mentorado)}
+            />
+          ))}
+        </div>
+      </div>
+    </ScrollArea>
   );
 }
