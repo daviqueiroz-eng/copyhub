@@ -1259,6 +1259,18 @@ export const MentoradoRoteirosView = ({
             </div>
           </ScrollArea>
           <div className="p-2 lg:p-3 border-t space-y-2">
+            {/* Seção de Atalhos - acima da lixeira */}
+            <div className="pb-2 border-b hidden lg:block">
+              <p className="text-sm font-semibold mb-2 text-muted-foreground">Atalhos</p>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p><span className="font-mono bg-muted px-1 rounded">/</span> Mapa do avatar</p>
+                <p><span className="font-mono bg-muted px-1 rounded">/c</span> CTAs</p>
+                <p><span className="font-mono bg-muted px-1 rounded">/i</span> Intensificadores</p>
+                <p><span className="font-mono bg-muted px-1 rounded">/p</span> Prompts</p>
+                <p><span className="font-mono bg-muted px-1 rounded">/m</span> Registrar heads</p>
+              </div>
+            </div>
+
             {/* Lixeira com guias deletadas */}
             {deletedGuias.length > 0 && (
               <div className="relative">
@@ -1326,18 +1338,6 @@ export const MentoradoRoteirosView = ({
               <Plus className="h-4 w-4" />
               <span className="hidden lg:inline">Nova Guia</span>
             </Button>
-
-            {/* Seção de Atalhos */}
-            <div className="mt-4 pt-4 border-t hidden lg:block">
-              <p className="text-sm font-semibold mb-2 text-muted-foreground">Atalhos</p>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p><span className="font-mono bg-muted px-1 rounded">/:</span> mapa do avatar</p>
-                <p><span className="font-mono bg-muted px-1 rounded">/c</span> CTAs</p>
-                <p><span className="font-mono bg-muted px-1 rounded">/i</span> intensificadores</p>
-                <p><span className="font-mono bg-muted px-1 rounded">/p</span> prompts</p>
-                <p><span className="font-mono bg-muted px-1 rounded">/m</span> registra heads</p>
-              </div>
-            </div>
           </div>
         </div>
 
