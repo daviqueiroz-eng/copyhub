@@ -36,12 +36,12 @@ export function MentoradoCard({ mentorado, onClick }: MentoradoCardProps) {
       style={style}
       {...listeners}
       {...attributes}
-      className="p-3 flex items-center gap-3 cursor-grab active:cursor-grabbing hover:bg-accent/50 transition-colors"
+      className="p-2 flex items-center gap-2 cursor-grab active:cursor-grabbing hover:bg-accent/50 transition-colors"
       onClick={onClick}
     >
-      <Avatar className="h-10 w-10">
+      <Avatar className="h-8 w-8">
         <AvatarImage src={mentorado.avatar || undefined} alt={mentorado.nome} />
-        <AvatarFallback className="bg-primary text-primary-foreground">
+        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
           {mentorado.iniciais}
         </AvatarFallback>
       </Avatar>
@@ -55,10 +55,10 @@ export function MentoradoCard({ mentorado, onClick }: MentoradoCardProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0"
+          className="h-6 w-6 shrink-0"
           onClick={handleInstagramClick}
         >
-          <Instagram className="h-4 w-4 text-pink-500" />
+          <Instagram className="h-3 w-3 text-pink-500" />
         </Button>
       )}
     </Card>
