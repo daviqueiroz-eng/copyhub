@@ -47,6 +47,7 @@ import {
 import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
+import { MentoradoHeadlinesList } from "./MentoradoHeadlinesList";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
@@ -1507,6 +1508,7 @@ export const MentoradoRoteirosView = ({
               setShowFeedbackDialog(true);
             }}
           />
+          <MentoradoHeadlinesList mentoradoId={mentoradoId} />
         </div>
       </div>
       
@@ -1538,6 +1540,7 @@ export const MentoradoRoteirosView = ({
                 setShowFeedbackDialog(true);
               }}
             />
+            <MentoradoHeadlinesList mentoradoId={mentoradoId} />
           </div>
         </SheetContent>
       </Sheet>
