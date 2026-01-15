@@ -1,6 +1,5 @@
 import { MentoradoCard } from "./MentoradoCard";
 import { Mentorado } from "@/hooks/useMentorados";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Instagram } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -55,35 +54,33 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
   };
 
   return (
-    <ScrollArea className="h-[calc(100vh-14rem)]">
-      <div className="space-y-2">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-3 pb-2 border-b sticky top-0 bg-background z-10">
-          <span className="font-semibold text-sm">Mentorados</span>
-          {mentoradosWithInstagram.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1 h-6 text-xs px-2"
-              onClick={handleOpenAllInstagrams}
-            >
-              <Instagram className="h-3 w-3 text-pink-500" />
-              ({mentoradosWithInstagram.length})
-            </Button>
-          )}
-        </div>
-
-        {/* Lista de Mentorados */}
-        <div className="space-y-2">
-          {filteredMentorados.map((mentorado) => (
-            <MentoradoCard
-              key={mentorado.id}
-              mentorado={mentorado}
-              onClick={() => onMentoradoClick(mentorado)}
-            />
-          ))}
-        </div>
+    <div className="flex flex-col h-full">
+      {/* Header fixo */}
+      <div className="flex items-center gap-2 mb-3 pb-2 border-b shrink-0">
+        <span className="font-semibold text-sm">Mentorados</span>
+        {mentoradosWithInstagram.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 h-6 text-xs px-2"
+            onClick={handleOpenAllInstagrams}
+          >
+            <Instagram className="h-3 w-3 text-pink-500" />
+            ({mentoradosWithInstagram.length})
+          </Button>
+        )}
       </div>
-    </ScrollArea>
+
+      {/* Lista de Mentorados com scroll */}
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1">
+        {filteredMentorados.map((mentorado) => (
+          <MentoradoCard
+            key={mentorado.id}
+            mentorado={mentorado}
+            onClick={() => onMentoradoClick(mentorado)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
