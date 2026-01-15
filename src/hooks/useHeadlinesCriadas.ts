@@ -39,6 +39,27 @@ export const useHeadlinesCriadas = () => {
   });
 };
 
+export const useHeadlinesByMentorado = (mentoradoId: string) => {
+  return useQuery({
+    queryKey: ["headlines-criadas", "mentorado", mentoradoId],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from("headlines_criadas")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("mentorado_id", mentoradoId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!mentoradoId,
+  });
+};
+
 export const useCreateHeadlinesCriadas = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
