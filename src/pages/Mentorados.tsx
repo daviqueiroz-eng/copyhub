@@ -183,29 +183,29 @@ const Mentorados = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] w-full">
-      {/* Header fixo - Título + Botão */}
-      <div className="flex items-center justify-between shrink-0 pb-4">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground">Meus Mentorados</h2>
-          <p className="text-muted-foreground mt-1">
-            Repositório de perfis e diagnósticos
-          </p>
-        </div>
-        <Button className="gap-2" onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Novo Mentorado
-        </Button>
+      {/* Header fixo - Título */}
+      <div className="shrink-0 pb-2">
+        <h2 className="text-3xl font-bold text-foreground">Meus Mentorados</h2>
+        <p className="text-muted-foreground mt-1">
+          Repositório de perfis e diagnósticos
+        </p>
       </div>
 
-      {/* Busca fixa */}
-      <div className="relative shrink-0 pb-4">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar mentorado..."
-          className="pl-9"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      {/* Busca + Botão Novo */}
+      <div className="flex items-center gap-2 shrink-0 pb-4">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar mentorado..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Button size="sm" className="gap-1" onClick={() => setIsAddDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Novo
+        </Button>
       </div>
 
       {/* Área principal com scroll interno */}
