@@ -208,7 +208,7 @@ const Mentorados = () => {
 
       <div className="flex flex-col xl:flex-row gap-6">
         {/* Lado esquerdo: Tabs Geral/Grupo com mentorados */}
-        <div className="xl:w-[55%] 2xl:w-[50%] shrink-0">
+        <div className="xl:w-[320px] 2xl:w-[360px] shrink-0">
           <Tabs defaultValue="geral" className="w-full">
             <TabsList className="grid w-full max-w-xs grid-cols-2">
               <TabsTrigger value="geral">Geral</TabsTrigger>
