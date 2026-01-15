@@ -206,29 +206,41 @@ const Mentorados = () => {
         />
       </div>
 
-      <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="grid w-full max-w-lg grid-cols-3">
-          <TabsTrigger value="geral">Geral</TabsTrigger>
-          <TabsTrigger value="grupo">Grupo</TabsTrigger>
-          <TabsTrigger value="prioridade">Ordem de Prioridade</TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col xl:flex-row gap-6">
+        {/* Lado esquerdo: Tabs Geral/Grupo com mentorados */}
+        <div className="xl:w-[55%] 2xl:w-[50%] shrink-0">
+          <Tabs defaultValue="geral" className="w-full">
+            <TabsList className="grid w-full max-w-xs grid-cols-2">
+              <TabsTrigger value="geral">Geral</TabsTrigger>
+              <TabsTrigger value="grupo">Grupo</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="geral" className="mt-6">
-          <GeralView 
-            mentorados={mentorados}
-            searchTerm={searchTerm}
-            onMentoradoClick={handleOpenDetail}
-          />
-        </TabsContent>
+            <TabsContent value="geral" className="mt-4">
+              <GeralView 
+                mentorados={mentorados}
+                searchTerm={searchTerm}
+                onMentoradoClick={handleOpenDetail}
+              />
+            </TabsContent>
 
-        <TabsContent value="grupo" className="mt-6">
-          <GrupoView />
-        </TabsContent>
+            <TabsContent value="grupo" className="mt-4">
+              <GrupoView />
+            </TabsContent>
+          </Tabs>
+        </div>
 
-        <TabsContent value="prioridade" className="mt-6">
+        {/* Lado direito: Ordem de Prioridade sempre visível */}
+        <div className="flex-1 min-w-0 border-l pl-6 hidden xl:block">
+          <h3 className="text-lg font-semibold mb-4">Ordem de Prioridade</h3>
           <OrdemPrioridadeView />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
+
+      {/* Ordem de Prioridade em mobile/tablet (abaixo) */}
+      <div className="xl:hidden mt-6 pt-6 border-t">
+        <h3 className="text-lg font-semibold mb-4">Ordem de Prioridade</h3>
+        <OrdemPrioridadeView />
+      </div>
 
       {/* Dialog para adicionar novo mentorado */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
