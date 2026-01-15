@@ -1,7 +1,5 @@
 import { useState, useMemo } from "react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { BarChart3, User, Users, Clock, AlertTriangle, X } from "lucide-react";
+import { BarChart3, User, Users, Clock, AlertTriangle, X, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -22,12 +20,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, useProfile } from "@/hooks/useAuth";
-import { useRoteiroFeedbacks, useAllRoteiroFeedbacks, RoteiroFeedback } from "@/hooks/useRoteiroFeedback";
+import { useRoteiroFeedbacks, useAllRoteiroFeedbacks, useDeleteRoteiroFeedback, RoteiroFeedback } from "@/hooks/useRoteiroFeedback";
 import { useMentorados } from "@/hooks/useMentorados";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+
+// Helper para formatar data sem problemas de timezone
+const formatDateWithoutTimezone = (dateString: string) => {
+  if (!dateString) return "";
+  const [year, month, day] = dateString.split('T')[0].split('-');
+  return `${day}/${month}/${year}`;
+};
 
 interface ProfileData {
   nome: string;
@@ -57,12 +72,30 @@ const Acompanhamento = () => {
   const { data: allFeedbacks, isLoading: allFeedbacksLoading } = useAllRoteiroFeedbacks();
   const { data: mentorados } = useMentorados();
   const { data: allProfiles } = useAllProfiles();
+  const deleteFeedback = useDeleteRoteiroFeedback();
 
   // Estados de filtro
   const [filterUser, setFilterUser] = useState<string | null>(null);
   const [filterMentorado, setFilterMentorado] = useState<string | null>(null);
+  
+  // Estado para confirmação de exclusão
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [feedbackToDelete, setFeedbackToDelete] = useState<string | null>(null);
 
   const isAdmin = role === "admin";
+  
+  const handleDeleteClick = (id: string) => {
+    setFeedbackToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+  
+  const handleConfirmDelete = () => {
+    if (feedbackToDelete) {
+      deleteFeedback.mutate(feedbackToDelete);
+      setDeleteDialogOpen(false);
+      setFeedbackToDelete(null);
+    }
+  };
 
   // Criar mapa de mentorados para buscar nomes
   const mentoradosMap = mentorados?.reduce((acc, m) => {
@@ -116,7 +149,7 @@ const Acompanhamento = () => {
   // Recalcular stats baseado nos feedbacks filtrados
   const filteredStats = useMemo(() => calcStats(filteredFeedbacks), [filteredFeedbacks]);
 
-  const renderFeedbackTable = (feedbacks: RoteiroFeedback[], showUser: boolean = false) => {
+  const renderFeedbackTable = (feedbacks: RoteiroFeedback[], showUser: boolean = false, canDelete: boolean = false) => {
     if (!feedbacks || feedbacks.length === 0) {
       return (
         <div className="text-center py-12 text-muted-foreground">
@@ -158,6 +191,7 @@ const Acompanhamento = () => {
               </TableHead>
               <TableHead className="text-center">Total</TableHead>
               <TableHead>Dificuldades</TableHead>
+              {canDelete && <TableHead className="w-16">Ações</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -169,7 +203,7 @@ const Acompanhamento = () => {
               return (
                 <TableRow key={feedback.id}>
                   <TableCell className="whitespace-nowrap">
-                    {format(new Date(feedback.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                    {formatDateWithoutTimezone(feedback.created_at)}
                   </TableCell>
                   {showUser && (
                     <TableCell>
@@ -206,6 +240,18 @@ const Acompanhamento = () => {
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
+                  {canDelete && (
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteClick(feedback.id)}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
@@ -373,7 +419,7 @@ const Acompanhamento = () => {
                   </Card>
                 </div>
 
-                {renderFeedbackTable(filteredFeedbacks, true)}
+                {renderFeedbackTable(filteredFeedbacks, true, true)}
               </>
             )}
           </TabsContent>
@@ -419,6 +465,27 @@ const Acompanhamento = () => {
           {renderFeedbackTable(myFeedbacks || [], false)}
         </div>
       )}
+      
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir feedback?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O registro de feedback será permanentemente removido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -135,3 +135,35 @@ export const useCheckFeedbackExists = (mentoradoId: string, guiaNumero: number) 
     enabled: !!user?.id && !!mentoradoId && guiaNumero > 0,
   });
 };
+
+// Hook para excluir feedback (admin only)
+export const useDeleteRoteiroFeedback = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("roteiro_feedbacks")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roteiro-feedbacks"] });
+      queryClient.invalidateQueries({ queryKey: ["all-roteiro-feedbacks"] });
+      toast({
+        title: "Feedback excluído!",
+        description: "O registro foi removido com sucesso.",
+      });
+    },
+    onError: (error) => {
+      console.error("Erro ao excluir feedback:", error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir o registro.",
+        variant: "destructive",
+      });
+    },
+  });
+};
