@@ -34,12 +34,17 @@ import { cn } from "@/lib/utils";
 type PeriodFilter = "all" | "today" | "week" | "month";
 type ViewMode = "grid" | "calendar";
 
+const FAVORITE_COPYWRITER_KEY = "favorito_copywriter";
+
 export function OrdemPrioridadeView() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedCopywriter, setSelectedCopywriter] = useState<string>("");
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [favoriteCopywriter, setFavoriteCopywriter] = useState<string>(() => {
+    return localStorage.getItem(FAVORITE_COPYWRITER_KEY) || "";
+  });
   
   const { data: trelloImport, isLoading } = useTrelloImport();
   const { data: userRole } = useUserRole();
@@ -65,12 +70,30 @@ export function OrdemPrioridadeView() {
     });
   }, [copywriters, profile?.nome]);
 
-  // Auto-select user's name when loaded
-  useEffect(() => {
-    if (matchedCopywriter && !selectedCopywriter) {
-      setSelectedCopywriter(matchedCopywriter);
+  // Handle favoriting a copywriter
+  const handleFavorite = (copywriter: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (favoriteCopywriter === copywriter) {
+      // Remove favorite
+      localStorage.removeItem(FAVORITE_COPYWRITER_KEY);
+      setFavoriteCopywriter("");
+    } else {
+      // Set new favorite
+      localStorage.setItem(FAVORITE_COPYWRITER_KEY, copywriter);
+      setFavoriteCopywriter(copywriter);
     }
-  }, [matchedCopywriter, selectedCopywriter]);
+  };
+
+  // Auto-select favorite or matched copywriter when loaded
+  useEffect(() => {
+    if (!selectedCopywriter) {
+      if (favoriteCopywriter && copywriters.includes(favoriteCopywriter)) {
+        setSelectedCopywriter(favoriteCopywriter);
+      } else if (matchedCopywriter) {
+        setSelectedCopywriter(matchedCopywriter);
+      }
+    }
+  }, [favoriteCopywriter, matchedCopywriter, copywriters, selectedCopywriter]);
 
   // Filter by copywriter first
   const copywriterFilteredCards = useMemo(() => {
@@ -169,7 +192,7 @@ export function OrdemPrioridadeView() {
                     {selectedCopywriter
                       ? (
                         <span className="flex items-center gap-2">
-                          {selectedCopywriter === matchedCopywriter && (
+                          {favoriteCopywriter === selectedCopywriter && (
                             <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                           )}
                           {selectedCopywriter}
@@ -179,7 +202,7 @@ export function OrdemPrioridadeView() {
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[280px] p-0">
+                <PopoverContent className="w-[320px] p-0">
                   <Command>
                     <CommandInput placeholder="Digite seu nome..." />
                     <CommandList>
@@ -208,22 +231,35 @@ export function OrdemPrioridadeView() {
                               setSelectedCopywriter(currentValue === selectedCopywriter ? "" : currentValue);
                               setComboboxOpen(false);
                             }}
+                            className="flex items-center justify-between"
                           >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedCopywriter === cw ? "opacity-100" : "opacity-0"
-                              )}
-                            />
                             <span className="flex items-center gap-2">
-                              {cw === matchedCopywriter && (
-                                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                              )}
+                              <Check
+                                className={cn(
+                                  "h-4 w-4",
+                                  selectedCopywriter === cw ? "opacity-100" : "opacity-0"
+                                )}
+                              />
                               {cw}
                               {cw === matchedCopywriter && (
                                 <Badge variant="secondary" className="text-xs">Você</Badge>
                               )}
                             </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleFavorite(cw, e)}
+                              className="p-1 rounded hover:bg-accent transition-colors"
+                              title={favoriteCopywriter === cw ? "Remover favorito" : "Favoritar para filtrar automaticamente"}
+                            >
+                              <Star 
+                                className={cn(
+                                  "h-4 w-4 transition-colors",
+                                  favoriteCopywriter === cw 
+                                    ? "text-yellow-500 fill-yellow-500" 
+                                    : "text-muted-foreground hover:text-yellow-500"
+                                )} 
+                              />
+                            </button>
                           </CommandItem>
                         ))}
                       </CommandGroup>
