@@ -1079,6 +1079,36 @@ export type Database = {
         }
         Relationships: []
       }
+      inteligencia_global: {
+        Row: {
+          ativo: boolean | null
+          conteudo: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          conteudo: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          conteudo?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       medalhas: {
         Row: {
           created_at: string
@@ -1152,6 +1182,7 @@ export type Database = {
           id: string
           iniciais: string
           instagram: string | null
+          inteligencia_ia: string | null
           link_drive: string | null
           link_trello: string | null
           links_chats: string | null
@@ -1174,6 +1205,7 @@ export type Database = {
           id?: string
           iniciais: string
           instagram?: string | null
+          inteligencia_ia?: string | null
           link_drive?: string | null
           link_trello?: string | null
           links_chats?: string | null
@@ -1196,6 +1228,7 @@ export type Database = {
           id?: string
           iniciais?: string
           instagram?: string | null
+          inteligencia_ia?: string | null
           link_drive?: string | null
           link_trello?: string | null
           links_chats?: string | null

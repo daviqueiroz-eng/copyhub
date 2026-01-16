@@ -1,16 +1,24 @@
-import { useState, useCallback } from "react";
-import { Sparkles, Loader2, Copy, Check } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Sparkles, Loader2, Copy, Check, ChevronDown, ChevronUp, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useGenerateHeadlines } from "@/hooks/useGenerateHeadlines";
+import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
+import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { toast } from "sonner";
 
 interface AdaptedHeadline {
@@ -22,6 +30,7 @@ interface HeadlinesGeneratorDialogProps {
   open: boolean;
   onClose: () => void;
   headlines: string[];
+  mentoradoId?: string;
   onUseHeadlines: (headlines: string[]) => void;
 }
 
@@ -29,18 +38,80 @@ export const HeadlinesGeneratorDialog = ({
   open,
   onClose,
   headlines,
+  mentoradoId,
   onUseHeadlines,
 }: HeadlinesGeneratorDialogProps) => {
-  const [inteligencia, setInteligencia] = useState("");
+  const [inteligenciaIndividual, setInteligenciaIndividual] = useState("");
   const [adaptedHeadlines, setAdaptedHeadlines] = useState<AdaptedHeadline[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [isGlobalOpen, setIsGlobalOpen] = useState(true);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const generateMutation = useGenerateHeadlines();
+  const { data: inteligenciaGlobal, isLoading: isLoadingGlobal } = useInteligenciaGlobal();
+  const { data: mentorados = [] } = useMentorados();
+  const updateMentorado = useUpdateMentorado();
+
+  // Find the current mentorado
+  const currentMentorado = mentoradoId 
+    ? mentorados.find(m => m.id === mentoradoId) 
+    : null;
+
+  // Load mentorado's inteligencia when dialog opens or mentorado changes
+  useEffect(() => {
+    if (open && currentMentorado) {
+      setInteligenciaIndividual(currentMentorado.inteligencia_ia || "");
+      setHasUnsavedChanges(false);
+    }
+  }, [open, currentMentorado]);
+
+  // Track changes to individual intelligence
+  const handleInteligenciaChange = (value: string) => {
+    setInteligenciaIndividual(value);
+    if (currentMentorado) {
+      setHasUnsavedChanges(value !== (currentMentorado.inteligencia_ia || ""));
+    }
+  };
+
+  // Save individual intelligence to mentorado
+  const handleSaveInteligencia = useCallback(() => {
+    if (!mentoradoId || !currentMentorado) {
+      toast.error("Selecione um mentorado para salvar");
+      return;
+    }
+
+    updateMentorado.mutate(
+      { id: mentoradoId, inteligencia_ia: inteligenciaIndividual.trim() || null },
+      {
+        onSuccess: () => {
+          toast.success("Inteligência do mentorado salva!");
+          setHasUnsavedChanges(false);
+        },
+      }
+    );
+  }, [mentoradoId, currentMentorado, inteligenciaIndividual, updateMentorado]);
+
+  // Combine both intelligences for generation
+  const getCombinedInteligencia = useCallback(() => {
+    let combined = "";
+    
+    if (inteligenciaGlobal?.conteudo) {
+      combined += `=== MÉTODO/FRAMEWORK (BASE GLOBAL) ===\n${inteligenciaGlobal.conteudo}\n\n`;
+    }
+    
+    if (inteligenciaIndividual.trim()) {
+      combined += `=== CONTEXTO DO MENTORADO ===\n${inteligenciaIndividual.trim()}`;
+    }
+    
+    return combined.trim();
+  }, [inteligenciaGlobal, inteligenciaIndividual]);
 
   const handleGenerate = useCallback(async () => {
-    if (!inteligencia.trim()) {
-      toast.error("Preencha a inteligência primeiro");
+    const combinedInteligencia = getCombinedInteligencia();
+    
+    if (!combinedInteligencia) {
+      toast.error("Preencha a inteligência (global ou individual) primeiro");
       return;
     }
 
@@ -54,7 +125,7 @@ export const HeadlinesGeneratorDialog = ({
 
     try {
       const result = await generateMutation.mutateAsync({
-        inteligencia,
+        inteligencia: combinedInteligencia,
         headlines: headlinesToAdapt,
       });
       setAdaptedHeadlines(result);
@@ -63,10 +134,12 @@ export const HeadlinesGeneratorDialog = ({
     } catch (error) {
       // Error is handled by the mutation
     }
-  }, [inteligencia, headlines, generateMutation]);
+  }, [getCombinedInteligencia, headlines, generateMutation]);
 
   const handleGenerateMore = useCallback(async () => {
-    if (!inteligencia.trim()) {
+    const combinedInteligencia = getCombinedInteligencia();
+    
+    if (!combinedInteligencia) {
       toast.error("Preencha a inteligência primeiro");
       return;
     }
@@ -82,7 +155,7 @@ export const HeadlinesGeneratorDialog = ({
 
     try {
       const result = await generateMutation.mutateAsync({
-        inteligencia,
+        inteligencia: combinedInteligencia,
         headlines: headlinesToAdapt,
       });
       setAdaptedHeadlines((prev) => [...prev, ...result]);
@@ -90,7 +163,7 @@ export const HeadlinesGeneratorDialog = ({
     } catch (error) {
       // Error is handled by the mutation
     }
-  }, [inteligencia, headlines, adaptedHeadlines.length, generateMutation]);
+  }, [getCombinedInteligencia, headlines, adaptedHeadlines.length, generateMutation]);
 
   const toggleSelection = useCallback((index: number) => {
     setSelectedIndices((prev) => {
@@ -125,6 +198,7 @@ export const HeadlinesGeneratorDialog = ({
   }, [adaptedHeadlines, selectedIndices, onUseHeadlines, onClose]);
 
   const remainingHeadlines = headlines.length - adaptedHeadlines.length;
+  const hasAnyInteligencia = !!(inteligenciaGlobal?.conteudo || inteligenciaIndividual.trim());
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -136,23 +210,98 @@ export const HeadlinesGeneratorDialog = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-[280px_1fr_180px] gap-6 flex-1 min-h-0">
-          {/* Coluna 1: Inteligência */}
-          <div className="flex flex-col gap-4">
-            <div>
-              <h3 className="font-poppins italic text-lg text-muted-foreground mb-2">
-                Inteligência
-              </h3>
+        <div className="grid grid-cols-[320px_1fr_180px] gap-6 flex-1 min-h-0">
+          {/* Coluna 1: Inteligência (Global + Individual) */}
+          <div className="flex flex-col gap-4 overflow-y-auto">
+            {/* Inteligência Global (somente leitura) */}
+            <Collapsible open={isGlobalOpen} onOpenChange={setIsGlobalOpen}>
+              <div className="border rounded-lg">
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <span className="font-poppins italic text-sm text-muted-foreground">
+                      Inteligência Global (Admin)
+                    </span>
+                    {inteligenciaGlobal?.conteudo && (
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    )}
+                  </div>
+                  {isGlobalOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="p-3 pt-0">
+                    {isLoadingGlobal ? (
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Carregando...
+                      </div>
+                    ) : inteligenciaGlobal?.conteudo ? (
+                      <div className="text-sm bg-muted/30 p-3 rounded-md max-h-[150px] overflow-y-auto">
+                        <p className="font-medium text-xs text-muted-foreground mb-1">
+                          {inteligenciaGlobal.titulo}
+                        </p>
+                        <p className="whitespace-pre-wrap text-foreground/80">
+                          {inteligenciaGlobal.conteudo.substring(0, 500)}
+                          {inteligenciaGlobal.conteudo.length > 500 && "..."}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        Nenhuma inteligência global configurada pelo admin.
+                      </p>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+
+            {/* Inteligência Individual (editável) */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Label className="font-poppins italic text-muted-foreground">
+                  Inteligência do Mentorado
+                </Label>
+                {currentMentorado && (
+                  <span className="text-xs text-muted-foreground">
+                    {currentMentorado.nome}
+                  </span>
+                )}
+              </div>
               <Textarea
-                placeholder="Descreva o nicho, público-alvo, produto, tom de voz..."
-                value={inteligencia}
-                onChange={(e) => setInteligencia(e.target.value)}
-                className="min-h-[200px] resize-none"
+                placeholder={`Descreva:
+• Nicho específico
+• Público-alvo
+• Produto/serviço
+• Tom de voz
+• Palavras-chave importantes`}
+                value={inteligenciaIndividual}
+                onChange={(e) => handleInteligenciaChange(e.target.value)}
+                className="min-h-[180px] resize-none text-sm"
               />
+              {mentoradoId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveInteligencia}
+                  disabled={updateMentorado.isPending || !hasUnsavedChanges}
+                  className="self-end"
+                >
+                  {updateMentorado.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {hasUnsavedChanges ? "Salvar" : "Salvo"}
+                </Button>
+              )}
             </div>
+
             <Button
               onClick={handleGenerate}
-              disabled={generateMutation.isPending || !inteligencia.trim()}
+              disabled={generateMutation.isPending || !hasAnyInteligencia}
               className="w-full"
             >
               {generateMutation.isPending ? (
