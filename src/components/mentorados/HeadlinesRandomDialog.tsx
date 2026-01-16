@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { RefreshCw, Check, Loader2, Upload, Search } from "lucide-react";
+import { RefreshCw, Check, Loader2, Upload, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +22,7 @@ import {
 import { useAnalysisHeadlines, AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { useUserHeadlinesExcel } from "@/hooks/useUserHeadlinesExcel";
 import { ExcelUploadDialog } from "./ExcelUploadDialog";
+import { HeadlinesGeneratorDialog } from "./HeadlinesGeneratorDialog";
 
 interface HeadlinesRandomDialogProps {
   open: boolean;
@@ -57,6 +58,7 @@ export const HeadlinesRandomDialog = ({
     return saved === "excel";
   });
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showGeneratorDialog, setShowGeneratorDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedNicho, setSelectedNicho] = useState<string | null>(null);
   
@@ -236,9 +238,24 @@ export const HeadlinesRandomDialog = ({
             <div className="flex flex-col gap-3">
               {/* Primeira linha: Título + Toggle + Botões de ação */}
               <div className="flex items-center justify-between gap-4 flex-wrap">
-                <DialogTitle className="text-xl font-bold font-poppins">
-                  Headlines {useExcelSource ? "dos Excels" : "das Análises"}
-                </DialogTitle>
+                <div className="flex items-center gap-3">
+                  <DialogTitle className="text-xl font-bold font-poppins">
+                    Headlines {useExcelSource ? "dos Excels" : "das Análises"}
+                  </DialogTitle>
+                  
+                  {/* Botão Gere para mim (apenas quando Excel está ativo) */}
+                  {useExcelSource && excelHeadlinesFormatted.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="font-poppins italic text-primary hover:text-primary"
+                      onClick={() => setShowGeneratorDialog(true)}
+                    >
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      Gere para mim
+                    </Button>
+                  )}
+                </div>
                 
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Toggle de fonte */}
@@ -409,6 +426,19 @@ export const HeadlinesRandomDialog = ({
       <ExcelUploadDialog
         open={showUploadDialog}
         onClose={() => setShowUploadDialog(false)}
+      />
+
+      <HeadlinesGeneratorDialog
+        open={showGeneratorDialog}
+        onClose={() => setShowGeneratorDialog(false)}
+        headlines={
+          selectedNicho
+            ? excelHeadlinesFormatted
+                .filter((h) => h.arquivo_origem?.includes(` - ${selectedNicho}`))
+                .map((h) => h.headline)
+            : excelHeadlinesFormatted.map((h) => h.headline)
+        }
+        onUseHeadlines={onSelectMultiple}
       />
     </>
   );
