@@ -33,8 +33,8 @@ export const MentoradoHeadlinesList = ({ mentoradoId }: MentoradoHeadlinesListPr
         <h4 className="text-sm font-semibold">Ideias de Headlines ({headlines.length})</h4>
       </div>
       
-      <ScrollArea className="max-h-[200px]">
-        <div className="space-y-2">
+      <ScrollArea className="h-[200px]">
+        <div className="space-y-2 pr-3">
           {headlines.map((headline) => (
             <div 
               key={headline.id} 
