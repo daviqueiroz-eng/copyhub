@@ -27,22 +27,27 @@ async function generateBatch(
           content: `Você é um especialista em copywriting e headlines virais para redes sociais.
 Sua tarefa é adaptar headlines genéricas para um nicho/contexto específico, mantendo a estrutura e gatilhos mentais da headline original.
 
-Regras:
+Você receberá dois tipos de inteligência:
+1. MÉTODO/FRAMEWORK (BASE GLOBAL): Regras gerais de copywriting, estruturas que funcionam, tom de voz padrão
+2. CONTEXTO DO MENTORADO: Informações específicas do nicho, público-alvo, produto/serviço
+
+Regras de adaptação:
 1. Mantenha o mesmo padrão/estrutura da headline original
-2. Adapte o conteúdo para o nicho informado
-3. Preserve os gatilhos mentais (curiosidade, urgência, prova social, etc.)
-4. A headline adaptada deve ter tamanho similar à original
-5. Use linguagem natural e persuasiva para o público-alvo`
+2. Aplique o método/framework global como base
+3. Adapte o conteúdo para o contexto específico do mentorado
+4. Preserve os gatilhos mentais (curiosidade, urgência, prova social, etc.)
+5. A headline adaptada deve ter tamanho similar à original
+6. Use linguagem natural e persuasiva para o público-alvo específico
+7. Seja criativo, mas mantenha a essência do que tornou a original boa`
         },
         {
           role: "user",
-          content: `Contexto/Inteligência do nicho:
-${inteligencia}
+          content: `${inteligencia}
 
 Headlines originais para adaptar:
 ${headlines.map((h, i) => `${i + 1}. ${h}`).join("\n")}
 
-Adapte cada headline para o contexto informado, mantendo a estrutura/gatilho original.`
+Adapte cada headline usando o método global como base e o contexto do mentorado para personalizar.`
         }
       ],
       tools: [
@@ -155,7 +160,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Generating headlines for ${headlines.length} headlines with context: ${inteligencia.substring(0, 100)}...`);
+    console.log(`Generating headlines for ${headlines.length} headlines with inteligencia length: ${inteligencia.length}`);
 
     // Process in batches to avoid timeouts
     const allResults: { original: string; adaptada: string }[] = [];

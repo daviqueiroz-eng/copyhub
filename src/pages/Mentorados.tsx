@@ -129,6 +129,7 @@ const Mentorados = () => {
         referencias: null,
         instagram: null,
         link_trello: null,
+        inteligencia_ia: null,
       },
       {
         onSuccess: () => {

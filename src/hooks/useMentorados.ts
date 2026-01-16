@@ -20,6 +20,7 @@ export type Mentorado = {
   referencias: string | null;
   instagram: string | null;
   link_trello: string | null;
+  inteligencia_ia: string | null;
   user_id: string;
 };
 

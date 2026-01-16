@@ -20,6 +20,7 @@ import { Loader2, Plus, Pencil, Trash2, ArrowLeft } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { InteligenciaGlobalManager } from "@/components/admin/InteligenciaGlobalManager";
 
 
 const Admin = () => {
@@ -228,10 +229,11 @@ const Admin = () => {
       </div>
 
       <Tabs defaultValue="roteiros" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="roteiros">Roteiros</TabsTrigger>
           <TabsTrigger value="cores">Cores de Análise</TabsTrigger>
           <TabsTrigger value="medalhas">Medalhas</TabsTrigger>
+          <TabsTrigger value="inteligencia">Inteligência IA</TabsTrigger>
         </TabsList>
 
         {/* Roteiros Tab */}
@@ -600,6 +602,11 @@ const Admin = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Inteligência Global Tab */}
+        <TabsContent value="inteligencia" className="space-y-4">
+          <InteligenciaGlobalManager />
         </TabsContent>
 
       </Tabs>

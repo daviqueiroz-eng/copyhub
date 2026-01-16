@@ -30,6 +30,7 @@ interface HeadlinesRandomDialogProps {
   onSelectMultiple: (headlines: string[]) => void;
   savedHeadlines: AnalysisHeadline[];
   onSaveHeadlines: (headlines: AnalysisHeadline[]) => void;
+  selectedMentoradoId?: string;
 }
 
 // Fisher-Yates shuffle
@@ -48,6 +49,7 @@ export const HeadlinesRandomDialog = ({
   onSelectMultiple,
   savedHeadlines,
   onSaveHeadlines,
+  selectedMentoradoId,
 }: HeadlinesRandomDialogProps) => {
   const { data: analysisHeadlines = [], isLoading: isLoadingAnalysis } = useAnalysisHeadlines();
   const { data: excelHeadlines = [], isLoading: isLoadingExcel } = useUserHeadlinesExcel();
@@ -438,6 +440,7 @@ export const HeadlinesRandomDialog = ({
                 .map((h) => h.headline)
             : excelHeadlinesFormatted.map((h) => h.headline)
         }
+        mentoradoId={selectedMentoradoId}
         onUseHeadlines={onSelectMultiple}
       />
     </>
