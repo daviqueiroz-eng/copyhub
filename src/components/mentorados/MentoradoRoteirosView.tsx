@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package } from "lucide-react";
 import { useMemo } from "react";
 import { useTrelloImport, TrelloCard } from "@/hooks/useTrelloImport";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,7 @@ import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
 import { MentoradoHeadlinesList } from "./MentoradoHeadlinesList";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
+import { OverdeliveryView } from "./OverdeliveryView";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
 
@@ -74,6 +75,14 @@ type RoteiroLocal = {
 type GuiaConfig = {
   numero: number;
   quantidade: number;
+  isOverdelivery?: boolean;
+};
+
+type OverdeliveryBloco = {
+  id: string;
+  titulo: string;
+  isOpen: boolean;
+  roteiros: { ordem: number; headline: string; estrutura: string }[];
 };
 
 export const MentoradoRoteirosView = ({
@@ -98,6 +107,8 @@ export const MentoradoRoteirosView = ({
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackTimers, setFeedbackTimers] = useState<TimersRecord | null>(null);
+  const [quantidadePersonalizada, setQuantidadePersonalizada] = useState<string>("");
+  const [overdeliveryBlocos, setOverdeliveryBlocos] = useState<Map<number, OverdeliveryBloco[]>>(new Map());
   const [highlightedMatch, setHighlightedMatch] = useState<{
     guiaNumero: number;
     ordem: number;
@@ -316,7 +327,7 @@ export const MentoradoRoteirosView = ({
   const [celebratedMilestones, setCelebratedMilestones] = useState<Set<string>>(new Set());
 
   // Handler para criar primeira guia
-  const handleCreateFirstGuia = (quantidade: number) => {
+  const handleCreateFirstGuia = (quantidade: number, isOverdelivery = false) => {
     // Limpar qualquer dado antigo no localStorage para guia 1
     const timerIds = ["headlines", "roteiros", "revisar"];
     timerIds.forEach((id) => {
@@ -335,11 +346,25 @@ export const MentoradoRoteirosView = ({
     setActiveTimerId(null);
     setTimersLoaded(true);
 
-    setGuias([{ numero: 1, quantidade }]);
+    // Se for overdelivery, inicializar com um bloco
+    if (isOverdelivery) {
+      setOverdeliveryBlocos(prev => {
+        const newMap = new Map(prev);
+        newMap.set(1, [
+          { id: `bloco-${Date.now()}`, titulo: "Bloco 1", isOpen: true, roteiros: [{ ordem: 1, headline: "", estrutura: "" }] }
+        ]);
+        return newMap;
+      });
+    }
+
+    setGuias([{ numero: 1, quantidade, isOverdelivery }]);
     setShowFirstGuiaDialog(false);
+    setQuantidadePersonalizada("");
     toast({
-      title: "Guia criada!",
-      description: `Guia 1 com ${quantidade} roteiros criada.`,
+      title: isOverdelivery ? "Overdelivery criado!" : "Guia criada!",
+      description: isOverdelivery 
+        ? `Overdelivery criado com sistema de blocos.`
+        : `Guia 1 com ${quantidade} roteiros criada.`,
     });
   };
 
@@ -924,7 +949,7 @@ export const MentoradoRoteirosView = ({
     });
   };
 
-  const handleCreateGuia = (quantidade: number) => {
+  const handleCreateGuia = (quantidade: number, isOverdelivery = false) => {
     const nextGuia = guias.length > 0 ? Math.max(...guias.map(g => g.numero)) + 1 : 1;
     
     // Limpar qualquer dado antigo no localStorage para esta guia
@@ -945,15 +970,46 @@ export const MentoradoRoteirosView = ({
     setActiveTimerId(null);
     setTimersLoaded(true);
     
-    setGuias((prev) => [...prev, { numero: nextGuia, quantidade }]);
+    // Se for overdelivery, inicializar com um bloco
+    if (isOverdelivery) {
+      setOverdeliveryBlocos(prev => {
+        const newMap = new Map(prev);
+        newMap.set(nextGuia, [
+          { id: `bloco-${Date.now()}`, titulo: "Bloco 1", isOpen: true, roteiros: [{ ordem: 1, headline: "", estrutura: "" }] }
+        ]);
+        return newMap;
+      });
+    }
+    
+    setGuias((prev) => [...prev, { numero: nextGuia, quantidade, isOverdelivery }]);
     setGuiaAtiva(nextGuia);
     setShowNewGuiaDialog(false);
+    setQuantidadePersonalizada("");
     
     toast({
-      title: "Guia criada!",
-      description: `Guia ${nextGuia} com ${quantidade} roteiros criada.`,
+      title: isOverdelivery ? "Overdelivery criado!" : "Guia criada!",
+      description: isOverdelivery 
+        ? `Overdelivery criado com sistema de blocos.`
+        : `Guia ${nextGuia} com ${quantidade} roteiros criada.`,
     });
   };
+  
+  const handleCreateOverdeliveryGuia = () => {
+    handleCreateGuia(0, true);
+  };
+
+  const handleOverdeliverySaveRoteiro = useCallback((blocoId: string, ordem: number, headline: string, estrutura: string) => {
+    // Aqui poderíamos salvar no banco se necessário
+    // Por enquanto mantemos apenas no estado local
+  }, []);
+
+  const handleOverdeliveryBlocosChange = useCallback((guiaNumero: number, blocos: OverdeliveryBloco[]) => {
+    setOverdeliveryBlocos(prev => {
+      const newMap = new Map(prev);
+      newMap.set(guiaNumero, blocos);
+      return newMap;
+    });
+  }, []);
 
   const handleAddRoteiro = () => {
     setGuias((prev) => 
@@ -1236,11 +1292,23 @@ export const MentoradoRoteirosView = ({
                     className="flex-1 justify-center lg:justify-start gap-2 px-2 lg:px-4"
                     onClick={() => handleGuiaChange(guia.numero)}
                   >
-                    <span className="lg:hidden">{guia.numero}</span>
-                    <span className="hidden lg:inline">Guia {guia.numero}</span>
-                    <span className="ml-auto text-xs opacity-70 hidden lg:inline">
-                      {getFilledCount(guia.numero)}/{guia.quantidade}
-                    </span>
+                    {guia.isOverdelivery ? (
+                      <>
+                        <Package className="h-4 w-4 lg:hidden" />
+                        <span className="hidden lg:inline flex items-center gap-2">
+                          <Package className="h-4 w-4" />
+                          Overdelivery
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="lg:hidden">{guia.numero}</span>
+                        <span className="hidden lg:inline">Guia {guia.numero}</span>
+                        <span className="ml-auto text-xs opacity-70 hidden lg:inline">
+                          {getFilledCount(guia.numero)}/{guia.quantidade}
+                        </span>
+                      </>
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
@@ -1346,6 +1414,14 @@ export const MentoradoRoteirosView = ({
           <div className="flex justify-center py-4 lg:py-8 px-2 lg:px-4">
             {/* Paper container */}
             <div className="w-full max-w-[816px] bg-background shadow-md rounded-sm" style={{ minHeight: 'calc(100vh - 250px)' }}>
+              {/* Renderizar OverdeliveryView se for guia de overdelivery */}
+              {guiaAtivaConfig.isOverdelivery ? (
+                <OverdeliveryView
+                  blocos={overdeliveryBlocos.get(guiaAtiva) || [{ id: `bloco-${Date.now()}`, titulo: "Bloco 1", isOpen: true, roteiros: [{ ordem: 1, headline: "", estrutura: "" }] }]}
+                  onBlocosChange={(blocos) => handleOverdeliveryBlocosChange(guiaAtiva, blocos)}
+                  onSaveRoteiro={handleOverdeliverySaveRoteiro}
+                />
+              ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
                 {Array.from({ length: guiaAtivaConfig.quantidade }, (_, i) => i + 1).map((ordem) => {
                   const key = `${guiaAtiva}-${ordem}`;
@@ -1502,6 +1578,7 @@ export const MentoradoRoteirosView = ({
                   </Button>
                 </div>
               </div>
+              )}
             </div>
           </div>
         </ScrollArea>
@@ -1642,6 +1719,51 @@ export const MentoradoRoteirosView = ({
               <span className="text-xs font-normal text-muted-foreground">roteiros</span>
             </Button>
           </div>
+          
+          {/* Seção Personalizado */}
+          <div className="border-t pt-4">
+            <p className="text-sm text-muted-foreground mb-3 text-center font-medium">Personalizado</p>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                placeholder="Quantidade"
+                value={quantidadePersonalizada}
+                onChange={(e) => setQuantidadePersonalizada(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                onClick={() => {
+                  const qtd = parseInt(quantidadePersonalizada);
+                  if (qtd > 0 && qtd <= 100) {
+                    handleCreateGuia(qtd);
+                  }
+                }}
+                disabled={!quantidadePersonalizada || parseInt(quantidadePersonalizada) < 1 || parseInt(quantidadePersonalizada) > 100}
+              >
+                Criar
+              </Button>
+            </div>
+          </div>
+          
+          {/* Seção Overdelivery - só aparece se não existe guia overdelivery */}
+          {!guias.some(g => g.isOverdelivery) && (
+            <div className="border-t pt-4">
+              <p className="text-sm text-muted-foreground mb-3 text-center font-medium">Especial</p>
+              <Button
+                variant="outline"
+                className="w-full h-16 flex-col gap-1"
+                onClick={handleCreateOverdeliveryGuia}
+              >
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  <span className="font-bold">Overdelivery</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Blocos expansíveis com headlines e estruturas</span>
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -1680,6 +1802,49 @@ export const MentoradoRoteirosView = ({
             >
               <span>30</span>
               <span className="text-xs font-normal opacity-70">roteiros</span>
+            </Button>
+          </div>
+          
+          {/* Seção Personalizado */}
+          <div className="border-t pt-4">
+            <p className="text-sm text-muted-foreground mb-3 text-center font-medium">Personalizado</p>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                placeholder="Quantidade"
+                value={quantidadePersonalizada}
+                onChange={(e) => setQuantidadePersonalizada(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                onClick={() => {
+                  const qtd = parseInt(quantidadePersonalizada);
+                  if (qtd > 0 && qtd <= 100) {
+                    handleCreateFirstGuia(qtd);
+                  }
+                }}
+                disabled={!quantidadePersonalizada || parseInt(quantidadePersonalizada) < 1 || parseInt(quantidadePersonalizada) > 100}
+              >
+                Criar
+              </Button>
+            </div>
+          </div>
+          
+          {/* Seção Overdelivery */}
+          <div className="border-t pt-4">
+            <p className="text-sm text-muted-foreground mb-3 text-center font-medium">Especial</p>
+            <Button
+              variant="outline"
+              className="w-full h-16 flex-col gap-1"
+              onClick={() => handleCreateFirstGuia(0, true)}
+            >
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                <span className="font-bold">Overdelivery</span>
+              </div>
+              <span className="text-xs text-muted-foreground">Blocos expansíveis com headlines e estruturas</span>
             </Button>
           </div>
         </DialogContent>
