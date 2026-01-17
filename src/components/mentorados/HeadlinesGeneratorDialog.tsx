@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -17,8 +18,9 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useGenerateHeadlines } from "@/hooks/useGenerateHeadlines";
-import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
+import { useInteligenciaGlobal, useUpdateInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
 import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
+import { useUserRole } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 interface AdaptedHeadline {
@@ -48,10 +50,18 @@ export const HeadlinesGeneratorDialog = ({
   const [isGlobalOpen, setIsGlobalOpen] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Estados para edição da inteligência global (admin)
+  const [inteligenciaGlobalEdit, setInteligenciaGlobalEdit] = useState("");
+  const [tituloGlobalEdit, setTituloGlobalEdit] = useState("");
+  const [hasUnsavedGlobalChanges, setHasUnsavedGlobalChanges] = useState(false);
+
   const generateMutation = useGenerateHeadlines();
   const { data: inteligenciaGlobal, isLoading: isLoadingGlobal } = useInteligenciaGlobal();
+  const updateInteligenciaGlobal = useUpdateInteligenciaGlobal();
   const { data: mentorados = [] } = useMentorados();
   const updateMentorado = useUpdateMentorado();
+  const { data: role } = useUserRole();
+  const isAdmin = role === "admin";
 
   // Find the current mentorado
   const currentMentorado = mentoradoId 
@@ -65,6 +75,20 @@ export const HeadlinesGeneratorDialog = ({
       setHasUnsavedChanges(false);
     }
   }, [open, currentMentorado]);
+
+  // Sync global intelligence data for admin editing
+  useEffect(() => {
+    if (open && inteligenciaGlobal) {
+      setInteligenciaGlobalEdit(inteligenciaGlobal.conteudo || "");
+      setTituloGlobalEdit(inteligenciaGlobal.titulo || "Método Principal");
+      setHasUnsavedGlobalChanges(false);
+    } else if (open && !inteligenciaGlobal && !isLoadingGlobal) {
+      // No global intelligence exists yet
+      setInteligenciaGlobalEdit("");
+      setTituloGlobalEdit("Método Principal");
+      setHasUnsavedGlobalChanges(false);
+    }
+  }, [open, inteligenciaGlobal, isLoadingGlobal]);
 
   // Track changes to individual intelligence
   const handleInteligenciaChange = (value: string) => {
@@ -92,12 +116,29 @@ export const HeadlinesGeneratorDialog = ({
     );
   }, [mentoradoId, currentMentorado, inteligenciaIndividual, updateMentorado]);
 
+  // Save global intelligence (admin only)
+  const handleSaveInteligenciaGlobal = useCallback(() => {
+    if (!isAdmin) return;
+
+    updateInteligenciaGlobal.mutate(
+      { titulo: tituloGlobalEdit.trim() || "Método Principal", conteudo: inteligenciaGlobalEdit.trim() },
+      {
+        onSuccess: () => {
+          setHasUnsavedGlobalChanges(false);
+        },
+      }
+    );
+  }, [isAdmin, tituloGlobalEdit, inteligenciaGlobalEdit, updateInteligenciaGlobal]);
+
   // Combine both intelligences for generation
   const getCombinedInteligencia = useCallback(() => {
     let combined = "";
     
-    if (inteligenciaGlobal?.conteudo) {
-      combined += `=== MÉTODO/FRAMEWORK (BASE GLOBAL) ===\n${inteligenciaGlobal.conteudo}\n\n`;
+    // Para admin, usar valor editado; para usuário, usar dados do banco
+    const globalContent = isAdmin ? inteligenciaGlobalEdit : inteligenciaGlobal?.conteudo;
+    
+    if (globalContent?.trim()) {
+      combined += `=== MÉTODO/FRAMEWORK (BASE GLOBAL) ===\n${globalContent.trim()}\n\n`;
     }
     
     if (inteligenciaIndividual.trim()) {
@@ -105,7 +146,7 @@ export const HeadlinesGeneratorDialog = ({
     }
     
     return combined.trim();
-  }, [inteligenciaGlobal, inteligenciaIndividual]);
+  }, [isAdmin, inteligenciaGlobalEdit, inteligenciaGlobal, inteligenciaIndividual]);
 
   const handleGenerate = useCallback(async () => {
     const combinedInteligencia = getCombinedInteligencia();
@@ -198,7 +239,8 @@ export const HeadlinesGeneratorDialog = ({
   }, [adaptedHeadlines, selectedIndices, onUseHeadlines, onClose]);
 
   const remainingHeadlines = headlines.length - adaptedHeadlines.length;
-  const hasAnyInteligencia = !!(inteligenciaGlobal?.conteudo || inteligenciaIndividual.trim());
+  const globalContent = isAdmin ? inteligenciaGlobalEdit : inteligenciaGlobal?.conteudo;
+  const hasAnyInteligencia = !!(globalContent?.trim() || inteligenciaIndividual.trim());
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -232,13 +274,56 @@ export const HeadlinesGeneratorDialog = ({
                   )}
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="p-3 pt-0">
+                  <div className="p-3 pt-0 space-y-3">
                     {isLoadingGlobal ? (
                       <div className="flex items-center gap-2 text-muted-foreground text-sm">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Carregando...
                       </div>
+                    ) : isAdmin ? (
+                      // Admin: campos editáveis
+                      <>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Título</Label>
+                          <Input
+                            value={tituloGlobalEdit}
+                            onChange={(e) => {
+                              setTituloGlobalEdit(e.target.value);
+                              setHasUnsavedGlobalChanges(true);
+                            }}
+                            placeholder="Ex: Método Principal"
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Conteúdo</Label>
+                          <Textarea
+                            value={inteligenciaGlobalEdit}
+                            onChange={(e) => {
+                              setInteligenciaGlobalEdit(e.target.value);
+                              setHasUnsavedGlobalChanges(true);
+                            }}
+                            placeholder="Descreva o método, regras de copywriting, framework..."
+                            className="min-h-[150px] resize-none text-sm mt-1"
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSaveInteligenciaGlobal}
+                          disabled={updateInteligenciaGlobal.isPending || !hasUnsavedGlobalChanges}
+                          className="w-full"
+                        >
+                          {updateInteligenciaGlobal.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          {hasUnsavedGlobalChanges ? "Salvar Global" : "Salvo"}
+                        </Button>
+                      </>
                     ) : inteligenciaGlobal?.conteudo ? (
+                      // Usuário comum: somente leitura
                       <div className="text-sm bg-muted/30 p-3 rounded-md max-h-[150px] overflow-y-auto">
                         <p className="font-medium text-xs text-muted-foreground mb-1">
                           {inteligenciaGlobal.titulo}
