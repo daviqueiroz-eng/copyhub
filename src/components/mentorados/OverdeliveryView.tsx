@@ -1,14 +1,16 @@
 import { useState, useCallback } from "react";
-import { Plus, ChevronDown, ChevronRight, Trash2, GripVertical } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Trash2, GripVertical, Copy, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { InlineSpellCheckEditor } from "./InlineSpellCheckEditor";
+import { toast } from "sonner";
 
 interface RoteiroItem {
   ordem: number;
@@ -133,9 +135,29 @@ export const OverdeliveryView = ({
     onBlocosChange(blocos.filter((b) => b.id !== blocoId));
   }, [blocos, onBlocosChange]);
 
+  const copyRoteiroContent = useCallback((roteiro: RoteiroItem) => {
+    const content = `HEADLINE ${String(roteiro.ordem).padStart(2, "0")}:\n${roteiro.headline}\n\nESTRUTURA ${String(roteiro.ordem).padStart(2, "0")}:\n${roteiro.estrutura}`;
+    navigator.clipboard.writeText(content);
+    toast.success("Roteiro copiado!");
+  }, []);
+
+  const speakRoteiro = useCallback((roteiro: RoteiroItem) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(
+        `Headline ${roteiro.ordem}. ${roteiro.headline}. Estrutura ${roteiro.ordem}. ${roteiro.estrutura}`
+      );
+      utterance.lang = 'pt-BR';
+      window.speechSynthesis.speak(utterance);
+      toast.success("Reproduzindo áudio...");
+    } else {
+      toast.error("Seu navegador não suporta síntese de voz");
+    }
+  }, []);
+
   return (
     <div className="space-y-4 px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
-      {blocos.map((bloco, blocoIndex) => (
+      {blocos.map((bloco) => (
         <Collapsible
           key={bloco.id}
           open={bloco.isOpen}
@@ -198,51 +220,75 @@ export const OverdeliveryView = ({
             </CollapsibleTrigger>
 
             <CollapsibleContent>
-              <div className="border-t p-4 space-y-6">
+              <div className="border-t px-4 sm:px-8 lg:px-12 py-6 lg:py-8">
                 {bloco.roteiros.map((roteiro, roteiroIndex) => {
                   const ordemFormatada = String(roteiro.ordem).padStart(2, "0");
                   
                   return (
-                    <div key={roteiro.ordem} className="group relative">
-                      {/* Headline */}
-                      <div className="mb-2">
-                        <label className="text-sm font-semibold text-amber-600 dark:text-amber-500 mb-1 block">
-                          HEADLINE {ordemFormatada}:
-                        </label>
-                        <div className="relative">
-                          <Input
-                            value={roteiro.headline}
-                            onChange={(e) => updateRoteiro(bloco.id, roteiro.ordem, "headline", e.target.value)}
-                            placeholder="Digite a headline..."
-                            className="font-medium"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
-                            onClick={() => removeRoteiro(bloco.id, roteiro.ordem)}
-                            title="Remover roteiro"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                    <div key={roteiro.ordem} className="relative group mb-8">
+                      {/* Ícones de ação lateral */}
+                      <div className="absolute right-0 top-0 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => copyRoteiroContent(roteiro)}
+                          title="Copiar roteiro"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => removeRoteiro(bloco.id, roteiro.ordem)}
+                          title="Remover roteiro"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => speakRoteiro(roteiro)}
+                          title="Ouvir roteiro"
+                        >
+                          <Volume2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      
-                      {/* Estrutura */}
-                      <div>
-                        <label className="text-sm font-semibold text-amber-600 dark:text-amber-500 mb-1 block">
-                          ESTRUTURA {ordemFormatada}:
-                        </label>
-                        <Textarea
-                          value={roteiro.estrutura}
-                          onChange={(e) => updateRoteiro(bloco.id, roteiro.ordem, "estrutura", e.target.value)}
-                          placeholder="Digite a estrutura..."
-                          className="min-h-[120px] resize-y"
+
+                      {/* Headline */}
+                      <div className="mb-4 pr-12">
+                        <span className="font-poppins font-bold text-[#B8860B] text-base block mb-1">
+                          HEADLINE {ordemFormatada}:
+                        </span>
+                        <InlineSpellCheckEditor
+                          value={roteiro.headline}
+                          onChange={(value) => updateRoteiro(bloco.id, roteiro.ordem, "headline", value)}
+                          placeholder="Digite a headline... (use / para comandos)"
+                          className="text-base"
                         />
                       </div>
-                      
+
+                      {/* Estrutura */}
+                      <div className="pr-12">
+                        <span className="font-poppins font-bold text-[#B8860B] text-base block mb-1">
+                          ESTRUTURA {ordemFormatada}:
+                        </span>
+                        <InlineSpellCheckEditor
+                          value={roteiro.estrutura}
+                          onChange={(value) => updateRoteiro(bloco.id, roteiro.ordem, "estrutura", value)}
+                          placeholder="Digite a estrutura do roteiro... (use / para comandos)"
+                          className="text-base min-h-[120px]"
+                        />
+                        <div className="text-right text-xs text-muted-foreground mt-1">
+                          {roteiro.estrutura?.length || 0} caracteres
+                        </div>
+                      </div>
+
+                      {/* Separador entre roteiros */}
                       {roteiroIndex < bloco.roteiros.length - 1 && (
-                        <div className="border-b mt-6" />
+                        <Separator className="my-6" />
                       )}
                     </div>
                   );
