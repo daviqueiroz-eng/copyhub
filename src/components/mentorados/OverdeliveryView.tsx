@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Plus, ChevronDown, ChevronRight, Trash2, GripVertical, Copy, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { InlineSpellCheckEditor } from "./InlineSpellCheckEditor";
+import { SlashCommandPopover } from "./SlashCommandPopover";
+import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
+import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { toast } from "sonner";
+
+type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | "mentorados" | string;
 
 interface RoteiroItem {
   ordem: number;
@@ -25,18 +30,63 @@ interface Bloco {
   roteiros: RoteiroItem[];
 }
 
+interface AvatarCategory {
+  id: string;
+  name: string;
+  subtitle: string;
+  color: string;
+  items: string[];
+}
+
 interface OverdeliveryViewProps {
   blocos: Bloco[];
   onBlocosChange: (blocos: Bloco[]) => void;
   onSaveRoteiro: (blocoId: string, ordem: number, headline: string, estrutura: string) => void;
+  avatarCategories?: AvatarCategory[];
+  onAddAvatarItem?: (categoryId: string, text: string) => void;
+  onEditAvatarItem?: (categoryId: string, oldText: string, newText: string) => void;
+  onDeleteAvatarItem?: (categoryId: string, text: string) => void;
+  selectedMentoradoId?: string;
 }
 
 export const OverdeliveryView = ({
   blocos,
   onBlocosChange,
   onSaveRoteiro,
+  avatarCategories = [],
+  onAddAvatarItem,
+  onEditAvatarItem,
+  onDeleteAvatarItem,
+  selectedMentoradoId,
 }: OverdeliveryViewProps) => {
   const [editingTitulo, setEditingTitulo] = useState<string | null>(null);
+  
+  // Slash command state
+  const [slashCommand, setSlashCommand] = useState<{
+    isOpen: boolean;
+    mode: SlashCommandMode;
+    targetBlocoId: string;
+    targetOrdem: number;
+    targetField: "headline" | "estrutura";
+    position: { top: number; left: number };
+  }>({
+    isOpen: false,
+    mode: "menu",
+    targetBlocoId: "",
+    targetOrdem: 0,
+    targetField: "headline",
+    position: { top: 0, left: 0 },
+  });
+
+  // Headlines modal state
+  const [showHeadlinesModal, setShowHeadlinesModal] = useState(false);
+  const [headlinesTargetBlocoId, setHeadlinesTargetBlocoId] = useState("");
+  const [headlinesTargetOrdem, setHeadlinesTargetOrdem] = useState(0);
+  const [headlinesTargetField, setHeadlinesTargetField] = useState<"headline" | "estrutura">("headline");
+  const [savedHeadlines, setSavedHeadlines] = useState<AnalysisHeadline[]>([]);
+  
+  // Ref para posição do cursor
+  const cursorPositionRef = useRef<Map<string, number>>(new Map());
 
   const toggleBloco = useCallback((blocoId: string, isOpen: boolean) => {
     onBlocosChange(
@@ -75,8 +125,10 @@ export const OverdeliveryView = ({
     blocoId: string, 
     ordem: number, 
     field: "headline" | "estrutura", 
-    value: string
+    value: string,
+    cursorPosition?: number
   ) => {
+    // Atualizar valor normalmente
     onBlocosChange(
       blocos.map((b) => {
         if (b.id === blocoId) {
@@ -90,6 +142,127 @@ export const OverdeliveryView = ({
         return b;
       })
     );
+
+    // Detectar comandos "/"
+    const key = `${blocoId}-${ordem}-${field}`;
+    const cursorPos = cursorPosition ?? value.length;
+    cursorPositionRef.current.set(key, cursorPos);
+    
+    const textBeforeCursor = value.slice(0, cursorPos);
+    
+    const popoverWidth = 320;
+    let left = Math.max(20, (window.innerWidth - popoverWidth) / 2);
+    let top = 200;
+
+    if (textBeforeCursor.endsWith("/i")) {
+      setSlashCommand({
+        isOpen: true,
+        mode: "intensificadores",
+        targetBlocoId: blocoId,
+        targetOrdem: ordem,
+        targetField: field,
+        position: { top, left },
+      });
+    } else if (textBeforeCursor.endsWith("/c")) {
+      setSlashCommand({
+        isOpen: true,
+        mode: "ctas",
+        targetBlocoId: blocoId,
+        targetOrdem: ordem,
+        targetField: field,
+        position: { top, left },
+      });
+    } else if (textBeforeCursor.endsWith("/3")) {
+      // Limpar /3 e abrir modal de headlines
+      const textAfterCursor = value.slice(cursorPos);
+      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
+      
+      // Atualizar valor sem o /3
+      onBlocosChange(
+        blocos.map((b) => {
+          if (b.id === blocoId) {
+            return {
+              ...b,
+              roteiros: b.roteiros.map((r) =>
+                r.ordem === ordem ? { ...r, [field]: cleanValue } : r
+              ),
+            };
+          }
+          return b;
+        })
+      );
+      
+      cursorPositionRef.current.set(key, cursorPos - 2);
+      setHeadlinesTargetBlocoId(blocoId);
+      setHeadlinesTargetOrdem(ordem);
+      setHeadlinesTargetField(field);
+      setShowHeadlinesModal(true);
+      setSlashCommand(prev => ({ ...prev, isOpen: false }));
+    } else if (textBeforeCursor.endsWith("/p")) {
+      const textAfterCursor = value.slice(cursorPos);
+      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
+      
+      onBlocosChange(
+        blocos.map((b) => {
+          if (b.id === blocoId) {
+            return {
+              ...b,
+              roteiros: b.roteiros.map((r) =>
+                r.ordem === ordem ? { ...r, [field]: cleanValue } : r
+              ),
+            };
+          }
+          return b;
+        })
+      );
+      
+      cursorPositionRef.current.set(key, cursorPos - 2);
+      setSlashCommand({
+        isOpen: true,
+        mode: "prompts",
+        targetBlocoId: blocoId,
+        targetOrdem: ordem,
+        targetField: field,
+        position: { top, left },
+      });
+    } else if (textBeforeCursor.endsWith("/m")) {
+      const textAfterCursor = value.slice(cursorPos);
+      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
+      
+      onBlocosChange(
+        blocos.map((b) => {
+          if (b.id === blocoId) {
+            return {
+              ...b,
+              roteiros: b.roteiros.map((r) =>
+                r.ordem === ordem ? { ...r, [field]: cleanValue } : r
+              ),
+            };
+          }
+          return b;
+        })
+      );
+      
+      cursorPositionRef.current.set(key, cursorPos - 2);
+      setSlashCommand({
+        isOpen: true,
+        mode: "mentorados",
+        targetBlocoId: blocoId,
+        targetOrdem: ordem,
+        targetField: field,
+        position: { top, left },
+      });
+    } else if (textBeforeCursor.endsWith("/")) {
+      // Abrir menu principal de comandos
+      setSlashCommand({
+        isOpen: true,
+        mode: "menu",
+        targetBlocoId: blocoId,
+        targetOrdem: ordem,
+        targetField: field,
+        position: { top, left },
+      });
+    }
     
     // Debounce save
     const bloco = blocos.find(b => b.id === blocoId);
@@ -102,6 +275,75 @@ export const OverdeliveryView = ({
       }, 1500);
     }
   }, [blocos, onBlocosChange, onSaveRoteiro]);
+
+  const handleSelectItem = useCallback((text: string) => {
+    const { targetBlocoId, targetOrdem, targetField } = slashCommand;
+    const bloco = blocos.find(b => b.id === targetBlocoId);
+    const roteiro = bloco?.roteiros.find(r => r.ordem === targetOrdem);
+    
+    if (!roteiro) return;
+    
+    const currentValue = roteiro[targetField];
+    const key = `${targetBlocoId}-${targetOrdem}-${targetField}`;
+    const cursorPos = cursorPositionRef.current.get(key) ?? currentValue.length;
+    
+    // Remover o comando / do texto
+    let textBeforeCursor = currentValue.slice(0, cursorPos);
+    const textAfterCursor = currentValue.slice(cursorPos);
+    
+    // Remover /i, /c, /p, /m ou / do final
+    if (textBeforeCursor.endsWith("/i") || textBeforeCursor.endsWith("/c") || 
+        textBeforeCursor.endsWith("/p") || textBeforeCursor.endsWith("/m")) {
+      textBeforeCursor = textBeforeCursor.slice(0, -2);
+    } else if (textBeforeCursor.endsWith("/")) {
+      textBeforeCursor = textBeforeCursor.slice(0, -1);
+    }
+    
+    const newValue = textBeforeCursor + text + textAfterCursor;
+    
+    onBlocosChange(
+      blocos.map((b) => {
+        if (b.id === targetBlocoId) {
+          return {
+            ...b,
+            roteiros: b.roteiros.map((r) =>
+              r.ordem === targetOrdem ? { ...r, [targetField]: newValue } : r
+            ),
+          };
+        }
+        return b;
+      })
+    );
+    
+    setSlashCommand(prev => ({ ...prev, isOpen: false }));
+  }, [blocos, slashCommand, onBlocosChange]);
+
+  const handleSelectHeadlines = useCallback((headlines: string[]) => {
+    const bloco = blocos.find(b => b.id === headlinesTargetBlocoId);
+    const roteiro = bloco?.roteiros.find(r => r.ordem === headlinesTargetOrdem);
+    
+    if (roteiro) {
+      const currentValue = roteiro[headlinesTargetField];
+      const key = `${headlinesTargetBlocoId}-${headlinesTargetOrdem}-${headlinesTargetField}`;
+      const cursorPos = cursorPositionRef.current.get(key) ?? currentValue.length;
+      const newValue = currentValue.slice(0, cursorPos) + headlines.join("\n") + currentValue.slice(cursorPos);
+      
+      onBlocosChange(
+        blocos.map((b) => {
+          if (b.id === headlinesTargetBlocoId) {
+            return {
+              ...b,
+              roteiros: b.roteiros.map((r) =>
+                r.ordem === headlinesTargetOrdem ? { ...r, [headlinesTargetField]: newValue } : r
+              ),
+            };
+          }
+          return b;
+        })
+      );
+    }
+    setShowHeadlinesModal(false);
+  }, [blocos, headlinesTargetBlocoId, headlinesTargetOrdem, headlinesTargetField, onBlocosChange]);
 
   const removeRoteiro = useCallback((blocoId: string, ordem: number) => {
     onBlocosChange(
@@ -264,7 +506,12 @@ export const OverdeliveryView = ({
                         </span>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
-                          onChange={(value) => updateRoteiro(bloco.id, roteiro.ordem, "headline", value)}
+                          onChange={(value) => {
+                            // Get cursor position from the editor if possible
+                            const textarea = document.activeElement as HTMLTextAreaElement;
+                            const cursorPosition = textarea?.selectionStart;
+                            updateRoteiro(bloco.id, roteiro.ordem, "headline", value, cursorPosition);
+                          }}
                           placeholder="Digite a headline... (use / para comandos)"
                           className="text-base"
                         />
@@ -277,7 +524,11 @@ export const OverdeliveryView = ({
                         </span>
                         <InlineSpellCheckEditor
                           value={roteiro.estrutura}
-                          onChange={(value) => updateRoteiro(bloco.id, roteiro.ordem, "estrutura", value)}
+                          onChange={(value) => {
+                            const textarea = document.activeElement as HTMLTextAreaElement;
+                            const cursorPosition = textarea?.selectionStart;
+                            updateRoteiro(bloco.id, roteiro.ordem, "estrutura", value, cursorPosition);
+                          }}
                           placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                           className="text-base min-h-[120px]"
                         />
@@ -317,6 +568,29 @@ export const OverdeliveryView = ({
         <Plus className="h-5 w-5" />
         Adicionar novo bloco
       </Button>
+
+      {/* Slash Command Popover */}
+      <SlashCommandPopover
+        isOpen={slashCommand.isOpen}
+        mode={slashCommand.mode}
+        onClose={() => setSlashCommand(prev => ({ ...prev, isOpen: false }))}
+        onSelectItem={handleSelectItem}
+        position={slashCommand.position}
+        avatarCategories={avatarCategories}
+        onAddAvatarItem={onAddAvatarItem}
+        onEditAvatarItem={onEditAvatarItem}
+        onDeleteAvatarItem={onDeleteAvatarItem}
+      />
+
+      {/* Headlines Random Dialog */}
+      <HeadlinesRandomDialog
+        open={showHeadlinesModal}
+        onClose={() => setShowHeadlinesModal(false)}
+        onSelectMultiple={handleSelectHeadlines}
+        savedHeadlines={savedHeadlines}
+        onSaveHeadlines={setSavedHeadlines}
+        selectedMentoradoId={selectedMentoradoId}
+      />
     </div>
   );
 };

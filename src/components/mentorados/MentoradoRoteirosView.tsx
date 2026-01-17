@@ -1420,6 +1420,11 @@ export const MentoradoRoteirosView = ({
                   blocos={overdeliveryBlocos.get(guiaAtiva) || [{ id: `bloco-${Date.now()}`, titulo: "Bloco 1", isOpen: true, roteiros: [{ ordem: 1, headline: "", estrutura: "" }] }]}
                   onBlocosChange={(blocos) => handleOverdeliveryBlocosChange(guiaAtiva, blocos)}
                   onSaveRoteiro={handleOverdeliverySaveRoteiro}
+                  avatarCategories={avatarCategories}
+                  onAddAvatarItem={handleAddAvatarItem}
+                  onEditAvatarItem={handleEditAvatarItem}
+                  onDeleteAvatarItem={handleDeleteAvatarItem}
+                  selectedMentoradoId={mentoradoId}
                 />
               ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
