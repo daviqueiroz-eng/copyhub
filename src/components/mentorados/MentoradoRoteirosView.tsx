@@ -6,6 +6,12 @@ import {
   transformToBlocos,
   useSaveAllOverdeliveryBlocos,
 } from "@/hooks/useOverdeliveryRoteiros";
+import {
+  useGuiasConfig,
+  useUpsertGuiaConfig,
+  useDeleteGuiaConfig,
+  useUpdateGuiaQuantidade,
+} from "@/hooks/useGuiasConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -193,6 +199,12 @@ export const MentoradoRoteirosView = ({
   const { data: deletedGuias = [] } = useDeletedGuias(mentoradoId);
   const restoreGuia = useRestoreGuia();
   
+  // Hooks para config de guias (persistência do isOverdelivery)
+  const { data: guiasConfigDb = [], isLoading: isLoadingGuiasConfig } = useGuiasConfig(mentoradoId);
+  const upsertGuiaConfig = useUpsertGuiaConfig();
+  const deleteGuiaConfig = useDeleteGuiaConfig();
+  const updateGuiaQuantidade = useUpdateGuiaQuantidade();
+  
   // Hooks para overdelivery persistência
   const guiaAtivaParaOverdelivery = guias.find(g => g.numero === guiaAtiva)?.isOverdelivery ? guiaAtiva : 0;
   const { data: overdeliveryData = [], isLoading: isLoadingOverdelivery } = useOverdeliveryRoteiros(
@@ -233,17 +245,26 @@ export const MentoradoRoteirosView = ({
     });
   }, [trelloImport, mentoradoNome]);
 
-  // Inicializar roteiros locais a partir do banco
+  // Inicializar guias a partir das configurações do banco (prioridade)
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoadingGuiasConfig || isLoading) return;
     
-    const newMap = new Map<string, RoteiroLocal>();
+    // Se temos configurações no banco, usá-las (mantém isOverdelivery)
+    if (guiasConfigDb.length > 0) {
+      const guiasDoDb: GuiaConfig[] = guiasConfigDb.map(g => ({
+        numero: g.numero,
+        quantidade: g.quantidade,
+        isOverdelivery: g.is_overdelivery,
+      }));
+      setGuias(guiasDoDb);
+      setShowFirstGuiaDialog(false);
+      return;
+    }
     
-    // Descobrir guias existentes a partir dos dados do banco
+    // Fallback: reconstruir de roteiros se não tiver config no banco (guias antigas)
     const guiasExistentes = new Set<number>();
     roteiros.forEach((r) => guiasExistentes.add(r.guia_numero));
     
-    // Atualizar lista de guias se houver mais no banco
     if (guiasExistentes.size > 0) {
       const maxGuia = Math.max(...guiasExistentes);
       const guiasAtualizadas: GuiaConfig[] = [];
@@ -256,9 +277,26 @@ export const MentoradoRoteirosView = ({
       
       if (guiasAtualizadas.length > 0) {
         setGuias(guiasAtualizadas);
-        setShowFirstGuiaDialog(false); // Já tem guias do banco
+        setShowFirstGuiaDialog(false);
+        
+        // Salvar no banco para próximas vezes
+        guiasAtualizadas.forEach(g => {
+          upsertGuiaConfig.mutate({
+            mentorado_id: mentoradoId,
+            numero: g.numero,
+            quantidade: g.quantidade,
+            is_overdelivery: false,
+          });
+        });
       }
     }
+  }, [guiasConfigDb, isLoadingGuiasConfig, roteiros, isLoading, mentoradoId]);
+
+  // Inicializar roteiros locais a partir do banco
+  useEffect(() => {
+    if (isLoading) return;
+    
+    const newMap = new Map<string, RoteiroLocal>();
     
     // Preencher com dados do banco
     roteiros.forEach((r) => {
@@ -372,6 +410,14 @@ export const MentoradoRoteirosView = ({
       });
     }
 
+    // Salvar configuração no banco de dados
+    upsertGuiaConfig.mutate({
+      mentorado_id: mentoradoId,
+      numero: 1,
+      quantidade: quantidade,
+      is_overdelivery: isOverdelivery,
+    });
+
     setGuias([{ numero: 1, quantidade, isOverdelivery }]);
     setShowFirstGuiaDialog(false);
     setQuantidadePersonalizada("");
@@ -403,6 +449,9 @@ export const MentoradoRoteirosView = ({
 
           // Remover guia do estado
           setGuias((prev) => prev.filter((g) => g.numero !== guiaNumero));
+          
+          // Deletar config da guia do banco
+          deleteGuiaConfig.mutate({ mentorado_id: mentoradoId, numero: guiaNumero });
 
           // Se a guia ativa foi deletada, mudar para a primeira guia disponível
           if (guiaAtiva === guiaNumero) {
@@ -444,7 +493,7 @@ export const MentoradoRoteirosView = ({
     );
 
     setGuiaToDelete(null);
-  }, [deleteGuia, mentoradoId, guiaAtiva, guias]);
+  }, [deleteGuia, deleteGuiaConfig, mentoradoId, guiaAtiva, guias]);
 
   // Função para salvar
   const saveRoteiro = useCallback(
@@ -996,6 +1045,14 @@ export const MentoradoRoteirosView = ({
       });
     }
     
+    // Salvar configuração no banco de dados
+    upsertGuiaConfig.mutate({
+      mentorado_id: mentoradoId,
+      numero: nextGuia,
+      quantidade: quantidade,
+      is_overdelivery: isOverdelivery,
+    });
+    
     setGuias((prev) => [...prev, { numero: nextGuia, quantidade, isOverdelivery }]);
     setGuiaAtiva(nextGuia);
     setShowNewGuiaDialog(false);
@@ -1068,17 +1125,26 @@ export const MentoradoRoteirosView = ({
   }, [mentoradoId, saveAllOverdelivery]);
 
   const handleAddRoteiro = () => {
+    const novaQuantidade = guiaAtivaConfig.quantidade + 1;
+    
     setGuias((prev) => 
       prev.map((g) => 
         g.numero === guiaAtiva 
-          ? { ...g, quantidade: g.quantidade + 1 } 
+          ? { ...g, quantidade: novaQuantidade } 
           : g
       )
     );
     
+    // Atualizar quantidade no banco
+    updateGuiaQuantidade.mutate({
+      mentorado_id: mentoradoId,
+      numero: guiaAtiva,
+      quantidade: novaQuantidade,
+    });
+    
     toast({
       title: "Roteiro adicionado!",
-      description: `Roteiro ${guiaAtivaConfig.quantidade + 1} adicionado à Guia ${guiaAtiva}.`,
+      description: `Roteiro ${novaQuantidade} adicionado à Guia ${guiaAtiva}.`,
     });
   };
 
@@ -1224,7 +1290,7 @@ export const MentoradoRoteirosView = ({
   }, [progresso.headlinesPreenchidas, progresso.roteirosPreenchidos, progresso.total, mentoradoId, guiaAtiva, celebratedMilestones]);
 
   // Return de loading DEPOIS de todos os hooks
-  if (isLoading) {
+  if (isLoading || isLoadingGuiasConfig) {
     return (
       <div className="fixed inset-0 z-50 bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

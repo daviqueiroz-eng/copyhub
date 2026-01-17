@@ -1270,6 +1270,47 @@ export type Database = {
         }
         Relationships: []
       }
+      mentorados_guias_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_overdelivery: boolean
+          mentorado_id: string
+          numero: number
+          quantidade: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_overdelivery?: boolean
+          mentorado_id: string
+          numero: number
+          quantidade?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_overdelivery?: boolean
+          mentorado_id?: string
+          numero?: number
+          quantidade?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorados_guias_config_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorados_roteiros: {
         Row: {
           created_at: string
