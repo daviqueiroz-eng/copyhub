@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { Plus, ChevronDown, ChevronRight, Trash2, GripVertical, Copy, Volume2 } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Trash2, GripVertical, Copy, Volume2, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,6 +46,9 @@ interface OverdeliveryViewProps {
   onEditAvatarItem?: (categoryId: string, oldText: string, newText: string) => void;
   onDeleteAvatarItem?: (categoryId: string, text: string) => void;
   selectedMentoradoId?: string;
+  isSaving?: boolean;
+  isSaved?: boolean;
+  isLoading?: boolean;
 }
 
 export const OverdeliveryView = ({
@@ -57,6 +60,9 @@ export const OverdeliveryView = ({
   onEditAvatarItem,
   onDeleteAvatarItem,
   selectedMentoradoId,
+  isSaving = false,
+  isSaved = false,
+  isLoading = false,
 }: OverdeliveryViewProps) => {
   const [editingTitulo, setEditingTitulo] = useState<string | null>(null);
   
@@ -396,8 +402,34 @@ export const OverdeliveryView = ({
     }
   }, []);
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Carregando...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
+      {/* Status de salvamento */}
+      <div className="flex items-center justify-end gap-2 h-6">
+        {isSaving && (
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Salvando...</span>
+          </div>
+        )}
+        {isSaved && !isSaving && (
+          <div className="flex items-center gap-1 text-sm text-green-600">
+            <Check className="h-4 w-4" />
+            <span>Salvo</span>
+          </div>
+        )}
+      </div>
+      
       {blocos.map((bloco) => (
         <Collapsible
           key={bloco.id}

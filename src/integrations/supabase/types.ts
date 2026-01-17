@@ -1317,6 +1317,59 @@ export type Database = {
           },
         ]
       }
+      mentorados_roteiros_overdelivery: {
+        Row: {
+          bloco_id: string
+          bloco_ordem: number
+          bloco_titulo: string
+          created_at: string | null
+          estrutura: string | null
+          guia_numero: number
+          headline: string | null
+          id: string
+          mentorado_id: string
+          roteiro_ordem: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          bloco_id: string
+          bloco_ordem?: number
+          bloco_titulo?: string
+          created_at?: string | null
+          estrutura?: string | null
+          guia_numero: number
+          headline?: string | null
+          id?: string
+          mentorado_id: string
+          roteiro_ordem?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          bloco_id?: string
+          bloco_ordem?: number
+          bloco_titulo?: string
+          created_at?: string | null
+          estrutura?: string | null
+          guia_numero?: number
+          headline?: string | null
+          id?: string
+          mentorado_id?: string
+          roteiro_ordem?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorados_roteiros_overdelivery_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorados_roteiros_tempos: {
         Row: {
           created_at: string

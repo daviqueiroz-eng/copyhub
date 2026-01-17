@@ -1,7 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package } from "lucide-react";
-import { useMemo } from "react";
 import { useTrelloImport, TrelloCard } from "@/hooks/useTrelloImport";
+import {
+  useOverdeliveryRoteiros,
+  transformToBlocos,
+  useSaveAllOverdeliveryBlocos,
+} from "@/hooks/useOverdeliveryRoteiros";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -108,7 +112,10 @@ export const MentoradoRoteirosView = ({
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackTimers, setFeedbackTimers] = useState<TimersRecord | null>(null);
   const [quantidadePersonalizada, setQuantidadePersonalizada] = useState<string>("");
-  const [overdeliveryBlocos, setOverdeliveryBlocos] = useState<Map<number, OverdeliveryBloco[]>>(new Map());
+  const [overdeliveryBlocosLocal, setOverdeliveryBlocosLocal] = useState<Map<number, OverdeliveryBloco[]>>(new Map());
+  const [overdeliverySaving, setOverdeliverySaving] = useState(false);
+  const [overdeliverySaved, setOverdeliverySaved] = useState(false);
+  const overdeliverySaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [highlightedMatch, setHighlightedMatch] = useState<{
     guiaNumero: number;
     ordem: number;
@@ -185,6 +192,14 @@ export const MentoradoRoteirosView = ({
   const updateMentorado = useUpdateMentorado();
   const { data: deletedGuias = [] } = useDeletedGuias(mentoradoId);
   const restoreGuia = useRestoreGuia();
+  
+  // Hooks para overdelivery persistência
+  const guiaAtivaParaOverdelivery = guias.find(g => g.numero === guiaAtiva)?.isOverdelivery ? guiaAtiva : 0;
+  const { data: overdeliveryData = [], isLoading: isLoadingOverdelivery } = useOverdeliveryRoteiros(
+    mentoradoId,
+    guiaAtivaParaOverdelivery
+  );
+  const saveAllOverdelivery = useSaveAllOverdeliveryBlocos();
   
   // Estado para confirmação de deletar guia
   const [guiaToDelete, setGuiaToDelete] = useState<number | null>(null);
@@ -348,7 +363,7 @@ export const MentoradoRoteirosView = ({
 
     // Se for overdelivery, inicializar com um bloco
     if (isOverdelivery) {
-      setOverdeliveryBlocos(prev => {
+      setOverdeliveryBlocosLocal(prev => {
         const newMap = new Map(prev);
         newMap.set(1, [
           { id: `bloco-${Date.now()}`, titulo: "Bloco 1", isOpen: true, roteiros: [{ ordem: 1, headline: "", estrutura: "" }] }
@@ -972,7 +987,7 @@ export const MentoradoRoteirosView = ({
     
     // Se for overdelivery, inicializar com um bloco
     if (isOverdelivery) {
-      setOverdeliveryBlocos(prev => {
+      setOverdeliveryBlocosLocal(prev => {
         const newMap = new Map(prev);
         newMap.set(nextGuia, [
           { id: `bloco-${Date.now()}`, titulo: "Bloco 1", isOpen: true, roteiros: [{ ordem: 1, headline: "", estrutura: "" }] }
@@ -998,18 +1013,59 @@ export const MentoradoRoteirosView = ({
     handleCreateGuia(0, true);
   };
 
+  // Carregar dados do overdelivery do banco quando mudar de guia
+  useEffect(() => {
+    if (overdeliveryData && overdeliveryData.length > 0 && guiaAtivaParaOverdelivery > 0) {
+      const blocos = transformToBlocos(overdeliveryData);
+      setOverdeliveryBlocosLocal(prev => {
+        const newMap = new Map(prev);
+        newMap.set(guiaAtivaParaOverdelivery, blocos);
+        return newMap;
+      });
+    }
+  }, [overdeliveryData, guiaAtivaParaOverdelivery]);
+
   const handleOverdeliverySaveRoteiro = useCallback((blocoId: string, ordem: number, headline: string, estrutura: string) => {
-    // Aqui poderíamos salvar no banco se necessário
-    // Por enquanto mantemos apenas no estado local
+    // Salvar é feito via debounce no handleOverdeliveryBlocosChange
   }, []);
 
   const handleOverdeliveryBlocosChange = useCallback((guiaNumero: number, blocos: OverdeliveryBloco[]) => {
-    setOverdeliveryBlocos(prev => {
+    // Atualizar estado local imediatamente
+    setOverdeliveryBlocosLocal(prev => {
       const newMap = new Map(prev);
       newMap.set(guiaNumero, blocos);
       return newMap;
     });
-  }, []);
+    
+    // Debounce para salvar no banco
+    if (overdeliverySaveTimerRef.current) {
+      clearTimeout(overdeliverySaveTimerRef.current);
+    }
+    
+    setOverdeliverySaved(false);
+    
+    overdeliverySaveTimerRef.current = setTimeout(() => {
+      setOverdeliverySaving(true);
+      saveAllOverdelivery.mutate(
+        { mentoradoId, guiaNumero, blocos },
+        {
+          onSuccess: () => {
+            setOverdeliverySaving(false);
+            setOverdeliverySaved(true);
+            setTimeout(() => setOverdeliverySaved(false), 2000);
+          },
+          onError: () => {
+            setOverdeliverySaving(false);
+            toast({
+              title: "Erro ao salvar",
+              description: "Não foi possível salvar o overdelivery.",
+              variant: "destructive",
+            });
+          },
+        }
+      );
+    }, 1500);
+  }, [mentoradoId, saveAllOverdelivery]);
 
   const handleAddRoteiro = () => {
     setGuias((prev) => 
@@ -1417,7 +1473,7 @@ export const MentoradoRoteirosView = ({
               {/* Renderizar OverdeliveryView se for guia de overdelivery */}
               {guiaAtivaConfig.isOverdelivery ? (
                 <OverdeliveryView
-                  blocos={overdeliveryBlocos.get(guiaAtiva) || [{ id: `bloco-${Date.now()}`, titulo: "Bloco 1", isOpen: true, roteiros: [{ ordem: 1, headline: "", estrutura: "" }] }]}
+                  blocos={overdeliveryBlocosLocal.get(guiaAtiva) || [{ id: `bloco-${Date.now()}`, titulo: "Bloco 1", isOpen: true, roteiros: [{ ordem: 1, headline: "", estrutura: "" }] }]}
                   onBlocosChange={(blocos) => handleOverdeliveryBlocosChange(guiaAtiva, blocos)}
                   onSaveRoteiro={handleOverdeliverySaveRoteiro}
                   avatarCategories={avatarCategories}
@@ -1425,6 +1481,9 @@ export const MentoradoRoteirosView = ({
                   onEditAvatarItem={handleEditAvatarItem}
                   onDeleteAvatarItem={handleDeleteAvatarItem}
                   selectedMentoradoId={mentoradoId}
+                  isSaving={overdeliverySaving}
+                  isSaved={overdeliverySaved}
+                  isLoading={isLoadingOverdelivery}
                 />
               ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
