@@ -40,6 +40,7 @@ interface AvatarCategory {
 interface OverdeliveryViewProps {
   blocos: Bloco[];
   onBlocosChange: (blocos: Bloco[]) => void;
+  onToggleBloco?: (blocoId: string, isOpen: boolean) => void;
   onSaveRoteiro: (blocoId: string, ordem: number, headline: string, estrutura: string) => void;
   avatarCategories?: AvatarCategory[];
   onAddAvatarItem?: (categoryId: string, text: string) => void;
@@ -49,11 +50,13 @@ interface OverdeliveryViewProps {
   isSaving?: boolean;
   isSaved?: boolean;
   isLoading?: boolean;
+  onCheckTimer?: (field: "headlines" | "roteiros") => void;
 }
 
 export const OverdeliveryView = ({
   blocos,
   onBlocosChange,
+  onToggleBloco,
   onSaveRoteiro,
   avatarCategories = [],
   onAddAvatarItem,
@@ -63,6 +66,7 @@ export const OverdeliveryView = ({
   isSaving = false,
   isSaved = false,
   isLoading = false,
+  onCheckTimer,
 }: OverdeliveryViewProps) => {
   const [editingTitulo, setEditingTitulo] = useState<string | null>(null);
   
@@ -94,12 +98,18 @@ export const OverdeliveryView = ({
   const cursorPositionRef = useRef<Map<string, number>>(new Map());
 
   const toggleBloco = useCallback((blocoId: string, isOpen: boolean) => {
-    onBlocosChange(
-      blocos.map((b) =>
-        b.id === blocoId ? { ...b, isOpen } : b
-      )
-    );
-  }, [blocos, onBlocosChange]);
+    // Usar handler dedicado se disponível (não dispara salvamento)
+    if (onToggleBloco) {
+      onToggleBloco(blocoId, isOpen);
+    } else {
+      // Fallback para comportamento antigo
+      onBlocosChange(
+        blocos.map((b) =>
+          b.id === blocoId ? { ...b, isOpen } : b
+        )
+      );
+    }
+  }, [blocos, onBlocosChange, onToggleBloco]);
 
   const updateBlocoTitulo = useCallback((blocoId: string, titulo: string) => {
     onBlocosChange(
@@ -133,6 +143,11 @@ export const OverdeliveryView = ({
     value: string,
     cursorPosition?: number
   ) => {
+    // Verificar timer ANTES de atualizar (se tem conteúdo)
+    if (value.length > 0 && onCheckTimer) {
+      onCheckTimer(field === "headline" ? "headlines" : "roteiros");
+    }
+    
     // Atualizar valor normalmente
     onBlocosChange(
       blocos.map((b) => {

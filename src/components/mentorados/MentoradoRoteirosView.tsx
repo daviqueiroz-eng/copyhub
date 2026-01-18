@@ -966,20 +966,41 @@ export const MentoradoRoteirosView = ({
 
   const handleCopyAllRoteiros = async () => {
     const guiaConfig = guias.find(g => g.numero === guiaAtiva);
-    const quantidade = guiaConfig?.quantidade || 10;
     const htmlParts: string[] = [];
     const textParts: string[] = [];
     
-    for (let ordem = 1; ordem <= quantidade; ordem++) {
-      const key = `${guiaAtiva}-${ordem}`;
-      const roteiro = roteirosLocais.get(key);
+    // Verificar se é Overdelivery
+    if (guiaConfig?.isOverdelivery) {
+      const blocos = overdeliveryBlocosLocal.get(guiaAtiva) || [];
+      let ordemGeral = 1;
       
-      if (roteiro?.headline || roteiro?.estrutura) {
-        const ordemFormatada = String(ordem).padStart(2, '0');
+      for (const bloco of blocos) {
+        for (const roteiro of bloco.roteiros) {
+          if (roteiro.headline || roteiro.estrutura) {
+            const ordemFormatada = String(ordemGeral).padStart(2, '0');
+            
+            htmlParts.push(`<p><b style="color: #B8860B;">HEADLINE ${ordemFormatada}:</b></p><p>${roteiro.headline || ''}</p><br/><p><b style="color: #B8860B;">ESTRUTURA ${ordemFormatada}:</b></p><p>${(roteiro.estrutura || '').replace(/\n/g, '<br/>')}</p><hr style="border: 1px solid #e5e5e5; margin: 16px 0;"/>`);
+            
+            textParts.push(`HEADLINE ${ordemFormatada}:\n\n${roteiro.headline || ''}\n\nESTRUTURA ${ordemFormatada}:\n\n${roteiro.estrutura || ''}`);
+            ordemGeral++;
+          }
+        }
+      }
+    } else {
+      // Lógica existente para guias normais
+      const quantidade = guiaConfig?.quantidade || 10;
+      
+      for (let ordem = 1; ordem <= quantidade; ordem++) {
+        const key = `${guiaAtiva}-${ordem}`;
+        const roteiro = roteirosLocais.get(key);
         
-        htmlParts.push(`<p><b style="color: #B8860B;">HEADLINE ${ordemFormatada}:</b></p><p>${roteiro.headline || ''}</p><br/><p><b style="color: #B8860B;">ESTRUTURA ${ordemFormatada}:</b></p><p>${(roteiro.estrutura || '').replace(/\n/g, '<br/>')}</p><hr style="border: 1px solid #e5e5e5; margin: 16px 0;"/>`);
-        
-        textParts.push(`HEADLINE ${ordemFormatada}:\n\n${roteiro.headline || ''}\n\nESTRUTURA ${ordemFormatada}:\n\n${roteiro.estrutura || ''}`);
+        if (roteiro?.headline || roteiro?.estrutura) {
+          const ordemFormatada = String(ordem).padStart(2, '0');
+          
+          htmlParts.push(`<p><b style="color: #B8860B;">HEADLINE ${ordemFormatada}:</b></p><p>${roteiro.headline || ''}</p><br/><p><b style="color: #B8860B;">ESTRUTURA ${ordemFormatada}:</b></p><p>${(roteiro.estrutura || '').replace(/\n/g, '<br/>')}</p><hr style="border: 1px solid #e5e5e5; margin: 16px 0;"/>`);
+          
+          textParts.push(`HEADLINE ${ordemFormatada}:\n\n${roteiro.headline || ''}\n\nESTRUTURA ${ordemFormatada}:\n\n${roteiro.estrutura || ''}`);
+        }
       }
     }
 
@@ -1086,7 +1107,22 @@ export const MentoradoRoteirosView = ({
     // Salvar é feito via debounce no handleOverdeliveryBlocosChange
   }, []);
 
-  const handleOverdeliveryBlocosChange = useCallback((guiaNumero: number, blocos: OverdeliveryBloco[]) => {
+  // Handler para toggle visual do bloco (NÃO salva no banco)
+  const handleOverdeliveryToggleBloco = useCallback((guiaNumero: number, blocoId: string, isOpen: boolean) => {
+    setOverdeliveryBlocosLocal(prev => {
+      const newMap = new Map(prev);
+      const blocos = newMap.get(guiaNumero) || [];
+      const updatedBlocos = blocos.map(b => 
+        b.id === blocoId ? { ...b, isOpen } : b
+      );
+      newMap.set(guiaNumero, updatedBlocos);
+      return newMap;
+    });
+    // NÃO salvar no banco - apenas estado visual
+  }, []);
+
+  // Handler para mudanças de conteúdo (SALVA no banco com debounce)
+  const handleOverdeliveryContentChange = useCallback((guiaNumero: number, blocos: OverdeliveryBloco[]) => {
     // Atualizar estado local imediatamente
     setOverdeliveryBlocosLocal(prev => {
       const newMap = new Map(prev);
@@ -1123,6 +1159,20 @@ export const MentoradoRoteirosView = ({
       );
     }, 1500);
   }, [mentoradoId, saveAllOverdelivery]);
+
+  // Função para verificar timer e mostrar alerta (usada também no Overdelivery)
+  const checkAndShowTimerAlert = useCallback((field: "headlines" | "roteiros") => {
+    const now = Date.now();
+    // Evitar alertas muito frequentes (cooldown de 30 segundos)
+    if (now - lastAlertTimeRef.current < 30000) return;
+    
+    const isAnyRunning = Object.values(timers).some(t => t.isRunning);
+    if (!isAnyRunning) {
+      lastAlertTimeRef.current = now;
+      setTimerAlertField(field);
+      setShowTimerAlert(true);
+    }
+  }, [timers]);
 
   const handleAddRoteiro = () => {
     const novaQuantidade = guiaAtivaConfig.quantidade + 1;
@@ -1540,7 +1590,8 @@ export const MentoradoRoteirosView = ({
               {guiaAtivaConfig.isOverdelivery ? (
                 <OverdeliveryView
                   blocos={overdeliveryBlocosLocal.get(guiaAtiva) || [{ id: `bloco-${Date.now()}`, titulo: "Bloco 1", isOpen: true, roteiros: [{ ordem: 1, headline: "", estrutura: "" }] }]}
-                  onBlocosChange={(blocos) => handleOverdeliveryBlocosChange(guiaAtiva, blocos)}
+                  onBlocosChange={(blocos) => handleOverdeliveryContentChange(guiaAtiva, blocos)}
+                  onToggleBloco={(blocoId, isOpen) => handleOverdeliveryToggleBloco(guiaAtiva, blocoId, isOpen)}
                   onSaveRoteiro={handleOverdeliverySaveRoteiro}
                   avatarCategories={avatarCategories}
                   onAddAvatarItem={handleAddAvatarItem}
@@ -1550,6 +1601,7 @@ export const MentoradoRoteirosView = ({
                   isSaving={overdeliverySaving}
                   isSaved={overdeliverySaved}
                   isLoading={isLoadingOverdelivery}
+                  onCheckTimer={checkAndShowTimerAlert}
                 />
               ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
