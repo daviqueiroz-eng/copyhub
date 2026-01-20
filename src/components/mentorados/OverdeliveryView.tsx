@@ -42,6 +42,7 @@ interface OverdeliveryViewProps {
   onBlocosChange: (blocos: Bloco[]) => void;
   onToggleBloco?: (blocoId: string, isOpen: boolean) => void;
   onSaveRoteiro: (blocoId: string, ordem: number, headline: string, estrutura: string) => void;
+  onFieldBlur?: (blocoId: string, ordem: number, field: "headline" | "estrutura") => void;
   avatarCategories?: AvatarCategory[];
   onAddAvatarItem?: (categoryId: string, text: string) => void;
   onEditAvatarItem?: (categoryId: string, oldText: string, newText: string) => void;
@@ -58,6 +59,7 @@ export const OverdeliveryView = ({
   onBlocosChange,
   onToggleBloco,
   onSaveRoteiro,
+  onFieldBlur,
   avatarCategories = [],
   onAddAvatarItem,
   onEditAvatarItem,
@@ -558,6 +560,7 @@ export const OverdeliveryView = ({
                             const cursorPosition = textarea?.selectionStart;
                             updateRoteiro(bloco.id, roteiro.ordem, "headline", value, cursorPosition);
                           }}
+                          onBlur={() => onFieldBlur?.(bloco.id, roteiro.ordem, "headline")}
                           placeholder="Digite a headline... (use / para comandos)"
                           className="text-base"
                         />
@@ -575,6 +578,7 @@ export const OverdeliveryView = ({
                             const cursorPosition = textarea?.selectionStart;
                             updateRoteiro(bloco.id, roteiro.ordem, "estrutura", value, cursorPosition);
                           }}
+                          onBlur={() => onFieldBlur?.(bloco.id, roteiro.ordem, "estrutura")}
                           placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                           className="text-base min-h-[120px]"
                         />
