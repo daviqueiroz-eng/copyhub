@@ -148,6 +148,9 @@ export const MentoradoRoteirosView = ({
   const lastActivityRef = useRef<number>(Date.now());
   const INACTIVITY_PAUSE_MS = 15 * 60 * 1000; // 15 minutos
   
+  // Campos finalizados (confirmados por blur) - para contar progresso apenas após clicar fora
+  const [finalizedFields, setFinalizedFields] = useState<Set<string>>(new Set());
+  
   // Slash command state
   const [slashCommand, setSlashCommand] = useState<{
     isOpen: boolean;
@@ -1228,6 +1231,29 @@ export const MentoradoRoteirosView = ({
     }
   }, [timers]);
 
+  // Handler de blur para Overdelivery (para marcar campo como finalizado)
+  const handleOverdeliveryFieldBlur = useCallback((
+    blocoId: string,
+    ordem: number,
+    field: "headline" | "estrutura"
+  ) => {
+    const blocos = overdeliveryBlocosLocal.get(guiaAtiva) || [];
+    const bloco = blocos.find(b => b.id === blocoId);
+    const roteiro = bloco?.roteiros.find(r => r.ordem === ordem);
+    const fieldKey = `overdelivery-${blocoId}-${ordem}-${field}`;
+    const value = field === "headline" ? roteiro?.headline : roteiro?.estrutura;
+    
+    setFinalizedFields(prev => {
+      const next = new Set(prev);
+      if (value?.trim()) {
+        next.add(fieldKey);
+      } else {
+        next.delete(fieldKey);
+      }
+      return next;
+    });
+  }, [overdeliveryBlocosLocal, guiaAtiva]);
+
   const handleAddRoteiro = () => {
     const novaQuantidade = guiaAtivaConfig.quantidade + 1;
     
@@ -1319,7 +1345,48 @@ export const MentoradoRoteirosView = ({
 
   const guiaAtivaConfig = guias.find(g => g.numero === guiaAtiva) || { numero: 1, quantidade: 10 };
 
-  // Calcular progresso - deve estar antes do useEffect
+  // Handler de blur para marcar campo como finalizado
+  const handleFieldBlur = useCallback((
+    guiaNumero: number,
+    ordem: number,
+    field: "headline" | "estrutura"
+  ) => {
+    const key = `${guiaNumero}-${ordem}`;
+    const roteiro = roteirosLocais.get(key);
+    const fieldKey = `${key}-${field}`;
+    const value = field === "headline" ? roteiro?.headline : roteiro?.estrutura;
+    
+    setFinalizedFields(prev => {
+      const next = new Set(prev);
+      if (value?.trim()) {
+        next.add(fieldKey);  // Tem conteúdo = finalizado
+      } else {
+        next.delete(fieldKey);  // Sem conteúdo = remover
+      }
+      return next;
+    });
+  }, [roteirosLocais]);
+
+  // Inicializar campos finalizados quando roteiros são carregados do banco
+  useEffect(() => {
+    const initialFinalized = new Set<string>();
+    
+    roteirosLocais.forEach((roteiro, key) => {
+      if (roteiro.headline?.trim()) {
+        initialFinalized.add(`${key}-headline`);
+      }
+      if (roteiro.estrutura?.trim()) {
+        initialFinalized.add(`${key}-estrutura`);
+      }
+    });
+    
+    // Só atualizar se há roteiros e se finalizedFields está vazio (inicial)
+    if (roteirosLocais.size > 0 && finalizedFields.size === 0) {
+      setFinalizedFields(initialFinalized);
+    }
+  }, [roteirosLocais.size]); // Apenas quando o tamanho muda (carregamento inicial)
+
+  // Calcular progresso - usar finalizedFields em vez de verificar conteúdo diretamente
   const calcularProgresso = useCallback(() => {
     const guiaConfig = guias.find(g => g.numero === guiaAtiva);
     const quantidade = guiaConfig?.quantidade || 10;
@@ -1328,13 +1395,17 @@ export const MentoradoRoteirosView = ({
     
     for (let ordem = 1; ordem <= quantidade; ordem++) {
       const key = `${guiaAtiva}-${ordem}`;
-      const roteiro = roteirosLocais.get(key);
-      if (roteiro?.headline?.trim()) headlinesPreenchidas++;
-      if (roteiro?.estrutura?.trim()) roteirosPreenchidos++;
+      // Usar finalizedFields em vez de verificar conteúdo diretamente
+      if (finalizedFields.has(`${key}-headline`)) {
+        headlinesPreenchidas++;
+      }
+      if (finalizedFields.has(`${key}-estrutura`)) {
+        roteirosPreenchidos++;
+      }
     }
     
     return { headlinesPreenchidas, roteirosPreenchidos, total: quantidade };
-  }, [guias, guiaAtiva, roteirosLocais]);
+  }, [guias, guiaAtiva, finalizedFields]);
   
   const progresso = calcularProgresso();
 
@@ -1647,6 +1718,7 @@ export const MentoradoRoteirosView = ({
                   onBlocosChange={(blocos) => handleOverdeliveryContentChange(guiaAtiva, blocos)}
                   onToggleBloco={(blocoId, isOpen) => handleOverdeliveryToggleBloco(guiaAtiva, blocoId, isOpen)}
                   onSaveRoteiro={handleOverdeliverySaveRoteiro}
+                  onFieldBlur={handleOverdeliveryFieldBlur}
                   avatarCategories={avatarCategories}
                   onAddAvatarItem={handleAddAvatarItem}
                   onEditAvatarItem={handleEditAvatarItem}
@@ -1758,6 +1830,7 @@ export const MentoradoRoteirosView = ({
                             handleInputChange2(guiaAtiva, ordem, "headline", value, cursorPos);
                           }}
                           onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "headline")}
+                          onBlur={() => handleFieldBlur(guiaAtiva, ordem, "headline")}
                           placeholder="Digite a headline... (use / para comandos)"
                           className="text-[15px] min-h-[28px] mt-1"
                           errors={getErrorsForField(guiaAtiva, ordem, "headline")}
@@ -1778,6 +1851,7 @@ export const MentoradoRoteirosView = ({
                             handleInputChange2(guiaAtiva, ordem, "estrutura", value, cursorPos);
                           }}
                           onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "estrutura")}
+                          onBlur={() => handleFieldBlur(guiaAtiva, ordem, "estrutura")}
                           onSelect={(e) => {
                             const target = e.currentTarget;
                             cursorPositionRef.current.set(key, target.selectionStart || 0);

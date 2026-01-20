@@ -19,6 +19,7 @@ interface InlineSpellCheckEditorProps {
   onChange: (value: string, cursorPosition?: number) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onSelect?: (e: React.SyntheticEvent<HTMLTextAreaElement>) => void;
+  onBlur?: () => void;
   placeholder?: string;
   className?: string;
   errors?: SpellError[];
@@ -37,6 +38,7 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
   onChange,
   onKeyDown,
   onSelect,
+  onBlur,
   placeholder,
   className,
   errors = [],
@@ -241,6 +243,7 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
         }}
         onKeyDown={onKeyDown}
         onSelect={onSelect}
+        onBlur={onBlur}
         onScroll={syncScroll}
         placeholder={placeholder}
         className={cn(
