@@ -289,10 +289,11 @@ export const HeadlinesGeneratorDialog = ({
       });
     });
     
-    if (allSelected.length > 0) {
-      onUseHeadlines(allSelected);
-      onClose();
-    } else {
+  if (allSelected.length > 0) {
+    onUseHeadlines(allSelected);
+    setSelectedByPage(new Map()); // Limpar todas as seleções
+    onClose();
+  } else {
       toast.error("Selecione pelo menos uma headline");
     }
   }, [headlinePages, selectedByPage, onUseHeadlines, onClose]);
