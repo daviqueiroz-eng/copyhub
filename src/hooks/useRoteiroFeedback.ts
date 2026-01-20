@@ -12,6 +12,7 @@ export interface RoteiroFeedback {
   tempo_roteiros: number;
   tempo_revisao: number;
   dificuldades: string | null;
+  ferramenta_usada: string | null;
   created_at: string;
 }
 
@@ -21,7 +22,8 @@ interface CreateFeedbackData {
   tempo_headlines: number;
   tempo_roteiros: number;
   tempo_revisao: number;
-  dificuldades?: string;
+  dificuldades: string;
+  ferramenta_usada: string;
 }
 
 // Hook para buscar feedbacks do usuário atual
@@ -81,7 +83,8 @@ export const useCreateRoteiroFeedback = () => {
             tempo_headlines: data.tempo_headlines,
             tempo_roteiros: data.tempo_roteiros,
             tempo_revisao: data.tempo_revisao,
-            dificuldades: data.dificuldades || null,
+            dificuldades: data.dificuldades,
+            ferramenta_usada: data.ferramenta_usada,
           },
           {
             onConflict: "user_id,mentorado_id,guia_numero",
