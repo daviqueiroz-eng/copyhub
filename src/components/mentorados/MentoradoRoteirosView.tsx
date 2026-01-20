@@ -144,6 +144,10 @@ export const MentoradoRoteirosView = ({
   const [timerAlertField, setTimerAlertField] = useState<"headlines" | "roteiros" | null>(null);
   const lastAlertTimeRef = useRef<number>(0);
   
+  // Inatividade - pausar timer após 15 minutos sem atividade
+  const lastActivityRef = useRef<number>(Date.now());
+  const INACTIVITY_PAUSE_MS = 15 * 60 * 1000; // 15 minutos
+  
   // Slash command state
   const [slashCommand, setSlashCommand] = useState<{
     isOpen: boolean;
@@ -634,12 +638,53 @@ export const MentoradoRoteirosView = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo]);
 
+  // Registrar atividade do usuário
+  const registerActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+  }, []);
+
+  // Verificar inatividade e pausar timers após 15 minutos
+  useEffect(() => {
+    const checkInactivity = setInterval(() => {
+      const isAnyRunning = Object.values(timers).some(t => t.isRunning);
+      if (!isAnyRunning) return; // Nenhum timer rodando, não precisa pausar
+      
+      const msSinceLastActivity = Date.now() - lastActivityRef.current;
+      if (msSinceLastActivity > INACTIVITY_PAUSE_MS) {
+        // Pausar todos os timers ativos
+        setTimers(prev => {
+          const updated = { ...prev };
+          Object.keys(updated).forEach(key => {
+            if (updated[key].isRunning) {
+              updated[key] = { ...updated[key], isRunning: false };
+            }
+          });
+          return updated;
+        });
+        setActiveTimerId(null);
+        
+        toast({
+          title: "⏸️ Timer pausado por inatividade",
+          description: "Você ficou 15 minutos sem atividade nos roteiros.",
+        });
+        
+        // Resetar o timestamp para evitar alertas repetidos
+        lastActivityRef.current = Date.now();
+      }
+    }, 30000); // Verificar a cada 30 segundos
+    
+    return () => clearInterval(checkInactivity);
+  }, [timers]);
+
   const handleChange = useCallback((
     guiaNumero: number,
     ordem: number,
     field: "headline" | "estrutura",
     value: string
   ) => {
+    // Registrar atividade do usuário
+    registerActivity();
+    
     const key = `${guiaNumero}-${ordem}`;
     
     // Atualizar estado local imediatamente
@@ -677,7 +722,7 @@ export const MentoradoRoteirosView = ({
     }, 1500);
     
     debounceTimersRef.current.set(key, timer);
-  }, [saveRoteiro, saveToHistory]);
+  }, [saveRoteiro, saveToHistory, registerActivity]);
 
   // Detectar "/" para abrir slash command - posicionar ao lado e acima
   const handleInputKeyDown = useCallback((
@@ -751,6 +796,9 @@ export const MentoradoRoteirosView = ({
 
   // Função para verificar se o timer está ativo e mostrar alerta
   const checkTimerAndAlert = useCallback((field: "headline" | "estrutura") => {
+    // Se o timer de revisão está ativo, não mostrar alerta (usuário está revisando)
+    if (timers["revisar"]?.isRunning) return;
+    
     // Mapear campo para timer ID
     const timerId = field === "headline" ? "headlines" : "roteiros";
     const timer = timers[timerId];
@@ -1123,6 +1171,9 @@ export const MentoradoRoteirosView = ({
 
   // Handler para mudanças de conteúdo (SALVA no banco com debounce)
   const handleOverdeliveryContentChange = useCallback((guiaNumero: number, blocos: OverdeliveryBloco[]) => {
+    // Registrar atividade do usuário
+    registerActivity();
+    
     // Atualizar estado local imediatamente
     setOverdeliveryBlocosLocal(prev => {
       const newMap = new Map(prev);
@@ -1158,10 +1209,13 @@ export const MentoradoRoteirosView = ({
         }
       );
     }, 1500);
-  }, [mentoradoId, saveAllOverdelivery]);
+  }, [mentoradoId, saveAllOverdelivery, registerActivity]);
 
   // Função para verificar timer e mostrar alerta (usada também no Overdelivery)
   const checkAndShowTimerAlert = useCallback((field: "headlines" | "roteiros") => {
+    // Se o timer de revisão está ativo, não mostrar alerta (usuário está revisando)
+    if (timers["revisar"]?.isRunning) return;
+    
     const now = Date.now();
     // Evitar alertas muito frequentes (cooldown de 30 segundos)
     if (now - lastAlertTimeRef.current < 30000) return;
