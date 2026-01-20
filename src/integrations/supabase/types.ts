@@ -1920,6 +1920,7 @@ export type Database = {
           estrutura: string | null
           headline: string
           id: string
+          is_global: boolean
           user_id: string
         }
         Insert: {
@@ -1928,6 +1929,7 @@ export type Database = {
           estrutura?: string | null
           headline: string
           id?: string
+          is_global?: boolean
           user_id: string
         }
         Update: {
@@ -1936,6 +1938,7 @@ export type Database = {
           estrutura?: string | null
           headline?: string
           id?: string
+          is_global?: boolean
           user_id?: string
         }
         Relationships: []

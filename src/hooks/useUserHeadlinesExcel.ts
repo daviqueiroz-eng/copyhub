@@ -10,6 +10,7 @@ export interface UserHeadlineExcel {
   estrutura: string | null;
   arquivo_origem: string | null;
   created_at: string;
+  is_global: boolean;
 }
 
 export const useUserHeadlinesExcel = () => {
@@ -20,10 +21,11 @@ export const useUserHeadlinesExcel = () => {
     queryFn: async () => {
       if (!user?.id) return [];
       
+      // Buscar headlines próprias OU globais
       const { data, error } = await supabase
         .from("user_headlines_excel")
         .select("*")
-        .eq("user_id", user.id)
+        .or(`user_id.eq.${user.id},is_global.eq.true`)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -38,7 +40,7 @@ export const useImportExcelHeadlines = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (headlines: { headline: string; estrutura?: string; arquivo_origem: string }[]) => {
+    mutationFn: async (headlines: { headline: string; estrutura?: string; arquivo_origem: string; is_global?: boolean }[]) => {
       if (!user?.id) throw new Error("Usuário não autenticado");
 
       const toInsert = headlines.map((h) => ({
@@ -46,6 +48,7 @@ export const useImportExcelHeadlines = () => {
         headline: h.headline,
         estrutura: h.estrutura || null,
         arquivo_origem: h.arquivo_origem,
+        is_global: h.is_global || false,
       }));
 
       const { error } = await supabase
@@ -53,11 +56,14 @@ export const useImportExcelHeadlines = () => {
         .insert(toInsert);
 
       if (error) throw error;
-      return toInsert.length;
+      return { count: toInsert.length, isGlobal: toInsert[0]?.is_global || false };
     },
-    onSuccess: (count) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["user-headlines-excel"] });
-      toast.success(`${count} headlines importadas com sucesso!`);
+      const msg = result.isGlobal 
+        ? `${result.count} headlines compartilhadas com a equipe!`
+        : `${result.count} headlines importadas com sucesso!`;
+      toast.success(msg);
     },
     onError: (error) => {
       toast.error("Erro ao importar headlines: " + error.message);
