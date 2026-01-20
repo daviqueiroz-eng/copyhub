@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Sparkles, Loader2, Copy, Check, ChevronDown, ChevronUp, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -36,6 +36,16 @@ interface HeadlinesGeneratorDialogProps {
   onUseHeadlines: (headlines: string[]) => void;
 }
 
+// Fisher-Yates shuffle function
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 export const HeadlinesGeneratorDialog = ({
   open,
   onClose,
@@ -44,8 +54,14 @@ export const HeadlinesGeneratorDialog = ({
   onUseHeadlines,
 }: HeadlinesGeneratorDialogProps) => {
   const [inteligenciaIndividual, setInteligenciaIndividual] = useState("");
-  const [adaptedHeadlines, setAdaptedHeadlines] = useState<AdaptedHeadline[]>([]);
-  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  
+  // Pagination: array of pages, each page is an array of headlines
+  const [headlinePages, setHeadlinePages] = useState<AdaptedHeadline[][]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  
+  // Selection per page: Map<pageIndex, Set<itemIndex>>
+  const [selectedByPage, setSelectedByPage] = useState<Map<number, Set<number>>>(new Map());
+  
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [isGlobalOpen, setIsGlobalOpen] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -62,6 +78,19 @@ export const HeadlinesGeneratorDialog = ({
   const updateMentorado = useUpdateMentorado();
   const { data: role } = useUserRole();
   const isAdmin = role === "admin";
+
+  // Current page headlines and selection
+  const currentPageHeadlines = headlinePages[currentPage] || [];
+  const currentPageSelection = selectedByPage.get(currentPage) || new Set<number>();
+
+  // Total selected across all pages
+  const totalSelected = useMemo(() => {
+    let count = 0;
+    selectedByPage.forEach((set) => {
+      count += set.size;
+    });
+    return count;
+  }, [selectedByPage]);
 
   // Find the current mentorado
   const currentMentorado = mentoradoId 
@@ -89,6 +118,15 @@ export const HeadlinesGeneratorDialog = ({
       setHasUnsavedGlobalChanges(false);
     }
   }, [open, inteligenciaGlobal, isLoadingGlobal]);
+
+  // Reset pages when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setHeadlinePages([]);
+      setCurrentPage(0);
+      setSelectedByPage(new Map());
+    }
+  }, [open]);
 
   // Track changes to individual intelligence
   const handleInteligenciaChange = (value: string) => {
@@ -161,16 +199,20 @@ export const HeadlinesGeneratorDialog = ({
       return;
     }
 
-    // Limitar a 50 headlines por vez
-    const headlinesToAdapt = headlines.slice(0, 50);
+    // Randomize and take 50 random headlines
+    const shuffledHeadlines = shuffleArray(headlines);
+    const headlinesToAdapt = shuffledHeadlines.slice(0, 50);
 
     try {
       const result = await generateMutation.mutateAsync({
         inteligencia: combinedInteligencia,
         headlines: headlinesToAdapt,
       });
-      setAdaptedHeadlines(result);
-      setSelectedIndices(new Set());
+      
+      // Create first page
+      setHeadlinePages([result]);
+      setCurrentPage(0);
+      setSelectedByPage(new Map());
       toast.success(`${result.length} headlines adaptadas com sucesso!`);
     } catch (error) {
       // Error is handled by the mutation
@@ -185,38 +227,47 @@ export const HeadlinesGeneratorDialog = ({
       return;
     }
 
-    // Pegar as próximas 50 que ainda não foram adaptadas
-    const startIndex = adaptedHeadlines.length;
-    const headlinesToAdapt = headlines.slice(startIndex, startIndex + 50);
-
-    if (headlinesToAdapt.length === 0) {
-      toast.info("Todas as headlines já foram adaptadas");
+    if (headlines.length === 0) {
+      toast.error("Nenhuma headline disponível para adaptar");
       return;
     }
+
+    // Randomize and take 50 random headlines (independent of previous generations)
+    const shuffledHeadlines = shuffleArray(headlines);
+    const headlinesToAdapt = shuffledHeadlines.slice(0, 50);
 
     try {
       const result = await generateMutation.mutateAsync({
         inteligencia: combinedInteligencia,
         headlines: headlinesToAdapt,
       });
-      setAdaptedHeadlines((prev) => [...prev, ...result]);
-      toast.success(`Mais ${result.length} headlines adaptadas!`);
+      
+      // Add as new page and navigate to it
+      const newPageIndex = headlinePages.length;
+      setHeadlinePages(prev => [...prev, result]);
+      setCurrentPage(newPageIndex);
+      
+      toast.success(`Guia ${newPageIndex + 1}: ${result.length} headlines adaptadas!`);
     } catch (error) {
       // Error is handled by the mutation
     }
-  }, [getCombinedInteligencia, headlines, adaptedHeadlines.length, generateMutation]);
+  }, [getCombinedInteligencia, headlines, headlinePages.length, generateMutation]);
 
   const toggleSelection = useCallback((index: number) => {
-    setSelectedIndices((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
+    setSelectedByPage(prev => {
+      const newMap = new Map(prev);
+      const pageSet = new Set(newMap.get(currentPage) || []);
+      
+      if (pageSet.has(index)) {
+        pageSet.delete(index);
       } else {
-        newSet.add(index);
+        pageSet.add(index);
       }
-      return newSet;
+      
+      newMap.set(currentPage, pageSet);
+      return newMap;
     });
-  }, []);
+  }, [currentPage]);
 
   const handleCopy = useCallback((text: string, index: number) => {
     navigator.clipboard.writeText(text);
@@ -226,19 +277,26 @@ export const HeadlinesGeneratorDialog = ({
   }, []);
 
   const handleUseSelected = useCallback(() => {
-    const selected = adaptedHeadlines
-      .filter((_, index) => selectedIndices.has(index))
-      .map((h) => h.adaptada);
+    const allSelected: string[] = [];
     
-    if (selected.length > 0) {
-      onUseHeadlines(selected);
+    // Collect selected headlines from all pages
+    headlinePages.forEach((page, pageIndex) => {
+      const pageSelection = selectedByPage.get(pageIndex) || new Set();
+      page.forEach((item, itemIndex) => {
+        if (pageSelection.has(itemIndex)) {
+          allSelected.push(item.adaptada);
+        }
+      });
+    });
+    
+    if (allSelected.length > 0) {
+      onUseHeadlines(allSelected);
       onClose();
     } else {
       toast.error("Selecione pelo menos uma headline");
     }
-  }, [adaptedHeadlines, selectedIndices, onUseHeadlines, onClose]);
+  }, [headlinePages, selectedByPage, onUseHeadlines, onClose]);
 
-  const remainingHeadlines = headlines.length - adaptedHeadlines.length;
   const globalContent = isAdmin ? inteligenciaGlobalEdit : inteligenciaGlobal?.conteudo;
   const hasAnyInteligencia = !!(globalContent?.trim() || inteligenciaIndividual.trim());
 
@@ -407,81 +465,100 @@ export const HeadlinesGeneratorDialog = ({
           </div>
 
           {/* Coluna 2: Headlines Original + Adaptada */}
-          <ScrollArea className="h-[60vh] border rounded-lg">
-            <div className="p-4 space-y-6">
-              {adaptedHeadlines.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                  <Sparkles className="h-12 w-12 mb-4 opacity-50" />
-                  <p>Preencha a inteligência e clique em "Gerar adaptações"</p>
-                  <p className="text-sm mt-1">
-                    As headlines adaptadas aparecerão aqui
-                  </p>
-                </div>
-              ) : (
-                adaptedHeadlines.map((item, index) => (
-                  <div
-                    key={index}
-                    className={`border-b pb-4 last:border-b-0 cursor-pointer transition-colors ${
-                      selectedIndices.has(index) ? "bg-primary/5" : ""
-                    }`}
-                    onClick={() => toggleSelection(index)}
-                  >
-                    {/* Header com checkbox */}
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={selectedIndices.has(index)}
-                          onCheckedChange={() => toggleSelection(index)}
-                        />
-                        <p className="font-poppins italic text-sm text-muted-foreground">
-                          Headline Original
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Headline original */}
-                    <p className="font-semibold text-sm mb-4 pl-6">
-                      {item.original}
+          <div className="flex flex-col h-[60vh] border rounded-lg">
+            <ScrollArea className="flex-1">
+              <div className="p-4 space-y-6">
+                {currentPageHeadlines.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                    <Sparkles className="h-12 w-12 mb-4 opacity-50" />
+                    <p>Preencha a inteligência e clique em "Gerar adaptações"</p>
+                    <p className="text-sm mt-1">
+                      As headlines adaptadas aparecerão aqui
                     </p>
-
-                    {/* Headline adaptada */}
-                    <div className="pl-6">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-poppins italic text-sm text-green-600">
-                          Headline adaptada
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCopy(item.adaptada, index);
-                          }}
-                        >
-                          {copiedIndex === index ? (
-                            <Check className="h-3.5 w-3.5 text-green-600" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-green-700 dark:text-green-400 font-medium">
-                        {item.adaptada}
-                      </p>
-                    </div>
                   </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
+                ) : (
+                  currentPageHeadlines.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`border-b pb-4 last:border-b-0 cursor-pointer transition-colors ${
+                        currentPageSelection.has(index) ? "bg-primary/5" : ""
+                      }`}
+                      onClick={() => toggleSelection(index)}
+                    >
+                      {/* Header com checkbox */}
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={currentPageSelection.has(index)}
+                            onCheckedChange={() => toggleSelection(index)}
+                          />
+                          <p className="font-poppins italic text-sm text-muted-foreground">
+                            Headline Original
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Headline original */}
+                      <p className="font-semibold text-sm mb-4 pl-6">
+                        {item.original}
+                      </p>
+
+                      {/* Headline adaptada */}
+                      <div className="pl-6">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-poppins italic text-sm text-green-600">
+                            Headline adaptada
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopy(item.adaptada, index);
+                            }}
+                          >
+                            {copiedIndex === index ? (
+                              <Check className="h-3.5 w-3.5 text-green-600" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-green-700 dark:text-green-400 font-medium">
+                          {item.adaptada}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+
+            {/* Pagination footer */}
+            {headlinePages.length > 1 && (
+              <div className="flex items-center justify-center gap-2 py-3 border-t bg-muted/30">
+                {headlinePages.map((_, pageIndex) => (
+                  <Button
+                    key={pageIndex}
+                    variant={currentPage === pageIndex ? "default" : "outline"}
+                    size="sm"
+                    className="w-8 h-8 p-0"
+                    onClick={() => setCurrentPage(pageIndex)}
+                  >
+                    {pageIndex + 1}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Coluna 3: Ações */}
           <div className="flex flex-col gap-4">
             <Button
               variant="outline"
               onClick={handleGenerateMore}
-              disabled={generateMutation.isPending || remainingHeadlines <= 0}
+              disabled={generateMutation.isPending || headlinePages.length === 0}
               className="font-poppins"
             >
               {generateMutation.isPending ? (
@@ -492,22 +569,22 @@ export const HeadlinesGeneratorDialog = ({
               Gerar mais 50 ideias
             </Button>
             
-            {remainingHeadlines > 0 && adaptedHeadlines.length > 0 && (
+            {headlinePages.length > 0 && (
               <p className="text-xs text-muted-foreground text-center">
-                {remainingHeadlines} restantes
+                {headlinePages.length} guia{headlinePages.length > 1 ? "s" : ""} gerada{headlinePages.length > 1 ? "s" : ""}
               </p>
             )}
 
             <div className="flex-1" />
 
-            {adaptedHeadlines.length > 0 && (
+            {headlinePages.length > 0 && (
               <Button
                 onClick={handleUseSelected}
-                disabled={selectedIndices.size === 0}
+                disabled={totalSelected === 0}
                 className="w-full"
               >
                 <Check className="h-4 w-4 mr-2" />
-                Usar {selectedIndices.size > 0 && `(${selectedIndices.size})`}
+                Usar {totalSelected > 0 && `(${totalSelected})`}
               </Button>
             )}
           </div>
