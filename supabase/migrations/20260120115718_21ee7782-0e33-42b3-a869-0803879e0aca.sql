@@ -1,0 +1,1 @@
+ALTER TABLE roteiro_feedbacks ADD COLUMN ferramenta_usada text;

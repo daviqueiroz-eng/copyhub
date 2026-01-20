@@ -1712,6 +1712,7 @@ export type Database = {
         Row: {
           created_at: string
           dificuldades: string | null
+          ferramenta_usada: string | null
           guia_numero: number
           id: string
           mentorado_id: string
@@ -1723,6 +1724,7 @@ export type Database = {
         Insert: {
           created_at?: string
           dificuldades?: string | null
+          ferramenta_usada?: string | null
           guia_numero: number
           id?: string
           mentorado_id: string
@@ -1734,6 +1736,7 @@ export type Database = {
         Update: {
           created_at?: string
           dificuldades?: string | null
+          ferramenta_usada?: string | null
           guia_numero?: number
           id?: string
           mentorado_id?: string

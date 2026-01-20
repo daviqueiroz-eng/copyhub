@@ -35,6 +35,7 @@ export const RoteiroFeedbackDialog = ({
   const [tempoRoteiros, setTempoRoteiros] = useState(0);
   const [tempoRevisao, setTempoRevisao] = useState(0);
   const [dificuldades, setDificuldades] = useState("");
+  const [ferramentaUsada, setFerramentaUsada] = useState("");
   const [autoFilled, setAutoFilled] = useState(false);
 
   const createFeedback = useCreateRoteiroFeedback();
@@ -50,6 +51,7 @@ export const RoteiroFeedbackDialog = ({
       setTempoRoteiros(roteirosMin);
       setTempoRevisao(revisaoMin);
       setDificuldades("");
+      setFerramentaUsada("");
       
       // Indica se algum tempo foi puxado do cronômetro
       setAutoFilled(headlinesMin > 0 || roteirosMin > 0 || revisaoMin > 0);
@@ -63,16 +65,25 @@ export const RoteiroFeedbackDialog = ({
       tempo_headlines: tempoHeadlines,
       tempo_roteiros: tempoRoteiros,
       tempo_revisao: tempoRevisao,
-      dificuldades: dificuldades.trim() || undefined,
+      dificuldades: dificuldades.trim(),
+      ferramenta_usada: ferramentaUsada.trim(),
     });
     onOpenChange(false);
   };
 
   const tempoTotal = tempoHeadlines + tempoRoteiros + tempoRevisao;
+  
+  // Validação: só pode enviar se preencher os campos obrigatórios
+  const canSubmit = dificuldades.trim().length > 0 && ferramentaUsada.trim().length > 0;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogContent 
+        className="sm:max-w-md [&>button]:hidden"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PartyPopper className="h-5 w-5 text-yellow-500" />
@@ -145,9 +156,22 @@ export const RoteiroFeedbackDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Maiores dificuldades encontradas:</Label>
+            <Label className="text-sm font-medium">
+              O que você usou para criar os roteiros? <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              placeholder="Ex: ChatGPT, pesquisa manual, referências..."
+              value={ferramentaUsada}
+              onChange={(e) => setFerramentaUsada(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">
+              Maiores dificuldades encontradas: <span className="text-destructive">*</span>
+            </Label>
             <Textarea
-              placeholder="Descreva as dificuldades encontradas durante o processo (opcional)"
+              placeholder="Descreva as dificuldades encontradas durante o processo"
               value={dificuldades}
               onChange={(e) => setDificuldades(e.target.value)}
               className="min-h-[100px] resize-none"
@@ -155,11 +179,8 @@ export const RoteiroFeedbackDialog = ({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Pular
-          </Button>
-          <Button onClick={handleSubmit} disabled={createFeedback.isPending}>
+        <div className="flex justify-end">
+          <Button onClick={handleSubmit} disabled={createFeedback.isPending || !canSubmit}>
             {createFeedback.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Enviar Feedback
           </Button>
