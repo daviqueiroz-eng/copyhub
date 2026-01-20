@@ -1192,6 +1192,7 @@ export type Database = {
           plano: string | null
           referencias: string | null
           roteiros: string | null
+          tiktok: string | null
           updated_at: string
           user_id: string
         }
@@ -1215,6 +1216,7 @@ export type Database = {
           plano?: string | null
           referencias?: string | null
           roteiros?: string | null
+          tiktok?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1238,6 +1240,7 @@ export type Database = {
           plano?: string | null
           referencias?: string | null
           roteiros?: string | null
+          tiktok?: string | null
           updated_at?: string
           user_id?: string
         }
