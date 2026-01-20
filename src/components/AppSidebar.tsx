@@ -12,6 +12,7 @@ import {
   BarChart3,
   Zap,
   LayoutDashboard,
+  CheckSquare,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +33,7 @@ const menuItems = [
   { title: "Dash Geral", url: "/dash-geral", icon: LayoutDashboard },
   { title: "Acompanhamento", url: "/acompanhamento", icon: BarChart3 },
   { title: "Meus Mentorados", url: "/mentorados", icon: Users },
+  { title: "Core Manager", url: "/core-manager", icon: CheckSquare },
   { title: "Banco de Prompts", url: "/prompts", icon: Sparkles },
   { title: "Planilhas Importantes", url: "/headlines", icon: FileText },
   { title: "Teste de Conhecimento", url: "/testes", icon: ClipboardCheck },
