@@ -6,6 +6,7 @@ import { useRoteiros, useCreateRoteiro, useDeleteRoteiro } from "@/hooks/useRote
 import { useProgressoRoteiros, useCompletarRoteiro, useDeleteProgressoRoteiro } from "@/hooks/useProgressoRoteiros";
 import { useCoresAnalise } from "@/hooks/useCoresAnalise";
 import { useNichos, useCreateNicho } from "@/hooks/useNichos";
+import { useMentorados } from "@/hooks/useMentorados";
 import { useAnalysisStreak } from "@/hooks/useAnalysisStreak";
 import { useMedalhasUsuario } from "@/hooks/useMedalhas";
 import { useCreateHeadlinesCriadas } from "@/hooks/useHeadlinesCriadas";
@@ -156,20 +157,28 @@ const AnaliseRoteiroGame = () => {
   const [showGerenciarFotosDialog, setShowGerenciarFotosDialog] = useState(false);
   const [showCelebracaoDialog, setShowCelebracaoDialog] = useState(false);
   
-  // Estados para headlines em nichos aleatórios
-  const [nichosAleatorios, setNichosAleatorios] = useState<string[]>([]);
-  const [headlinesNichos, setHeadlinesNichos] = useState<{
-    nicho1: string;
-    nicho2: string;
-    nicho3: string;
-  }>({ nicho1: "", nicho2: "", nicho3: "" });
+  // Estados para headlines para mentorados
+  const [mentoradosSelecionados, setMentoradosSelecionados] = useState<string[]>([]);
+  const [headlinesMentorados, setHeadlinesMentorados] = useState<{
+    mentorado1: string;
+    mentorado2: string;
+    mentorado3: string;
+  }>({ mentorado1: "", mentorado2: "", mentorado3: "" });
   
-  // Função para selecionar 3 nichos aleatórios (excluindo o nicho atual)
-  const selecionarNichosAleatorios = (nichoAtualId?: string | null) => {
-    const nichosDisponiveis = nichos.filter(n => n.id !== nichoAtualId);
-    const embaralhados = [...nichosDisponiveis].sort(() => Math.random() - 0.5);
-    setNichosAleatorios(embaralhados.slice(0, 3).map(n => n.id));
-    setHeadlinesNichos({ nicho1: "", nicho2: "", nicho3: "" });
+  // Buscar mentorados do usuário
+  const { data: mentorados = [] } = useMentorados();
+  
+  // Função para selecionar/remover mentorado
+  const handleSelectMentorado = (index: number, mentoradoId: string) => {
+    const newSelecionados = [...mentoradosSelecionados];
+    newSelecionados[index] = mentoradoId;
+    setMentoradosSelecionados(newSelecionados);
+  };
+  
+  // Função para limpar seleção de mentorados
+  const limparMentoradosSelecionados = () => {
+    setMentoradosSelecionados([]);
+    setHeadlinesMentorados({ mentorado1: "", mentorado2: "", mentorado3: "" });
   };
 
   // Função para processar link de vídeo e garantir que seja abrível
@@ -388,9 +397,8 @@ const AnaliseRoteiroGame = () => {
     setGatilhosAtencao("");
     setEstruturaRoteiro("");
     
-    // Selecionar nichos aleatórios para criar headlines
-    const roteiro = roteiros.find(r => r.id === roteiroId);
-    selecionarNichosAleatorios(roteiro?.nicho_id);
+    // Limpar seleção de mentorados para nova análise
+    limparMentoradosSelecionados();
   };
 
   const handleRandomRoteiro = () => {
@@ -926,18 +934,19 @@ const AnaliseRoteiroGame = () => {
       sublinhados: highlights,
     }, {
       onSuccess: async (data) => {
-        // Salvar headlines criadas (se houver)
+        // Salvar headlines criadas para mentorados (se houver)
         if (user) {
-          const headlinesParaSalvar = nichosAleatorios
-            .map((nichoId, index) => ({
+          const headlinesParaSalvar = mentoradosSelecionados
+            .map((mentoradoId, index) => ({
               user_id: user.id,
               progresso_id: data?.id,
               roteiro_id: currentRoteiroId,
-              nicho_id: nichoId,
-              headline: headlinesNichos[`nicho${index + 1}` as keyof typeof headlinesNichos],
+              mentorado_id: mentoradoId,
+              nicho_id: null,
+              headline: headlinesMentorados[`mentorado${index + 1}` as keyof typeof headlinesMentorados],
               estrutura_base: estruturaInvisivel,
             }))
-            .filter(h => h.headline.trim() !== "");
+            .filter(h => h.headline.trim() !== "" && h.mentorado_id);
           
           if (headlinesParaSalvar.length > 0) {
             await createHeadlinesCriadas.mutateAsync(headlinesParaSalvar);
@@ -966,8 +975,8 @@ const AnaliseRoteiroGame = () => {
         setCargaCognitiva(5);
         setOQueTornouViral("");
         setMelhoriasPotencial("");
-        setHeadlinesNichos({ nicho1: "", nicho2: "", nicho3: "" });
-        setNichosAleatorios([]);
+        setHeadlinesMentorados({ mentorado1: "", mentorado2: "", mentorado3: "" });
+        setMentoradosSelecionados([]);
         
         // Mostrar dialog de celebração com foto aleatória
         setShowCelebracaoDialog(true);
@@ -1900,35 +1909,66 @@ const AnaliseRoteiroGame = () => {
             />
           </Card>
 
-          {/* Campo Headlines para Nichos Aleatórios */}
-          {nichosAleatorios.length > 0 && (
-            <Card className="p-4 border-primary/30 bg-primary/5">
-              <Label className="text-sm font-medium mb-4 block">
-                Crie 3 headlines diferentes usando essa estrutura para outros nichos
-              </Label>
-              <div className="space-y-4">
-                {nichosAleatorios.map((nichoId, index) => {
-                  const nicho = nichos.find(n => n.id === nichoId);
-                  return (
-                    <div key={nichoId}>
-                      <Label className="text-sm italic text-muted-foreground mb-1 block">
-                        {nicho?.nome || "Nicho aleatório"}
-                      </Label>
+          {/* Campo Headlines para Mentorados */}
+          <Card className="p-4 border-primary/30 bg-primary/5">
+            <Label className="text-sm font-medium mb-4 block">
+              Crie headlines para 3 mentorados diferentes usando essa estrutura
+            </Label>
+            <div className="space-y-4">
+              {[0, 1, 2].map((index) => {
+                const mentoradoId = mentoradosSelecionados[index];
+                const mentorado = mentorados.find(m => m.id === mentoradoId);
+                
+                return (
+                  <div key={index} className="space-y-2">
+                    {/* Seletor de mentorado */}
+                    <Select
+                      value={mentoradoId || ""}
+                      onValueChange={(value) => handleSelectMentorado(index, value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione um mentorado..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mentorados
+                          .filter(m => !mentoradosSelecionados.includes(m.id) || mentoradosSelecionados[index] === m.id)
+                          .map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-5 w-5">
+                                  <AvatarImage src={m.avatar || undefined} />
+                                  <AvatarFallback className="text-[10px]">{m.iniciais}</AvatarFallback>
+                                </Avatar>
+                                <span>{m.nome}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    {/* Campo de headline (só aparece se mentorado selecionado) */}
+                    {mentoradoId && (
                       <Textarea
-                        value={headlinesNichos[`nicho${index + 1}` as keyof typeof headlinesNichos]}
-                        onChange={(e) => setHeadlinesNichos(prev => ({
+                        value={headlinesMentorados[`mentorado${index + 1}` as keyof typeof headlinesMentorados]}
+                        onChange={(e) => setHeadlinesMentorados(prev => ({
                           ...prev,
-                          [`nicho${index + 1}`]: e.target.value
+                          [`mentorado${index + 1}`]: e.target.value
                         }))}
-                        placeholder={`Digite uma headline para ${nicho?.nome || "este nicho"}...`}
+                        placeholder={`Digite uma headline para ${mentorado?.nome || "este mentorado"}...`}
                         className="min-h-[60px] resize-none"
                       />
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          )}
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {mentorados.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                Você ainda não tem mentorados cadastrados. Cadastre mentorados na aba "Meus Mentorados".
+              </p>
+            )}
+          </Card>
 
           {/* Campo 2: 7 Gatilhos da Atenção */}
           <Card className="p-4">
