@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import GerenciarUsuarios from "./pages/GerenciarUsuarios";
 import Atividades from "./pages/Atividades";
 import DashGeral from "./pages/DashGeral";
+import CoreStudioTasks from "./pages/CoreStudioTasks";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/acompanhamento" element={<ProtectedRoute><Acompanhamento /></ProtectedRoute>} />
               <Route path="/perfil" element={<Navigate to="/acompanhamento" replace />} />
               <Route path="/mentorados" element={<ProtectedRoute><Mentorados /></ProtectedRoute>} />
+              <Route path="/core-manager" element={<ProtectedRoute><CoreStudioTasks /></ProtectedRoute>} />
               <Route path="/prompts" element={<ProtectedRoute><Prompts /></ProtectedRoute>} />
               <Route path="/headlines" element={<ProtectedRoute><Headlines /></ProtectedRoute>} />
               <Route path="/testes" element={<ProtectedRoute><Testes /></ProtectedRoute>} />
