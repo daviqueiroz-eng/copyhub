@@ -19,6 +19,7 @@ export type Mentorado = {
   link_drive: string | null;
   referencias: string | null;
   instagram: string | null;
+  tiktok: string | null;
   link_trello: string | null;
   inteligencia_ia: string | null;
   user_id: string;
