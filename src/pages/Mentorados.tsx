@@ -185,32 +185,76 @@ const Mentorados = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] w-full">
-      {/* Header com Títulos lado a lado */}
-      <div className="flex items-start justify-between gap-4 md:gap-6 shrink-0 pb-3 md:pb-4">
-        {/* Lado esquerdo - Meus Mentorados */}
-        <div className="xl:w-[320px] 2xl:w-[360px] shrink-0">
-          <h2 className="text-2xl md:text-3xl font-bold text-foreground">Meus Mentorados</h2>
-          <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
-            Repositório de perfis e diagnósticos
-          </p>
-        </div>
-        
-        {/* Lado direito - Ordem de Prioridade (título) - escondido em mobile */}
-        <div className="flex-1 hidden xl:block">
-          <h2 className="text-3xl font-bold text-foreground">Ordem de Prioridade</h2>
-          <p className="text-muted-foreground mt-1">
-            Entregas organizadas por data
-          </p>
-        </div>
+      {/* Header - Título principal */}
+      <div className="shrink-0 pb-3 md:pb-4">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Meus Mentorados</h2>
+        <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
+          Repositório de perfis e diagnósticos
+        </p>
       </div>
 
-      {/* Área principal com scroll interno */}
-      <div className="flex-1 flex flex-col xl:flex-row gap-4 md:gap-6 min-h-0">
+      {/* ===== LAYOUT MOBILE (< xl) - Tabs principais ===== */}
+      <div className="xl:hidden flex-1 flex flex-col min-h-0">
+        <Tabs defaultValue="mentorados" className="flex flex-col flex-1 min-h-0">
+          <TabsList className="grid w-full grid-cols-2 shrink-0 mb-3">
+            <TabsTrigger value="mentorados">Mentorados</TabsTrigger>
+            <TabsTrigger value="prioridade">Prioridade</TabsTrigger>
+          </TabsList>
+
+          {/* Tab: Mentorados */}
+          <TabsContent value="mentorados" className="flex-1 min-h-0 flex flex-col mt-0" forceMount style={{ display: 'var(--radix-tabs-content-display, none)' }}>
+            {/* Busca + Botão Novo */}
+            <div className="flex items-center gap-2 shrink-0 pb-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Button size="sm" className="gap-1 shrink-0" onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Novo</span>
+              </Button>
+            </div>
+
+            {/* Sub-tabs Geral/Grupo */}
+            <Tabs defaultValue="geral" className="flex flex-col flex-1 min-h-0">
+              <TabsList className="grid w-full max-w-xs grid-cols-2 shrink-0">
+                <TabsTrigger value="geral">Geral</TabsTrigger>
+                <TabsTrigger value="grupo">Grupo</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="geral" className="mt-3 flex-1 min-h-0 overflow-y-auto">
+                <GeralView 
+                  mentorados={mentorados}
+                  searchTerm={searchTerm}
+                  onMentoradoClick={handleOpenDetail}
+                />
+              </TabsContent>
+
+              <TabsContent value="grupo" className="mt-3 flex-1 min-h-0 overflow-y-auto">
+                <GrupoView />
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
+          {/* Tab: Prioridade */}
+          <TabsContent value="prioridade" className="flex-1 min-h-0 overflow-y-auto mt-0" forceMount style={{ display: 'var(--radix-tabs-content-display, none)' }}>
+            <OrdemPrioridadeView />
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* ===== LAYOUT DESKTOP (xl+) - Side by side ===== */}
+      <div className="hidden xl:flex flex-1 gap-6 min-h-0">
         {/* Lado esquerdo: Tabs Geral/Grupo com mentorados */}
-        <div className="xl:w-[320px] 2xl:w-[360px] shrink-0 flex flex-col min-h-0">
+        <div className="w-[320px] 2xl:w-[360px] shrink-0 flex flex-col min-h-0">
           {/* Busca + Botão Novo */}
-          <div className="flex items-center gap-2 shrink-0 pb-3 md:pb-4">
-            <div className="relative flex-1 sm:flex-none sm:w-48">
+          <div className="flex items-center gap-2 shrink-0 pb-4">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar..."
@@ -221,7 +265,7 @@ const Mentorados = () => {
             </div>
             <Button size="sm" className="gap-1 shrink-0" onClick={() => setIsAddDialogOpen(true)}>
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Novo</span>
+              Novo
             </Button>
           </div>
 
@@ -231,7 +275,7 @@ const Mentorados = () => {
               <TabsTrigger value="grupo">Grupo</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="geral" className="mt-3 md:mt-4 flex-1 min-h-0 overflow-y-auto">
+            <TabsContent value="geral" className="mt-4 flex-1 min-h-0 overflow-y-auto">
               <GeralView 
                 mentorados={mentorados}
                 searchTerm={searchTerm}
@@ -239,24 +283,24 @@ const Mentorados = () => {
               />
             </TabsContent>
 
-            <TabsContent value="grupo" className="mt-3 md:mt-4 flex-1 min-h-0 overflow-y-auto">
+            <TabsContent value="grupo" className="mt-4 flex-1 min-h-0 overflow-y-auto">
               <GrupoView />
             </TabsContent>
           </Tabs>
         </div>
 
-        {/* Lado direito: Ordem de Prioridade sempre visível (desktop) */}
-        <div className="flex-1 min-w-0 border-l pl-4 md:pl-6 hidden xl:flex flex-col min-h-0">
+        {/* Lado direito: Ordem de Prioridade */}
+        <div className="flex-1 min-w-0 border-l pl-6 flex flex-col min-h-0">
+          <div className="shrink-0 pb-4">
+            <h2 className="text-3xl font-bold text-foreground">Ordem de Prioridade</h2>
+            <p className="text-muted-foreground mt-1">
+              Entregas organizadas por data
+            </p>
+          </div>
           <div className="flex-1 min-h-0 overflow-y-auto">
             <OrdemPrioridadeView />
           </div>
         </div>
-      </div>
-
-      {/* Ordem de Prioridade em mobile/tablet (abaixo) */}
-      <div className="xl:hidden mt-4 md:mt-6 pt-4 md:pt-6 border-t">
-        <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Ordem de Prioridade</h3>
-        <OrdemPrioridadeView />
       </div>
 
       {/* Dialog para adicionar novo mentorado */}
