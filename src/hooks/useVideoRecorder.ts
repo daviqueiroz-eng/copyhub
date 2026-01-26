@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 
 type RecordingState = "idle" | "recording" | "stopped";
+type FacingMode = "user" | "environment";
 
 interface UseVideoRecorderOptions {
   onError?: (error: string) => void;
@@ -12,12 +13,14 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [isLoadingCamera, setIsLoadingCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<FacingMode>("user");
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const onErrorRef = useRef(options.onError);
+  const facingModeRef = useRef<FacingMode>("user");
   
   // Manter ref atualizado
   useEffect(() => {
@@ -32,17 +35,18 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
   }, [stream]);
   
   // Iniciar câmera - função estável sem dependências
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (mode?: FacingMode) => {
     // Evitar múltiplas chamadas simultâneas
     if (streamRef.current) return;
     
+    const currentMode = mode || facingModeRef.current;
     setIsLoadingCamera(true);
     setCameraError(null);
     
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "user",
+          facingMode: currentMode,
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
@@ -51,6 +55,8 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
       
       streamRef.current = mediaStream;
       setStream(mediaStream);
+      setFacingMode(currentMode);
+      facingModeRef.current = currentMode;
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -59,6 +65,47 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
       setIsLoadingCamera(false);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Erro ao acessar câmera";
+      setCameraError(errorMessage);
+      onErrorRef.current?.(errorMessage);
+      setIsLoadingCamera(false);
+    }
+  }, []);
+  
+  // Trocar câmera frontal/traseira
+  const switchCamera = useCallback(async () => {
+    // Parar tracks atuais
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
+    const newMode: FacingMode = facingModeRef.current === "user" ? "environment" : "user";
+    
+    setIsLoadingCamera(true);
+    setCameraError(null);
+    
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: newMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: true,
+      });
+      
+      streamRef.current = mediaStream;
+      setStream(mediaStream);
+      setFacingMode(newMode);
+      facingModeRef.current = newMode;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      
+      setIsLoadingCamera(false);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Erro ao trocar câmera";
       setCameraError(errorMessage);
       onErrorRef.current?.(errorMessage);
       setIsLoadingCamera(false);
@@ -168,6 +215,7 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
     videoRef,
     isRecording: state === "recording",
     hasRecording: !!recordedBlob,
+    facingMode,
     
     // Actions
     startCamera,
@@ -176,5 +224,6 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
     stopRecording,
     downloadVideo,
     clearRecording,
+    switchCamera,
   };
 }
