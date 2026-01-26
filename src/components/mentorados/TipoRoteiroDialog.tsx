@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Settings, Check } from "lucide-react";
 import {
   Select,
@@ -67,6 +68,10 @@ export const TipoRoteiroDialog = ({
   const [showAddForm, setShowAddForm] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [tipoParaConfigurar, setTipoParaConfigurar] = useState<TipoRoteiro | null>(null);
+  
+  // Estados para seleção múltipla
+  const [selectedHeadlines, setSelectedHeadlines] = useState<Set<string>>(new Set());
+  const [bulkTipoId, setBulkTipoId] = useState<string>("");
 
   const { data: tipos = [] } = useTiposRoteiro();
   const createTipo = useCreateTipoRoteiro();
@@ -83,6 +88,45 @@ export const TipoRoteiroDialog = ({
       ...prev,
       [headlineKey]: tipoId
     }));
+  };
+
+  // Toggle seleção de uma headline
+  const toggleHeadlineSelection = (key: string) => {
+    setSelectedHeadlines(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
+  // Selecionar todas
+  const selectAllHeadlines = () => {
+    if (selectedHeadlines.size === headlines.length) {
+      setSelectedHeadlines(new Set());
+    } else {
+      setSelectedHeadlines(new Set(headlines.map(h => h.key)));
+    }
+  };
+
+  // Aplicar tipo às selecionadas
+  const applyBulkTipo = () => {
+    if (!bulkTipoId) return;
+    
+    setSelectedTipos(prev => {
+      const newTipos = { ...prev };
+      selectedHeadlines.forEach(key => {
+        newTipos[key] = bulkTipoId;
+      });
+      return newTipos;
+    });
+    
+    // Limpar seleção após aplicar
+    setSelectedHeadlines(new Set());
+    setBulkTipoId("");
   };
 
   const allHeadlinesHaveTipo = headlines.every(h => selectedTipos[h.key]);
@@ -120,9 +164,14 @@ export const TipoRoteiroDialog = ({
       setSelectedTipos({});
       setNovoTipo("");
       setShowAddForm(false);
+      setSelectedHeadlines(new Set());
+      setBulkTipoId("");
     }
     onOpenChange(newOpen);
   };
+
+  const isAllSelected = selectedHeadlines.size === headlines.length && headlines.length > 0;
+  const isSomeSelected = selectedHeadlines.size > 0;
 
   return (
     <>
@@ -132,20 +181,76 @@ export const TipoRoteiroDialog = ({
             <DialogTitle>Gerar Roteiro</DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 pr-4 -mr-4">
-            <div className="py-4 space-y-4">
+          {/* Barra de ações em massa */}
+          <div className="flex items-center gap-3 py-3 border-b flex-wrap">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="select-all"
+                checked={isAllSelected}
+                onCheckedChange={selectAllHeadlines}
+              />
+              <Label htmlFor="select-all" className="text-sm cursor-pointer">
+                Selecionar todas
+              </Label>
+            </div>
+            
+            {isSomeSelected && (
+              <>
+                <div className="h-4 w-px bg-border" />
+                <div className="flex items-center gap-2 flex-1 flex-wrap">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {selectedHeadlines.size} selecionada{selectedHeadlines.size > 1 ? 's' : ''}
+                  </span>
+                  <Select value={bulkTipoId} onValueChange={setBulkTipoId}>
+                    <SelectTrigger className="h-8 w-[160px]">
+                      <SelectValue placeholder="Tipo para aplicar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tipos.map((tipo) => (
+                        <SelectItem key={tipo.id} value={tipo.id}>
+                          <span className="flex items-center gap-2">
+                            {tipo.nome}
+                            {tipo.prompt && (
+                              <Check className="h-3 w-3 text-primary" />
+                            )}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    size="sm" 
+                    onClick={applyBulkTipo}
+                    disabled={!bulkTipoId}
+                  >
+                    Aplicar
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <ScrollArea className="flex-1 max-h-[400px]">
+            <div className="py-4 space-y-4 pr-4">
               {headlines.map((headline, index) => (
                 <div key={headline.key} className="border rounded-lg p-4 space-y-3">
-                  <div>
-                    <span className="text-xs text-muted-foreground font-medium">
-                      HEADLINE {index + 1}:
-                    </span>
-                    <p className="text-sm font-medium mt-1 line-clamp-2">
-                      {headline.headline || "(sem headline)"}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedHeadlines.has(headline.key)}
+                      onCheckedChange={() => toggleHeadlineSelection(headline.key)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs text-muted-foreground font-medium">
+                        HEADLINE {index + 1}:
+                      </span>
+                      <p className="text-sm font-medium mt-1 line-clamp-2">
+                        {headline.headline || "(sem headline)"}
+                      </p>
+                    </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 pl-7">
                     <Label className="text-xs shrink-0">Tipo:</Label>
                     <Select
                       value={selectedTipos[headline.key] || ""}
