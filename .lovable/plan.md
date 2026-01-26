@@ -1,173 +1,205 @@
 
 
-## Plano: Reorganizar Layout Mobile da Página Mentorados
+## Plano: Adicionar Teleprompter com Gravação de Vídeo
 
-### Problema Identificado
-
-Na screenshot, elementos estão sobrepostos:
-- Lista de mentorados (Milena, João Guilherme, etc.)
-- Filtros de "Ordem de Prioridade" (Buscar copywriter, Todos/Hoje/Semana/Mês)
-- Toggle Grid/Calendário
-- Cards de prioridade (ATRASADO - Ricardo Novack)
-
-Tudo aparece misturado porque em mobile a página renderiza ambas as seções no mesmo fluxo de scroll sem separação visual clara.
+### Objetivo
+Adicionar um novo botão na barra flutuante de ações do roteiro (abaixo do botão de áudio 🔊) que abre um teleprompter com gravação de vídeo.
 
 ---
 
-### Solução: Layout Mobile com Tabs Expandidas
+### 1. Localização do Botão
 
-Transformar as duas áreas principais (Mentorados e Prioridade) em **tabs navegáveis em mobile**, separando completamente os conteúdos.
+O botão será adicionado na toolbar flutuante que aparece no hover de cada roteiro, logo após o botão de áudio (Volume2):
 
----
-
-### 1. Reestruturar Layout Mobile (`src/pages/Mentorados.tsx`)
-
-**Mudança principal**: Em mobile, usar um sistema de tabs de nível superior para alternar entre "Mentorados" e "Prioridade", em vez de mostrar tudo junto.
-
-```tsx
-// Layout Mobile - Tabs de nível superior
-<div className="xl:hidden flex flex-col h-full">
-  <Tabs defaultValue="mentorados" className="flex flex-col flex-1 min-h-0">
-    <TabsList className="grid w-full grid-cols-2 shrink-0 mb-4">
-      <TabsTrigger value="mentorados">Mentorados</TabsTrigger>
-      <TabsTrigger value="prioridade">Prioridade</TabsTrigger>
-    </TabsList>
-
-    <TabsContent value="mentorados" className="flex-1 min-h-0 overflow-hidden">
-      {/* Busca + Botão Novo */}
-      <div className="flex items-center gap-2 shrink-0 pb-3">
-        <Input ... />
-        <Button ... />
-      </div>
-      
-      {/* Sub-tabs Geral/Grupo */}
-      <Tabs defaultValue="geral" className="flex-1 min-h-0">
-        <TabsList className="grid w-full max-w-xs grid-cols-2 shrink-0">
-          <TabsTrigger value="geral">Geral</TabsTrigger>
-          <TabsTrigger value="grupo">Grupo</TabsTrigger>
-        </TabsList>
-        <TabsContent value="geral" className="overflow-y-auto">
-          <GeralView ... />
-        </TabsContent>
-        <TabsContent value="grupo" className="overflow-y-auto">
-          <GrupoView />
-        </TabsContent>
-      </Tabs>
-    </TabsContent>
-
-    <TabsContent value="prioridade" className="flex-1 min-h-0 overflow-y-auto">
-      <OrdemPrioridadeView />
-    </TabsContent>
-  </Tabs>
-</div>
-
-// Layout Desktop - mantém side-by-side
-<div className="hidden xl:flex ...">
-  {/* Lado esquerdo: Mentorados */}
-  {/* Lado direito: Prioridade */}
-</div>
+```
+┌──────┐
+│  📋  │  Copiar
+├──────┤
+│  🗑️  │  Deletar
+├──────┤
+│  ⚙️  │  Config TTS
+├──────┤
+│  🔊  │  Ler estrutura
+├──────┤
+│  🎬  │  ← NOVO: Teleprompter
+└──────┘
 ```
 
 ---
 
-### 2. Simplificar Header
+### 2. Novo Componente: TeleprompterDialog
 
-O header "Meus Mentorados" no topo só precisa aparecer uma vez e de forma mais compacta em mobile:
+Criar um novo componente dialog que inclui:
 
-```tsx
-<div className="shrink-0 pb-3">
-  <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">
-    {/* Em mobile, mostrar título contextual baseado na tab ativa */}
-    Meus Mentorados
-  </h2>
-</div>
+#### Interface Principal
+```
+┌────────────────────────────────────────────────┐
+│ 🎬 Teleprompter                            [X] │
+├────────────────────────────────────────────────┤
+│ ┌────────────────────────────────────────────┐ │
+│ │                                            │ │
+│ │         📹 Preview da Câmera              │ │
+│ │            (espelhado)                     │ │
+│ │                                            │ │
+│ │  ┌──────────────────────────────────────┐  │ │
+│ │  │                                      │  │ │
+│ │  │     Texto do roteiro scrollando...   │  │ │
+│ │  │                                      │  │ │
+│ │  └──────────────────────────────────────┘  │ │
+│ └────────────────────────────────────────────┘ │
+├────────────────────────────────────────────────┤
+│ Velocidade: [━━━━━●━━━] 1.0x                   │
+│ Tamanho:    [━━━●━━━━━] 24px                   │
+│ [🔄 Espelhar] [📝 Editar texto]                │
+├────────────────────────────────────────────────┤
+│ [▶️ Iniciar Scroll]  [⏺️ Gravar]  [💾 Salvar]  │
+└────────────────────────────────────────────────┘
+```
+
+#### Funcionalidades
+- **Preview de câmera em tempo real** (frontal por padrão)
+- **Texto scrollando** sobre o preview (overlay semitransparente)
+- **Controle de velocidade** do scroll (0.5x a 3x)
+- **Controle de tamanho** da fonte (16px a 48px)
+- **Espelhamento** da câmera (útil para leitura)
+- **Gravação de vídeo** com MediaRecorder API
+- **Download direto** no dispositivo (MP4/WebM)
+
+---
+
+### 3. Estrutura de Arquivos
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `src/components/mentorados/TeleprompterDialog.tsx` | Componente principal do teleprompter |
+| `src/hooks/useTeleprompter.ts` | Hook para controle de scroll e estado |
+| `src/hooks/useVideoRecorder.ts` | Hook para gravação de vídeo |
+
+---
+
+### 4. Detalhes Técnicos
+
+#### 4.1 Captura de Vídeo
+```typescript
+// Acesso à câmera frontal
+const stream = await navigator.mediaDevices.getUserMedia({
+  video: { facingMode: "user", width: 1280, height: 720 },
+  audio: true
+});
+
+// MediaRecorder para gravação
+const mediaRecorder = new MediaRecorder(stream, {
+  mimeType: 'video/webm;codecs=vp9,opus'
+});
+```
+
+#### 4.2 Scroll Automático
+```typescript
+const scrollText = useCallback(() => {
+  if (!isScrolling || !textRef.current) return;
+  
+  textRef.current.scrollTop += scrollSpeed;
+  animationFrame = requestAnimationFrame(scrollText);
+}, [isScrolling, scrollSpeed]);
+```
+
+#### 4.3 Download do Vídeo
+```typescript
+const downloadVideo = () => {
+  const blob = new Blob(recordedChunks, { type: 'video/webm' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `roteiro-${Date.now()}.webm`;
+  a.click();
+};
 ```
 
 ---
 
-### 3. Remover Seção Duplicada
+### 5. Modificações Necessárias
 
-A seção que estava nas linhas 256-260 causando duplicação:
+#### 5.1 MentoradoRoteirosView.tsx (linhas ~1835)
+
+Adicionar novo botão após o botão de áudio:
 
 ```tsx
-{/* REMOVER esta duplicação */}
-<div className="xl:hidden mt-4 md:mt-6 pt-4 md:pt-6 border-t">
-  <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Ordem de Prioridade</h3>
-  <OrdemPrioridadeView />
-</div>
+// Após o botão Volume2/Square (linha 1835)
+<Button
+  variant="ghost"
+  size="icon"
+  className="h-7 w-7"
+  title="Gravar com teleprompter"
+  onClick={() => {
+    setTeleprompterText(roteiro.estrutura || "");
+    setShowTeleprompter(true);
+  }}
+>
+  <Video className="h-3.5 w-3.5" />
+</Button>
 ```
 
-Esta seção será movida para dentro do sistema de tabs.
+E adicionar os estados e o dialog:
+
+```tsx
+// Estados
+const [showTeleprompter, setShowTeleprompter] = useState(false);
+const [teleprompterText, setTeleprompterText] = useState("");
+
+// Dialog no final do JSX
+<TeleprompterDialog
+  open={showTeleprompter}
+  onOpenChange={setShowTeleprompter}
+  text={teleprompterText}
+  onTextChange={setTeleprompterText}
+/>
+```
 
 ---
 
-### Arquivos a Modificar
+### 6. Compatibilidade
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/pages/Mentorados.tsx` | Implementar tabs de nível superior em mobile, remover seção duplicada |
+| Recurso | Desktop | iOS Safari | Android Chrome |
+|---------|---------|------------|----------------|
+| getUserMedia | ✅ | ✅ (iOS 11+) | ✅ |
+| MediaRecorder | ✅ | ⚠️ (iOS 14.3+) | ✅ |
+| Download automático | ✅ | ⚠️ (abre nova aba) | ✅ |
+
+**Nota iOS**: Em iOS, o download pode abrir o vídeo em uma nova aba para o usuário salvar manualmente. Vamos detectar isso e mostrar instruções apropriadas.
 
 ---
 
-### Resultado Visual Esperado
+### 7. Fluxo de Uso
 
-**Mobile - Tab "Mentorados":**
+1. Usuário clica no botão 🎬 na toolbar do roteiro
+2. Dialog abre com preview da câmera e texto do roteiro
+3. Usuário ajusta velocidade e tamanho da fonte
+4. Clica em "▶️ Iniciar" para começar o scroll do texto
+5. Clica em "⏺️ Gravar" para iniciar gravação
+6. Quando terminar, clica em "⏹️ Parar"
+7. Clica em "💾 Salvar" para baixar o vídeo
+
+---
+
+### 8. Interface Mobile
+
+Em dispositivos móveis, o layout será adaptado:
+
 ```
 ┌─────────────────────────┐
-│ Meus Mentorados         │
+│ 🎬 Teleprompter     [X] │
 ├─────────────────────────┤
-│ [Mentorados][Prioridade]│  <- Tabs principais
+│ ┌─────────────────────┐ │
+│ │   📹 Câmera         │ │
+│ │   ┌───────────────┐ │ │
+│ │   │ Texto aqui... │ │ │
+│ │   └───────────────┘ │ │
+│ └─────────────────────┘ │
 ├─────────────────────────┤
-│ [🔍 Buscar...]  [+Novo] │
-│ [Geral] [Grupo]         │  <- Sub-tabs
+│ Velocidade: [━━●━━━]    │
+│ Tamanho: [━━━●━━]       │
 ├─────────────────────────┤
-│ Mentorados 📷(20)       │
-│ ┌─────────────────────┐ │
-│ │ MI  Milena        📷│ │
-│ └─────────────────────┘ │
-│ ┌─────────────────────┐ │
-│ │ JG  João Guilherme📷│ │
-│ └─────────────────────┘ │
-│ ┌─────────────────────┐ │
-│ │ DR  draclaudiapi...│ │
-│ └─────────────────────┘ │
+│ [▶️] [⏺️/⏹️] [💾]      │
 └─────────────────────────┘
 ```
-
-**Mobile - Tab "Prioridade":**
-```
-┌─────────────────────────┐
-│ Meus Mentorados         │
-├─────────────────────────┤
-│ [Mentorados][Prioridade]│  <- Tabs principais
-├─────────────────────────┤
-│ 🔍 Buscar copywriter... │
-│ [Todos][Hoje][Semana]   │
-│ [📊][📅]                │  <- Grid/Calendar toggle
-├─────────────────────────┤
-│ 📄 Arquivo: xyz.csv     │
-├─────────────────────────┤
-│ ┌─────────────────────┐ │
-│ │ 🔴 ATRASADO         │ │
-│ │ Ricardo Novack      │ │
-│ │ Validação 1         │ │
-│ │ 📅 10/11/2025       │ │
-│ └─────────────────────┘ │
-│ ┌─────────────────────┐ │
-│ │ 🔴 ATRASADO         │ │
-│ │ Flávia Chehin       │ │
-│ │ ...                 │ │
-│ └─────────────────────┘ │
-└─────────────────────────┘
-```
-
----
-
-### Benefícios desta Abordagem
-
-1. **Separação clara**: Cada seção tem seu próprio espaço, sem sobreposição
-2. **Navegação intuitiva**: O usuário escolhe o que quer ver (Mentorados ou Prioridade)
-3. **Melhor uso do espaço**: Cada view usa 100% da tela disponível
-4. **Consistente com padrões mobile**: Apps móveis usam tabs para alternar entre views principais
-5. **Mantém desktop inalterado**: Layout side-by-side continua funcionando em `xl+`
 
