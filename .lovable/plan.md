@@ -1,105 +1,241 @@
 
 
-## Plano: Alterar Aba "Comunicação"
+## Plano: Seleção Individual de Tipo de Roteiro por Headline
 
-### O Que Será Feito
+### Objetivo
 
-Remover os 3 campos atuais da aba "Comunicação" e substituir por 2 novos campos:
-
-| Remover | Adicionar |
-|---------|-----------|
-| Estilo de Comunicação | **Informações do mentorado** |
-| Roteiros e Headlines que Performaram | **Apresentação** |
-| Observações do Estrategista | - |
+Modificar o dialog "Gerar Roteiro" para mostrar cada headline selecionada individualmente, permitindo escolher um tipo de roteiro diferente para cada uma.
 
 ---
 
-### Visual Final
+### Visual Atual vs Novo
 
-```
+```text
+ATUAL:
 ┌─────────────────────────────────────────────────────────────────┐
-│  [Avatar]  [Comunicação]  [Materiais]  [Roteiros]               │
+│ Gerar Roteiro                                               [X] │
+├─────────────────────────────────────────────────────────────────┤
+│  📝 2 headlines selecionadas                                    │
+│                                                                 │
+│  Selecione o tipo de roteiro:                                   │
+│  ◉ Lista útil ✓ configurado                                     │
+│  ○ Defesa de crença                                             │
+│                                                                 │
+│                              [Cancelar]  [Gerar]                │
+└─────────────────────────────────────────────────────────────────┘
+  ↓ Um tipo para TODAS as headlines
+
+NOVO:
+┌─────────────────────────────────────────────────────────────────┐
+│ Gerar Roteiro                                               [X] │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Informações do mentorado                                       │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │                                                           │  │
-│  │ Informações gerais sobre o mentorado...                   │  │
-│  │                                                           │  │
-│  │                                                           │  │
-│  └───────────────────────────────────────────────────────────┘  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ HEADLINE 1:                                             │    │
+│  │ "3 coisas que ninguém te conta sobre..."                │    │
+│  │                                                         │    │
+│  │ Tipo: [  Selecionar tipo  ▾]                            │    │
+│  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
-│  Apresentação                                                   │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │                                                           │  │
-│  │ Apresentação do mentorado...                              │  │
-│  │                                                           │  │
-│  │                                                           │  │
-│  └───────────────────────────────────────────────────────────┘  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ HEADLINE 2:                                             │    │
+│  │ "Por que você ainda está errando em..."                 │    │
+│  │                                                         │    │
+│  │ Tipo: [  Lista útil  ▾]                                 │    │
+│  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
-│                        [ Fechar ]                               │
-│                   [ Excluir Mentorado ]                         │
+│  [+ Novo tipo]                      [Cancelar]  [Gerar]         │
 └─────────────────────────────────────────────────────────────────┘
+  ↓ Cada headline com SEU tipo
 ```
 
 ---
 
-### Mudanças Técnicas
+### Mudanças Necessárias
 
-#### 1. Atualizar Banco de Dados
+#### 1. Atualizar Props do TipoRoteiroDialog
 
-Adicionar 2 novos campos na tabela `mentorados`:
-
-```sql
-ALTER TABLE public.mentorados 
-ADD COLUMN IF NOT EXISTS informacoes_mentorado TEXT,
-ADD COLUMN IF NOT EXISTS apresentacao TEXT;
-```
-
----
-
-#### 2. Atualizar Hook useMentorados
-
-Adicionar os novos campos no tipo `Mentorado`:
+Passar as headlines com seus dados ao invés de apenas a contagem:
 
 ```tsx
-export type Mentorado = {
-  // ... campos existentes
-  informacoes_mentorado: string | null;  // NOVO
-  apresentacao: string | null;           // NOVO
+// ANTES
+interface TipoRoteiroDialogProps {
+  headlinesCount: number;
+  onConfirm: (tipoId: string, tipoNome: string, tipoConfig: {...}) => void;
+}
+
+// DEPOIS
+interface HeadlineParaGerar {
+  key: string;
+  headline: string;
+  estrutura: string;
+}
+
+interface HeadlineComTipo {
+  key: string;
+  headline: string;
+  estrutura: string;
+  tipoId: string;
+  tipoNome: string;
+  tipoConfig: {
+    prompt: string | null;
+    template_estrutura: string | null;
+    config_extra: unknown;
+  };
+}
+
+interface TipoRoteiroDialogProps {
+  headlines: HeadlineParaGerar[];  // Recebe array de headlines
+  onConfirm: (headlines: HeadlineComTipo[]) => void;  // Retorna com tipos
+}
+```
+
+---
+
+#### 2. Reformular o Layout do Dialog
+
+Mostrar cada headline em um card com seu próprio dropdown de seleção:
+
+```tsx
+<Dialog>
+  <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>Gerar Roteiro</DialogTitle>
+    </DialogHeader>
+
+    <div className="py-4 space-y-4">
+      {headlines.map((headline, index) => (
+        <div key={headline.key} className="border rounded-lg p-4 space-y-3">
+          {/* Número e texto da headline */}
+          <div>
+            <span className="text-xs text-muted-foreground font-medium">
+              HEADLINE {index + 1}:
+            </span>
+            <p className="text-sm font-medium mt-1">
+              {headline.headline || "(sem headline)"}
+            </p>
+          </div>
+          
+          {/* Select do tipo */}
+          <div className="flex items-center gap-2">
+            <Label className="text-xs shrink-0">Tipo:</Label>
+            <Select
+              value={selectedTipos[headline.key] || ""}
+              onValueChange={(value) => handleSelectTipo(headline.key, value)}
+            >
+              <SelectTrigger className="h-8">
+                <SelectValue placeholder="Selecionar tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {tipos.map((tipo) => (
+                  <SelectItem key={tipo.id} value={tipo.id}>
+                    {tipo.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Seção para gerenciar tipos */}
+    <div className="border-t pt-4 flex items-center justify-between">
+      <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)}>
+        <Plus className="h-4 w-4 mr-2" />
+        Novo tipo
+      </Button>
+      
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={onClose}>Cancelar</Button>
+        <Button onClick={handleConfirm} disabled={!allHeadlinesHaveTipo}>
+          Gerar
+        </Button>
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
+```
+
+---
+
+#### 3. Gerenciar Estado de Seleção Individual
+
+Usar um objeto para mapear cada headline ao seu tipo selecionado:
+
+```tsx
+// Estado: { "1-1": "tipo-uuid-1", "1-2": "tipo-uuid-2", ... }
+const [selectedTipos, setSelectedTipos] = useState<Record<string, string>>({});
+
+const handleSelectTipo = (headlineKey: string, tipoId: string) => {
+  setSelectedTipos(prev => ({
+    ...prev,
+    [headlineKey]: tipoId
+  }));
+};
+
+// Verificar se todas têm tipo selecionado
+const allHeadlinesHaveTipo = headlines.every(h => selectedTipos[h.key]);
+```
+
+---
+
+#### 4. Atualizar onConfirm
+
+Retornar array com cada headline e seu tipo:
+
+```tsx
+const handleConfirm = () => {
+  const result = headlines.map(headline => {
+    const tipoId = selectedTipos[headline.key];
+    const tipo = tipos.find(t => t.id === tipoId);
+    return {
+      ...headline,
+      tipoId,
+      tipoNome: tipo?.nome || "",
+      tipoConfig: {
+        prompt: tipo?.prompt || null,
+        template_estrutura: tipo?.template_estrutura || null,
+        config_extra: tipo?.config_extra || null,
+      }
+    };
+  });
+  
+  onConfirm(result);
 };
 ```
 
 ---
 
-#### 3. Atualizar Mentorados.tsx
+#### 5. Atualizar MentoradoRoteirosView
 
-Substituir o conteúdo da `TabsContent value="comunicacao"`:
+Ajustar como os dados são passados e recebidos:
 
 ```tsx
-<TabsContent value="comunicacao" className="space-y-6">
-  <div className="space-y-2">
-    <Label htmlFor="informacoes">Informações do mentorado</Label>
-    <Textarea
-      id="informacoes"
-      value={selectedMentorado?.informacoes_mentorado || ""}
-      onChange={(e) => handleUpdateMentorado("informacoes_mentorado", e.target.value)}
-      placeholder="Informações gerais sobre o mentorado..."
-      rows={4}
-    />
-  </div>
-
-  <div className="space-y-2">
-    <Label htmlFor="apresentacao">Apresentação</Label>
-    <Textarea
-      id="apresentacao"
-      value={selectedMentorado?.apresentacao || ""}
-      onChange={(e) => handleUpdateMentorado("apresentacao", e.target.value)}
-      placeholder="Apresentação do mentorado..."
-      rows={4}
-    />
-  </div>
-</TabsContent>
+<TipoRoteiroDialog
+  open={showTipoRoteiroDialog}
+  onOpenChange={setShowTipoRoteiroDialog}
+  headlines={selectedRoteiroKeys.map(key => {
+    const roteiro = roteirosLocais.get(key);
+    return {
+      key,
+      headline: roteiro?.headline || "",
+      estrutura: roteiro?.estrutura || "",
+    };
+  })}
+  onConfirm={(headlinesComTipo) => {
+    // Agora recebemos array com tipo individual para cada headline
+    console.log("Gerar roteiros:", headlinesComTipo);
+    
+    toast({
+      title: "Roteiros serão gerados!",
+      description: `${headlinesComTipo.length} roteiro(s) com tipos individuais`,
+    });
+    
+    setShowTipoRoteiroDialog(false);
+    setSelectedRoteiroKeys([]);
+  }}
+/>
 ```
 
 ---
@@ -108,13 +244,46 @@ Substituir o conteúdo da `TabsContent value="comunicacao"`:
 
 | Arquivo | Ação |
 |---------|------|
-| **Migração SQL** | Adicionar campos `informacoes_mentorado` e `apresentacao` |
-| `src/hooks/useMentorados.ts` | Adicionar novos campos no tipo |
-| `src/pages/Mentorados.tsx` | Substituir campos da aba Comunicação |
+| `src/components/mentorados/TipoRoteiroDialog.tsx` | Reformular layout e props para seleção individual |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Ajustar passagem de dados e callback |
 
 ---
 
-### Dados Preservados
+### Dados Enviados ao n8n (Novo Formato)
 
-Os campos antigos (`estilo_comum`, `roteiros`, `observacoes`) continuarão existindo no banco de dados caso você precise recuperar os dados depois. Apenas a interface será alterada.
+```json
+[
+  {
+    "key": "1-1",
+    "headline": "3 coisas que ninguém te conta sobre...",
+    "estrutura": "...",
+    "tipoId": "uuid-tipo-1",
+    "tipoNome": "Lista útil",
+    "tipoConfig": {
+      "prompt": "Você é um especialista...",
+      "template_estrutura": "GANCHO:\n..."
+    }
+  },
+  {
+    "key": "1-2",
+    "headline": "Por que você ainda está errando em...",
+    "estrutura": "...",
+    "tipoId": "uuid-tipo-2",
+    "tipoNome": "Defesa de crença",
+    "tipoConfig": {
+      "prompt": "Crie um roteiro...",
+      "template_estrutura": null
+    }
+  }
+]
+```
+
+---
+
+### Comportamento Final
+
+1. **Usuário seleciona headlines** → Checkboxes nos roteiros
+2. **Clica em "Gerar roteiro"** → Abre dialog mostrando CADA headline
+3. **Para cada headline** → Escolhe o tipo de roteiro no dropdown
+4. **Clica em "Gerar"** → Envia cada headline com seu tipo individual para n8n
 
