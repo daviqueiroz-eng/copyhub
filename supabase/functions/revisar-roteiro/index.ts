@@ -26,7 +26,7 @@ serve(async (req) => {
   }
 
   try {
-    const { headline, estrutura, mensagem, historico = [] } = await req.json();
+    const { headline, estrutura, mensagem, historico = [], selecao } = await req.json();
 
     if (!mensagem) {
       return new Response(
@@ -41,7 +41,7 @@ serve(async (req) => {
     }
 
     // Montar contexto do roteiro atual
-    const roteiroContext = `
+    let roteiroContext = `
 ROTEIRO ATUAL:
 
 HEADLINE:
@@ -50,6 +50,17 @@ ${headline || "(vazio)"}
 ESTRUTURA:
 ${estrutura || "(vazio)"}
 `.trim();
+
+    // Se há seleção, adicionar instrução específica ao contexto
+    if (selecao && selecao.texto) {
+      roteiroContext += `
+
+ATENÇÃO: O usuário selecionou este trecho específico do campo "${selecao.campo}":
+"${selecao.texto}"
+
+A instrução do usuário se refere APENAS a este trecho selecionado.
+Altere SOMENTE esta parte, mantendo todo o resto do texto IDÊNTICO.`;
+    }
 
     // Montar mensagens do chat
     const messages = [

@@ -56,11 +56,19 @@ export const RoteiroRevisaoDialog = ({
   const [localHeadline, setLocalHeadline] = useState("");
   const [localEstrutura, setLocalEstrutura] = useState("");
   
+  // Estado para seleção de texto vinculada ao chat
+  const [selectedText, setSelectedText] = useState<{
+    text: string;
+    field: "headline" | "estrutura";
+  } | null>(null);
+  
   // Debounce para salvar alterações diretas
   const directEditTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const headlineRef = useRef<HTMLTextAreaElement>(null);
+  const estruturaRef = useRef<HTMLTextAreaElement>(null);
   
   const currentRoteiro = roteiros[currentIndex];
   const currentKey = currentRoteiro?.key || "";
@@ -92,6 +100,23 @@ export const RoteiroRevisaoDialog = ({
     }, 1000);
   }, [currentKey, onRoteiroChange]);
 
+  // Capturar seleção de texto
+  const handleTextSelection = useCallback((field: "headline" | "estrutura") => {
+    const textarea = field === "headline" ? headlineRef.current : estruturaRef.current;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    
+    if (start !== end) {
+      const selectedValue = textarea.value.substring(start, end).trim();
+      if (selectedValue) {
+        setSelectedText({ text: selectedValue, field });
+        inputRef.current?.focus();
+      }
+    }
+  }, []);
+
   // Limpar timeout ao desmontar
   useEffect(() => {
     return () => {
@@ -113,11 +138,17 @@ export const RoteiroRevisaoDialog = ({
     }
   }, [open, currentIndex]);
 
+  // Limpar seleção ao mudar de roteiro
+  useEffect(() => {
+    setSelectedText(null);
+  }, [currentIndex]);
+
   // Reset ao fechar
   useEffect(() => {
     if (!open) {
       setCurrentIndex(0);
       setInputMessage("");
+      setSelectedText(null);
     }
   }, [open]);
 
@@ -183,8 +214,15 @@ export const RoteiroRevisaoDialog = ({
           estrutura: localEstrutura,
           mensagem: userMessage.content,
           historico,
+          selecao: selectedText ? {
+            texto: selectedText.text,
+            campo: selectedText.field,
+          } : null,
         },
       });
+
+      // Limpar seleção após enviar
+      setSelectedText(null);
 
       if (error) throw error;
 
@@ -316,8 +354,11 @@ export const RoteiroRevisaoDialog = ({
               </h3>
             </div>
             <Textarea
+              ref={headlineRef}
               value={localHeadline}
               onChange={(e) => handleDirectEdit("headline", e.target.value)}
+              onMouseUp={() => handleTextSelection("headline")}
+              onSelect={() => handleTextSelection("headline")}
               placeholder="Digite a headline..."
               className="border-0 rounded-none resize-none min-h-[80px] focus-visible:ring-0 focus-visible:ring-offset-0"
             />
@@ -328,8 +369,11 @@ export const RoteiroRevisaoDialog = ({
               </h3>
             </div>
             <Textarea
+              ref={estruturaRef}
               value={localEstrutura}
               onChange={(e) => handleDirectEdit("estrutura", e.target.value)}
+              onMouseUp={() => handleTextSelection("estrutura")}
+              onSelect={() => handleTextSelection("estrutura")}
               placeholder="Digite a estrutura do roteiro..."
               className="flex-1 border-0 rounded-none resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
@@ -400,33 +444,56 @@ export const RoteiroRevisaoDialog = ({
             </ScrollArea>
 
             {/* Input */}
-            <div className="px-4 py-3 border-t shrink-0">
-              <div className="flex gap-2">
-                <Input
-                  ref={inputRef}
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Digite sua instrução..."
-                  disabled={isLoading}
-                  className="flex-1"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                />
-                <Button
-                  size="icon"
-                  onClick={handleSendMessage}
-                  disabled={!inputMessage.trim() || isLoading}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+            <div className="border-t shrink-0">
+              {/* Indicador de seleção */}
+              {selectedText && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border-b text-xs">
+                  <span className="text-muted-foreground">Seleção:</span>
+                  <span className="font-medium text-amber-700 dark:text-amber-300 truncate max-w-[200px]">
+                    "{selectedText.text}"
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-4 w-4 shrink-0 ml-auto"
+                    onClick={() => setSelectedText(null)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              
+              <div className="px-4 py-3">
+                <div className="flex gap-2">
+                  <Input
+                    ref={inputRef}
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    placeholder={selectedText ? `O que fazer com "${selectedText.text.substring(0, 20)}${selectedText.text.length > 20 ? '...' : ''}"?` : "Digite sua instrução..."}
+                    disabled={isLoading}
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <Button
+                    size="icon"
+                    onClick={handleSendMessage}
+                    disabled={!inputMessage.trim() || isLoading}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {selectedText 
+                    ? "Digite para alterar o trecho selecionado"
+                    : "Selecione texto à esquerda ou digite instrução • ← → para navegar"
+                  }
+                </p>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Edite o texto diretamente ou use o chat • ← → para navegar
-              </p>
             </div>
           </div>
         </div>
