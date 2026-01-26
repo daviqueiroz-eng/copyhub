@@ -11,11 +11,20 @@ import {
   Send, 
   Bot, 
   User,
-  Loader2 
+  Loader2,
+  Undo2,
+  Redo2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+
+interface HistoryEntry {
+  headline: string;
+  estrutura: string;
+  timestamp: Date;
+  source: "manual" | "ai" | "initial";
+}
 
 interface RoteiroParaRevisao {
   key: string;
@@ -62,8 +71,18 @@ export const RoteiroRevisaoDialog = ({
     field: "headline" | "estrutura";
   } | null>(null);
   
+  // Histórico de alterações por roteiro (Undo/Redo)
+  const [historyPerRoteiro, setHistoryPerRoteiro] = useState<Map<string, {
+    entries: HistoryEntry[];
+    currentIndex: number;
+  }>>(new Map());
+  
   // Debounce para salvar alterações diretas
   const directEditTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Ref para evitar salvar histórico durante undo/redo
+  const isUndoRedoRef = useRef(false);
+  // Ref para rastrear se houve edição desde o último save no histórico
+  const hasEditedRef = useRef(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,14 +92,117 @@ export const RoteiroRevisaoDialog = ({
   const currentRoteiro = roteiros[currentIndex];
   const currentKey = currentRoteiro?.key || "";
   const currentMessages = messagesPerRoteiro.get(currentKey) || [];
+  
+  // Histórico do roteiro atual
+  const currentHistory = historyPerRoteiro.get(currentKey);
+  const canUndo = currentHistory ? currentHistory.currentIndex > 0 : false;
+  const canRedo = currentHistory ? currentHistory.currentIndex < currentHistory.entries.length - 1 : false;
+  const undoCount = currentHistory ? currentHistory.currentIndex : 0;
+  const redoCount = currentHistory ? currentHistory.entries.length - 1 - currentHistory.currentIndex : 0;
+
+  // Salvar snapshot no histórico
+  const saveToHistory = useCallback((source: "manual" | "ai" | "initial", headline: string, estrutura: string) => {
+    if (isUndoRedoRef.current) return;
+    
+    setHistoryPerRoteiro(prev => {
+      const newMap = new Map(prev);
+      const current = newMap.get(currentKey) || { entries: [], currentIndex: -1 };
+      
+      // Verificar se o conteúdo é diferente do último
+      const lastEntry = current.entries[current.currentIndex];
+      if (lastEntry && lastEntry.headline === headline && lastEntry.estrutura === estrutura) {
+        return prev; // Não salvar duplicatas
+      }
+      
+      // Remover entradas futuras se estamos no meio do histórico
+      const newEntries = current.entries.slice(0, current.currentIndex + 1);
+      
+      // Adicionar nova entrada
+      newEntries.push({
+        headline,
+        estrutura,
+        timestamp: new Date(),
+        source,
+      });
+      
+      // Limitar a 50 entradas
+      if (newEntries.length > 50) newEntries.shift();
+      
+      newMap.set(currentKey, {
+        entries: newEntries,
+        currentIndex: newEntries.length - 1,
+      });
+      
+      return newMap;
+    });
+    
+    hasEditedRef.current = false;
+  }, [currentKey]);
+
+  // Desfazer (Undo)
+  const handleUndo = useCallback(() => {
+    const history = historyPerRoteiro.get(currentKey);
+    if (!history || history.currentIndex <= 0) return;
+    
+    isUndoRedoRef.current = true;
+    
+    const newIndex = history.currentIndex - 1;
+    const entry = history.entries[newIndex];
+    
+    setLocalHeadline(entry.headline);
+    setLocalEstrutura(entry.estrutura);
+    onRoteiroChange(currentKey, "headline", entry.headline);
+    onRoteiroChange(currentKey, "estrutura", entry.estrutura);
+    
+    setHistoryPerRoteiro(prev => {
+      const newMap = new Map(prev);
+      newMap.set(currentKey, { ...history, currentIndex: newIndex });
+      return newMap;
+    });
+    
+    setTimeout(() => {
+      isUndoRedoRef.current = false;
+    }, 100);
+  }, [currentKey, historyPerRoteiro, onRoteiroChange]);
+
+  // Refazer (Redo)
+  const handleRedo = useCallback(() => {
+    const history = historyPerRoteiro.get(currentKey);
+    if (!history || history.currentIndex >= history.entries.length - 1) return;
+    
+    isUndoRedoRef.current = true;
+    
+    const newIndex = history.currentIndex + 1;
+    const entry = history.entries[newIndex];
+    
+    setLocalHeadline(entry.headline);
+    setLocalEstrutura(entry.estrutura);
+    onRoteiroChange(currentKey, "headline", entry.headline);
+    onRoteiroChange(currentKey, "estrutura", entry.estrutura);
+    
+    setHistoryPerRoteiro(prev => {
+      const newMap = new Map(prev);
+      newMap.set(currentKey, { ...history, currentIndex: newIndex });
+      return newMap;
+    });
+    
+    setTimeout(() => {
+      isUndoRedoRef.current = false;
+    }, 100);
+  }, [currentKey, historyPerRoteiro, onRoteiroChange]);
 
   // Sincronizar estado local com roteiro atual quando mudar de índice
   useEffect(() => {
     if (currentRoteiro) {
       setLocalHeadline(currentRoteiro.headline);
       setLocalEstrutura(currentRoteiro.estrutura);
+      
+      // Salvar estado inicial no histórico se for a primeira vez
+      if (!historyPerRoteiro.has(currentKey)) {
+        saveToHistory("initial", currentRoteiro.headline, currentRoteiro.estrutura);
+      }
     }
-  }, [currentIndex, currentRoteiro?.headline, currentRoteiro?.estrutura]);
+  }, [currentIndex, currentRoteiro?.headline, currentRoteiro?.estrutura, currentKey, historyPerRoteiro, saveToHistory]);
 
   // Handler para edição direta com debounce
   const handleDirectEdit = useCallback((field: "headline" | "estrutura", value: string) => {
@@ -89,6 +211,8 @@ export const RoteiroRevisaoDialog = ({
     } else {
       setLocalEstrutura(value);
     }
+    
+    hasEditedRef.current = true;
     
     // Debounce para salvar
     if (directEditTimeoutRef.current) {
@@ -99,6 +223,13 @@ export const RoteiroRevisaoDialog = ({
       onRoteiroChange(currentKey, field, value);
     }, 1000);
   }, [currentKey, onRoteiroChange]);
+  
+  // Salvar no histórico ao sair do campo (blur)
+  const handleFieldBlur = useCallback(() => {
+    if (hasEditedRef.current && !isUndoRedoRef.current) {
+      saveToHistory("manual", localHeadline, localEstrutura);
+    }
+  }, [saveToHistory, localHeadline, localEstrutura]);
 
   // Capturar seleção de texto
   const handleTextSelection = useCallback((field: "headline" | "estrutura") => {
@@ -157,7 +288,22 @@ export const RoteiroRevisaoDialog = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!open) return;
       
-      // Não capturar se estiver digitando em input ou textarea
+      // Atalhos Undo/Redo (funcionam em qualquer lugar exceto input do chat)
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        const target = e.target as HTMLElement;
+        // Permitir undo/redo nativo apenas no input do chat
+        if (target === inputRef.current) return;
+        
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+        return;
+      }
+      
+      // Não capturar navegação se estiver digitando em input ou textarea
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
         if (e.key === "Enter" && !e.shiftKey && target === inputRef.current && inputMessage.trim()) {
@@ -178,7 +324,7 @@ export const RoteiroRevisaoDialog = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, currentIndex, roteiros.length, inputMessage, onOpenChange]);
+  }, [open, currentIndex, roteiros.length, inputMessage, onOpenChange, handleUndo, handleRedo]);
 
   const handleSendMessage = useCallback(async () => {
     if (!inputMessage.trim() || isLoading || !currentRoteiro) return;
@@ -228,6 +374,9 @@ export const RoteiroRevisaoDialog = ({
 
       // Atualizar roteiro se houve mudança
       if (data.changed) {
+        const newHeadline = data.headlineChanged ? data.headline : localHeadline;
+        const newEstrutura = data.estruturaChanged ? data.estrutura : localEstrutura;
+        
         if (data.headlineChanged) {
           setLocalHeadline(data.headline);
           onRoteiroChange(currentKey, "headline", data.headline);
@@ -236,6 +385,9 @@ export const RoteiroRevisaoDialog = ({
           setLocalEstrutura(data.estrutura);
           onRoteiroChange(currentKey, "estrutura", data.estrutura);
         }
+        
+        // Salvar no histórico após alteração da IA
+        saveToHistory("ai", newHeadline, newEstrutura);
       }
 
       // Adicionar resposta do assistente
@@ -322,7 +474,42 @@ export const RoteiroRevisaoDialog = ({
             </span>
           </div>
           
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            {/* Botões Undo/Redo */}
+            <div className="flex items-center gap-1 mr-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleUndo}
+                disabled={!canUndo}
+                title={`Desfazer (Ctrl+Z)${undoCount > 0 ? ` - ${undoCount} alteração(ões)` : ''}`}
+                className="h-8 w-8"
+              >
+                <Undo2 className="h-4 w-4" />
+                {undoCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
+                    {undoCount}
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRedo}
+                disabled={!canRedo}
+                title={`Refazer (Ctrl+Shift+Z)${redoCount > 0 ? ` - ${redoCount} alteração(ões)` : ''}`}
+                className="h-8 w-8"
+              >
+                <Redo2 className="h-4 w-4" />
+                {redoCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
+                    {redoCount}
+                  </span>
+                )}
+              </Button>
+            </div>
+            
+            {/* Botões de navegação */}
             <Button
               variant="outline"
               size="sm"
@@ -359,6 +546,7 @@ export const RoteiroRevisaoDialog = ({
               onChange={(e) => handleDirectEdit("headline", e.target.value)}
               onMouseUp={() => handleTextSelection("headline")}
               onSelect={() => handleTextSelection("headline")}
+              onBlur={handleFieldBlur}
               placeholder="Digite a headline..."
               className="border-0 rounded-none resize-none min-h-[80px] focus-visible:ring-0 focus-visible:ring-offset-0"
             />
@@ -374,6 +562,7 @@ export const RoteiroRevisaoDialog = ({
               onChange={(e) => handleDirectEdit("estrutura", e.target.value)}
               onMouseUp={() => handleTextSelection("estrutura")}
               onSelect={() => handleTextSelection("estrutura")}
+              onBlur={handleFieldBlur}
               placeholder="Digite a estrutura do roteiro..."
               className="flex-1 border-0 rounded-none resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
