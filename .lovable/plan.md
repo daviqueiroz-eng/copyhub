@@ -1,181 +1,129 @@
 
 
-## Plano: Receber Resposta do Webhook e Popular Estrutura
+## Plano: Corrigir CORS Usando Edge Function
 
-### Objetivo
+### Problema Identificado
 
-Quando o webhook n8n retornar com os roteiros gerados, atualizar o campo "estrutura" de cada headline correspondente na interface.
+O erro **"Failed to fetch"** acontece porque o navegador bloqueia requisições diretas (CORS) para domínios externos como `madarawin.app.n8n.cloud`. 
+
+Requisições do frontend para APIs externas precisam passar por um proxy backend.
 
 ---
 
-### Fluxo Atual vs Novo
+### Solução
+
+Criar uma **Edge Function** que:
+1. Recebe os dados do frontend
+2. Faz a requisição para o webhook n8n (sem restrição de CORS)
+3. Retorna a resposta para o frontend
+
+---
+
+### Arquitetura
 
 ```text
-ATUAL:
-Clica "Gerar" → Envia para webhook → Fecha dialog → FIM
-                      ↓
-            (resposta ignorada)
+ANTES (bloqueado por CORS):
+┌──────────┐     ✖ CORS     ┌──────────┐
+│ Frontend │ ──────────────→ │   n8n    │
+└──────────┘                 └──────────┘
 
-NOVO:
-Clica "Gerar" → Envia para webhook → Aguarda resposta
-                                           ↓
-                              Recebe JSON com roteiros gerados
-                                           ↓
-                              Atualiza campo "estrutura" de cada headline
-                                           ↓
-                              Fecha dialog → Toast de sucesso
-```
-
----
-
-### Formato Esperado da Resposta do n8n
-
-O webhook deve retornar um JSON assim:
-
-```json
-{
-  "roteiros": [
-    {
-      "key": "1-1",
-      "estrutura": "GANCHO:\nVocê sabia que...\n\nDESENVOLVIMENTO:\n..."
-    },
-    {
-      "key": "1-2",
-      "estrutura": "ABERTURA:\nNeste vídeo...\n\nPONTO 1:\n..."
-    }
-  ]
-}
+DEPOIS (funciona):
+┌──────────┐              ┌──────────────┐              ┌──────────┐
+│ Frontend │ ──────────→ │ Edge Function │ ──────────→ │   n8n    │
+└──────────┘   mesma      └──────────────┘   servidor   └──────────┘
+               origem         (proxy)        para servidor
 ```
 
 ---
 
 ### Mudanças Necessárias
 
-#### 1. Modificar TipoRoteiroDialog para Retornar Resposta
+#### 1. Criar Edge Function `n8n-webhook`
 
-Atualizar a interface do callback para incluir os dados retornados pelo webhook:
+Nova função em `supabase/functions/n8n-webhook/index.ts`:
 
-```tsx
-interface TipoRoteiroDialogProps {
-  // ... existentes
-  onConfirm: (
-    headlines: HeadlineComTipo[], 
-    webhookResponse: WebhookResponse | null
-  ) => void;
-}
+```typescript
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-interface WebhookResponse {
-  roteiros: Array<{
-    key: string;
-    estrutura: string;
-  }>;
-}
-```
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
----
-
-#### 2. Capturar Resposta do Webhook
-
-Modificar o `handleConfirm` para ler o retorno do fetch:
-
-```tsx
-const handleConfirm = async () => {
-  // ... preparar payload (existente)
-
-  let webhookResponse: WebhookResponse | null = null;
-
-  try {
-    const response = await fetch("https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    
-    if (response.ok) {
-      webhookResponse = await response.json();
-    }
-  } catch (error) {
-    console.error("Erro ao enviar para webhook:", error);
+serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
   }
 
-  onConfirm(result, webhookResponse);
-};
+  try {
+    const payload = await req.json();
+
+    // Enviar para n8n
+    const n8nResponse = await fetch(
+      "https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data = await n8nResponse.json();
+
+    return new Response(JSON.stringify(data), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
 ```
 
 ---
 
-#### 3. Atualizar MentoradoRoteirosView para Processar Resposta
+#### 2. Atualizar TipoRoteiroDialog
 
-No callback do dialog, popular o campo "estrutura" com os dados retornados:
+Trocar a chamada direta para n8n pela Edge Function:
 
 ```tsx
-<TipoRoteiroDialog
-  // ... props existentes
-  onConfirm={(headlinesComTipo, webhookResponse) => {
-    // Atualizar estrutura de cada roteiro com a resposta
-    if (webhookResponse?.roteiros) {
-      setRoteirosLocais((prev) => {
-        const newMap = new Map(prev);
-        
-        for (const roteiroRetornado of webhookResponse.roteiros) {
-          const existing = newMap.get(roteiroRetornado.key);
-          if (existing) {
-            newMap.set(roteiroRetornado.key, {
-              ...existing,
-              estrutura: roteiroRetornado.estrutura,
-            });
-          }
-        }
-        
-        return newMap;
-      });
+// ANTES
+await fetch("https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload),
+});
 
-      // Disparar save para cada roteiro atualizado
-      webhookResponse.roteiros.forEach(r => {
-        const [guiaNumero, ordem] = r.key.split("-").map(Number);
-        // Aqui poderia chamar o debounced save para persistir
-      });
-    }
+// DEPOIS
+import { supabase } from "@/integrations/supabase/client";
 
-    toast({
-      title: "Roteiros gerados!",
-      description: `${headlinesComTipo.length} roteiro(s) foram gerados e preenchidos`,
-    });
-    
-    setShowTipoRoteiroDialog(false);
-    setSelectedRoteiroKeys([]);
-  }}
-/>
+const { data, error } = await supabase.functions.invoke("n8n-webhook", {
+  body: payload,
+});
+
+if (!error && data) {
+  webhookResponse = data;
+}
 ```
 
 ---
 
-### Arquivos a Modificar
+### Arquivos a Criar/Modificar
 
 | Arquivo | Ação |
 |---------|------|
-| `src/components/mentorados/TipoRoteiroDialog.tsx` | Capturar resposta JSON do webhook e passar no callback |
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Processar resposta e atualizar `roteirosLocais` com as estruturas geradas |
+| `supabase/functions/n8n-webhook/index.ts` | **CRIAR** - Proxy para o webhook n8n |
+| `src/components/mentorados/TipoRoteiroDialog.tsx` | Usar Edge Function ao invés de fetch direto |
 
 ---
 
-### Experiência Final do Usuário
+### Benefícios
 
-1. **Seleciona headlines** → Checkboxes nos roteiros
-2. **Clica "Gerar roteiro"** → Dialog abre
-3. **Escolhe tipo para cada headline** → Dropdown individual
-4. **Clica "Gerar"** → Mostra loading (opcional)
-5. **Webhook processa e retorna** → Estruturas são preenchidas automaticamente
-6. **Dialog fecha** → Toast de sucesso
-7. **Campos "ESTRUTURA" populados** → Usuário vê o roteiro gerado
-
----
-
-### Detalhes Técnicos
-
-O `roteirosLocais` é um `Map<string, RoteiroLocal>` onde:
-- **Chave**: `"guiaNumero-ordem"` (ex: `"1-1"`, `"1-2"`)
-- **Valor**: `{ headline: string, estrutura: string }`
-
-Ao receber a resposta, iteramos pelos roteiros retornados e atualizamos apenas o campo `estrutura`, mantendo o `headline` existente.
+1. **Sem CORS**: Servidor para servidor não tem restrição
+2. **Segurança**: URL do webhook fica no backend, não exposta no frontend
+3. **Logs**: Podemos ver os logs da Edge Function para debug
+4. **Flexibilidade**: Fácil trocar a URL do webhook sem rebuild do frontend
 
