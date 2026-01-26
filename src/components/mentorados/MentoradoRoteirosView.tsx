@@ -1779,25 +1779,25 @@ export const MentoradoRoteirosView = ({
                       key={key}
                       className="group relative mb-8"
                     >
-                      {/* Floating toolbar - appears on hover */}
-                      <div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+                      {/* Floating toolbar - mobile: always visible, horizontal; desktop: hover, vertical */}
+                      <div className="absolute -right-2 sm:-right-14 top-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex flex-row sm:flex-col gap-1 bg-background/90 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none rounded-lg sm:rounded-none p-1 sm:p-0 shadow-md sm:shadow-none border sm:border-0">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-8 w-8 sm:h-7 sm:w-7"
                           onClick={() => handleCopyRoteiro(guiaAtiva, ordem)}
                           title="Copiar roteiro"
                         >
-                          <Copy className="h-3.5 w-3.5" />
+                          <Copy className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          className="h-8 w-8 sm:h-7 sm:w-7 text-destructive hover:text-destructive"
                           onClick={() => handleClearRoteiro(guiaAtiva, ordem)}
                           title="Limpar roteiro"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                         </Button>
                         <TTSConfigPopover
                           rate={rate}
@@ -1811,7 +1811,7 @@ export const MentoradoRoteirosView = ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-8 w-8 sm:h-7 sm:w-7"
                           title={isSpeaking && speakingKeyRef.current === key ? "Parar leitura" : "Ler estrutura"}
                           onClick={() => {
                             if (isSpeaking && speakingKeyRef.current === key) {
@@ -1833,22 +1833,22 @@ export const MentoradoRoteirosView = ({
                           }}
                         >
                           {isSpeaking && speakingKeyRef.current === key ? (
-                            <Square className="h-3.5 w-3.5" />
+                            <Square className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                           ) : (
-                            <Volume2 className="h-3.5 w-3.5" />
+                            <Volume2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                           )}
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-8 w-8 sm:h-7 sm:w-7"
                           title="Gravar com teleprompter"
                           onClick={() => {
                             setTeleprompterText(roteiro.estrutura || "");
                             setShowTeleprompter(true);
                           }}
                         >
-                          <Video className="h-3.5 w-3.5" />
+                          <Video className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                         </Button>
                       </div>
 
