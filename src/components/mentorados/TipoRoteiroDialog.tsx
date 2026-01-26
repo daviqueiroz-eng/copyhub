@@ -43,6 +43,13 @@ export interface HeadlineComTipo {
   };
 }
 
+export interface WebhookResponse {
+  roteiros: Array<{
+    key: string;
+    estrutura: string;
+  }>;
+}
+
 interface TipoRoteiroDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -52,7 +59,7 @@ interface TipoRoteiroDialogProps {
     informacoes_mentorado: string | null;
     apresentacao: string | null;
   };
-  onConfirm: (headlines: HeadlineComTipo[]) => void;
+  onConfirm: (headlines: HeadlineComTipo[], webhookResponse: WebhookResponse | null) => void;
 }
 
 export const TipoRoteiroDialog = ({
@@ -119,18 +126,24 @@ export const TipoRoteiroDialog = ({
       })),
     };
 
-    // Enviar para webhook n8n
+    let webhookResponse: WebhookResponse | null = null;
+
+    // Enviar para webhook n8n e capturar resposta
     try {
-      await fetch("https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros", {
+      const response = await fetch("https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      
+      if (response.ok) {
+        webhookResponse = await response.json();
+      }
     } catch (error) {
       console.error("Erro ao enviar para webhook:", error);
     }
     
-    onConfirm(result);
+    onConfirm(result, webhookResponse);
   };
 
   const handleOpenConfig = (tipo: TipoRoteiro, e: React.MouseEvent) => {

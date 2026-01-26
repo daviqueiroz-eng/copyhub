@@ -2373,11 +2373,49 @@ export const MentoradoRoteirosView = ({
           informacoes_mentorado: currentMentorado?.informacoes_mentorado || null,
           apresentacao: currentMentorado?.apresentacao || null,
         }}
-        onConfirm={(headlinesComTipo) => {
-          toast({
-            title: "Roteiros enviados!",
-            description: `${headlinesComTipo.length} roteiro(s) enviados para geração`,
-          });
+        onConfirm={(headlinesComTipo, webhookResponse) => {
+          // Atualizar estrutura de cada roteiro com a resposta do webhook
+          if (webhookResponse?.roteiros) {
+            setRoteirosLocais((prev) => {
+              const newMap = new Map(prev);
+              
+              for (const roteiroRetornado of webhookResponse.roteiros) {
+                const existing = newMap.get(roteiroRetornado.key);
+                if (existing) {
+                  newMap.set(roteiroRetornado.key, {
+                    ...existing,
+                    estrutura: roteiroRetornado.estrutura,
+                  });
+                }
+              }
+              
+              return newMap;
+            });
+
+            // Persistir as mudanças no banco
+            webhookResponse.roteiros.forEach(r => {
+              const [guiaNumero, ordem] = r.key.split("-").map(Number);
+              const existing = roteirosLocais.get(r.key);
+              upsertRoteiro.mutate({
+                mentoradoId: mentoradoId,
+                guiaNumero: guiaNumero,
+                ordem: ordem,
+                headline: existing?.headline || "",
+                estrutura: r.estrutura,
+              });
+            });
+
+            toast({
+              title: "Roteiros gerados!",
+              description: `${webhookResponse.roteiros.length} roteiro(s) foram gerados e preenchidos`,
+            });
+          } else {
+            toast({
+              title: "Roteiros enviados!",
+              description: `${headlinesComTipo.length} roteiro(s) enviados para geração`,
+            });
+          }
+          
           setShowTipoRoteiroDialog(false);
           setSelectedRoteiroKeys([]);
         }}
