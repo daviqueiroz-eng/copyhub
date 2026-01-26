@@ -2360,22 +2360,19 @@ export const MentoradoRoteirosView = ({
       <TipoRoteiroDialog
         open={showTipoRoteiroDialog}
         onOpenChange={setShowTipoRoteiroDialog}
-        headlinesCount={selectedRoteiroKeys.length}
-        onConfirm={(tipoId, tipoNome) => {
-          // Pegar conteúdo dos roteiros selecionados
-          const roteirosParaGerar = selectedRoteiroKeys.map(key => {
-            const roteiro = roteirosLocais.get(key);
-            return {
-              key,
-              headline: roteiro?.headline || "",
-              estrutura: roteiro?.estrutura || "",
-            };
-          });
-          
-          console.log("Gerar roteiro do tipo:", tipoId, tipoNome, "roteiros:", roteirosParaGerar);
+        headlines={selectedRoteiroKeys.map(key => {
+          const roteiro = roteirosLocais.get(key);
+          return {
+            key,
+            headline: roteiro?.headline || "",
+            estrutura: roteiro?.estrutura || "",
+          };
+        })}
+        onConfirm={(headlinesComTipo) => {
+          console.log("Gerar roteiros com tipos individuais:", headlinesComTipo);
           toast({
-            title: "Roteiro será gerado!",
-            description: `Tipo: ${tipoNome} • ${selectedRoteiroKeys.length} roteiro(s)`,
+            title: "Roteiros serão gerados!",
+            description: `${headlinesComTipo.length} roteiro(s) com tipos individuais`,
           });
           setShowTipoRoteiroDialog(false);
           setSelectedRoteiroKeys([]); // Limpar seleção
