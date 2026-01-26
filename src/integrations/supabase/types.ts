@@ -1855,24 +1855,33 @@ export type Database = {
       }
       tipos_roteiro: {
         Row: {
+          config_extra: Json | null
           created_at: string | null
           descricao: string | null
           id: string
           nome: string
+          prompt: string | null
+          template_estrutura: string | null
           user_id: string
         }
         Insert: {
+          config_extra?: Json | null
           created_at?: string | null
           descricao?: string | null
           id?: string
           nome: string
+          prompt?: string | null
+          template_estrutura?: string | null
           user_id: string
         }
         Update: {
+          config_extra?: Json | null
           created_at?: string | null
           descricao?: string | null
           id?: string
           nome?: string
+          prompt?: string | null
+          template_estrutura?: string | null
           user_id?: string
         }
         Relationships: []

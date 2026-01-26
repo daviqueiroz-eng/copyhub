@@ -1,11 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import type { Json } from "@/integrations/supabase/types";
 
-interface TipoRoteiro {
+export interface TipoRoteiro {
   id: string;
   nome: string;
   descricao: string | null;
+  prompt: string | null;
+  template_estrutura: string | null;
+  config_extra: Json | null;
   user_id: string;
   created_at: string;
 }
@@ -37,6 +41,30 @@ export const useCreateTipoRoteiro = () => {
       const { error } = await supabase
         .from("tipos_roteiro")
         .insert({ ...data, user_id: user?.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tipos-roteiro"] });
+    },
+  });
+};
+
+export const useUpdateTipoRoteiro = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      id: string;
+      nome?: string;
+      prompt?: string | null;
+      template_estrutura?: string | null;
+      config_extra?: Json | null;
+    }) => {
+      const { id, ...updates } = data;
+      const { error } = await supabase
+        .from("tipos_roteiro")
+        .update(updates)
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
