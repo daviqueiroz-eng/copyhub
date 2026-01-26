@@ -58,6 +58,7 @@ import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
 import { MentoradoHeadlinesList } from "./MentoradoHeadlinesList";
+import { TipoRoteiroDialog } from "./TipoRoteiroDialog";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
 import { TeleprompterDialog } from "./TeleprompterDialog";
@@ -231,6 +232,10 @@ export const MentoradoRoteirosView = ({
   // Estado para teleprompter
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [teleprompterText, setTeleprompterText] = useState("");
+  
+  // Estado para seleção de headlines e tipo de roteiro
+  const [selectedHeadlineIds, setSelectedHeadlineIds] = useState<string[]>([]);
+  const [showTipoRoteiroDialog, setShowTipoRoteiroDialog] = useState(false);
 
   // Buscar categorias do avatar do mentorado atual
   const currentMentorado = mentorados.find(m => m.id === mentoradoId);
@@ -1961,7 +1966,11 @@ export const MentoradoRoteirosView = ({
               setShowFeedbackDialog(true);
             }}
           />
-          <MentoradoHeadlinesList mentoradoId={mentoradoId} />
+          <MentoradoHeadlinesList 
+            mentoradoId={mentoradoId}
+            selectedHeadlines={selectedHeadlineIds}
+            onSelectionChange={setSelectedHeadlineIds}
+          />
         </div>
       </div>
       
@@ -1993,7 +2002,11 @@ export const MentoradoRoteirosView = ({
                 setShowFeedbackDialog(true);
               }}
             />
-            <MentoradoHeadlinesList mentoradoId={mentoradoId} />
+            <MentoradoHeadlinesList 
+              mentoradoId={mentoradoId}
+              selectedHeadlines={selectedHeadlineIds}
+              onSelectionChange={setSelectedHeadlineIds}
+            />
           </div>
         </SheetContent>
       </Sheet>
@@ -2315,6 +2328,36 @@ export const MentoradoRoteirosView = ({
           </div>
         </div>
       )}
+
+      {/* Botão flutuante para gerar roteiro quando há headlines selecionadas */}
+      {selectedHeadlineIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <Button 
+            className="gap-2 shadow-lg"
+            onClick={() => setShowTipoRoteiroDialog(true)}
+          >
+            <FileEdit className="h-4 w-4" />
+            Gerar roteiro ({selectedHeadlineIds.length})
+          </Button>
+        </div>
+      )}
+
+      {/* Dialog para seleção de tipo de roteiro */}
+      <TipoRoteiroDialog
+        open={showTipoRoteiroDialog}
+        onOpenChange={setShowTipoRoteiroDialog}
+        headlinesCount={selectedHeadlineIds.length}
+        onConfirm={(tipoId, tipoNome) => {
+          // TODO: Implementar lógica de geração de roteiro
+          console.log("Gerar roteiro do tipo:", tipoId, tipoNome, "para:", selectedHeadlineIds);
+          toast({
+            title: "Roteiro será gerado!",
+            description: `Tipo: ${tipoNome} • ${selectedHeadlineIds.length} headline(s)`,
+          });
+          setShowTipoRoteiroDialog(false);
+          setSelectedHeadlineIds([]);
+        }}
+      />
     </div>
   );
 };
