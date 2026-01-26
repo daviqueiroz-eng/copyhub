@@ -2,10 +2,17 @@ import { useState, useCallback, useRef, useEffect } from "react";
 
 type RecordingState = "idle" | "recording" | "stopped";
 type FacingMode = "user" | "environment";
+type VideoQuality = "720p" | "1080p" | "4k";
 
 interface UseVideoRecorderOptions {
   onError?: (error: string) => void;
 }
+
+const QUALITY_SETTINGS = {
+  "720p": { width: 1280, height: 720 },
+  "1080p": { width: 1920, height: 1080 },
+  "4k": { width: 3840, height: 2160 },
+};
 
 export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
   const [state, setState] = useState<RecordingState>("idle");
@@ -14,6 +21,8 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
   const [isLoadingCamera, setIsLoadingCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<FacingMode>("user");
+  const [videoQuality, setVideoQuality] = useState<VideoQuality>("1080p");
+  const [frameRate, setFrameRate] = useState<number>(30);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -110,6 +119,43 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
       onErrorRef.current?.(errorMessage);
       setIsLoadingCamera(false);
     }
+  }, []);
+  
+  // Aplicar configurações de qualidade e frame rate
+  const applyVideoSettings = useCallback(async (quality: VideoQuality, fps: number) => {
+    if (!streamRef.current) return false;
+    
+    const videoTrack = streamRef.current.getVideoTracks()[0];
+    if (!videoTrack) return false;
+    
+    const { width, height } = QUALITY_SETTINGS[quality];
+    
+    try {
+      await videoTrack.applyConstraints({
+        width: { ideal: width },
+        height: { ideal: height },
+        frameRate: { ideal: fps },
+      });
+      
+      setVideoQuality(quality);
+      setFrameRate(fps);
+      return true;
+    } catch (error) {
+      console.error("Erro ao aplicar configurações:", error);
+      onErrorRef.current?.("Configuração não suportada pelo dispositivo");
+      return false;
+    }
+  }, []);
+  
+  // Obter capacidades da câmera
+  const getCameraCapabilities = useCallback(() => {
+    if (!streamRef.current) return null;
+    
+    const videoTrack = streamRef.current.getVideoTracks()[0];
+    if (videoTrack && typeof videoTrack.getCapabilities === 'function') {
+      return videoTrack.getCapabilities();
+    }
+    return null;
   }, []);
   
   // Parar câmera - função estável sem dependências
@@ -216,6 +262,8 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
     isRecording: state === "recording",
     hasRecording: !!recordedBlob,
     facingMode,
+    videoQuality,
+    frameRate,
     
     // Actions
     startCamera,
@@ -225,5 +273,7 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
     downloadVideo,
     clearRecording,
     switchCamera,
+    applyVideoSettings,
+    getCameraCapabilities,
   };
 }

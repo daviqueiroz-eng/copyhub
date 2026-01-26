@@ -23,7 +23,14 @@ import {
   AlertCircle,
   SwitchCamera,
   ExternalLink,
+  Settings,
 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useTeleprompter } from "@/hooks/useTeleprompter";
 import { useVideoRecorder } from "@/hooks/useVideoRecorder";
 import { toast } from "@/hooks/use-toast";
@@ -71,6 +78,8 @@ export function TeleprompterDialog({
     isRecording,
     hasRecording,
     facingMode,
+    videoQuality,
+    frameRate,
     startCamera,
     stopCamera,
     startRecording,
@@ -78,6 +87,7 @@ export function TeleprompterDialog({
     downloadVideo,
     clearRecording,
     switchCamera,
+    applyVideoSettings,
   } = useVideoRecorder({
     onError: (error) => {
       toast({
@@ -88,64 +98,196 @@ export function TeleprompterDialog({
     },
   });
   
-  // Função para abrir modo flutuante
+  // Handlers de qualidade
+  const handleQualityChange = async (quality: "720p" | "1080p" | "4k") => {
+    const success = await applyVideoSettings(quality, frameRate);
+    if (success) {
+      toast({ title: "Qualidade alterada", description: `Agora gravando em ${quality}` });
+    }
+  };
+  
+  const handleFrameRateChange = async (fps: number) => {
+    const success = await applyVideoSettings(videoQuality, fps);
+    if (success) {
+      toast({ title: "Frame rate alterado", description: `Agora gravando em ${fps} fps` });
+    }
+  };
+  
+  // Função para abrir modo flutuante avançado
   const openFloatingMode = () => {
     const content = localText.replace(/\n/g, "<br>");
-    const popup = window.open("", "teleprompter", "width=400,height=600,resizable=yes");
+    const popup = window.open("", "teleprompter", "width=350,height=500,resizable=yes,scrollbars=no");
     if (popup) {
-      popup.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Teleprompter</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-              * { box-sizing: border-box; margin: 0; padding: 0; }
-              html, body { height: 100%; }
-              body { 
-                background: rgba(0,0,0,0.9); 
-                color: white; 
-                font-size: ${fontSize}px;
-                padding: 24px;
-                min-height: 100vh;
-                line-height: 1.6;
-                font-family: system-ui, -apple-system, sans-serif;
-                overflow-y: auto;
-              }
-              .controls {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                padding: 16px;
-                background: rgba(0,0,0,0.95);
-                display: flex;
-                gap: 8px;
-                justify-content: center;
-              }
-              .btn {
-                padding: 12px 24px;
-                border-radius: 8px;
-                border: none;
-                font-size: 16px;
-                cursor: pointer;
-                font-weight: 500;
-              }
-              .btn-primary { background: #8b5cf6; color: white; }
-              .btn-secondary { background: #374151; color: white; }
-              .content { padding-bottom: 80px; }
-            </style>
-          </head>
-          <body>
-            <div class="content">${content}</div>
-            <div class="controls">
-              <button class="btn btn-secondary" onclick="window.close()">Fechar</button>
-            </div>
-          </body>
-        </html>
-      `);
+      popup.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Teleprompter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { 
+      height: 100%; 
+      overflow: hidden;
+      background: transparent;
+    }
+    .container {
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 16px;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .close-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .close-btn:hover { background: rgba(255,255,255,0.3); }
+    .text-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      color: white;
+      font-size: ${fontSize}px;
+      line-height: 1.6;
+      -webkit-overflow-scrolling: touch;
+    }
+    .controls {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .control-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .ctrl-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .ctrl-btn:hover { background: rgba(255,255,255,0.25); }
+    .ctrl-btn:active { background: rgba(255,255,255,0.35); }
+    .ctrl-btn.primary {
+      width: 56px;
+      height: 56px;
+      background: rgba(139, 92, 246, 0.8);
+      font-size: 22px;
+    }
+    .ctrl-btn.primary:hover { background: rgba(139, 92, 246, 1); }
+    .ctrl-btn.active { background: #8b5cf6 !important; }
+    .speed-indicator {
+      text-align: center;
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <button class="close-btn" onclick="window.close()">✕</button>
+      <div style="color: rgba(255,255,255,0.7); font-size: 13px; font-weight: 500;">Teleprompter</div>
+      <div style="width: 28px;"></div>
+    </div>
+    <div class="text-area" id="textArea">${content}</div>
+    <div class="controls">
+      <div class="control-row">
+        <button class="ctrl-btn" onclick="skip(-100)" title="Voltar">⏪</button>
+        <button class="ctrl-btn" onclick="slower()" title="Mais lento">−</button>
+        <button class="ctrl-btn primary" id="playBtn" onclick="togglePlay()" title="Play/Pause">▶</button>
+        <button class="ctrl-btn" onclick="faster()" title="Mais rápido">+</button>
+        <button class="ctrl-btn" onclick="skip(100)" title="Avançar">⏩</button>
+      </div>
+      <div class="speed-indicator" id="speedIndicator">Velocidade: ${scrollSpeed.toFixed(1)}x</div>
+    </div>
+  </div>
+  <script>
+    const textArea = document.getElementById('textArea');
+    const playBtn = document.getElementById('playBtn');
+    const speedIndicator = document.getElementById('speedIndicator');
+    let isPlaying = false;
+    let speed = ${scrollSpeed};
+    let animationId = null;
+    let lastTime = 0;
+    
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? '⏸' : '▶';
+      playBtn.classList.toggle('active', isPlaying);
+      if (isPlaying) {
+        lastTime = 0;
+        animationId = requestAnimationFrame(scroll);
+      } else if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    }
+    
+    function scroll(time) {
+      if (!isPlaying) return;
+      if (lastTime === 0) lastTime = time;
+      const delta = (time - lastTime) / 1000;
+      lastTime = time;
+      textArea.scrollTop += speed * 40 * delta;
+      if (textArea.scrollTop + textArea.clientHeight >= textArea.scrollHeight - 5) {
+        isPlaying = false;
+        playBtn.textContent = '▶';
+        playBtn.classList.remove('active');
+        return;
+      }
+      animationId = requestAnimationFrame(scroll);
+    }
+    
+    function skip(amount) {
+      textArea.scrollTop += amount;
+    }
+    
+    function slower() {
+      speed = Math.max(0.5, speed - 0.25);
+      updateSpeed();
+    }
+    
+    function faster() {
+      speed = Math.min(5, speed + 0.25);
+      updateSpeed();
+    }
+    
+    function updateSpeed() {
+      speedIndicator.textContent = 'Velocidade: ' + speed.toFixed(2) + 'x';
+    }
+  </script>
+</body>
+</html>`);
       popup.document.close();
-      // Fechar dialog principal para usar câmera nativa
       handleClose();
     } else {
       toast({
@@ -401,6 +543,61 @@ export function TeleprompterDialog({
                   <ExternalLink className="h-4 w-4" />
                   {isMobile ? "" : "Modo flutuante"}
                 </Button>
+                
+                {/* Configurações de câmera */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <Settings className="h-4 w-4" />
+                      {isMobile ? "" : "Qualidade"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64" align="start">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Qualidade do vídeo</Label>
+                        <RadioGroup 
+                          value={videoQuality} 
+                          onValueChange={(v) => handleQualityChange(v as "720p" | "1080p" | "4k")}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="720p" id="720p" />
+                            <Label htmlFor="720p" className="font-normal">720p (HD)</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="1080p" id="1080p" />
+                            <Label htmlFor="1080p" className="font-normal">1080p (Full HD)</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="4k" id="4k" />
+                            <Label htmlFor="4k" className="font-normal">4K (Ultra HD)</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Frame rate</Label>
+                        <RadioGroup 
+                          value={String(frameRate)} 
+                          onValueChange={(v) => handleFrameRateChange(Number(v))}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="24" id="24fps" />
+                            <Label htmlFor="24fps" className="font-normal">24 fps (Cinema)</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="30" id="30fps" />
+                            <Label htmlFor="30fps" className="font-normal">30 fps (Padrão)</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="60" id="60fps" />
+                            <Label htmlFor="60fps" className="font-normal">60 fps (Suave)</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
               
               {/* Botões de ação principais */}
