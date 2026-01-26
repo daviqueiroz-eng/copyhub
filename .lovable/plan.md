@@ -1,200 +1,151 @@
 
-## Plano: Modo Revisão com Navegação e Chat de IA
+## Plano: Painel de Progresso Lateral + Edição Direta no Modo Revisão
 
 ### Objetivo
 
-Criar um modo de revisão em tela cheia onde o usuário vê um roteiro por vez, com um chat de IA ao lado que permite fazer ajustes pontuais no texto. O chat deve seguir as instruções do usuário ao pé da letra, alterando apenas o que foi solicitado.
+Implementar dois ajustes:
+1. **Geração em massa**: Mover o progresso para o lado direito, permitindo que o usuário já edite os roteiros enquanto a geração acontece
+2. **Modo revisão**: Permitir edição direta do texto (além do chat de IA) e adicionar botões de navegação visíveis
 
 ---
 
-### Interface Proposta
+### Ajuste 1: Progresso Lateral Durante Geração
+
+#### Comportamento Atual
+- Quando clica "Gerar", abre um Dialog modal que bloqueia toda a tela
+- O usuário precisa esperar todos os roteiros serem gerados
+
+#### Novo Comportamento
+- Ao confirmar geração, o Dialog fecha
+- Um painel fixo aparece no lado direito da tela mostrando o progresso
+- O usuário continua editando os roteiros normalmente
+- Cada roteiro gerado aparece em tempo real no campo correspondente
+
+#### Mudanças Técnicas
+
+**MentoradoRoteirosView.tsx:**
+- Adicionar novo estado para controlar o painel de progresso lateral
+- Mover a lógica de processamento da fila do TipoRoteiroDialog para o MentoradoRoteirosView
+- Renderizar um painel fixo à direita durante o processamento
+
+```typescript
+// Novos estados
+const [bulkProgress, setBulkProgress] = useState<{
+  isProcessing: boolean;
+  total: number;
+  current: number;
+  currentKey: string;
+  results: Array<{key: string; success: boolean; error?: string}>;
+} | null>(null);
+```
+
+**TipoRoteiroDialog.tsx:**
+- Remover a lógica de processamento da fila interna
+- Ao confirmar, apenas retornar a lista de headlines com tipos selecionados
+- Fechar o dialog imediatamente após confirmar
+
+**Novo componente: BulkProgressPanel.tsx**
+- Painel lateral flutuante à direita
+- Mostra barra de progresso e status de cada roteiro
+- Botão para minimizar/fechar
+- Não bloqueia a edição dos roteiros
+
+#### Interface do Painel
 
 ```text
-+-----------------------------------------------------------------------------+
-|  [<] Roteiro 3/10                                    [X Fechar]             |
-+-----------------------------------------------------------------------------+
-|                                      |                                      |
-|     HEADLINE 03:                     |   Chat de Revisão                    |
-|     [Texto da headline aqui...]      |                                      |
-|                                      |   +------------------------------+   |
-|     ESTRUTURA 03:                    |   |                              |   |
-|     [                                |   |  Assistente IA               |   |
-|      Texto da estrutura              |   |  -------------------------   |   |
-|      do roteiro com todo             |   |  Em que posso ajudar na      |   |
-|      conteúdo completo               |   |  revisão deste roteiro?      |   |
-|      ...                             |   |                              |   |
-|     ]                                |   |  Você (10:32)                |   |
-|                                      |   |  -------------------------   |   |
-|                                      |   |  Troca "demais" por          |   |
-|                                      |   |  "muito bom"                 |   |
-|                                      |   |                              |   |
-|                                      |   |  Assistente IA               |   |
-|                                      |   |  -------------------------   |   |
-|                                      |   |  Feito! Alterei apenas       |   |
-|                                      |   |  essa palavra.               |   |
-|                                      |   +------------------------------+   |
-|                                      |                                      |
-|                                      |   [_____________________] [Enviar]   |
-+-----------------------------------------------------------------------------+
-|        [< Anterior]                                [Proximo >]              |
-+-----------------------------------------------------------------------------+
++------------------------------------------+
+|  Gerando Roteiros          [- Minimizar] |
++------------------------------------------+
+|  Progresso: 3/5                    60%   |
+|  ████████████████████░░░░░░░░░░░░░░░░░  |
+|                                          |
+|  ✓ 1-2: Concluído                       |
+|  ✓ 1-3: Concluído                       |
+|  ⏳ 1-4: Processando...                  |
+|  ○ 1-5: Aguardando                      |
+|  ○ 1-6: Aguardando                      |
++------------------------------------------+
 ```
 
 ---
 
-### Fluxo de Uso
+### Ajuste 2: Edição Direta no Modo Revisão
 
-1. Usuario clica em Play no timer "Revisar"
-2. Abre tela cheia do primeiro roteiro com estrutura preenchida
-3. Ao lado, chat de IA com contexto do roteiro atual
-4. Usuario digita instrucao (ex: "troca 'demais' por 'muito bom'")
-5. IA faz a alteracao minima solicitada
-6. Texto do roteiro atualiza em tempo real
-7. Usuario navega com botoes ou setas do teclado
-8. Ao fechar, todas alteracoes ja estao salvas
+#### Comportamento Atual
+- O texto do roteiro é exibido como texto estático (não editável)
+- Alterações só podem ser feitas via chat de IA
+
+#### Novo Comportamento
+- Headline e Estrutura são campos editáveis (Textarea)
+- Alterações são salvas automaticamente (debounce)
+- Botões "Anterior" e "Próximo" continuam funcionando
+- Chat de IA permanece disponível para ajustes pontuais
+
+#### Mudanças Técnicas
+
+**RoteiroRevisaoDialog.tsx:**
+- Trocar o texto estático por componentes Textarea
+- Adicionar debounce para salvar alterações
+- Manter sincronização com o estado pai via onRoteiroChange
+
+```typescript
+// Lado esquerdo - Roteiro editável
+<div className="flex-1 flex flex-col border-b lg:border-b-0 lg:border-r overflow-hidden">
+  <div className="px-4 py-2 bg-muted/50 border-b shrink-0">
+    <h3 className="font-semibold text-sm">Headline {ordem}</h3>
+  </div>
+  <Textarea
+    value={currentRoteiro.headline}
+    onChange={(e) => handleDirectEdit("headline", e.target.value)}
+    placeholder="Digite a headline..."
+    className="border-0 rounded-none resize-none min-h-[60px]"
+  />
+  
+  <div className="px-4 py-2 bg-muted/50 border-b shrink-0">
+    <h3 className="font-semibold text-sm">Estrutura {ordem}</h3>
+  </div>
+  <Textarea
+    value={currentRoteiro.estrutura}
+    onChange={(e) => handleDirectEdit("estrutura", e.target.value)}
+    placeholder="Digite a estrutura..."
+    className="flex-1 border-0 rounded-none resize-none"
+  />
+</div>
+```
 
 ---
 
-### Mudancas Tecnicas
+### Arquivos a Modificar
 
-#### 1. Novo Componente: RoteiroRevisaoDialog.tsx
-
-**Props:**
-```typescript
-interface RoteiroRevisaoDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  roteiros: Array<{
-    key: string;
-    headline: string;
-    estrutura: string;
-  }>;
-  onRoteiroChange: (key: string, field: "headline" | "estrutura", value: string) => void;
-  mentoradoNome: string;
-  inteligenciaGlobal?: string;
-  inteligenciaMentorado?: string;
-}
-```
-
-**Estados:**
-```typescript
-const [currentIndex, setCurrentIndex] = useState(0);
-const [messages, setMessages] = useState<Message[]>([]);
-const [inputMessage, setInputMessage] = useState("");
-const [isLoading, setIsLoading] = useState(false);
-```
-
-**Layout:**
-- Dialog fullscreen (ou Sheet)
-- Lado esquerdo: texto do roteiro atual (headline + estrutura)
-- Lado direito: chat de IA
-- Footer: navegacao (< Anterior | Proximo >)
-- Header: indicador de posicao (Roteiro 3/10) + botao fechar
-
-#### 2. Nova Edge Function: revisar-roteiro
-
-**Endpoint:** `supabase/functions/revisar-roteiro/index.ts`
-
-**Comportamento:**
-- Recebe: roteiro atual (headline + estrutura), mensagem do usuario, historico do chat
-- Usa Lovable AI (google/gemini-3-flash-preview)
-- Prompt: "Voce e um assistente de revisao. Faca APENAS as alteracoes solicitadas, sem mudar nada alem. Retorne o texto completo atualizado."
-- Retorna: texto atualizado + mensagem de confirmacao
-
-**Estrutura do prompt:**
-```text
-Sistema: Voce e um assistente de revisao de roteiros.
-
-REGRAS ABSOLUTAS:
-1. Faca SOMENTE a alteracao solicitada pelo usuario
-2. NAO mude nada alem do que foi pedido
-3. Mantenha toda formatacao, quebras de linha, pontuacao
-4. Se a instrucao for ambigua, pergunte para esclarecer
-5. Retorne sempre o texto COMPLETO atualizado
-
-Roteiro atual:
-HEADLINE: {headline}
-ESTRUTURA: {estrutura}
-```
-
-**Formato de resposta (tool calling):**
-```typescript
-tools: [{
-  type: "function",
-  function: {
-    name: "update_roteiro",
-    parameters: {
-      type: "object",
-      properties: {
-        headline: { type: "string" },
-        estrutura: { type: "string" },
-        explanation: { type: "string" }
-      }
-    }
-  }
-}]
-```
-
-#### 3. Integracao em MentoradoRoteirosView.tsx
-
-**Trigger:** Quando usuario clica play no timer "Revisar"
-
-**Preparacao:**
-- Filtrar roteiros que tem estrutura preenchida
-- Passar lista para o dialog
-- Passar inteligencia global e do mentorado para contexto
-
-**Callback onRoteiroChange:**
-- Atualizar roteirosLocais
-- Disparar debounce de save no banco
-
-#### 4. Navegacao por Teclado
-
-- Setas esquerda/direita: navegar entre roteiros
-- Esc: fechar dialog
-- Enter (no input): enviar mensagem
-
----
-
-### Arquivos a Criar/Modificar
-
-| Arquivo | Acao |
+| Arquivo | Ação |
 |---------|------|
-| `src/components/mentorados/RoteiroRevisaoDialog.tsx` | CRIAR - Dialog fullscreen de revisao |
-| `supabase/functions/revisar-roteiro/index.ts` | CRIAR - Edge function para IA de revisao |
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | MODIFICAR - Adicionar trigger e integracao |
-| `supabase/config.toml` | MODIFICAR - Registrar nova edge function |
+| `src/components/mentorados/TipoRoteiroDialog.tsx` | Simplificar para apenas selecionar tipos e retornar dados |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Adicionar lógica de fila e painel de progresso lateral |
+| `src/components/mentorados/RoteiroRevisaoDialog.tsx` | Trocar texto estático por Textareas editáveis |
+| `src/components/mentorados/BulkProgressPanel.tsx` | CRIAR - Componente do painel de progresso lateral |
 
 ---
 
-### Comportamento do Chat de IA
+### Fluxo de Geração em Massa (Atualizado)
 
-1. **Contexto persistente por roteiro**
-   - Historico do chat e especifico de cada roteiro
-   - Ao navegar, carrega historico do roteiro atual
-
-2. **Alteracoes minimas**
-   - IA so altera o que foi pedido
-   - Confirma a alteracao feita
-   - Se nao entender, pergunta
-
-3. **Atualizacao em tempo real**
-   - Texto do roteiro atualiza assim que IA responde
-   - Salvamento automatico com debounce
-
-4. **Exemplos de comandos:**
-   - "Troca 'demais' por 'muito bom'"
-   - "Remove a ultima frase"
-   - "Adiciona um CTA no final"
-   - "Deixa mais curto"
+1. Usuário seleciona roteiros (checkbox)
+2. Clica em "Gerar roteiro"
+3. Dialog abre para selecionar tipos
+4. Usuário confirma tipos
+5. Dialog FECHA imediatamente
+6. Painel de progresso aparece à direita
+7. Usuário pode editar outros roteiros enquanto geração acontece
+8. Cada roteiro gerado aparece no campo em tempo real
+9. Ao finalizar, painel mostra resumo e pode ser fechado
 
 ---
 
-### Detalhes da UI
+### Fluxo de Revisão (Atualizado)
 
-- **Indicador de posicao:** "Roteiro 3/10" no header
-- **Botoes de navegacao:** Desabilitados nos extremos (primeiro/ultimo)
-- **Texto do roteiro:** ScrollArea com fonte grande para leitura
-- **Chat:** Estilo bolhas de mensagem, scroll automatico
-- **Loading:** Skeleton no chat enquanto IA processa
-- **Mobile:** Layout empilhado (roteiro em cima, chat embaixo)
+1. Usuário clica play no timer "Revisar"
+2. Abre tela cheia do primeiro roteiro
+3. Lado esquerdo: campos EDITÁVEIS (headline + estrutura)
+4. Lado direito: chat de IA para ajustes pontuais
+5. Botões "Anterior" / "Próximo" para navegar
+6. Alterações são salvas automaticamente (1s debounce)
+7. Setas do teclado também navegam entre roteiros
