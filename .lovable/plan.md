@@ -1,433 +1,160 @@
 
 
-## Plano: Checkboxes nas Headlines + Seleção de Tipo de Roteiro
+## Plano: Checkbox ao Lado de Cada Headline
 
-### Visão Geral
+### O Que Será Feito
 
-Implementar um sistema onde você pode:
-1. **Selecionar headlines** usando checkboxes
-2. Ver um **botão "Gerar roteiro"** quando houver seleção
-3. Escolher o **tipo de roteiro** em um dialog
-4. **Cadastrar seus próprios tipos** de roteiro
+Baseado na imagem de referência, vou adicionar:
+
+1. **Checkbox ao lado do label "HEADLINE XX:"** em cada roteiro
+2. **Título "Gerar roteiro" que aparece no topo** quando algum roteiro é selecionado
+3. Quando clicar em "Gerar", abre o dialog de seleção de tipo
 
 ---
 
-### Parte 1: Nova Tabela no Banco de Dados
+### Visual Final (igual à imagem)
 
-Criar tabela `tipos_roteiro` para que você cadastre seus tipos:
-
-```sql
-CREATE TABLE public.tipos_roteiro (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  nome TEXT NOT NULL,
-  descricao TEXT,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- RLS para cada usuário ver apenas seus tipos
-ALTER TABLE public.tipos_roteiro ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Usuários veem seus tipos" ON public.tipos_roteiro
-  FOR ALL USING (auth.uid() = user_id);
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  Gerar roteiro                    ← Aparece quando há seleção   │
+│                                                                 │
+│  ☐  HEADLINE 01:                                                │
+│      livros que todo jovem precisa ler em 2025 se quiser...     │
+│                                                                 │
+│      ESTRUTURA 01:                                              │
+│      Digite a estrutura do roteiro... (use / para comandos)     │
+│                                                                 │
+│  ────────────────────────────────────────────────────────────   │
+│                                                                 │
+│  ☐  HEADLINE 02:                                                │
+│      Digite a headline... (use / para comandos)                 │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Parte 2: Hook para Tipos de Roteiro
+### Mudanças Técnicas
 
-Criar `src/hooks/useTiposRoteiro.ts`:
+#### 1. Adicionar Estado para Roteiros Selecionados
 
 ```tsx
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-
-export const useTiposRoteiro = () => {
-  const { user } = useAuth();
-  
-  return useQuery({
-    queryKey: ["tipos-roteiro", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tipos_roteiro")
-        .select("*")
-        .order("created_at", { ascending: true });
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
-};
-
-export const useCreateTipoRoteiro = () => {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-
-  return useMutation({
-    mutationFn: async (data: { nome: string; descricao?: string }) => {
-      const { error } = await supabase
-        .from("tipos_roteiro")
-        .insert({ ...data, user_id: user?.id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tipos-roteiro"] });
-    },
-  });
-};
-
-export const useDeleteTipoRoteiro = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("tipos_roteiro")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tipos-roteiro"] });
-    },
-  });
-};
+// Mudar de IDs de headlines para keys de roteiros (ex: "1-1", "1-2")
+const [selectedRoteiroKeys, setSelectedRoteiroKeys] = useState<string[]>([]);
 ```
 
----
+#### 2. Modificar o Layout de Cada Roteiro
 
-### Parte 3: Atualizar MentoradoHeadlinesList
+Adicionar checkbox ao lado do label HEADLINE:
 
-Adicionar checkboxes e passar seleção para o componente pai:
-
-**Props atualizadas:**
 ```tsx
-interface MentoradoHeadlinesListProps {
-  mentoradoId: string;
-  selectedHeadlines: string[];  // IDs selecionados
-  onSelectionChange: (ids: string[]) => void;  // Callback
-}
-```
+{/* ANTES */}
+<div className="mb-2">
+  <span className="font-poppins font-bold text-[#B8860B] text-base">
+    HEADLINE {String(ordem).padStart(2, "0")}:
+  </span>
+  {/* ... input */}
+</div>
 
-**Renderização com checkbox:**
-```tsx
-<div className="flex items-start gap-2 p-2 bg-muted/50 rounded-md">
-  <Checkbox
-    checked={selectedHeadlines.includes(headline.id)}
-    onCheckedChange={(checked) => {
-      if (checked) {
-        onSelectionChange([...selectedHeadlines, headline.id]);
-      } else {
-        onSelectionChange(selectedHeadlines.filter(id => id !== headline.id));
-      }
-    }}
-    className="mt-0.5"
-  />
-  <div className="flex-1">
-    <p className="text-sm pr-12 leading-snug">{headline.headline}</p>
-    {/* ... resto */}
+{/* DEPOIS */}
+<div className="mb-2">
+  <div className="flex items-center gap-3">
+    <Checkbox
+      checked={selectedRoteiroKeys.includes(key)}
+      onCheckedChange={(checked) => {
+        if (checked) {
+          setSelectedRoteiroKeys(prev => [...prev, key]);
+        } else {
+          setSelectedRoteiroKeys(prev => prev.filter(k => k !== key));
+        }
+      }}
+      className="h-5 w-5"
+    />
+    <span className="font-poppins font-bold text-[#B8860B] text-base">
+      HEADLINE {String(ordem).padStart(2, "0")}:
+    </span>
   </div>
+  {/* ... input */}
 </div>
 ```
 
----
+#### 3. Adicionar Título "Gerar roteiro" no Topo
 
-### Parte 4: Dialog de Tipo de Roteiro
-
-Criar `src/components/mentorados/TipoRoteiroDialog.tsx`:
-
-```text
-┌─────────────────────────────────────────────┐
-│ Gerar Roteiro                           [X] │
-├─────────────────────────────────────────────┤
-│                                             │
-│  📝 3 headlines selecionadas                │
-│                                             │
-│  Selecione o tipo de roteiro:               │
-│                                             │
-│  ┌─────────────────────────────────────┐    │
-│  │ ○  Roteiro de Reels                 │    │
-│  │ ○  Roteiro Completo                 │    │
-│  │ ○  Roteiro Educacional              │    │
-│  └─────────────────────────────────────┘    │
-│                                             │
-│  ─────────────────────────────────────────  │
-│                                             │
-│  Gerenciar tipos:                           │
-│  [+ Novo tipo]                              │
-│                                             │
-│  ┌─────────────────────────────────────┐    │
-│  │ Roteiro de Reels              [🗑️] │    │
-│  │ Roteiro Completo              [🗑️] │    │
-│  └─────────────────────────────────────┘    │
-│                                             │
-├─────────────────────────────────────────────┤
-│               [Cancelar]  [Gerar]           │
-└─────────────────────────────────────────────┘
-```
-
-**Componente:**
-```tsx
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Plus, Trash2 } from "lucide-react";
-import { useTiposRoteiro, useCreateTipoRoteiro, useDeleteTipoRoteiro } from "@/hooks/useTiposRoteiro";
-
-interface TipoRoteiroDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  headlinesCount: number;
-  onConfirm: (tipoId: string) => void;
-}
-
-export const TipoRoteiroDialog = ({
-  open,
-  onOpenChange,
-  headlinesCount,
-  onConfirm,
-}: TipoRoteiroDialogProps) => {
-  const [selectedTipo, setSelectedTipo] = useState<string>("");
-  const [novoTipo, setNovoTipo] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
-  
-  const { data: tipos = [] } = useTiposRoteiro();
-  const createTipo = useCreateTipoRoteiro();
-  const deleteTipo = useDeleteTipoRoteiro();
-
-  const handleAddTipo = () => {
-    if (!novoTipo.trim()) return;
-    createTipo.mutate({ nome: novoTipo.trim() });
-    setNovoTipo("");
-    setShowAddForm(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Gerar Roteiro</DialogTitle>
-        </DialogHeader>
-
-        <div className="py-4 space-y-4">
-          <p className="text-sm text-muted-foreground">
-            📝 {headlinesCount} headline{headlinesCount > 1 ? "s" : ""} selecionada{headlinesCount > 1 ? "s" : ""}
-          </p>
-
-          {tipos.length > 0 ? (
-            <>
-              <Label>Selecione o tipo de roteiro:</Label>
-              <RadioGroup value={selectedTipo} onValueChange={setSelectedTipo}>
-                {tipos.map((tipo) => (
-                  <div key={tipo.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value={tipo.id} id={tipo.id} />
-                      <Label htmlFor={tipo.id}>{tipo.nome}</Label>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive"
-                      onClick={() => deleteTipo.mutate(tipo.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </RadioGroup>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Nenhum tipo cadastrado. Adicione um tipo abaixo.
-            </p>
-          )}
-
-          <div className="border-t pt-4">
-            {showAddForm ? (
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Nome do tipo..."
-                  value={novoTipo}
-                  onChange={(e) => setNovoTipo(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddTipo()}
-                />
-                <Button size="sm" onClick={handleAddTipo}>
-                  Salvar
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}>
-                  Cancelar
-                </Button>
-              </div>
-            ) : (
-              <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo tipo
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button 
-            onClick={() => onConfirm(selectedTipo)}
-            disabled={!selectedTipo}
-          >
-            Gerar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-```
-
----
-
-### Parte 5: Integração no MentoradoRoteirosView
-
-Adicionar estado e botão flutuante:
+Dentro do paper container, antes dos roteiros:
 
 ```tsx
-// Estados
-const [selectedHeadlineIds, setSelectedHeadlineIds] = useState<string[]>([]);
-const [showTipoRoteiroDialog, setShowTipoRoteiroDialog] = useState(false);
-
-// Na área de "Ideias de Headlines":
-<MentoradoHeadlinesList 
-  mentoradoId={mentoradoId}
-  selectedHeadlines={selectedHeadlineIds}
-  onSelectionChange={setSelectedHeadlineIds}
-/>
-
-{/* Botão flutuante quando há seleção */}
-{selectedHeadlineIds.length > 0 && (
-  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-    <Button 
-      className="gap-2 shadow-lg"
+<div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
+  {/* Título "Gerar roteiro" - aparece quando há seleção */}
+  {selectedRoteiroKeys.length > 0 && (
+    <button 
+      className="mb-8 text-2xl font-serif hover:underline cursor-pointer"
       onClick={() => setShowTipoRoteiroDialog(true)}
     >
-      <FileEdit className="h-4 w-4" />
-      Gerar roteiro ({selectedHeadlineIds.length})
-    </Button>
-  </div>
-)}
+      Gerar roteiro
+    </button>
+  )}
+  
+  {/* Roteiros */}
+  {Array.from({ length: ... }).map((ordem) => ...)}
+</div>
+```
 
-{/* Dialog de tipo */}
+#### 4. Atualizar Dialog de Tipo de Roteiro
+
+Passar os roteiros selecionados (com headline e estrutura) para o dialog:
+
+```tsx
 <TipoRoteiroDialog
   open={showTipoRoteiroDialog}
   onOpenChange={setShowTipoRoteiroDialog}
-  headlinesCount={selectedHeadlineIds.length}
+  headlinesCount={selectedRoteiroKeys.length}
   onConfirm={(tipoId) => {
-    // Aqui você pode usar o tipoId para gerar o roteiro
-    console.log("Gerar roteiro do tipo:", tipoId, "para:", selectedHeadlineIds);
+    // Pegar conteúdo dos roteiros selecionados
+    const roteirosParaGerar = selectedRoteiroKeys.map(key => {
+      const roteiro = roteirosLocais.get(key);
+      return {
+        key,
+        headline: roteiro?.headline || "",
+        estrutura: roteiro?.estrutura || "",
+      };
+    });
+    
+    console.log("Gerar roteiros:", { tipoId, roteiros: roteirosParaGerar });
     setShowTipoRoteiroDialog(false);
-    setSelectedHeadlineIds([]);
+    setSelectedRoteiroKeys([]); // Limpar seleção
   }}
 />
 ```
 
 ---
 
-### Arquivos a Criar/Modificar
+### Arquivo a Modificar
 
-| Arquivo | Ação |
-|---------|------|
-| **Migração SQL** | Criar tabela `tipos_roteiro` |
-| `src/hooks/useTiposRoteiro.ts` | Criar hook CRUD |
-| `src/components/mentorados/TipoRoteiroDialog.tsx` | Criar dialog de seleção |
-| `src/components/mentorados/MentoradoHeadlinesList.tsx` | Adicionar checkboxes |
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Integrar seleção e botão |
+| Arquivo | Mudanças |
+|---------|----------|
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | 1. Renomear estado para `selectedRoteiroKeys`<br>2. Adicionar Checkbox ao lado de cada HEADLINE<br>3. Adicionar título clicável "Gerar roteiro" no topo |
 
 ---
 
-### Fluxo Visual
+### Remover da Lista Separada
 
-```text
-┌─────────────────────────────────────────────────────┐
-│ Ideias de Headlines (5)                             │
-├─────────────────────────────────────────────────────┤
-│ ☐ Headline 1...                        [📋] [🗑️]  │
-│ ☑ Headline 2...                        [📋] [🗑️]  │
-│ ☑ Headline 3...                        [📋] [🗑️]  │
-│ ☐ Headline 4...                        [📋] [🗑️]  │
-│ ☐ Headline 5...                        [📋] [🗑️]  │
-└─────────────────────────────────────────────────────┘
-
-        ┌─────────────────────────────────┐
-        │ 📝 Gerar roteiro (2)            │  ← Botão flutuante
-        └─────────────────────────────────┘
-              ↓ ao clicar
-┌─────────────────────────────────────────────────────┐
-│ Gerar Roteiro                                   [X] │
-├─────────────────────────────────────────────────────┤
-│ 📝 2 headlines selecionadas                         │
-│                                                     │
-│ Selecione o tipo:                                   │
-│ ○ Roteiro de Reels                           [🗑️] │
-│ ● Roteiro Completo                           [🗑️] │
-│ ○ Roteiro Educacional                        [🗑️] │
-│                                                     │
-│ [+ Novo tipo]                                       │
-│                                                     │
-│                         [Cancelar]  [Gerar]         │
-└─────────────────────────────────────────────────────┘
-```
+Remover o `MentoradoHeadlinesList` do checklist lateral, já que agora a seleção é feita diretamente nos campos de headline.
 
 ---
 
-### Detalhes Técnicos
+### Comportamento
 
-#### Migração SQL Completa
+1. **Usuário marca checkboxes** nos roteiros que quer usar
+2. **Título "Gerar roteiro" aparece** no topo do documento
+3. **Ao clicar**, abre dialog para escolher tipo de roteiro
+4. **Após confirmar**, sistema recebe: tipo escolhido + conteúdo dos roteiros selecionados
 
-```sql
--- Tabela de tipos de roteiro
-CREATE TABLE IF NOT EXISTS public.tipos_roteiro (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  nome TEXT NOT NULL,
-  descricao TEXT,
-  user_id UUID NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+---
 
--- Habilitar RLS
-ALTER TABLE public.tipos_roteiro ENABLE ROW LEVEL SECURITY;
+### Imports Necessários
 
--- Política: usuário vê/gerencia apenas seus tipos
-CREATE POLICY "Users can manage their own tipos_roteiro"
-  ON public.tipos_roteiro
-  FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+```tsx
+import { Checkbox } from "@/components/ui/checkbox";
 ```
-
-#### Hook useTiposRoteiro.ts
-
-O hook terá:
-- `useTiposRoteiro()` - listar tipos
-- `useCreateTipoRoteiro()` - criar novo tipo
-- `useDeleteTipoRoteiro()` - deletar tipo
-
-#### MentoradoHeadlinesList.tsx
-
-Mudanças principais:
-1. Adicionar props `selectedHeadlines` e `onSelectionChange`
-2. Importar e usar componente `Checkbox`
-3. Renderizar checkbox ao lado de cada headline
-4. Chamar callback quando seleção muda
-
-#### TipoRoteiroDialog.tsx
-
-Componente novo com:
-- RadioGroup para selecionar tipo
-- Input para adicionar novo tipo
-- Botões de deletar tipos existentes
-- Confirmação para gerar roteiro
 
