@@ -433,15 +433,27 @@ export const RoteiroChecklist = ({
                   checked={item.checked}
                   onCheckedChange={() => handleToggle(item.id)}
                 />
-                <Label
-                  htmlFor={item.id}
-                  className={cn(
-                    "text-sm cursor-pointer leading-tight flex-1",
-                    item.checked && "line-through text-muted-foreground"
-                  )}
-                >
-                  {item.label}
-                </Label>
+                {item.id === "revisar" ? (
+                  <span
+                    className={cn(
+                      "text-sm cursor-pointer leading-tight flex-1 hover:text-primary hover:underline",
+                      item.checked && "line-through text-muted-foreground"
+                    )}
+                    onClick={() => onRevisarPlay?.()}
+                  >
+                    {item.label}
+                  </span>
+                ) : (
+                  <Label
+                    htmlFor={item.id}
+                    className={cn(
+                      "text-sm cursor-pointer leading-tight flex-1",
+                      item.checked && "line-through text-muted-foreground"
+                    )}
+                  >
+                    {item.label}
+                  </Label>
+                )}
                 
                 {/* Timer controls inline para itens com timing */}
                 {item.hasTiming && timer && (
