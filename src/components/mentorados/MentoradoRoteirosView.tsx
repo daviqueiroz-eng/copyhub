@@ -63,6 +63,8 @@ import { TipoRoteiroDialog } from "./TipoRoteiroDialog";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
 import { TeleprompterDialog } from "./TeleprompterDialog";
+import { RoteiroRevisaoDialog } from "./RoteiroRevisaoDialog";
+import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
 
@@ -237,6 +239,12 @@ export const MentoradoRoteirosView = ({
   // Estado para seleção de roteiros (por key ex: "1-1", "1-2") e tipo de roteiro
   const [selectedRoteiroKeys, setSelectedRoteiroKeys] = useState<string[]>([]);
   const [showTipoRoteiroDialog, setShowTipoRoteiroDialog] = useState(false);
+  
+  // Estado para dialog de revisão com IA
+  const [showRevisaoDialog, setShowRevisaoDialog] = useState(false);
+  
+  // Hook para inteligência global
+  const { data: inteligenciaGlobal } = useInteligenciaGlobal();
 
   // Buscar categorias do avatar do mentorado atual
   const currentMentorado = mentorados.find(m => m.id === mentoradoId);
@@ -1989,6 +1997,7 @@ export const MentoradoRoteirosView = ({
               setFeedbackTimers(t);
               setShowFeedbackDialog(true);
             }}
+            onRevisarPlay={() => setShowRevisaoDialog(true)}
           />
         </div>
       </div>
@@ -2020,6 +2029,7 @@ export const MentoradoRoteirosView = ({
                 setFeedbackTimers(t);
                 setShowFeedbackDialog(true);
               }}
+              onRevisarPlay={() => setShowRevisaoDialog(true)}
             />
           </div>
         </SheetContent>
@@ -2412,6 +2422,59 @@ export const MentoradoRoteirosView = ({
           setShowTipoRoteiroDialog(false);
           setSelectedRoteiroKeys([]);
         }}
+      />
+
+      {/* Dialog de Revisão com IA */}
+      <RoteiroRevisaoDialog
+        open={showRevisaoDialog}
+        onOpenChange={setShowRevisaoDialog}
+        roteiros={(() => {
+          // Filtrar roteiros da guia ativa que têm estrutura preenchida
+          const guiaConfig = guias.find(g => g.numero === guiaAtiva);
+          if (!guiaConfig || guiaConfig.isOverdelivery) return [];
+          
+          const roteirosParaRevisar: Array<{ key: string; headline: string; estrutura: string }> = [];
+          
+          for (let ordem = 1; ordem <= guiaConfig.quantidade; ordem++) {
+            const key = `${guiaAtiva}-${ordem}`;
+            const roteiro = roteirosLocais.get(key);
+            // Incluir apenas roteiros que têm estrutura preenchida
+            if (roteiro?.estrutura?.trim()) {
+              roteirosParaRevisar.push({
+                key,
+                headline: roteiro.headline || "",
+                estrutura: roteiro.estrutura,
+              });
+            }
+          }
+          
+          return roteirosParaRevisar;
+        })()}
+        onRoteiroChange={(key, field, value) => {
+          // Atualizar estado local
+          setRoteirosLocais(prev => {
+            const newMap = new Map(prev);
+            const existing = newMap.get(key);
+            if (existing) {
+              newMap.set(key, { ...existing, [field]: value });
+            }
+            return newMap;
+          });
+          
+          // Salvar no banco
+          const [guiaNumero, ordem] = key.split("-").map(Number);
+          const existing = roteirosLocais.get(key);
+          upsertRoteiro.mutate({
+            mentoradoId: mentoradoId,
+            guiaNumero: guiaNumero,
+            ordem: ordem,
+            headline: field === "headline" ? value : (existing?.headline || ""),
+            estrutura: field === "estrutura" ? value : (existing?.estrutura || ""),
+          });
+        }}
+        mentoradoNome={mentoradoNome}
+        inteligenciaGlobal={inteligenciaGlobal?.conteudo}
+        inteligenciaMentorado={currentMentorado?.inteligencia_ia || undefined}
       />
     </div>
   );

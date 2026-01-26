@@ -1,0 +1,169 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const SYSTEM_PROMPT = `Você é um assistente de revisão de roteiros de vídeos curtos.
+
+REGRAS ABSOLUTAS:
+1. Faça SOMENTE a alteração solicitada pelo usuário
+2. NÃO mude NADA além do que foi explicitamente pedido
+3. Mantenha TODA a formatação original: quebras de linha, espaços, pontuação
+4. Se a instrução for ambígua ou você não entender, peça esclarecimento na explicação
+5. Retorne SEMPRE o texto COMPLETO atualizado, mesmo que tenha mudado apenas uma palavra
+
+IMPORTANTE:
+- Se o usuário pedir para trocar uma palavra, troque APENAS essa palavra
+- Se o usuário pedir para adicionar algo, adicione EXATAMENTE onde pediu
+- Se o usuário pedir para remover algo, remova APENAS o que foi pedido
+- Nunca "melhore" ou "ajuste" nada além do solicitado`;
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { headline, estrutura, mensagem, historico = [] } = await req.json();
+
+    if (!mensagem) {
+      return new Response(
+        JSON.stringify({ error: "Mensagem é obrigatória" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY não está configurada");
+    }
+
+    // Montar contexto do roteiro atual
+    const roteiroContext = `
+ROTEIRO ATUAL:
+
+HEADLINE:
+${headline || "(vazio)"}
+
+ESTRUTURA:
+${estrutura || "(vazio)"}
+`.trim();
+
+    // Montar mensagens do chat
+    const messages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: roteiroContext },
+      ...historico.map((msg: { role: string; content: string }) => ({
+        role: msg.role,
+        content: msg.content,
+      })),
+      { role: "user", content: mensagem },
+    ];
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages,
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "update_roteiro",
+              description: "Atualiza o roteiro com as alterações solicitadas pelo usuário",
+              parameters: {
+                type: "object",
+                properties: {
+                  headline: {
+                    type: "string",
+                    description: "A headline completa atualizada (ou a mesma se não foi alterada)",
+                  },
+                  estrutura: {
+                    type: "string",
+                    description: "A estrutura/roteiro completo atualizado (ou o mesmo se não foi alterado)",
+                  },
+                  explanation: {
+                    type: "string",
+                    description: "Breve explicação do que foi alterado ou pergunta de esclarecimento",
+                  },
+                },
+                required: ["headline", "estrutura", "explanation"],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "update_roteiro" } },
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      return new Response(
+        JSON.stringify({ error: "Erro no gateway de IA" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const data = await response.json();
+    
+    // Extrair resultado do tool call
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall || toolCall.function.name !== "update_roteiro") {
+      // Fallback: tentar extrair do content se não veio tool call
+      const content = data.choices?.[0]?.message?.content;
+      return new Response(
+        JSON.stringify({
+          headline: headline,
+          estrutura: estrutura,
+          explanation: content || "Não consegui processar a solicitação. Tente reformular.",
+          changed: false,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const result = JSON.parse(toolCall.function.arguments);
+    
+    // Detectar se houve mudança
+    const headlineChanged = result.headline !== headline;
+    const estruturaChanged = result.estrutura !== estrutura;
+
+    return new Response(
+      JSON.stringify({
+        headline: result.headline,
+        estrutura: result.estrutura,
+        explanation: result.explanation,
+        changed: headlineChanged || estruturaChanged,
+        headlineChanged,
+        estruturaChanged,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("revisar-roteiro error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});

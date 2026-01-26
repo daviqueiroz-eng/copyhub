@@ -41,6 +41,7 @@ interface RoteiroChecklistProps {
   onActiveTimerChange: (id: string | null) => void;
   timersLoaded: boolean;
   onComplete?: (timers: TimersRecord) => void;
+  onRevisarPlay?: () => void;
 }
 
 export const RoteiroChecklist = ({ 
@@ -52,6 +53,7 @@ export const RoteiroChecklist = ({
   onActiveTimerChange,
   timersLoaded,
   onComplete,
+  onRevisarPlay,
 }: RoteiroChecklistProps) => {
   const checklistStorageKey = `roteiro-checklist-${mentoradoId}-${guiaNumero}`;
   
@@ -303,6 +305,11 @@ export const RoteiroChecklist = ({
       newTimers[id] = { ...timer, finalizado: false, isRunning: true };
       onTimersChange(newTimers);
       onActiveTimerChange(id);
+      
+      // Abrir dialog de revisão se for o timer "revisar"
+      if (id === "revisar" && onRevisarPlay) {
+        onRevisarPlay();
+      }
     } else if (timer.isRunning) {
       // Pausar
       onTimersChange({
@@ -321,6 +328,11 @@ export const RoteiroChecklist = ({
       newTimers[id] = { ...timer, isRunning: true };
       onTimersChange(newTimers);
       onActiveTimerChange(id);
+      
+      // Abrir dialog de revisão se for o timer "revisar"
+      if (id === "revisar" && onRevisarPlay) {
+        onRevisarPlay();
+      }
     }
   };
 
