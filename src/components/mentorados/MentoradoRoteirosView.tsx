@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTrelloImport, TrelloCard } from "@/hooks/useTrelloImport";
 import {
   useOverdeliveryRoteiros,
@@ -57,7 +58,7 @@ import {
 import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
-import { MentoradoHeadlinesList } from "./MentoradoHeadlinesList";
+// MentoradoHeadlinesList removido - seleção agora é feita diretamente nos campos de headline
 import { TipoRoteiroDialog } from "./TipoRoteiroDialog";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
@@ -233,8 +234,8 @@ export const MentoradoRoteirosView = ({
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [teleprompterText, setTeleprompterText] = useState("");
   
-  // Estado para seleção de headlines e tipo de roteiro
-  const [selectedHeadlineIds, setSelectedHeadlineIds] = useState<string[]>([]);
+  // Estado para seleção de roteiros (por key ex: "1-1", "1-2") e tipo de roteiro
+  const [selectedRoteiroKeys, setSelectedRoteiroKeys] = useState<string[]>([]);
   const [showTipoRoteiroDialog, setShowTipoRoteiroDialog] = useState(false);
 
   // Buscar categorias do avatar do mentorado atual
@@ -1773,6 +1774,16 @@ export const MentoradoRoteirosView = ({
                 />
               ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
+                {/* Título "Gerar roteiro" - aparece quando há seleção */}
+                {selectedRoteiroKeys.length > 0 && (
+                  <button 
+                    className="mb-8 text-2xl font-serif hover:underline cursor-pointer text-foreground"
+                    onClick={() => setShowTipoRoteiroDialog(true)}
+                  >
+                    Gerar roteiro
+                  </button>
+                )}
+                
                 {Array.from({ length: guiaAtivaConfig.quantidade }, (_, i) => i + 1).map((ordem) => {
                   const key = `${guiaAtiva}-${ordem}`;
                   const roteiro = roteirosLocais.get(key) || { headline: "", estrutura: "" };
@@ -1879,9 +1890,22 @@ export const MentoradoRoteirosView = ({
 
                       {/* Headline */}
                       <div className="mb-2">
-                        <span className="font-poppins font-bold text-[#B8860B] text-base">
-                          HEADLINE {String(ordem).padStart(2, "0")}:
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedRoteiroKeys.includes(key)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedRoteiroKeys(prev => [...prev, key]);
+                              } else {
+                                setSelectedRoteiroKeys(prev => prev.filter(k => k !== key));
+                              }
+                            }}
+                            className="h-5 w-5"
+                          />
+                          <span className="font-poppins font-bold text-[#B8860B] text-base">
+                            HEADLINE {String(ordem).padStart(2, "0")}:
+                          </span>
+                        </div>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
                           onChange={(value, cursorPos) => {
@@ -1966,11 +1990,6 @@ export const MentoradoRoteirosView = ({
               setShowFeedbackDialog(true);
             }}
           />
-          <MentoradoHeadlinesList 
-            mentoradoId={mentoradoId}
-            selectedHeadlines={selectedHeadlineIds}
-            onSelectionChange={setSelectedHeadlineIds}
-          />
         </div>
       </div>
       
@@ -2001,11 +2020,6 @@ export const MentoradoRoteirosView = ({
                 setFeedbackTimers(t);
                 setShowFeedbackDialog(true);
               }}
-            />
-            <MentoradoHeadlinesList 
-              mentoradoId={mentoradoId}
-              selectedHeadlines={selectedHeadlineIds}
-              onSelectionChange={setSelectedHeadlineIds}
             />
           </div>
         </SheetContent>
@@ -2329,15 +2343,15 @@ export const MentoradoRoteirosView = ({
         </div>
       )}
 
-      {/* Botão flutuante para gerar roteiro quando há headlines selecionadas */}
-      {selectedHeadlineIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+      {/* Botão flutuante para gerar roteiro quando há roteiros selecionados */}
+      {selectedRoteiroKeys.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 lg:hidden">
           <Button 
             className="gap-2 shadow-lg"
             onClick={() => setShowTipoRoteiroDialog(true)}
           >
             <FileEdit className="h-4 w-4" />
-            Gerar roteiro ({selectedHeadlineIds.length})
+            Gerar roteiro ({selectedRoteiroKeys.length})
           </Button>
         </div>
       )}
@@ -2346,16 +2360,25 @@ export const MentoradoRoteirosView = ({
       <TipoRoteiroDialog
         open={showTipoRoteiroDialog}
         onOpenChange={setShowTipoRoteiroDialog}
-        headlinesCount={selectedHeadlineIds.length}
+        headlinesCount={selectedRoteiroKeys.length}
         onConfirm={(tipoId, tipoNome) => {
-          // TODO: Implementar lógica de geração de roteiro
-          console.log("Gerar roteiro do tipo:", tipoId, tipoNome, "para:", selectedHeadlineIds);
+          // Pegar conteúdo dos roteiros selecionados
+          const roteirosParaGerar = selectedRoteiroKeys.map(key => {
+            const roteiro = roteirosLocais.get(key);
+            return {
+              key,
+              headline: roteiro?.headline || "",
+              estrutura: roteiro?.estrutura || "",
+            };
+          });
+          
+          console.log("Gerar roteiro do tipo:", tipoId, tipoNome, "roteiros:", roteirosParaGerar);
           toast({
             title: "Roteiro será gerado!",
-            description: `Tipo: ${tipoNome} • ${selectedHeadlineIds.length} headline(s)`,
+            description: `Tipo: ${tipoNome} • ${selectedRoteiroKeys.length} roteiro(s)`,
           });
           setShowTipoRoteiroDialog(false);
-          setSelectedHeadlineIds([]);
+          setSelectedRoteiroKeys([]); // Limpar seleção
         }}
       />
     </div>
