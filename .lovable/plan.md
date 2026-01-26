@@ -1,206 +1,191 @@
 
-## Plano: Otimização Mobile para Mentorados
 
-### Problemas Identificados (baseado nas screenshots)
+## Plano: Correções Mobile para Roteiros
 
-1. **Página principal Mentorados (screenshot 1)**:
-   - Layout sobreposto com elementos se misturando
-   - "Ordem de Prioridade" aparece ao lado de "Meus Mentorados" em vez de abaixo
-   - Tabs Geral/Grupo + filtros do OrdemPrioridade aparecem simultaneamente causando confusão visual
-   - Grid de cards (2 colunas) ainda muito apertado em telas pequenas
+### Problema 1: Cronômetro não visível
 
-2. **Dialog HeadlinesGeneratorDialog (screenshot 2)**:
-   - Layout de 3 colunas fixas (`grid-cols-[320px_1fr_180px]`) que não se adapta ao mobile
-   - Botões e controles ficam sem espaço adequado
+**Análise:**
+Na screenshot, o header mostra apenas os botões de ações (Undo/Redo, Search, etc.), mas não há nenhum indicador de timer visível. O checklist com os timers está escondido com `hidden lg:block` (só aparece em telas grandes).
+
+Existe um botão flutuante (`CheckSquare`) que abre um Sheet com o checklist completo, mas:
+1. Não há indicação visual de que o timer está ativo/pausado
+2. O usuário precisa abrir o Sheet para ver/controlar o timer
+
+**Solução:**
+Adicionar um **mini-timer compacto** no header mobile que mostra:
+- O tempo atual rodando
+- Botão play/pause rápido
+- Ao clicar, abre o Sheet completo
 
 ---
 
-### Solução: Layout Mobile-First
+### Problema 2: Menu de comandos (/) cortado
 
-#### 1. Página Mentorados (`src/pages/Mentorados.tsx`)
+**Análise:**
+O `SlashCommandPopover` tem largura fixa de `w-96` (384px) e posição baseada no cursor. Em dispositivos móveis com tela de ~375px, o popover pode ultrapassar os limites da tela.
 
-**Mudanças no header**:
-- Em mobile: esconder título "Ordem de Prioridade" no header (já aparece abaixo)
-- Simplificar header para apenas "Meus Mentorados"
+**Solução:**
+Tornar o popover responsivo:
+1. Em mobile: usar largura `w-[calc(100vw-32px)]` e centralizar
+2. Garantir que nunca ultrapasse os limites da tela
+3. Considerar posição bottom se não couber acima
 
-**Mudanças no layout principal**:
-- Remover duplicação de `OrdemPrioridadeView` (atualmente renderiza 2 vezes)
-- Em mobile (`< xl`): mostrar apenas a lista de mentorados, com "Ordem de Prioridade" em seção separada abaixo
-- Reduzir padding e gaps para telas pequenas
+---
 
-```tsx
-// Header simplificado para mobile
-<div className="flex items-start justify-between gap-4 md:gap-6 shrink-0 pb-4">
-  <div className="shrink-0">
-    <h2 className="text-2xl md:text-3xl font-bold text-foreground">Meus Mentorados</h2>
-    <p className="text-sm text-muted-foreground mt-1">
-      Repositório de perfis e diagnósticos
-    </p>
-  </div>
-  {/* Título "Ordem de Prioridade" escondido em mobile */}
-  <div className="flex-1 hidden xl:block">
-    ...
-  </div>
-</div>
-```
+### Implementação Detalhada
 
-#### 2. OrdemPrioridadeView (`src/components/mentorados/OrdemPrioridadeView.tsx`)
+#### 1. Adicionar Timer Compacto no Header Mobile
 
-**Mudanças no grid de cards**:
-```tsx
-// ANTES
-<div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-
-// DEPOIS (1 coluna em mobile pequeno, 2 em mobile médio)
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-```
-
-**Mudanças nos filtros**:
-- Empilhar filtros verticalmente em mobile
-- Reduzir tamanho do combobox de copywriters
+Modificar o header em `MentoradoRoteirosView.tsx` para mostrar um mini-timer:
 
 ```tsx
-<div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:items-center sm:justify-between">
-  {/* Filtro de copywriter */}
-  <Button className="w-full sm:w-[280px] justify-between">
-    ...
+{/* Mini-timer para mobile - ao lado dos botões de ação */}
+<div className="lg:hidden flex items-center gap-1 mr-2">
+  <Button
+    variant={isAnyTimerRunning ? "default" : "outline"}
+    size="sm"
+    className="gap-1.5 h-8"
+    onClick={() => setShowChecklistMobile(true)}
+  >
+    {isAnyTimerRunning ? (
+      <Pause className="h-3.5 w-3.5" />
+    ) : (
+      <Play className="h-3.5 w-3.5" />
+    )}
+    <span className="font-mono text-xs">
+      {formatTotalTime(timers)}
+    </span>
   </Button>
 </div>
-
-{/* ToggleGroup de período: horizontal scroll em mobile */}
-<div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-  <ToggleGroup className="justify-start whitespace-nowrap">
-    ...
-  </ToggleGroup>
-</div>
 ```
 
-#### 3. HeadlinesGeneratorDialog (`src/components/mentorados/HeadlinesGeneratorDialog.tsx`)
+Localização: dentro do header, antes dos botões de Undo/Redo, visível apenas em mobile (`lg:hidden`).
 
-**Mudança crítica no layout**:
+Isso permite:
+- Ver rapidamente o tempo total
+- Ver se está rodando (botão em estado "default" = azul)
+- Clicar para abrir o Sheet com controles completos
+
+#### 2. Corrigir Posicionamento do SlashCommandPopover
+
+Modificar `SlashCommandPopover.tsx`:
+
+**Antes:**
 ```tsx
-// ANTES (layout fixo que quebra em mobile)
-<div className="grid grid-cols-[320px_1fr_180px] gap-6 flex-1 min-h-0">
-
-// DEPOIS (layout responsivo)
-<div className="flex flex-col md:grid md:grid-cols-[280px_1fr_160px] gap-4 md:gap-6 flex-1 min-h-0 overflow-y-auto md:overflow-visible">
+className="fixed z-[100] bg-background border rounded-lg shadow-lg w-96"
+style={{ top: position.top, left: position.left }}
 ```
 
-**Mudanças adicionais para mobile**:
-- Em mobile: todas as 3 colunas empilham verticalmente
-- Reduzir altura máxima das áreas de texto
-- Botões ocupam largura total em mobile
-
+**Depois:**
 ```tsx
-// Exemplo de botões responsivos
-<div className="flex flex-col sm:flex-row gap-2">
-  <Button className="flex-1">Gerar novas</Button>
-  <Button className="flex-1" variant="outline">+ Gerar Mais</Button>
-</div>
+className="fixed z-[100] bg-background border rounded-lg shadow-lg w-[calc(100vw-32px)] sm:w-96 max-w-96"
+style={{ 
+  top: position.top, 
+  left: Math.max(16, Math.min(position.left, window.innerWidth - 400)),
+  // Em mobile, centralizar
+  ...(window.innerWidth < 640 && { left: 16, right: 16 })
+}}
 ```
 
-#### 4. PrioridadeCard (`src/components/mentorados/PrioridadeCard.tsx`)
+Melhor ainda, usar um cálculo dinâmico no useEffect:
 
-Já está razoavelmente compacto, apenas ajuste fino:
 ```tsx
-// Permitir que texto quebre em 3 linhas em mobile para melhor legibilidade
-<h3 className="font-semibold text-xs leading-tight line-clamp-2 sm:line-clamp-2 mb-1">
+const [adjustedPosition, setAdjustedPosition] = useState(position);
+
+useEffect(() => {
+  if (!isOpen) return;
+  
+  const isMobile = window.innerWidth < 640;
+  const popoverWidth = isMobile ? window.innerWidth - 32 : 384; // 384 = w-96
+  
+  let left = position.left;
+  
+  if (isMobile) {
+    // Centralizar em mobile
+    left = 16;
+  } else {
+    // Em desktop, garantir que não ultrapasse a tela
+    const maxLeft = window.innerWidth - popoverWidth - 16;
+    left = Math.max(16, Math.min(position.left, maxLeft));
+  }
+  
+  setAdjustedPosition({ top: position.top, left });
+}, [position, isOpen]);
 ```
 
-#### 5. GeralView (`src/components/mentorados/GeralView.tsx`)
-
-Ajustar header dos botões de abrir Instagram/TikTok:
+E aplicar:
 ```tsx
-<div className="flex items-center gap-1 sm:gap-2 mb-3 pb-2 border-b shrink-0 flex-wrap">
-```
-
-#### 6. Sheet de Detalhes do Mentorado
-
-As tabs já estão em 4 colunas, otimizar para mobile:
-```tsx
-// ANTES
-<TabsList className="grid w-full grid-cols-4 mb-6">
-
-// DEPOIS (2x2 em mobile)
-<TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6 gap-1">
+style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
 ```
 
 ---
 
 ### Arquivos a Modificar
 
-| Arquivo | Principais Mudanças |
-|---------|---------------------|
-| `src/pages/Mentorados.tsx` | Header responsivo, tabs em 2 colunas mobile, gaps reduzidos |
-| `src/components/mentorados/OrdemPrioridadeView.tsx` | Grid 1 coluna em mobile, filtros empilhados, overflow scroll no toggle |
-| `src/components/mentorados/HeadlinesGeneratorDialog.tsx` | Layout flex-col em mobile ao invés de grid fixo |
-| `src/components/mentorados/GeralView.tsx` | Botões flex-wrap para caberem |
-| `src/components/mentorados/PrioridadeCard.tsx` | Ajustes menores de espaçamento |
+| Arquivo | Mudança |
+|---------|---------|
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Adicionar mini-timer no header mobile, helper para formatar tempo total |
+| `src/components/mentorados/SlashCommandPopover.tsx` | Ajustar largura e posicionamento para mobile |
 
 ---
 
 ### Resultado Visual Esperado
 
-**Mobile (< 640px)**:
+**Header Mobile com Timer:**
 ```
-┌─────────────────────────┐
-│ Meus Mentorados         │
-│ Repositório de perfis   │
-├─────────────────────────┤
-│ [🔍 Buscar...] [+Novo]  │
-├─────────────────────────┤
-│ [Geral] [Grupo]         │
-├─────────────────────────┤
-│ ┌─────────────────────┐ │
-│ │ 👤 João Silva       │ │
-│ └─────────────────────┘ │
-│ ┌─────────────────────┐ │
-│ │ 👤 Maria Santos     │ │
-│ └─────────────────────┘ │
-├─────────────────────────┤
-│ Ordem de Prioridade     │
-│ [Filtrar copywriter ▼]  │
-│ [Todos][Hoje][Semana]   │
-├─────────────────────────┤
-│ ┌─────────────────────┐ │
-│ │ 🔴 ATRASADO         │ │
-│ │ Ricardo Novack      │ │
-│ │ Validação 1         │ │
-│ └─────────────────────┘ │
-└─────────────────────────┘
+┌─────────────────────────────────────┐
+│ [X] Roteiros - João     [@] [⟲][⟳] │
+│     Guia 2 • 0/15 preenchidos       │
+├─────────────────────────────────────┤
+│ [▶ 00:00]  [🔍][📝] [Copiar todos] │  <- Timer visível aqui
+├─────────────────────────────────────┤
 ```
 
-**Dialog Headlines (Mobile)**:
+**SlashCommandPopover em Mobile:**
 ```
-┌─────────────────────────┐
-│ ✨ Gere para mim    [X] │
-├─────────────────────────┤
-│ ▼ Inteligência Global   │
-│ ┌─────────────────────┐ │
-│ │ Texto método...     │ │
-│ └─────────────────────┘ │
-│                         │
-│ Inteligência Individual │
-│ ┌─────────────────────┐ │
-│ │ Contexto mentorado  │ │
-│ └─────────────────────┘ │
-│ [Salvar]                │
-├─────────────────────────┤
-│ [Gerar Headlines]       │
-├─────────────────────────┤
-│ ☐ Headline 1 adaptada   │
-│ ☐ Headline 2 adaptada   │
-├─────────────────────────┤
-│ [Usar Selecionadas]     │
-└─────────────────────────┘
+┌────────────────────────────────┐
+│ [🔍 Buscar item...]            │
+├────────────────────────────────┤
+│ Mapa do Avatar                 │
+│ ├ Dores (4)                    │
+│ │   • Item 1                   │
+│ │   • Item 2                   │
+│ └ Desejos (2)                  │
+│     • Item A                   │
+├────────────────────────────────┤
+│ /i Intensificadores, /c CTAs.. │
+└────────────────────────────────┘
+
+     (Centralizado, sem cortes)
 ```
 
 ---
 
-### Técnicas Utilizadas
+### Detalhes Técnicos
 
-1. **Breakpoints Tailwind**: `sm:` (640px), `md:` (768px), `lg:` (1024px), `xl:` (1280px)
-2. **Flexbox responsivo**: `flex-col sm:flex-row`
-3. **Grid responsivo**: `grid-cols-1 sm:grid-cols-2`
-4. **Overflow scroll horizontal**: para grupos de toggle que não cabem
-5. **Texto responsivo**: `text-sm sm:text-base`, `text-2xl md:text-3xl`
+#### Timer no Header
+
+Adicionar função helper:
+```typescript
+const formatTotalTime = (timers: TimersRecord) => {
+  const total = Object.values(timers).reduce((acc, t) => acc + t.segundos, 0);
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+};
+
+const isAnyTimerRunning = Object.values(timers).some(t => t.isRunning);
+```
+
+#### SlashCommandPopover Responsivo
+
+Classes Tailwind:
+- `w-[calc(100vw-32px)]` em mobile (16px de margem cada lado)
+- `sm:w-96` em telas maiores
+- `max-w-96` para limitar tamanho máximo
+
+Posicionamento JavaScript:
+- Calcular posição ajustada baseada na largura da viewport
+- Em mobile: sempre `left: 16px`
+- Em desktop: respeitar cursor mas não ultrapassar bordas
+
