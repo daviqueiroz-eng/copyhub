@@ -1,431 +1,433 @@
 
-## Plano: Modo Flutuante Avançado + Configurações de Câmera
 
-### O Que Você Pediu
+## Plano: Checkboxes nas Headlines + Seleção de Tipo de Roteiro
 
-1. **Modo flutuante igual à imagem**: Uma janela semi-transparente com o texto, controles de play/pause/velocidade, que flutua sobre outros apps
-2. **Configurações de câmera**: Poder escolher qualidade (720p, 1080p), frame rate, e outras configurações
+### Visão Geral
+
+Implementar um sistema onde você pode:
+1. **Selecionar headlines** usando checkboxes
+2. Ver um **botão "Gerar roteiro"** quando houver seleção
+3. Escolher o **tipo de roteiro** em um dialog
+4. **Cadastrar seus próprios tipos** de roteiro
 
 ---
 
-### Parte 1: Modo Flutuante Avançado
+### Parte 1: Nova Tabela no Banco de Dados
 
-Vou reescrever completamente o modo flutuante para ficar igual à imagem de referência:
+Criar tabela `tipos_roteiro` para que você cadastre seus tipos:
 
-**Design da Janela Flutuante:**
+```sql
+CREATE TABLE public.tipos_roteiro (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  nome TEXT NOT NULL,
+  descricao TEXT,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS para cada usuário ver apenas seus tipos
+ALTER TABLE public.tipos_roteiro ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Usuários veem seus tipos" ON public.tipos_roteiro
+  FOR ALL USING (auth.uid() = user_id);
 ```
-┌─────────────────────────────────┐
-│ [X]                         [≡] │  ← Botão fechar + menu
-│                                 │
-│   Welcome to the Floating       │
-│   Teleprompter! This is         │
-│   sample text...                │  ← Texto com scroll
-│                                 │
-│  ◀◀  ⏪  ▶️  ⏩  ▶▶             │  ← Controles
-│       ⊙ velocidade              │
-└─────────────────────────────────┘
-```
 
-**Características:**
-- Fundo semi-transparente `rgba(0,0,0,0.75)`
-- Cantos arredondados (border-radius)
-- Botão X para fechar
-- Controles de:
-  - Play/Pause
-  - Retroceder/Avançar texto
-  - Ajuste de velocidade
-  - Tamanho da fonte
-- Auto-scroll com JavaScript incluso
-- Scroll manual (arrastar)
+---
 
-**Código da Janela Flutuante:**
+### Parte 2: Hook para Tipos de Roteiro
+
+Criar `src/hooks/useTiposRoteiro.ts`:
 
 ```tsx
-const openFloatingMode = () => {
-  const content = localText.replace(/\n/g, "<br>");
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+export const useTiposRoteiro = () => {
+  const { user } = useAuth();
   
-  // Abrir janela menor e redimensionável
-  const popup = window.open(
-    "", 
-    "teleprompter", 
-    "width=350,height=400,resizable=yes,scrollbars=no"
-  );
-  
-  if (popup) {
-    popup.document.write(`
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Teleprompter</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { 
-      height: 100%; 
-      overflow: hidden;
-      background: transparent;
-    }
-    .container {
-      height: 100%;
-      background: rgba(0, 0, 0, 0.75);
-      border-radius: 16px;
-      display: flex;
-      flex-direction: column;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    
-    /* Header */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      padding: 12px 16px;
-      align-items: center;
-    }
-    .close-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.2);
-      border: none;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .close-btn:hover { background: rgba(255,255,255,0.3); }
-    
-    /* Text area */
-    .text-area {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0 20px 20px;
-      color: white;
-      font-size: ${fontSize}px;
-      line-height: 1.5;
-      scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
-    }
-    
-    /* Controls */
-    .controls {
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .control-row {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-    }
-    .ctrl-btn {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-      border: none;
-      color: white;
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .ctrl-btn:hover { background: rgba(255,255,255,0.25); }
-    .ctrl-btn.primary {
-      width: 52px;
-      height: 52px;
-      background: rgba(255,255,255,0.25);
-    }
-    .ctrl-btn.active { background: #8b5cf6; }
-    
-    /* Speed indicator */
-    .speed-indicator {
-      text-align: center;
-      color: rgba(255,255,255,0.7);
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <button class="close-btn" onclick="window.close()">✕</button>
-      <div style="color: rgba(255,255,255,0.5); font-size: 12px;">Teleprompter</div>
-      <div style="width: 28px;"></div>
-    </div>
-    
-    <div class="text-area" id="textArea">${content}</div>
-    
-    <div class="controls">
-      <div class="control-row">
-        <button class="ctrl-btn" onclick="skip(-100)" title="Voltar">⏪</button>
-        <button class="ctrl-btn" onclick="slower()" title="Mais lento">◀◀</button>
-        <button class="ctrl-btn primary" id="playBtn" onclick="togglePlay()" title="Play/Pause">▶</button>
-        <button class="ctrl-btn" onclick="faster()" title="Mais rápido">▶▶</button>
-        <button class="ctrl-btn" onclick="skip(100)" title="Avançar">⏩</button>
-      </div>
-      <div class="speed-indicator" id="speedIndicator">Velocidade: ${scrollSpeed.toFixed(1)}x</div>
-    </div>
-  </div>
-  
-  <script>
-    const textArea = document.getElementById('textArea');
-    const playBtn = document.getElementById('playBtn');
-    const speedIndicator = document.getElementById('speedIndicator');
-    
-    let isPlaying = false;
-    let speed = ${scrollSpeed};
-    let animationId = null;
-    let lastTime = 0;
-    
-    function togglePlay() {
-      isPlaying = !isPlaying;
-      playBtn.textContent = isPlaying ? '⏸' : '▶';
-      playBtn.classList.toggle('active', isPlaying);
+  return useQuery({
+    queryKey: ["tipos-roteiro", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tipos_roteiro")
+        .select("*")
+        .order("created_at", { ascending: true });
       
-      if (isPlaying) {
-        lastTime = 0;
-        animationId = requestAnimationFrame(scroll);
-      } else if (animationId) {
-        cancelAnimationFrame(animationId);
-      }
-    }
-    
-    function scroll(time) {
-      if (!isPlaying) return;
-      
-      if (lastTime === 0) lastTime = time;
-      const delta = (time - lastTime) / 1000;
-      lastTime = time;
-      
-      textArea.scrollTop += speed * 30 * delta;
-      
-      if (textArea.scrollTop + textArea.clientHeight >= textArea.scrollHeight - 5) {
-        isPlaying = false;
-        playBtn.textContent = '▶';
-        playBtn.classList.remove('active');
-        return;
-      }
-      
-      animationId = requestAnimationFrame(scroll);
-    }
-    
-    function skip(amount) {
-      textArea.scrollTop += amount;
-    }
-    
-    function slower() {
-      speed = Math.max(0.5, speed - 0.5);
-      updateSpeed();
-    }
-    
-    function faster() {
-      speed = Math.min(5, speed + 0.5);
-      updateSpeed();
-    }
-    
-    function updateSpeed() {
-      speedIndicator.textContent = 'Velocidade: ' + speed.toFixed(1) + 'x';
-    }
-  </script>
-</body>
-</html>
-    `);
-    popup.document.close();
-    handleClose(); // Fecha o dialog principal
-  }
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+};
+
+export const useCreateTipoRoteiro = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (data: { nome: string; descricao?: string }) => {
+      const { error } = await supabase
+        .from("tipos_roteiro")
+        .insert({ ...data, user_id: user?.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tipos-roteiro"] });
+    },
+  });
+};
+
+export const useDeleteTipoRoteiro = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("tipos_roteiro")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tipos-roteiro"] });
+    },
+  });
 };
 ```
 
 ---
 
-### Parte 2: Configurações de Câmera
+### Parte 3: Atualizar MentoradoHeadlinesList
 
-Adicionar um painel de configurações de câmera com:
-- **Qualidade do vídeo**: 720p, 1080p, 4K (se disponível)
-- **Frame rate**: 24fps, 30fps, 60fps
-- **Exibir configurações suportadas** pelo dispositivo
+Adicionar checkboxes e passar seleção para o componente pai:
 
-**Novo estado no `useVideoRecorder.ts`:**
-
+**Props atualizadas:**
 ```tsx
-// Configurações de câmera
-const [videoQuality, setVideoQuality] = useState<"720p" | "1080p" | "4k">("1080p");
-const [frameRate, setFrameRate] = useState<number>(30);
-const [availableCapabilities, setAvailableCapabilities] = useState<MediaTrackCapabilities | null>(null);
+interface MentoradoHeadlinesListProps {
+  mentoradoId: string;
+  selectedHeadlines: string[];  // IDs selecionados
+  onSelectionChange: (ids: string[]) => void;  // Callback
+}
 ```
 
-**Função para obter capacidades da câmera:**
-
+**Renderização com checkbox:**
 ```tsx
-const getCameraCapabilities = useCallback(async () => {
-  if (!streamRef.current) return null;
-  
-  const videoTrack = streamRef.current.getVideoTracks()[0];
-  if (videoTrack) {
-    return videoTrack.getCapabilities();
-  }
-  return null;
-}, []);
+<div className="flex items-start gap-2 p-2 bg-muted/50 rounded-md">
+  <Checkbox
+    checked={selectedHeadlines.includes(headline.id)}
+    onCheckedChange={(checked) => {
+      if (checked) {
+        onSelectionChange([...selectedHeadlines, headline.id]);
+      } else {
+        onSelectionChange(selectedHeadlines.filter(id => id !== headline.id));
+      }
+    }}
+    className="mt-0.5"
+  />
+  <div className="flex-1">
+    <p className="text-sm pr-12 leading-snug">{headline.headline}</p>
+    {/* ... resto */}
+  </div>
+</div>
 ```
 
-**Função para aplicar configurações:**
+---
 
+### Parte 4: Dialog de Tipo de Roteiro
+
+Criar `src/components/mentorados/TipoRoteiroDialog.tsx`:
+
+```text
+┌─────────────────────────────────────────────┐
+│ Gerar Roteiro                           [X] │
+├─────────────────────────────────────────────┤
+│                                             │
+│  📝 3 headlines selecionadas                │
+│                                             │
+│  Selecione o tipo de roteiro:               │
+│                                             │
+│  ┌─────────────────────────────────────┐    │
+│  │ ○  Roteiro de Reels                 │    │
+│  │ ○  Roteiro Completo                 │    │
+│  │ ○  Roteiro Educacional              │    │
+│  └─────────────────────────────────────┘    │
+│                                             │
+│  ─────────────────────────────────────────  │
+│                                             │
+│  Gerenciar tipos:                           │
+│  [+ Novo tipo]                              │
+│                                             │
+│  ┌─────────────────────────────────────┐    │
+│  │ Roteiro de Reels              [🗑️] │    │
+│  │ Roteiro Completo              [🗑️] │    │
+│  └─────────────────────────────────────┘    │
+│                                             │
+├─────────────────────────────────────────────┤
+│               [Cancelar]  [Gerar]           │
+└─────────────────────────────────────────────┘
+```
+
+**Componente:**
 ```tsx
-const applyVideoSettings = useCallback(async (quality: "720p" | "1080p" | "4k", fps: number) => {
-  if (!streamRef.current) return;
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Plus, Trash2 } from "lucide-react";
+import { useTiposRoteiro, useCreateTipoRoteiro, useDeleteTipoRoteiro } from "@/hooks/useTiposRoteiro";
+
+interface TipoRoteiroDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  headlinesCount: number;
+  onConfirm: (tipoId: string) => void;
+}
+
+export const TipoRoteiroDialog = ({
+  open,
+  onOpenChange,
+  headlinesCount,
+  onConfirm,
+}: TipoRoteiroDialogProps) => {
+  const [selectedTipo, setSelectedTipo] = useState<string>("");
+  const [novoTipo, setNovoTipo] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
   
-  const videoTrack = streamRef.current.getVideoTracks()[0];
-  if (!videoTrack) return;
-  
-  const resolutions = {
-    "720p": { width: 1280, height: 720 },
-    "1080p": { width: 1920, height: 1080 },
-    "4k": { width: 3840, height: 2160 },
+  const { data: tipos = [] } = useTiposRoteiro();
+  const createTipo = useCreateTipoRoteiro();
+  const deleteTipo = useDeleteTipoRoteiro();
+
+  const handleAddTipo = () => {
+    if (!novoTipo.trim()) return;
+    createTipo.mutate({ nome: novoTipo.trim() });
+    setNovoTipo("");
+    setShowAddForm(false);
   };
-  
-  const { width, height } = resolutions[quality];
-  
-  try {
-    await videoTrack.applyConstraints({
-      width: { ideal: width },
-      height: { ideal: height },
-      frameRate: { ideal: fps },
-    });
-    
-    setVideoQuality(quality);
-    setFrameRate(fps);
-  } catch (error) {
-    console.error("Erro ao aplicar configurações:", error);
-  }
-}, []);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Gerar Roteiro</DialogTitle>
+        </DialogHeader>
+
+        <div className="py-4 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            📝 {headlinesCount} headline{headlinesCount > 1 ? "s" : ""} selecionada{headlinesCount > 1 ? "s" : ""}
+          </p>
+
+          {tipos.length > 0 ? (
+            <>
+              <Label>Selecione o tipo de roteiro:</Label>
+              <RadioGroup value={selectedTipo} onValueChange={setSelectedTipo}>
+                {tipos.map((tipo) => (
+                  <div key={tipo.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value={tipo.id} id={tipo.id} />
+                      <Label htmlFor={tipo.id}>{tipo.nome}</Label>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive"
+                      onClick={() => deleteTipo.mutate(tipo.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </RadioGroup>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Nenhum tipo cadastrado. Adicione um tipo abaixo.
+            </p>
+          )}
+
+          <div className="border-t pt-4">
+            {showAddForm ? (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Nome do tipo..."
+                  value={novoTipo}
+                  onChange={(e) => setNovoTipo(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddTipo()}
+                />
+                <Button size="sm" onClick={handleAddTipo}>
+                  Salvar
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo tipo
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={() => onConfirm(selectedTipo)}
+            disabled={!selectedTipo}
+          >
+            Gerar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 ```
 
-**Novo componente de configurações no Dialog:**
+---
+
+### Parte 5: Integração no MentoradoRoteirosView
+
+Adicionar estado e botão flutuante:
 
 ```tsx
-import { Settings } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+// Estados
+const [selectedHeadlineIds, setSelectedHeadlineIds] = useState<string[]>([]);
+const [showTipoRoteiroDialog, setShowTipoRoteiroDialog] = useState(false);
 
-// Botão de configurações
-<Popover>
-  <PopoverTrigger asChild>
-    <Button variant="outline" size="sm" className="gap-1.5">
-      <Settings className="h-4 w-4" />
-      {isMobile ? "" : "Qualidade"}
+// Na área de "Ideias de Headlines":
+<MentoradoHeadlinesList 
+  mentoradoId={mentoradoId}
+  selectedHeadlines={selectedHeadlineIds}
+  onSelectionChange={setSelectedHeadlineIds}
+/>
+
+{/* Botão flutuante quando há seleção */}
+{selectedHeadlineIds.length > 0 && (
+  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+    <Button 
+      className="gap-2 shadow-lg"
+      onClick={() => setShowTipoRoteiroDialog(true)}
+    >
+      <FileEdit className="h-4 w-4" />
+      Gerar roteiro ({selectedHeadlineIds.length})
     </Button>
-  </PopoverTrigger>
-  <PopoverContent className="w-64">
-    <div className="space-y-4">
-      <div>
-        <Label className="text-sm font-medium">Qualidade do vídeo</Label>
-        <RadioGroup value={videoQuality} onValueChange={handleQualityChange}>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="720p" id="720p" />
-            <Label htmlFor="720p">720p (HD)</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="1080p" id="1080p" />
-            <Label htmlFor="1080p">1080p (Full HD)</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="4k" id="4k" />
-            <Label htmlFor="4k">4K (Ultra HD)</Label>
-          </div>
-        </RadioGroup>
-      </div>
-      
-      <div>
-        <Label className="text-sm font-medium">Frame rate</Label>
-        <RadioGroup value={String(frameRate)} onValueChange={(v) => handleFrameRateChange(Number(v))}>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="24" id="24fps" />
-            <Label htmlFor="24fps">24 fps (Cinema)</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="30" id="30fps" />
-            <Label htmlFor="30fps">30 fps (Padrão)</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="60" id="60fps" />
-            <Label htmlFor="60fps">60 fps (Suave)</Label>
-          </div>
-        </RadioGroup>
-      </div>
-    </div>
-  </PopoverContent>
-</Popover>
+  </div>
+)}
+
+{/* Dialog de tipo */}
+<TipoRoteiroDialog
+  open={showTipoRoteiroDialog}
+  onOpenChange={setShowTipoRoteiroDialog}
+  headlinesCount={selectedHeadlineIds.length}
+  onConfirm={(tipoId) => {
+    // Aqui você pode usar o tipoId para gerar o roteiro
+    console.log("Gerar roteiro do tipo:", tipoId, "para:", selectedHeadlineIds);
+    setShowTipoRoteiroDialog(false);
+    setSelectedHeadlineIds([]);
+  }}
+/>
 ```
 
 ---
 
-### Arquivos a Modificar
+### Arquivos a Criar/Modificar
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/hooks/useVideoRecorder.ts` | Adicionar estados de qualidade/fps, funções para aplicar configurações |
-| `src/components/mentorados/TeleprompterDialog.tsx` | Reescrever modo flutuante com controles completos + adicionar popover de configurações |
-
----
-
-### Resultado Final
-
-**Modo Flutuante** (igual à imagem):
-```
-┌───────────────────────────────────┐
-│ [X]        Teleprompter           │
-├───────────────────────────────────┤
-│                                   │
-│   📌 HEADLINE:                    │
-│   Sua headline aqui...            │
-│                                   │
-│   📝 ESTRUTURA:                   │
-│   Texto do roteiro que            │
-│   vai rolando...                  │
-│                                   │
-├───────────────────────────────────┤
-│   ⏪  ◀◀   ▶️   ▶▶  ⏩            │
-│       Velocidade: 1.0x            │
-└───────────────────────────────────┘
-```
-
-**Configurações de Câmera** (novo botão):
-```
-┌─────────────────────────┐
-│ ⚙️ Qualidade            │
-├─────────────────────────┤
-│ Qualidade do vídeo:     │
-│ ○ 720p (HD)             │
-│ ● 1080p (Full HD)       │
-│ ○ 4K (Ultra HD)         │
-│                         │
-│ Frame rate:             │
-│ ○ 24 fps (Cinema)       │
-│ ● 30 fps (Padrão)       │
-│ ○ 60 fps (Suave)        │
-└─────────────────────────┘
-```
+| Arquivo | Ação |
+|---------|------|
+| **Migração SQL** | Criar tabela `tipos_roteiro` |
+| `src/hooks/useTiposRoteiro.ts` | Criar hook CRUD |
+| `src/components/mentorados/TipoRoteiroDialog.tsx` | Criar dialog de seleção |
+| `src/components/mentorados/MentoradoHeadlinesList.tsx` | Adicionar checkboxes |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Integrar seleção e botão |
 
 ---
 
-### Comportamento no Mobile
+### Fluxo Visual
 
-1. Quando clicar em **"Modo flutuante"**:
-   - Abre uma nova aba/janela do navegador
-   - Mostra texto com fundo transparente escuro
-   - Tem controles de play/pause/velocidade
-   - Usuário minimiza e abre câmera nativa
-   - No iOS, pode usar Split View
+```text
+┌─────────────────────────────────────────────────────┐
+│ Ideias de Headlines (5)                             │
+├─────────────────────────────────────────────────────┤
+│ ☐ Headline 1...                        [📋] [🗑️]  │
+│ ☑ Headline 2...                        [📋] [🗑️]  │
+│ ☑ Headline 3...                        [📋] [🗑️]  │
+│ ☐ Headline 4...                        [📋] [🗑️]  │
+│ ☐ Headline 5...                        [📋] [🗑️]  │
+└─────────────────────────────────────────────────────┘
 
-2. Quando clicar em **"Qualidade"**:
-   - Abre popover com opções
-   - Aplica configurações em tempo real
-   - Qualidade afeta a gravação final
+        ┌─────────────────────────────────┐
+        │ 📝 Gerar roteiro (2)            │  ← Botão flutuante
+        └─────────────────────────────────┘
+              ↓ ao clicar
+┌─────────────────────────────────────────────────────┐
+│ Gerar Roteiro                                   [X] │
+├─────────────────────────────────────────────────────┤
+│ 📝 2 headlines selecionadas                         │
+│                                                     │
+│ Selecione o tipo:                                   │
+│ ○ Roteiro de Reels                           [🗑️] │
+│ ● Roteiro Completo                           [🗑️] │
+│ ○ Roteiro Educacional                        [🗑️] │
+│                                                     │
+│ [+ Novo tipo]                                       │
+│                                                     │
+│                         [Cancelar]  [Gerar]         │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+### Detalhes Técnicos
+
+#### Migração SQL Completa
+
+```sql
+-- Tabela de tipos de roteiro
+CREATE TABLE IF NOT EXISTS public.tipos_roteiro (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  nome TEXT NOT NULL,
+  descricao TEXT,
+  user_id UUID NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Habilitar RLS
+ALTER TABLE public.tipos_roteiro ENABLE ROW LEVEL SECURITY;
+
+-- Política: usuário vê/gerencia apenas seus tipos
+CREATE POLICY "Users can manage their own tipos_roteiro"
+  ON public.tipos_roteiro
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+```
+
+#### Hook useTiposRoteiro.ts
+
+O hook terá:
+- `useTiposRoteiro()` - listar tipos
+- `useCreateTipoRoteiro()` - criar novo tipo
+- `useDeleteTipoRoteiro()` - deletar tipo
+
+#### MentoradoHeadlinesList.tsx
+
+Mudanças principais:
+1. Adicionar props `selectedHeadlines` e `onSelectionChange`
+2. Importar e usar componente `Checkbox`
+3. Renderizar checkbox ao lado de cada headline
+4. Chamar callback quando seleção muda
+
+#### TipoRoteiroDialog.tsx
+
+Componente novo com:
+- RadioGroup para selecionar tipo
+- Input para adicionar novo tipo
+- Botões de deletar tipos existentes
+- Confirmação para gerar roteiro
+
