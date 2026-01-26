@@ -50,9 +50,11 @@ export function TeleprompterDialog({
     scrollSpeed,
     fontSize,
     isMirrored,
+    textWidth,
     textContainerRef,
     setScrollSpeed,
     setFontSize,
+    setTextWidth,
     toggleScroll,
     resetScroll,
     toggleMirror,
@@ -187,12 +189,17 @@ export function TeleprompterDialog({
               <div 
                 ref={textContainerRef}
                 className={cn(
-                  "absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm text-white p-4 overflow-y-auto",
+                  "absolute top-0 left-1/2 -translate-x-1/2",
+                  "bg-black/60 backdrop-blur-sm text-white p-4",
+                  "overflow-y-auto touch-pan-y",
                   isMobile ? "h-[35%]" : "h-[40%]"
                 )}
-                style={{ fontSize: `${fontSize}px` }}
+                style={{ 
+                  fontSize: `${fontSize}px`,
+                  width: `${textWidth}%`
+                }}
               >
-                <div className="whitespace-pre-wrap leading-relaxed">
+                <div className="whitespace-pre-wrap leading-relaxed text-center">
                   {localText || "Nenhum texto para exibir"}
                 </div>
               </div>
@@ -252,6 +259,20 @@ export function TeleprompterDialog({
                     max={48}
                     step={2}
                     onValueChange={([v]) => setFontSize(v)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label className="text-sm">Largura do texto</Label>
+                    <span className="text-sm text-muted-foreground">{textWidth}%</span>
+                  </div>
+                  <Slider
+                    value={[textWidth]}
+                    min={40}
+                    max={100}
+                    step={5}
+                    onValueChange={([v]) => setTextWidth(v)}
                   />
                 </div>
               </div>

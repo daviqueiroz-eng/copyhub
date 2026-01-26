@@ -12,6 +12,7 @@ export function useTeleprompter(options: UseTeleprompterOptions = {}) {
   const [scrollSpeed, setScrollSpeed] = useState(initialSpeed);
   const [fontSize, setFontSize] = useState(initialFontSize);
   const [isMirrored, setIsMirrored] = useState(true);
+  const [textWidth, setTextWidth] = useState(100); // 100% por padrão
   
   const textContainerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -87,11 +88,13 @@ export function useTeleprompter(options: UseTeleprompterOptions = {}) {
     scrollSpeed,
     fontSize,
     isMirrored,
+    textWidth,
     textContainerRef,
     
     // Actions
     setScrollSpeed,
     setFontSize,
+    setTextWidth,
     startScroll,
     pauseScroll,
     resetScroll,
