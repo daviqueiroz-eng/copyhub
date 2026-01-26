@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
 import { useTrelloImport, TrelloCard } from "@/hooks/useTrelloImport";
 import {
   useOverdeliveryRoteiros,
@@ -59,11 +60,12 @@ import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
 // MentoradoHeadlinesList removido - seleção agora é feita diretamente nos campos de headline
-import { TipoRoteiroDialog } from "./TipoRoteiroDialog";
+import { TipoRoteiroDialog, HeadlineComTipo } from "./TipoRoteiroDialog";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
 import { TeleprompterDialog } from "./TeleprompterDialog";
 import { RoteiroRevisaoDialog } from "./RoteiroRevisaoDialog";
+import { BulkProgressPanel, BulkProgressState } from "./BulkProgressPanel";
 import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
@@ -242,6 +244,10 @@ export const MentoradoRoteirosView = ({
   
   // Estado para dialog de revisão com IA
   const [showRevisaoDialog, setShowRevisaoDialog] = useState(false);
+  
+  // Estado para geração em massa com painel lateral
+  const [bulkProgress, setBulkProgress] = useState<BulkProgressState | null>(null);
+  const [bulkHeadlines, setBulkHeadlines] = useState<Array<{ key: string; headline: string }>>([]);
   
   // Hook para inteligência global
   const { data: inteligenciaGlobal } = useInteligenciaGlobal();
@@ -1103,6 +1109,102 @@ export const MentoradoRoteirosView = ({
       description: `${htmlParts.length} roteiros da Guia ${guiaAtiva} copiados.`,
     });
   };
+
+  // Função para processar geração em massa de roteiros (executada externamente ao dialog)
+  const processBulkGeneration = useCallback(async (headlinesComTipo: HeadlineComTipo[]) => {
+    // Preparar estado de progresso
+    const headlines = headlinesComTipo.map(h => ({ key: h.key, headline: h.headline }));
+    setBulkHeadlines(headlines);
+    setBulkProgress({
+      isProcessing: true,
+      total: headlinesComTipo.length,
+      current: 0,
+      currentKey: "",
+      results: [],
+    });
+
+    // Limpar seleção imediatamente
+    setSelectedRoteiroKeys([]);
+
+    const results: Array<{ key: string; success: boolean; error?: string }> = [];
+
+    for (let i = 0; i < headlinesComTipo.length; i++) {
+      const item = headlinesComTipo[i];
+      
+      setBulkProgress(prev => prev ? {
+        ...prev,
+        current: i + 1,
+        currentKey: item.key,
+      } : null);
+
+      try {
+        const { data, error } = await supabase.functions.invoke("n8n-webhook", {
+          body: {
+            mentorado: {
+              nome: mentoradoNome,
+              informacoes_mentorado: currentMentorado?.informacoes_mentorado,
+              apresentacao: currentMentorado?.apresentacao,
+            },
+            roteiros: [{
+              key: item.key,
+              headline: item.headline,
+              estrutura: item.estrutura,
+              tipo_roteiro: item.tipoNome,
+              tipo_config: item.tipoConfig,
+            }],
+          },
+        });
+
+        if (error) {
+          console.error("Erro na Edge Function:", error);
+          results.push({ key: item.key, success: false, error: error.message });
+        } else if (data?.roteiros?.[0]) {
+          const estrutura = data.roteiros[0].estrutura;
+          results.push({ key: item.key, success: true });
+          
+          // Atualizar estado local imediatamente
+          setRoteirosLocais((prev) => {
+            const newMap = new Map(prev);
+            const existing = newMap.get(item.key);
+            if (existing) {
+              newMap.set(item.key, { ...existing, estrutura });
+            }
+            return newMap;
+          });
+
+          // Persistir no banco
+          const [guiaNumero, ordem] = item.key.split("-").map(Number);
+          upsertRoteiro.mutate({
+            mentoradoId: mentoradoId,
+            guiaNumero: guiaNumero,
+            ordem: ordem,
+            headline: item.headline,
+            estrutura: estrutura,
+          });
+        } else {
+          results.push({ key: item.key, success: false, error: "Sem resposta do webhook" });
+        }
+      } catch (err) {
+        console.error("Erro ao processar roteiro:", err);
+        results.push({ 
+          key: item.key, 
+          success: false, 
+          error: err instanceof Error ? err.message : "Erro desconhecido" 
+        });
+      }
+
+      setBulkProgress(prev => prev ? { ...prev, results: [...results] } : null);
+    }
+
+    // Marcar como finalizado
+    setBulkProgress(prev => prev ? { ...prev, isProcessing: false } : null);
+    
+    const successCount = results.filter(r => r.success).length;
+    toast({
+      title: "Geração concluída!",
+      description: `${successCount} de ${headlinesComTipo.length} roteiros gerados com sucesso`,
+    });
+  }, [mentoradoNome, currentMentorado, mentoradoId, upsertRoteiro]);
 
   const handleCreateGuia = (quantidade: number, isOverdelivery = false) => {
     const nextGuia = guias.length > 0 ? Math.max(...guias.map(g => g.numero)) + 1 : 1;
@@ -2383,46 +2485,20 @@ export const MentoradoRoteirosView = ({
           informacoes_mentorado: currentMentorado?.informacoes_mentorado || null,
           apresentacao: currentMentorado?.apresentacao || null,
         }}
-        onPartialResult={(key, estrutura) => {
-          // Atualizar estado local imediatamente
-          setRoteirosLocais((prev) => {
-            const newMap = new Map(prev);
-            const existing = newMap.get(key);
-            if (existing) {
-              newMap.set(key, { ...existing, estrutura });
-            }
-            return newMap;
-          });
-
-          // Persistir no banco
-          const [guiaNumero, ordem] = key.split("-").map(Number);
-          const existing = roteirosLocais.get(key);
-          upsertRoteiro.mutate({
-            mentoradoId: mentoradoId,
-            guiaNumero: guiaNumero,
-            ordem: ordem,
-            headline: existing?.headline || "",
-            estrutura: estrutura,
-          });
-        }}
-        onConfirm={(headlinesComTipo, webhookResponse) => {
-          // Os roteiros já foram atualizados via onPartialResult
-          if (webhookResponse?.roteiros && webhookResponse.roteiros.length > 0) {
-            toast({
-              title: "Roteiros gerados!",
-              description: `${webhookResponse.roteiros.length} roteiro(s) foram gerados e preenchidos`,
-            });
-          } else {
-            toast({
-              title: "Processamento concluído",
-              description: `${headlinesComTipo.length} roteiro(s) processados`,
-            });
-          }
-          
-          setShowTipoRoteiroDialog(false);
-          setSelectedRoteiroKeys([]);
-        }}
+        onStartBulkGeneration={processBulkGeneration}
       />
+
+      {/* Painel de progresso lateral para geração em massa */}
+      {bulkProgress && (
+        <BulkProgressPanel
+          progress={bulkProgress}
+          headlines={bulkHeadlines}
+          onClose={() => {
+            setBulkProgress(null);
+            setBulkHeadlines([]);
+          }}
+        />
+      )}
 
       {/* Dialog de Revisão com IA */}
       <RoteiroRevisaoDialog

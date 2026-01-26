@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -52,12 +52,54 @@ export const RoteiroRevisaoDialog = ({
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
+  // Estado local para edição direta (sincronizado com prop)
+  const [localHeadline, setLocalHeadline] = useState("");
+  const [localEstrutura, setLocalEstrutura] = useState("");
+  
+  // Debounce para salvar alterações diretas
+  const directEditTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
   const currentRoteiro = roteiros[currentIndex];
   const currentKey = currentRoteiro?.key || "";
   const currentMessages = messagesPerRoteiro.get(currentKey) || [];
+
+  // Sincronizar estado local com roteiro atual quando mudar de índice
+  useEffect(() => {
+    if (currentRoteiro) {
+      setLocalHeadline(currentRoteiro.headline);
+      setLocalEstrutura(currentRoteiro.estrutura);
+    }
+  }, [currentIndex, currentRoteiro?.headline, currentRoteiro?.estrutura]);
+
+  // Handler para edição direta com debounce
+  const handleDirectEdit = useCallback((field: "headline" | "estrutura", value: string) => {
+    if (field === "headline") {
+      setLocalHeadline(value);
+    } else {
+      setLocalEstrutura(value);
+    }
+    
+    // Debounce para salvar
+    if (directEditTimeoutRef.current) {
+      clearTimeout(directEditTimeoutRef.current);
+    }
+    
+    directEditTimeoutRef.current = setTimeout(() => {
+      onRoteiroChange(currentKey, field, value);
+    }, 1000);
+  }, [currentKey, onRoteiroChange]);
+
+  // Limpar timeout ao desmontar
+  useEffect(() => {
+    return () => {
+      if (directEditTimeoutRef.current) {
+        clearTimeout(directEditTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Auto-scroll quando novas mensagens chegam
   useEffect(() => {
@@ -79,14 +121,15 @@ export const RoteiroRevisaoDialog = ({
     }
   }, [open]);
 
-  // Navegação por teclado
+  // Navegação por teclado (apenas quando não está focado em textarea)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!open) return;
       
-      // Não capturar se estiver digitando no input
-      if (document.activeElement === inputRef.current) {
-        if (e.key === "Enter" && !e.shiftKey && inputMessage.trim()) {
+      // Não capturar se estiver digitando em input ou textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+        if (e.key === "Enter" && !e.shiftKey && target === inputRef.current && inputMessage.trim()) {
           e.preventDefault();
           handleSendMessage();
         }
@@ -136,8 +179,8 @@ export const RoteiroRevisaoDialog = ({
 
       const { data, error } = await supabase.functions.invoke("revisar-roteiro", {
         body: {
-          headline: currentRoteiro.headline,
-          estrutura: currentRoteiro.estrutura,
+          headline: localHeadline,
+          estrutura: localEstrutura,
           mensagem: userMessage.content,
           historico,
         },
@@ -148,9 +191,11 @@ export const RoteiroRevisaoDialog = ({
       // Atualizar roteiro se houve mudança
       if (data.changed) {
         if (data.headlineChanged) {
+          setLocalHeadline(data.headline);
           onRoteiroChange(currentKey, "headline", data.headline);
         }
         if (data.estruturaChanged) {
+          setLocalEstrutura(data.estrutura);
           onRoteiroChange(currentKey, "estrutura", data.estrutura);
         }
       }
@@ -189,7 +234,7 @@ export const RoteiroRevisaoDialog = ({
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [inputMessage, isLoading, currentRoteiro, currentKey, currentMessages, onRoteiroChange]);
+  }, [inputMessage, isLoading, currentRoteiro, currentKey, currentMessages, onRoteiroChange, localHeadline, localEstrutura]);
 
   // Adicionar mensagem inicial de boas-vindas se for a primeira vez
   useEffect(() => {
@@ -198,7 +243,7 @@ export const RoteiroRevisaoDialog = ({
     const welcomeMessage: Message = {
       id: `welcome-${currentKey}`,
       role: "assistant",
-      content: "Em que posso ajudar na revisão deste roteiro? Você pode pedir alterações específicas como:\n\n• \"Troca 'demais' por 'muito bom'\"\n• \"Remove a última frase\"\n• \"Adiciona um CTA no final\"\n• \"Deixa mais curto\"",
+      content: "Em que posso ajudar na revisão deste roteiro? Você pode editar diretamente o texto à esquerda ou pedir alterações específicas aqui:\n\n• \"Troca 'demais' por 'muito bom'\"\n• \"Remove a última frase\"\n• \"Adiciona um CTA no final\"\n• \"Deixa mais curto\"",
       timestamp: new Date(),
     };
 
@@ -234,7 +279,7 @@ export const RoteiroRevisaoDialog = ({
             <span className="font-semibold">
               Roteiro {currentIndex + 1}/{roteiros.length}
             </span>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground hidden sm:inline">
               ({mentoradoNome} - Guia {guiaNum})
             </span>
           </div>
@@ -247,7 +292,7 @@ export const RoteiroRevisaoDialog = ({
               disabled={currentIndex === 0}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Anterior
+              <span className="hidden sm:inline">Anterior</span>
             </Button>
             <Button
               variant="outline"
@@ -255,7 +300,7 @@ export const RoteiroRevisaoDialog = ({
               onClick={() => setCurrentIndex(prev => prev + 1)}
               disabled={currentIndex === roteiros.length - 1}
             >
-              Próximo
+              <span className="hidden sm:inline">Próximo</span>
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
@@ -263,25 +308,31 @@ export const RoteiroRevisaoDialog = ({
 
         {/* Content */}
         <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-          {/* Lado esquerdo - Roteiro */}
+          {/* Lado esquerdo - Roteiro editável */}
           <div className="flex-1 flex flex-col border-b lg:border-b-0 lg:border-r overflow-hidden">
             <div className="px-4 py-2 bg-muted/50 border-b shrink-0">
-              <h3 className="font-semibold text-sm">Headline {String(ordem).padStart(2, "0")}</h3>
+              <h3 className="font-semibold text-sm" style={{ color: "#B8860B" }}>
+                HEADLINE {String(ordem).padStart(2, "0")}:
+              </h3>
             </div>
-            <div className="px-4 py-3 border-b shrink-0">
-              <p className="text-sm whitespace-pre-wrap">{currentRoteiro.headline || "(vazio)"}</p>
-            </div>
+            <Textarea
+              value={localHeadline}
+              onChange={(e) => handleDirectEdit("headline", e.target.value)}
+              placeholder="Digite a headline..."
+              className="border-0 rounded-none resize-none min-h-[80px] focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
             
             <div className="px-4 py-2 bg-muted/50 border-b shrink-0">
-              <h3 className="font-semibold text-sm">Estrutura {String(ordem).padStart(2, "0")}</h3>
+              <h3 className="font-semibold text-sm" style={{ color: "#B8860B" }}>
+                ESTRUTURA {String(ordem).padStart(2, "0")}:
+              </h3>
             </div>
-            <ScrollArea className="flex-1">
-              <div className="px-4 py-3">
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                  {currentRoteiro.estrutura || "(vazio)"}
-                </p>
-              </div>
-            </ScrollArea>
+            <Textarea
+              value={localEstrutura}
+              onChange={(e) => handleDirectEdit("estrutura", e.target.value)}
+              placeholder="Digite a estrutura do roteiro..."
+              className="flex-1 border-0 rounded-none resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
           </div>
 
           {/* Lado direito - Chat */}
@@ -374,7 +425,7 @@ export const RoteiroRevisaoDialog = ({
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">
-                Pressione Enter para enviar • ← → para navegar
+                Edite o texto diretamente ou use o chat • ← → para navegar
               </p>
             </div>
           </div>
