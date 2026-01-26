@@ -2373,46 +2373,39 @@ export const MentoradoRoteirosView = ({
           informacoes_mentorado: currentMentorado?.informacoes_mentorado || null,
           apresentacao: currentMentorado?.apresentacao || null,
         }}
+        onPartialResult={(key, estrutura) => {
+          // Atualizar estado local imediatamente
+          setRoteirosLocais((prev) => {
+            const newMap = new Map(prev);
+            const existing = newMap.get(key);
+            if (existing) {
+              newMap.set(key, { ...existing, estrutura });
+            }
+            return newMap;
+          });
+
+          // Persistir no banco
+          const [guiaNumero, ordem] = key.split("-").map(Number);
+          const existing = roteirosLocais.get(key);
+          upsertRoteiro.mutate({
+            mentoradoId: mentoradoId,
+            guiaNumero: guiaNumero,
+            ordem: ordem,
+            headline: existing?.headline || "",
+            estrutura: estrutura,
+          });
+        }}
         onConfirm={(headlinesComTipo, webhookResponse) => {
-          // Atualizar estrutura de cada roteiro com a resposta do webhook
-          if (webhookResponse?.roteiros) {
-            setRoteirosLocais((prev) => {
-              const newMap = new Map(prev);
-              
-              for (const roteiroRetornado of webhookResponse.roteiros) {
-                const existing = newMap.get(roteiroRetornado.key);
-                if (existing) {
-                  newMap.set(roteiroRetornado.key, {
-                    ...existing,
-                    estrutura: roteiroRetornado.estrutura,
-                  });
-                }
-              }
-              
-              return newMap;
-            });
-
-            // Persistir as mudanças no banco
-            webhookResponse.roteiros.forEach(r => {
-              const [guiaNumero, ordem] = r.key.split("-").map(Number);
-              const existing = roteirosLocais.get(r.key);
-              upsertRoteiro.mutate({
-                mentoradoId: mentoradoId,
-                guiaNumero: guiaNumero,
-                ordem: ordem,
-                headline: existing?.headline || "",
-                estrutura: r.estrutura,
-              });
-            });
-
+          // Os roteiros já foram atualizados via onPartialResult
+          if (webhookResponse?.roteiros && webhookResponse.roteiros.length > 0) {
             toast({
               title: "Roteiros gerados!",
               description: `${webhookResponse.roteiros.length} roteiro(s) foram gerados e preenchidos`,
             });
           } else {
             toast({
-              title: "Roteiros enviados!",
-              description: `${headlinesComTipo.length} roteiro(s) enviados para geração`,
+              title: "Processamento concluído",
+              description: `${headlinesComTipo.length} roteiro(s) processados`,
             });
           }
           
