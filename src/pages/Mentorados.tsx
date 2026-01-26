@@ -186,16 +186,16 @@ const Mentorados = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] w-full">
       {/* Header com Títulos lado a lado */}
-      <div className="flex items-start justify-between gap-6 shrink-0 pb-4">
+      <div className="flex items-start justify-between gap-4 md:gap-6 shrink-0 pb-3 md:pb-4">
         {/* Lado esquerdo - Meus Mentorados */}
         <div className="xl:w-[320px] 2xl:w-[360px] shrink-0">
-          <h2 className="text-3xl font-bold text-foreground">Meus Mentorados</h2>
-          <p className="text-muted-foreground mt-1">
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground">Meus Mentorados</h2>
+          <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
             Repositório de perfis e diagnósticos
           </p>
         </div>
         
-        {/* Lado direito - Ordem de Prioridade (título) */}
+        {/* Lado direito - Ordem de Prioridade (título) - escondido em mobile */}
         <div className="flex-1 hidden xl:block">
           <h2 className="text-3xl font-bold text-foreground">Ordem de Prioridade</h2>
           <p className="text-muted-foreground mt-1">
@@ -205,23 +205,23 @@ const Mentorados = () => {
       </div>
 
       {/* Área principal com scroll interno */}
-      <div className="flex-1 flex flex-col xl:flex-row gap-6 min-h-0">
+      <div className="flex-1 flex flex-col xl:flex-row gap-4 md:gap-6 min-h-0">
         {/* Lado esquerdo: Tabs Geral/Grupo com mentorados */}
         <div className="xl:w-[320px] 2xl:w-[360px] shrink-0 flex flex-col min-h-0">
           {/* Busca + Botão Novo */}
-          <div className="flex items-center gap-2 shrink-0 pb-4">
-            <div className="relative w-48">
+          <div className="flex items-center gap-2 shrink-0 pb-3 md:pb-4">
+            <div className="relative flex-1 sm:flex-none sm:w-48">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar mentorado..."
+                placeholder="Buscar..."
                 className="pl-9"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button size="sm" className="gap-1" onClick={() => setIsAddDialogOpen(true)}>
+            <Button size="sm" className="gap-1 shrink-0" onClick={() => setIsAddDialogOpen(true)}>
               <Plus className="h-4 w-4" />
-              Novo
+              <span className="hidden sm:inline">Novo</span>
             </Button>
           </div>
 
@@ -231,7 +231,7 @@ const Mentorados = () => {
               <TabsTrigger value="grupo">Grupo</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="geral" className="mt-4 flex-1 min-h-0 overflow-y-auto">
+            <TabsContent value="geral" className="mt-3 md:mt-4 flex-1 min-h-0 overflow-y-auto">
               <GeralView 
                 mentorados={mentorados}
                 searchTerm={searchTerm}
@@ -239,14 +239,14 @@ const Mentorados = () => {
               />
             </TabsContent>
 
-            <TabsContent value="grupo" className="mt-4 flex-1 min-h-0 overflow-y-auto">
+            <TabsContent value="grupo" className="mt-3 md:mt-4 flex-1 min-h-0 overflow-y-auto">
               <GrupoView />
             </TabsContent>
           </Tabs>
         </div>
 
-        {/* Lado direito: Ordem de Prioridade sempre visível */}
-        <div className="flex-1 min-w-0 border-l pl-6 hidden xl:flex flex-col min-h-0">
+        {/* Lado direito: Ordem de Prioridade sempre visível (desktop) */}
+        <div className="flex-1 min-w-0 border-l pl-4 md:pl-6 hidden xl:flex flex-col min-h-0">
           <div className="flex-1 min-h-0 overflow-y-auto">
             <OrdemPrioridadeView />
           </div>
@@ -254,8 +254,8 @@ const Mentorados = () => {
       </div>
 
       {/* Ordem de Prioridade em mobile/tablet (abaixo) */}
-      <div className="xl:hidden mt-6 pt-6 border-t">
-        <h3 className="text-lg font-semibold mb-4">Ordem de Prioridade</h3>
+      <div className="xl:hidden mt-4 md:mt-6 pt-4 md:pt-6 border-t">
+        <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Ordem de Prioridade</h3>
         <OrdemPrioridadeView />
       </div>
 
@@ -306,12 +306,12 @@ const Mentorados = () => {
             </div>
           </SheetHeader>
 
-          <Tabs defaultValue="avatar" className="mt-6">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
-              <TabsTrigger value="avatar">Avatar</TabsTrigger>
-              <TabsTrigger value="comunicacao">Comunicação</TabsTrigger>
-              <TabsTrigger value="materiais">Materiais</TabsTrigger>
-              <TabsTrigger value="roteiros">Roteiros</TabsTrigger>
+          <Tabs defaultValue="avatar" className="mt-4 md:mt-6">
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-4 md:mb-6 gap-1">
+              <TabsTrigger value="avatar" className="text-xs sm:text-sm">Avatar</TabsTrigger>
+              <TabsTrigger value="comunicacao" className="text-xs sm:text-sm">Comunicação</TabsTrigger>
+              <TabsTrigger value="materiais" className="text-xs sm:text-sm">Materiais</TabsTrigger>
+              <TabsTrigger value="roteiros" className="text-xs sm:text-sm">Roteiros</TabsTrigger>
             </TabsList>
 
             <TabsContent value="avatar" className="space-y-6">

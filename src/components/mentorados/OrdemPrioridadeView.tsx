@@ -174,141 +174,139 @@ export function OrdemPrioridadeView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header com controles */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Filter className="h-5 w-5 text-muted-foreground" />
-              <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={comboboxOpen}
-                    className="w-[280px] justify-between"
-                  >
-                    {selectedCopywriter
-                      ? (
-                        <span className="flex items-center gap-2">
-                          {favoriteCopywriter === selectedCopywriter && (
-                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+      <div className="flex flex-col gap-3 md:gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
+            <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboboxOpen}
+                  className="w-full sm:w-[280px] justify-between text-sm"
+                >
+                  {selectedCopywriter
+                    ? (
+                      <span className="flex items-center gap-2 truncate">
+                        {favoriteCopywriter === selectedCopywriter && (
+                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
+                        )}
+                        <span className="truncate">{selectedCopywriter}</span>
+                      </span>
+                    )
+                    : "Buscar copywriter..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[280px] sm:w-[320px] p-0">
+                <Command>
+                  <CommandInput placeholder="Digite seu nome..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum copywriter encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="all"
+                        onSelect={() => {
+                          setSelectedCopywriter("");
+                          setComboboxOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            !selectedCopywriter ? "opacity-100" : "opacity-0"
                           )}
-                          {selectedCopywriter}
-                        </span>
-                      )
-                      : "Buscar copywriter..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[320px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Digite seu nome..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhum copywriter encontrado.</CommandEmpty>
-                      <CommandGroup>
+                        />
+                        Todos os copywriters
+                      </CommandItem>
+                      {copywriters.map((cw) => (
                         <CommandItem
-                          value="all"
-                          onSelect={() => {
-                            setSelectedCopywriter("");
+                          key={cw}
+                          value={cw}
+                          onSelect={(currentValue) => {
+                            setSelectedCopywriter(currentValue === selectedCopywriter ? "" : currentValue);
                             setComboboxOpen(false);
                           }}
+                          className="flex items-center justify-between"
                         >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              !selectedCopywriter ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          Todos os copywriters
-                        </CommandItem>
-                        {copywriters.map((cw) => (
-                          <CommandItem
-                            key={cw}
-                            value={cw}
-                            onSelect={(currentValue) => {
-                              setSelectedCopywriter(currentValue === selectedCopywriter ? "" : currentValue);
-                              setComboboxOpen(false);
-                            }}
-                            className="flex items-center justify-between"
-                          >
-                            <span className="flex items-center gap-2">
-                              <Check
-                                className={cn(
-                                  "h-4 w-4",
-                                  selectedCopywriter === cw ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {cw}
-                              {cw === matchedCopywriter && (
-                                <Badge variant="secondary" className="text-xs">Você</Badge>
+                          <span className="flex items-center gap-2">
+                            <Check
+                              className={cn(
+                                "h-4 w-4",
+                                selectedCopywriter === cw ? "opacity-100" : "opacity-0"
                               )}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => handleFavorite(cw, e)}
-                              className="p-1 rounded hover:bg-accent transition-colors"
-                              title={favoriteCopywriter === cw ? "Remover favorito" : "Favoritar para filtrar automaticamente"}
-                            >
-                              <Star 
-                                className={cn(
-                                  "h-4 w-4 transition-colors",
-                                  favoriteCopywriter === cw 
-                                    ? "text-yellow-500 fill-yellow-500" 
-                                    : "text-muted-foreground hover:text-yellow-500"
-                                )} 
-                              />
-                            </button>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
+                            />
+                            {cw}
+                            {cw === matchedCopywriter && (
+                              <Badge variant="secondary" className="text-xs">Você</Badge>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleFavorite(cw, e)}
+                            className="p-1 rounded hover:bg-accent transition-colors"
+                            title={favoriteCopywriter === cw ? "Remover favorito" : "Favoritar para filtrar automaticamente"}
+                          >
+                            <Star 
+                              className={cn(
+                                "h-4 w-4 transition-colors",
+                                favoriteCopywriter === cw 
+                                  ? "text-yellow-500 fill-yellow-500" 
+                                  : "text-muted-foreground hover:text-yellow-500"
+                              )} 
+                            />
+                          </button>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {isAdmin && (
-            <Button onClick={() => setIsUploadOpen(true)} className="gap-2">
+            <Button onClick={() => setIsUploadOpen(true)} className="gap-2 w-full sm:w-auto">
               <Upload className="h-4 w-4" />
-              Importar CSV
+              <span className="sm:inline">Importar CSV</span>
             </Button>
           )}
         </div>
 
         {/* Filtro por período e toggle de visualização */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CalendarDays className="h-5 w-5 text-muted-foreground" />
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-2 sm:pb-0">
+            <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
             <ToggleGroup 
               type="single" 
               value={periodFilter} 
               onValueChange={(value) => value && setPeriodFilter(value as PeriodFilter)}
-              className="justify-start"
+              className="justify-start flex-nowrap"
             >
-              <ToggleGroupItem value="all" aria-label="Todos" className="gap-1.5">
+              <ToggleGroupItem value="all" aria-label="Todos" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
                 Todos
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                <Badge variant="secondary" className="ml-1 h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-xs">
                   {periodCounts.all}
                 </Badge>
               </ToggleGroupItem>
-              <ToggleGroupItem value="today" aria-label="Hoje" className="gap-1.5">
+              <ToggleGroupItem value="today" aria-label="Hoje" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
                 Hoje
-                <Badge variant={periodCounts.today > 0 ? "destructive" : "secondary"} className="ml-1 h-5 px-1.5 text-xs">
+                <Badge variant={periodCounts.today > 0 ? "destructive" : "secondary"} className="ml-1 h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-xs">
                   {periodCounts.today}
                 </Badge>
               </ToggleGroupItem>
-              <ToggleGroupItem value="week" aria-label="Semana" className="gap-1.5">
+              <ToggleGroupItem value="week" aria-label="Semana" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
                 Semana
-                <Badge variant={periodCounts.week > 0 ? "default" : "secondary"} className="ml-1 h-5 px-1.5 text-xs">
+                <Badge variant={periodCounts.week > 0 ? "default" : "secondary"} className="ml-1 h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-xs">
                   {periodCounts.week}
                 </Badge>
               </ToggleGroupItem>
-              <ToggleGroupItem value="month" aria-label="Mês" className="gap-1.5">
+              <ToggleGroupItem value="month" aria-label="Mês" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
                 Mês
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                <Badge variant="secondary" className="ml-1 h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-xs">
                   {periodCounts.month}
                 </Badge>
               </ToggleGroupItem>
@@ -320,15 +318,15 @@ export function OrdemPrioridadeView() {
             type="single"
             value={viewMode}
             onValueChange={(value) => value && setViewMode(value as ViewMode)}
-            className="border rounded-lg p-1 bg-muted/50"
+            className="border rounded-lg p-1 bg-muted/50 self-start sm:self-auto"
           >
-            <ToggleGroupItem value="grid" aria-label="Visualização em grade" className="gap-1.5 data-[state=on]:bg-background">
+            <ToggleGroupItem value="grid" aria-label="Visualização em grade" className="gap-1 sm:gap-1.5 data-[state=on]:bg-background px-2 sm:px-3">
               <LayoutGrid className="h-4 w-4" />
-              <span className="hidden sm:inline">Grid</span>
+              <span className="hidden sm:inline text-sm">Grid</span>
             </ToggleGroupItem>
-            <ToggleGroupItem value="calendar" aria-label="Visualização em calendário" className="gap-1.5 data-[state=on]:bg-background">
+            <ToggleGroupItem value="calendar" aria-label="Visualização em calendário" className="gap-1 sm:gap-1.5 data-[state=on]:bg-background px-2 sm:px-3">
               <Calendar className="h-4 w-4" />
-              <span className="hidden sm:inline">Calendário</span>
+              <span className="hidden sm:inline text-sm">Calendário</span>
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
@@ -396,7 +394,7 @@ export function OrdemPrioridadeView() {
       ) : viewMode === "calendar" ? (
         <PrioridadeCalendar cards={filteredCards} />
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
           {filteredCards.map((card, index) => (
             <PrioridadeCard key={`${card.cardName}-${index}`} card={card} />
           ))}

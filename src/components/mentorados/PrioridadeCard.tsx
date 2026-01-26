@@ -59,13 +59,13 @@ export function PrioridadeCard({ card }: PrioridadeCardProps) {
       onClick={handleClick}
     >
       {/* Badge de urgência no topo - compacto */}
-      <div className={`w-full py-1 px-2 text-center text-[10px] font-bold uppercase tracking-wider ${urgencyStyles[urgency]}`}>
+      <div className={`w-full py-0.5 sm:py-1 px-2 text-center text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${urgencyStyles[urgency]}`}>
         {urgencyLabels[urgency]}
       </div>
 
-      <div className="p-2 flex flex-col flex-1">
+      <div className="p-1.5 sm:p-2 flex flex-col flex-1">
         {/* Nome do card */}
-        <h3 className="font-semibold text-xs leading-tight line-clamp-2 mb-1">
+        <h3 className="font-semibold text-[11px] sm:text-xs leading-tight line-clamp-3 sm:line-clamp-2 mb-1">
           {card.cardName}
         </h3>
         
