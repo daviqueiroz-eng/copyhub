@@ -1,192 +1,86 @@
 
 
-## Plano: Seleção Individual de Tipo de Roteiro por Headline
+## Plano: Disparar Webhook ao Gerar Roteiro
 
 ### Objetivo
 
-Modificar o dialog "Gerar Roteiro" para mostrar cada headline selecionada individualmente, permitindo escolher um tipo de roteiro diferente para cada uma.
+Quando o usuário clicar em "Gerar" no dialog de tipo de roteiro, enviar os dados para o webhook do n8n.
 
 ---
 
-### Visual Atual vs Novo
+### Dados a Enviar
 
-```text
-ATUAL:
-┌─────────────────────────────────────────────────────────────────┐
-│ Gerar Roteiro                                               [X] │
-├─────────────────────────────────────────────────────────────────┤
-│  📝 2 headlines selecionadas                                    │
-│                                                                 │
-│  Selecione o tipo de roteiro:                                   │
-│  ◉ Lista útil ✓ configurado                                     │
-│  ○ Defesa de crença                                             │
-│                                                                 │
-│                              [Cancelar]  [Gerar]                │
-└─────────────────────────────────────────────────────────────────┘
-  ↓ Um tipo para TODAS as headlines
+| Campo | Origem | Descrição |
+|-------|--------|-----------|
+| `informacoes_mentorado` | `mentorados.informacoes_mentorado` | Informações do mentorado |
+| `apresentacao` | `mentorados.apresentacao` | Apresentação do mentorado |
+| `headline` | Campo do roteiro selecionado | Headline para gerar |
+| `tipo_roteiro` | Tipo selecionado no dialog | Nome do tipo de roteiro |
 
-NOVO:
-┌─────────────────────────────────────────────────────────────────┐
-│ Gerar Roteiro                                               [X] │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │ HEADLINE 1:                                             │    │
-│  │ "3 coisas que ninguém te conta sobre..."                │    │
-│  │                                                         │    │
-│  │ Tipo: [  Selecionar tipo  ▾]                            │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │ HEADLINE 2:                                             │    │
-│  │ "Por que você ainda está errando em..."                 │    │
-│  │                                                         │    │
-│  │ Tipo: [  Lista útil  ▾]                                 │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                 │
-│  [+ Novo tipo]                      [Cancelar]  [Gerar]         │
-└─────────────────────────────────────────────────────────────────┘
-  ↓ Cada headline com SEU tipo
+---
+
+### Estrutura do Payload
+
+```json
+{
+  "mentorado": {
+    "nome": "João Silva",
+    "informacoes_mentorado": "Texto com informações...",
+    "apresentacao": "Texto de apresentação..."
+  },
+  "roteiros": [
+    {
+      "key": "1-1",
+      "headline": "3 coisas que ninguém te conta sobre...",
+      "estrutura": "...",
+      "tipo_roteiro": "Lista útil",
+      "tipo_config": {
+        "prompt": "...",
+        "template_estrutura": "..."
+      }
+    },
+    {
+      "key": "1-2",
+      "headline": "Por que você ainda está errando...",
+      "estrutura": "...",
+      "tipo_roteiro": "Defesa de crença",
+      "tipo_config": { ... }
+    }
+  ]
+}
 ```
 
 ---
 
 ### Mudanças Necessárias
 
-#### 1. Atualizar Props do TipoRoteiroDialog
+#### 1. Atualizar TipoRoteiroDialog Props
 
-Passar as headlines com seus dados ao invés de apenas a contagem:
+Adicionar prop para receber dados do mentorado:
 
 ```tsx
-// ANTES
 interface TipoRoteiroDialogProps {
-  headlinesCount: number;
-  onConfirm: (tipoId: string, tipoNome: string, tipoConfig: {...}) => void;
-}
-
-// DEPOIS
-interface HeadlineParaGerar {
-  key: string;
-  headline: string;
-  estrutura: string;
-}
-
-interface HeadlineComTipo {
-  key: string;
-  headline: string;
-  estrutura: string;
-  tipoId: string;
-  tipoNome: string;
-  tipoConfig: {
-    prompt: string | null;
-    template_estrutura: string | null;
-    config_extra: unknown;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  headlines: HeadlineParaGerar[];
+  mentoradoData: {
+    nome: string;
+    informacoes_mentorado: string | null;
+    apresentacao: string | null;
   };
-}
-
-interface TipoRoteiroDialogProps {
-  headlines: HeadlineParaGerar[];  // Recebe array de headlines
-  onConfirm: (headlines: HeadlineComTipo[]) => void;  // Retorna com tipos
+  onConfirm: (headlines: HeadlineComTipo[]) => void;
 }
 ```
 
 ---
 
-#### 2. Reformular o Layout do Dialog
+#### 2. Disparar Webhook no handleConfirm
 
-Mostrar cada headline em um card com seu próprio dropdown de seleção:
-
-```tsx
-<Dialog>
-  <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
-    <DialogHeader>
-      <DialogTitle>Gerar Roteiro</DialogTitle>
-    </DialogHeader>
-
-    <div className="py-4 space-y-4">
-      {headlines.map((headline, index) => (
-        <div key={headline.key} className="border rounded-lg p-4 space-y-3">
-          {/* Número e texto da headline */}
-          <div>
-            <span className="text-xs text-muted-foreground font-medium">
-              HEADLINE {index + 1}:
-            </span>
-            <p className="text-sm font-medium mt-1">
-              {headline.headline || "(sem headline)"}
-            </p>
-          </div>
-          
-          {/* Select do tipo */}
-          <div className="flex items-center gap-2">
-            <Label className="text-xs shrink-0">Tipo:</Label>
-            <Select
-              value={selectedTipos[headline.key] || ""}
-              onValueChange={(value) => handleSelectTipo(headline.key, value)}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="Selecionar tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                {tipos.map((tipo) => (
-                  <SelectItem key={tipo.id} value={tipo.id}>
-                    {tipo.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      ))}
-    </div>
-
-    {/* Seção para gerenciar tipos */}
-    <div className="border-t pt-4 flex items-center justify-between">
-      <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)}>
-        <Plus className="h-4 w-4 mr-2" />
-        Novo tipo
-      </Button>
-      
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={onClose}>Cancelar</Button>
-        <Button onClick={handleConfirm} disabled={!allHeadlinesHaveTipo}>
-          Gerar
-        </Button>
-      </div>
-    </div>
-  </DialogContent>
-</Dialog>
-```
-
----
-
-#### 3. Gerenciar Estado de Seleção Individual
-
-Usar um objeto para mapear cada headline ao seu tipo selecionado:
+Fazer o POST para o webhook n8n dentro do `handleConfirm`:
 
 ```tsx
-// Estado: { "1-1": "tipo-uuid-1", "1-2": "tipo-uuid-2", ... }
-const [selectedTipos, setSelectedTipos] = useState<Record<string, string>>({});
-
-const handleSelectTipo = (headlineKey: string, tipoId: string) => {
-  setSelectedTipos(prev => ({
-    ...prev,
-    [headlineKey]: tipoId
-  }));
-};
-
-// Verificar se todas têm tipo selecionado
-const allHeadlinesHaveTipo = headlines.every(h => selectedTipos[h.key]);
-```
-
----
-
-#### 4. Atualizar onConfirm
-
-Retornar array com cada headline e seu tipo:
-
-```tsx
-const handleConfirm = () => {
-  const result = headlines.map(headline => {
+const handleConfirm = async () => {
+  const result: HeadlineComTipo[] = headlines.map(headline => {
     const tipoId = selectedTipos[headline.key];
     const tipo = tipos.find(t => t.id === tipoId);
     return {
@@ -200,16 +94,41 @@ const handleConfirm = () => {
       }
     };
   });
-  
+
+  // Preparar payload para n8n
+  const payload = {
+    mentorado: {
+      nome: mentoradoData.nome,
+      informacoes_mentorado: mentoradoData.informacoes_mentorado,
+      apresentacao: mentoradoData.apresentacao,
+    },
+    roteiros: result.map(r => ({
+      key: r.key,
+      headline: r.headline,
+      estrutura: r.estrutura,
+      tipo_roteiro: r.tipoNome,
+      tipo_config: r.tipoConfig,
+    })),
+  };
+
+  // Enviar para webhook n8n
+  try {
+    await fetch("https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    console.error("Erro ao enviar para webhook:", error);
+  }
+
   onConfirm(result);
 };
 ```
 
 ---
 
-#### 5. Atualizar MentoradoRoteirosView
-
-Ajustar como os dados são passados e recebidos:
+#### 3. Passar Dados do Mentorado no MentoradoRoteirosView
 
 ```tsx
 <TipoRoteiroDialog
@@ -223,15 +142,16 @@ Ajustar como os dados são passados e recebidos:
       estrutura: roteiro?.estrutura || "",
     };
   })}
+  mentoradoData={{
+    nome: mentoradoNome,
+    informacoes_mentorado: currentMentorado?.informacoes_mentorado || null,
+    apresentacao: currentMentorado?.apresentacao || null,
+  }}
   onConfirm={(headlinesComTipo) => {
-    // Agora recebemos array com tipo individual para cada headline
-    console.log("Gerar roteiros:", headlinesComTipo);
-    
     toast({
-      title: "Roteiros serão gerados!",
-      description: `${headlinesComTipo.length} roteiro(s) com tipos individuais`,
+      title: "Roteiros enviados!",
+      description: `${headlinesComTipo.length} roteiro(s) enviados para geração`,
     });
-    
     setShowTipoRoteiroDialog(false);
     setSelectedRoteiroKeys([]);
   }}
@@ -244,46 +164,32 @@ Ajustar como os dados são passados e recebidos:
 
 | Arquivo | Ação |
 |---------|------|
-| `src/components/mentorados/TipoRoteiroDialog.tsx` | Reformular layout e props para seleção individual |
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Ajustar passagem de dados e callback |
+| `src/components/mentorados/TipoRoteiroDialog.tsx` | Adicionar prop `mentoradoData` e lógica do webhook |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Passar dados do mentorado para o dialog |
 
 ---
 
-### Dados Enviados ao n8n (Novo Formato)
+### Fluxo Final
 
-```json
-[
-  {
-    "key": "1-1",
-    "headline": "3 coisas que ninguém te conta sobre...",
-    "estrutura": "...",
-    "tipoId": "uuid-tipo-1",
-    "tipoNome": "Lista útil",
-    "tipoConfig": {
-      "prompt": "Você é um especialista...",
-      "template_estrutura": "GANCHO:\n..."
-    }
-  },
-  {
-    "key": "1-2",
-    "headline": "Por que você ainda está errando em...",
-    "estrutura": "...",
-    "tipoId": "uuid-tipo-2",
-    "tipoNome": "Defesa de crença",
-    "tipoConfig": {
-      "prompt": "Crie um roteiro...",
-      "template_estrutura": null
-    }
-  }
-]
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  Usuário seleciona headlines com checkbox                       │
+│                         ↓                                       │
+│  Clica em "Gerar roteiro"                                       │
+│                         ↓                                       │
+│  Dialog abre → Escolhe tipo para cada headline                  │
+│                         ↓                                       │
+│  Clica em "Gerar"                                               │
+│                         ↓                                       │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  POST para webhook n8n:                                  │    │
+│  │  - informacoes_mentorado                                 │    │
+│  │  - apresentacao                                          │    │
+│  │  - headline                                              │    │
+│  │  - tipo_roteiro                                          │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                         ↓                                       │
+│  Toast de sucesso                                               │
+└─────────────────────────────────────────────────────────────────┘
 ```
-
----
-
-### Comportamento Final
-
-1. **Usuário seleciona headlines** → Checkboxes nos roteiros
-2. **Clica em "Gerar roteiro"** → Abre dialog mostrando CADA headline
-3. **Para cada headline** → Escolhe o tipo de roteiro no dropdown
-4. **Clica em "Gerar"** → Envia cada headline com seu tipo individual para n8n
 
