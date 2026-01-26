@@ -110,6 +110,35 @@ export const SlashCommandPopover = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose, addingToCategory, editingItem]);
 
+  // Calcular posição ajustada para não cortar em mobile (DEVE estar antes do early return)
+  const adjustedPosition = useMemo(() => {
+    if (typeof window === "undefined") return position;
+    
+    const isMobile = window.innerWidth < 640;
+    const popoverWidth = isMobile ? window.innerWidth - 32 : 384; // 384 = w-96
+    
+    let left = position.left;
+    
+    if (isMobile) {
+      // Em mobile, centralizar com 16px de margem cada lado
+      left = 16;
+    } else {
+      // Em desktop, garantir que não ultrapasse a tela
+      const maxLeft = window.innerWidth - popoverWidth - 16;
+      left = Math.max(16, Math.min(position.left, maxLeft));
+    }
+    
+    // Ajustar altura também para não ultrapassar a parte inferior da tela
+    let top = position.top;
+    const maxHeight = 500; // Altura máxima aproximada do popover
+    if (top + maxHeight > window.innerHeight) {
+      // Se não couber abaixo, posicionar acima do cursor
+      top = Math.max(16, position.top - maxHeight);
+    }
+    
+    return { top, left };
+  }, [position]);
+
   if (!isOpen) return null;
 
   const handleCommandClick = (cmd: SlashCommandMode) => {
@@ -601,35 +630,6 @@ export const SlashCommandPopover = ({
   };
 
   const avatarCategory = getAvatarCategory();
-
-  // Calcular posição ajustada para não cortar em mobile
-  const adjustedPosition = useMemo(() => {
-    if (typeof window === "undefined") return position;
-    
-    const isMobile = window.innerWidth < 640;
-    const popoverWidth = isMobile ? window.innerWidth - 32 : 384; // 384 = w-96
-    
-    let left = position.left;
-    
-    if (isMobile) {
-      // Em mobile, centralizar com 16px de margem cada lado
-      left = 16;
-    } else {
-      // Em desktop, garantir que não ultrapasse a tela
-      const maxLeft = window.innerWidth - popoverWidth - 16;
-      left = Math.max(16, Math.min(position.left, maxLeft));
-    }
-    
-    // Ajustar altura também para não ultrapassar a parte inferior da tela
-    let top = position.top;
-    const maxHeight = 500; // Altura máxima aproximada do popover
-    if (top + maxHeight > window.innerHeight) {
-      // Se não couber abaixo, posicionar acima do cursor
-      top = Math.max(16, position.top - maxHeight);
-    }
-    
-    return { top, left };
-  }, [position]);
 
   return (
     <div
