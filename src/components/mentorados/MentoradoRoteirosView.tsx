@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video } from "lucide-react";
 import { useTrelloImport, TrelloCard } from "@/hooks/useTrelloImport";
 import {
   useOverdeliveryRoteiros,
@@ -60,6 +60,7 @@ import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
 import { MentoradoHeadlinesList } from "./MentoradoHeadlinesList";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
+import { TeleprompterDialog } from "./TeleprompterDialog";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
 
@@ -226,6 +227,10 @@ export const MentoradoRoteirosView = ({
   
   // Estado para checklist mobile
   const [showChecklistMobile, setShowChecklistMobile] = useState(false);
+  
+  // Estado para teleprompter
+  const [showTeleprompter, setShowTeleprompter] = useState(false);
+  const [teleprompterText, setTeleprompterText] = useState("");
 
   // Buscar categorias do avatar do mentorado atual
   const currentMentorado = mentorados.find(m => m.id === mentoradoId);
@@ -1833,6 +1838,18 @@ export const MentoradoRoteirosView = ({
                             <Volume2 className="h-3.5 w-3.5" />
                           )}
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Gravar com teleprompter"
+                          onClick={() => {
+                            setTeleprompterText(roteiro.estrutura || "");
+                            setShowTeleprompter(true);
+                          }}
+                        >
+                          <Video className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
 
                       {/* Status indicators */}
@@ -2024,6 +2041,14 @@ export const MentoradoRoteirosView = ({
             description: `${Math.min(headlines.length, roteirosVazios.length)} headlines adicionadas aos roteiros vazios.`,
           });
         }}
+      />
+
+      {/* Teleprompter Dialog */}
+      <TeleprompterDialog
+        open={showTeleprompter}
+        onOpenChange={setShowTeleprompter}
+        text={teleprompterText}
+        onTextChange={setTeleprompterText}
       />
 
       {/* Dialog para nova guia */}
