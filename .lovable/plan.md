@@ -1,131 +1,368 @@
 
+## Plano: Modo Flutuante Avançado + Configurações de Câmera
 
-## Plano: Corrigir Auto-scroll, Adicionar Seleção de Câmera e Modo Flutuante
+### O Que Você Pediu
 
-### Problemas Identificados
-
-1. **Scroll não funciona no mobile**: O `toggleScroll` retorna uma função nova a cada render devido ao ternário `isScrolling ? pauseScroll : startScroll`. Isso pode causar problemas de referência.
-
-2. **Sem opção de câmera frontal/traseira**: Atualmente o código só usa `facingMode: "user"` (frontal).
-
-3. **Sem modo flutuante**: Usuário quer usar a câmera nativa do celular com o texto flutuando.
+1. **Modo flutuante igual à imagem**: Uma janela semi-transparente com o texto, controles de play/pause/velocidade, que flutua sobre outros apps
+2. **Configurações de câmera**: Poder escolher qualidade (720p, 1080p), frame rate, e outras configurações
 
 ---
 
-### Solução 1: Corrigir Auto-scroll no Mobile
+### Parte 1: Modo Flutuante Avançado
 
-O problema está na linha 102 do `useTeleprompter.ts`:
+Vou reescrever completamente o modo flutuante para ficar igual à imagem de referência:
 
-```tsx
-toggleScroll: isScrolling ? pauseScroll : startScroll,
+**Design da Janela Flutuante:**
+```
+┌─────────────────────────────────┐
+│ [X]                         [≡] │  ← Botão fechar + menu
+│                                 │
+│   Welcome to the Floating       │
+│   Teleprompter! This is         │
+│   sample text...                │  ← Texto com scroll
+│                                 │
+│  ◀◀  ⏪  ▶️  ⏩  ▶▶             │  ← Controles
+│       ⊙ velocidade              │
+└─────────────────────────────────┘
 ```
 
-Isso cria uma referência diferente a cada render. Precisamos criar uma função estável:
+**Características:**
+- Fundo semi-transparente `rgba(0,0,0,0.75)`
+- Cantos arredondados (border-radius)
+- Botão X para fechar
+- Controles de:
+  - Play/Pause
+  - Retroceder/Avançar texto
+  - Ajuste de velocidade
+  - Tamanho da fonte
+- Auto-scroll com JavaScript incluso
+- Scroll manual (arrastar)
+
+**Código da Janela Flutuante:**
 
 ```tsx
-const toggleScroll = useCallback(() => {
-  if (isScrolling) {
-    pauseScroll();
-  } else {
-    startScroll();
+const openFloatingMode = () => {
+  const content = localText.replace(/\n/g, "<br>");
+  
+  // Abrir janela menor e redimensionável
+  const popup = window.open(
+    "", 
+    "teleprompter", 
+    "width=350,height=400,resizable=yes,scrollbars=no"
+  );
+  
+  if (popup) {
+    popup.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teleprompter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { 
+      height: 100%; 
+      overflow: hidden;
+      background: transparent;
+    }
+    .container {
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 16px;
+      align-items: center;
+    }
+    .close-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .close-btn:hover { background: rgba(255,255,255,0.3); }
+    
+    /* Text area */
+    .text-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 20px 20px;
+      color: white;
+      font-size: ${fontSize}px;
+      line-height: 1.5;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Controls */
+    .controls {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .control-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .ctrl-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ctrl-btn:hover { background: rgba(255,255,255,0.25); }
+    .ctrl-btn.primary {
+      width: 52px;
+      height: 52px;
+      background: rgba(255,255,255,0.25);
+    }
+    .ctrl-btn.active { background: #8b5cf6; }
+    
+    /* Speed indicator */
+    .speed-indicator {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <button class="close-btn" onclick="window.close()">✕</button>
+      <div style="color: rgba(255,255,255,0.5); font-size: 12px;">Teleprompter</div>
+      <div style="width: 28px;"></div>
+    </div>
+    
+    <div class="text-area" id="textArea">${content}</div>
+    
+    <div class="controls">
+      <div class="control-row">
+        <button class="ctrl-btn" onclick="skip(-100)" title="Voltar">⏪</button>
+        <button class="ctrl-btn" onclick="slower()" title="Mais lento">◀◀</button>
+        <button class="ctrl-btn primary" id="playBtn" onclick="togglePlay()" title="Play/Pause">▶</button>
+        <button class="ctrl-btn" onclick="faster()" title="Mais rápido">▶▶</button>
+        <button class="ctrl-btn" onclick="skip(100)" title="Avançar">⏩</button>
+      </div>
+      <div class="speed-indicator" id="speedIndicator">Velocidade: ${scrollSpeed.toFixed(1)}x</div>
+    </div>
+  </div>
+  
+  <script>
+    const textArea = document.getElementById('textArea');
+    const playBtn = document.getElementById('playBtn');
+    const speedIndicator = document.getElementById('speedIndicator');
+    
+    let isPlaying = false;
+    let speed = ${scrollSpeed};
+    let animationId = null;
+    let lastTime = 0;
+    
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? '⏸' : '▶';
+      playBtn.classList.toggle('active', isPlaying);
+      
+      if (isPlaying) {
+        lastTime = 0;
+        animationId = requestAnimationFrame(scroll);
+      } else if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    }
+    
+    function scroll(time) {
+      if (!isPlaying) return;
+      
+      if (lastTime === 0) lastTime = time;
+      const delta = (time - lastTime) / 1000;
+      lastTime = time;
+      
+      textArea.scrollTop += speed * 30 * delta;
+      
+      if (textArea.scrollTop + textArea.clientHeight >= textArea.scrollHeight - 5) {
+        isPlaying = false;
+        playBtn.textContent = '▶';
+        playBtn.classList.remove('active');
+        return;
+      }
+      
+      animationId = requestAnimationFrame(scroll);
+    }
+    
+    function skip(amount) {
+      textArea.scrollTop += amount;
+    }
+    
+    function slower() {
+      speed = Math.max(0.5, speed - 0.5);
+      updateSpeed();
+    }
+    
+    function faster() {
+      speed = Math.min(5, speed + 0.5);
+      updateSpeed();
+    }
+    
+    function updateSpeed() {
+      speedIndicator.textContent = 'Velocidade: ' + speed.toFixed(1) + 'x';
+    }
+  </script>
+</body>
+</html>
+    `);
+    popup.document.close();
+    handleClose(); // Fecha o dialog principal
   }
-}, [isScrolling, pauseScroll, startScroll]);
+};
 ```
 
-E usar `isScrollingRef` para evitar dependências que mudam:
+---
+
+### Parte 2: Configurações de Câmera
+
+Adicionar um painel de configurações de câmera com:
+- **Qualidade do vídeo**: 720p, 1080p, 4K (se disponível)
+- **Frame rate**: 24fps, 30fps, 60fps
+- **Exibir configurações suportadas** pelo dispositivo
+
+**Novo estado no `useVideoRecorder.ts`:**
 
 ```tsx
-const isScrollingRef = useRef(false);
+// Configurações de câmera
+const [videoQuality, setVideoQuality] = useState<"720p" | "1080p" | "4k">("1080p");
+const [frameRate, setFrameRate] = useState<number>(30);
+const [availableCapabilities, setAvailableCapabilities] = useState<MediaTrackCapabilities | null>(null);
+```
 
-useEffect(() => {
-  isScrollingRef.current = isScrolling;
-}, [isScrolling]);
+**Função para obter capacidades da câmera:**
 
-const toggleScroll = useCallback(() => {
-  if (isScrollingRef.current) {
-    setIsScrolling(false);
-  } else {
-    lastTimeRef.current = 0;
-    setIsScrolling(true);
+```tsx
+const getCameraCapabilities = useCallback(async () => {
+  if (!streamRef.current) return null;
+  
+  const videoTrack = streamRef.current.getVideoTracks()[0];
+  if (videoTrack) {
+    return videoTrack.getCapabilities();
+  }
+  return null;
+}, []);
+```
+
+**Função para aplicar configurações:**
+
+```tsx
+const applyVideoSettings = useCallback(async (quality: "720p" | "1080p" | "4k", fps: number) => {
+  if (!streamRef.current) return;
+  
+  const videoTrack = streamRef.current.getVideoTracks()[0];
+  if (!videoTrack) return;
+  
+  const resolutions = {
+    "720p": { width: 1280, height: 720 },
+    "1080p": { width: 1920, height: 1080 },
+    "4k": { width: 3840, height: 2160 },
+  };
+  
+  const { width, height } = resolutions[quality];
+  
+  try {
+    await videoTrack.applyConstraints({
+      width: { ideal: width },
+      height: { ideal: height },
+      frameRate: { ideal: fps },
+    });
+    
+    setVideoQuality(quality);
+    setFrameRate(fps);
+  } catch (error) {
+    console.error("Erro ao aplicar configurações:", error);
   }
 }, []);
 ```
 
----
-
-### Solução 2: Opção de Câmera Frontal/Traseira
-
-Adicionar estado para `facingMode` no `useVideoRecorder.ts`:
+**Novo componente de configurações no Dialog:**
 
 ```tsx
-const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+import { Settings } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-const switchCamera = useCallback(async () => {
-  const newMode = facingMode === "user" ? "environment" : "user";
-  
-  // Parar câmera atual
-  if (streamRef.current) {
-    streamRef.current.getTracks().forEach(track => track.stop());
-  }
-  
-  // Reiniciar com nova câmera
-  setFacingMode(newMode);
-  
-  const mediaStream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: newMode, ... },
-    audio: true,
-  });
-  
-  streamRef.current = mediaStream;
-  setStream(mediaStream);
-}, [facingMode]);
-```
-
-No `TeleprompterDialog.tsx`, adicionar botão:
-
-```tsx
-<Button variant="outline" size="sm" onClick={switchCamera}>
-  <Camera className="h-4 w-4" />
-  {isMobile ? "" : "Trocar câmera"}
-</Button>
-```
-
----
-
-### Solução 3: Modo Flutuante (Texto Overlay Sem Câmera)
-
-Criar um novo modo onde o texto aparece numa janela flutuante transparente que fica sobre outros apps.
-
-**Opção A - Picture-in-Picture (PiP)**:
-Usar a API Document Picture-in-Picture para criar uma janela flutuante com o texto.
-
-**Opção B - Janela popup simples**:
-Abrir uma nova janela pequena com o texto que o usuário pode posicionar onde quiser.
-
-Para mobile, a opção mais viável é abrir uma nova janela/aba com o texto em tela cheia transparente.
-
-```tsx
-const openFloatingMode = () => {
-  const popup = window.open("", "teleprompter", "width=400,height=300");
-  if (popup) {
-    popup.document.write(`
-      <html>
-        <head>
-          <style>
-            body { 
-              background: rgba(0,0,0,0.7); 
-              color: white; 
-              font-size: ${fontSize}px;
-              padding: 20px;
-              overflow-y: auto;
-            }
-          </style>
-        </head>
-        <body>${localText}</body>
-      </html>
-    `);
-  }
-};
+// Botão de configurações
+<Popover>
+  <PopoverTrigger asChild>
+    <Button variant="outline" size="sm" className="gap-1.5">
+      <Settings className="h-4 w-4" />
+      {isMobile ? "" : "Qualidade"}
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-64">
+    <div className="space-y-4">
+      <div>
+        <Label className="text-sm font-medium">Qualidade do vídeo</Label>
+        <RadioGroup value={videoQuality} onValueChange={handleQualityChange}>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="720p" id="720p" />
+            <Label htmlFor="720p">720p (HD)</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="1080p" id="1080p" />
+            <Label htmlFor="1080p">1080p (Full HD)</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="4k" id="4k" />
+            <Label htmlFor="4k">4K (Ultra HD)</Label>
+          </div>
+        </RadioGroup>
+      </div>
+      
+      <div>
+        <Label className="text-sm font-medium">Frame rate</Label>
+        <RadioGroup value={String(frameRate)} onValueChange={(v) => handleFrameRateChange(Number(v))}>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="24" id="24fps" />
+            <Label htmlFor="24fps">24 fps (Cinema)</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="30" id="30fps" />
+            <Label htmlFor="30fps">30 fps (Padrão)</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="60" id="60fps" />
+            <Label htmlFor="60fps">60 fps (Suave)</Label>
+          </div>
+        </RadioGroup>
+      </div>
+    </div>
+  </PopoverContent>
+</Popover>
 ```
 
 ---
@@ -134,181 +371,61 @@ const openFloatingMode = () => {
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/hooks/useTeleprompter.ts` | Corrigir toggleScroll com ref estável |
-| `src/hooks/useVideoRecorder.ts` | Adicionar facingMode e switchCamera |
-| `src/components/mentorados/TeleprompterDialog.tsx` | Adicionar botão trocar câmera + botão modo flutuante |
-
----
-
-### Detalhes Técnicos
-
-#### useTeleprompter.ts
-
-```tsx
-// Adicionar ref para isScrolling
-const isScrollingRef = useRef(false);
-
-// Sincronizar ref
-useEffect(() => {
-  isScrollingRef.current = isScrolling;
-}, [isScrolling]);
-
-// Função toggleScroll estável
-const toggleScroll = useCallback(() => {
-  if (isScrollingRef.current) {
-    setIsScrolling(false);
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-  } else {
-    lastTimeRef.current = 0;
-    setIsScrolling(true);
-  }
-}, []);
-```
-
-#### useVideoRecorder.ts
-
-```tsx
-// Novo estado
-const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
-
-// Função para trocar câmera
-const switchCamera = useCallback(async () => {
-  if (!streamRef.current) return;
-  
-  // Parar tracks atuais
-  streamRef.current.getTracks().forEach(track => track.stop());
-  
-  const newMode = facingMode === "user" ? "environment" : "user";
-  
-  try {
-    const mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: newMode,
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-      audio: true,
-    });
-    
-    streamRef.current = mediaStream;
-    setStream(mediaStream);
-    setFacingMode(newMode);
-    
-    if (videoRef.current) {
-      videoRef.current.srcObject = mediaStream;
-    }
-  } catch (error) {
-    onErrorRef.current?.("Erro ao trocar câmera");
-  }
-}, [facingMode]);
-
-// Expor no return
-return {
-  // ...existing
-  facingMode,
-  switchCamera,
-};
-```
-
-#### TeleprompterDialog.tsx
-
-```tsx
-// Importar ícone
-import { Camera, ExternalLink } from "lucide-react";
-
-// Função para abrir modo flutuante
-const openFloatingMode = () => {
-  const content = localText.replace(/\n/g, "<br>");
-  const popup = window.open("", "teleprompter", "width=400,height=600,resizable=yes");
-  if (popup) {
-    popup.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Teleprompter</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <style>
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { 
-              background: rgba(0,0,0,0.85); 
-              color: white; 
-              font-size: ${fontSize}px;
-              padding: 24px;
-              min-height: 100vh;
-              line-height: 1.6;
-              font-family: system-ui, sans-serif;
-            }
-          </style>
-        </head>
-        <body>${content}</body>
-      </html>
-    `);
-    popup.document.close();
-    // Fechar dialog principal
-    handleClose();
-  }
-};
-
-// Botões novos na área de controles secundários:
-<Button
-  variant="outline"
-  size="sm"
-  onClick={switchCamera}
-  className="gap-1.5"
-  disabled={isLoadingCamera}
->
-  <Camera className="h-4 w-4" />
-  {isMobile ? "" : "Trocar câmera"}
-</Button>
-
-<Button
-  variant="outline"
-  size="sm"
-  onClick={openFloatingMode}
-  className="gap-1.5"
->
-  <ExternalLink className="h-4 w-4" />
-  {isMobile ? "" : "Modo flutuante"}
-</Button>
-```
+| `src/hooks/useVideoRecorder.ts` | Adicionar estados de qualidade/fps, funções para aplicar configurações |
+| `src/components/mentorados/TeleprompterDialog.tsx` | Reescrever modo flutuante com controles completos + adicionar popover de configurações |
 
 ---
 
 ### Resultado Final
 
+**Modo Flutuante** (igual à imagem):
 ```
-┌─────────────────────────────────────┐
-│ Teleprompter                    [X] │
-├─────────────────────────────────────┤
-│ ┌─────────────────────────────────┐ │
-│ │   📌 HEADLINE...                │ │
-│ │   📝 ESTRUTURA...               │ │  ← Texto no topo
-│ └─────────────────────────────────┘ │
-│                                     │
-│         [Câmera aqui]               │
-│                                     │
-├─────────────────────────────────────┤
-│ Velocidade: [━━━●━━━] 1.0x          │
-│ Tamanho:    [━━━●━━━] 24px          │
-│ Largura:    [━━━●━━━] 80%           │
-│                                     │
-│ [🔄] [✏️] [↩️] [📷] [↗️]            │  ← Novo: Trocar câmera + Flutuante
-│                                     │
-│     [▶️ Iniciar]   [⏺️ Gravar]      │  ← Iniciar agora rola o texto
-└─────────────────────────────────────┘
+┌───────────────────────────────────┐
+│ [X]        Teleprompter           │
+├───────────────────────────────────┤
+│                                   │
+│   📌 HEADLINE:                    │
+│   Sua headline aqui...            │
+│                                   │
+│   📝 ESTRUTURA:                   │
+│   Texto do roteiro que            │
+│   vai rolando...                  │
+│                                   │
+├───────────────────────────────────┤
+│   ⏪  ◀◀   ▶️   ▶▶  ⏩            │
+│       Velocidade: 1.0x            │
+└───────────────────────────────────┘
+```
+
+**Configurações de Câmera** (novo botão):
+```
+┌─────────────────────────┐
+│ ⚙️ Qualidade            │
+├─────────────────────────┤
+│ Qualidade do vídeo:     │
+│ ○ 720p (HD)             │
+│ ● 1080p (Full HD)       │
+│ ○ 4K (Ultra HD)         │
+│                         │
+│ Frame rate:             │
+│ ○ 24 fps (Cinema)       │
+│ ● 30 fps (Padrão)       │
+│ ○ 60 fps (Suave)        │
+└─────────────────────────┘
 ```
 
 ---
 
-### Modo Flutuante no Mobile
+### Comportamento no Mobile
 
-Quando clicar em "Modo flutuante":
-1. Abre uma nova janela/aba do navegador
-2. Mostra apenas o texto do roteiro em fundo escuro
-3. Usuário pode minimizar essa aba e abrir a câmera nativa
-4. No iOS, pode usar Split View ou Slide Over
-5. O dialog principal fecha automaticamente
+1. Quando clicar em **"Modo flutuante"**:
+   - Abre uma nova aba/janela do navegador
+   - Mostra texto com fundo transparente escuro
+   - Tem controles de play/pause/velocidade
+   - Usuário minimiza e abre câmera nativa
+   - No iOS, pode usar Split View
 
+2. Quando clicar em **"Qualidade"**:
+   - Abre popover com opções
+   - Aplica configurações em tempo real
+   - Qualidade afeta a gravação final
