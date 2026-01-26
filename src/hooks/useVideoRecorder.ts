@@ -87,17 +87,15 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
     chunksRef.current = [];
     setRecordedBlob(null);
     
-    // Detectar melhor formato suportado
-    let mimeType = "video/webm;codecs=vp9,opus";
-    if (!MediaRecorder.isTypeSupported(mimeType)) {
-      mimeType = "video/webm;codecs=vp8,opus";
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = "video/webm";
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = "video/mp4";
-        }
-      }
-    }
+    // Tentar MP4 primeiro (Safari suporta nativamente), depois WebM
+    const formats = [
+      "video/mp4",
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm"
+    ];
+    
+    const mimeType = formats.find(f => MediaRecorder.isTypeSupported(f)) || "video/webm";
     
     try {
       const mediaRecorder = new MediaRecorder(streamRef.current, { mimeType });
@@ -137,7 +135,7 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
     const url = URL.createObjectURL(recordedBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = filename || `roteiro-${Date.now()}.webm`;
+    a.download = filename || `roteiro-${Date.now()}.mp4`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
