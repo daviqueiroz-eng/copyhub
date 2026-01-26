@@ -1,117 +1,205 @@
 
+## Plano: Disparo em Massa com Fila e Progresso
 
-## Plano: Transformar Resposta do n8n no Formato Esperado
+### Objetivo
 
-### Problema Identificado
-
-O n8n está retornando a resposta neste formato:
-```json
-[{"output":"X remédios de farmácia..."}]
-```
-
-Mas o frontend espera:
-```json
-{ "roteiros": [{ "key": "1-1", "estrutura": "..." }] }
-```
-
-O n8n retorna um array com a propriedade `output`, enquanto o código espera um objeto com `roteiros` contendo `key` e `estrutura`.
+Implementar um sistema de disparo em massa que processa os roteiros um a um (ou em lotes pequenos), mostrando o progresso em tempo real para o usuário.
 
 ---
 
-### Solução
-
-Modificar a Edge Function para:
-1. Guardar os `keys` do payload original
-2. Transformar a resposta do n8n para o formato esperado
-3. Mapear cada `output` de volta para seu respectivo `key`
-
----
-
-### Lógica de Transformação
+### Arquitetura da Solução
 
 ```text
-ENTRADA (payload enviado para n8n):
-{
-  "roteiros": [
-    { "key": "1-2", "headline": "X remédios..." }
-  ]
-}
-
-RESPOSTA DO N8N:
-[
-  { "output": "Texto do roteiro gerado..." }
-]
-
-RESPOSTA TRANSFORMADA (para o frontend):
-{
-  "roteiros": [
-    { "key": "1-2", "estrutura": "Texto do roteiro gerado..." }
-  ]
-}
+┌─────────────────────────────────────────────────────────────────┐
+│                    TipoRoteiroDialog                            │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  Estado de Progresso                                      │  │
+│  │  - total: 5 roteiros                                      │  │
+│  │  - processados: 2                                         │  │
+│  │  - atual: "Gerando roteiro 3/5..."                       │  │
+│  │  - resultados: [{key, status, estrutura}]                │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  Progress Bar                                             │  │
+│  │  ████████████░░░░░░░░░░░░░░░░░░░░░░  40%                 │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  [Cancelar]                              [Gerar (5)] → [X/5]   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Mudanças na Edge Function
+### Fluxo de Processamento
 
-Atualizar `supabase/functions/n8n-webhook/index.ts`:
+1. Usuário clica em "Gerar"
+2. Sistema cria uma fila com todos os roteiros selecionados
+3. Para cada roteiro na fila:
+   - Envia para o webhook (1 roteiro por vez)
+   - Aguarda resposta
+   - Atualiza estado local e progresso
+   - Salva no banco
+4. Ao finalizar, mostra resumo e fecha dialog
 
+---
+
+### Mudancas Tecnicas
+
+#### 1. TipoRoteiroDialog.tsx
+
+**Novos estados:**
 ```typescript
-// Guardar os keys do payload original
-const originalKeys = payload.roteiros?.map((r: { key: string }) => r.key) || [];
+const [isProcessing, setIsProcessing] = useState(false);
+const [progress, setProgress] = useState({
+  total: 0,
+  current: 0,
+  currentKey: "",
+  results: [] as Array<{key: string; success: boolean; estrutura?: string; error?: string}>
+});
+```
 
-// ... fazer o fetch para n8n ...
+**Nova logica de processamento:**
+```typescript
+const processQueue = async (queue: HeadlineComTipo[]) => {
+  setIsProcessing(true);
+  setProgress({ total: queue.length, current: 0, currentKey: "", results: [] });
+  
+  const results: ProcessResult[] = [];
+  
+  for (let i = 0; i < queue.length; i++) {
+    const item = queue[i];
+    setProgress(prev => ({ ...prev, current: i + 1, currentKey: item.key }));
+    
+    try {
+      // Enviar 1 roteiro por vez
+      const { data, error } = await supabase.functions.invoke("n8n-webhook", {
+        body: {
+          mentorado: { ... },
+          roteiros: [{ 
+            key: item.key, 
+            headline: item.headline,
+            tipo_roteiro: item.tipoNome,
+            tipo_config: item.tipoConfig 
+          }]
+        }
+      });
+      
+      if (data?.roteiros?.[0]) {
+        results.push({ 
+          key: item.key, 
+          success: true, 
+          estrutura: data.roteiros[0].estrutura 
+        });
+        // Callback parcial para atualizar UI em tempo real
+        onPartialResult?.(item.key, data.roteiros[0].estrutura);
+      }
+    } catch (err) {
+      results.push({ key: item.key, success: false, error: err.message });
+    }
+    
+    setProgress(prev => ({ ...prev, results }));
+  }
+  
+  setIsProcessing(false);
+  onConfirm(queue, { roteiros: results.filter(r => r.success).map(r => ({ key: r.key, estrutura: r.estrutura! })) });
+};
+```
 
-// Transformar resposta do n8n
-let transformedData;
+**UI de progresso:**
+```tsx
+{isProcessing && (
+  <div className="space-y-3 py-4">
+    <div className="flex items-center justify-between text-sm">
+      <span>Gerando roteiro {progress.current}/{progress.total}...</span>
+      <span className="text-muted-foreground">{Math.round((progress.current / progress.total) * 100)}%</span>
+    </div>
+    <Progress value={(progress.current / progress.total) * 100} />
+    <p className="text-xs text-muted-foreground">
+      Processando: {progress.currentKey}
+    </p>
+  </div>
+)}
+```
 
-if (Array.isArray(data)) {
-  // N8n retorna array de { output: string }
-  transformedData = {
-    roteiros: data.map((item: { output: string }, index: number) => ({
-      key: originalKeys[index] || `unknown-${index}`,
-      estrutura: item.output || "",
-    })),
-  };
-} else if (data.roteiros) {
-  // Já está no formato correto
-  transformedData = data;
-} else {
-  // Formato desconhecido
-  transformedData = { roteiros: [] };
+#### 2. Props do TipoRoteiroDialog
+
+Adicionar callback para resultados parciais:
+```typescript
+interface TipoRoteiroDialogProps {
+  // ... existentes
+  onPartialResult?: (key: string, estrutura: string) => void;
 }
+```
 
-return new Response(JSON.stringify(transformedData), { ... });
+#### 3. MentoradoRoteirosView.tsx
+
+Passar callback para atualizar roteiros em tempo real:
+```typescript
+<TipoRoteiroDialog
+  // ... existentes
+  onPartialResult={(key, estrutura) => {
+    // Atualizar estado local imediatamente
+    setRoteirosLocais(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(key);
+      if (existing) {
+        newMap.set(key, { ...existing, estrutura });
+      }
+      return newMap;
+    });
+    
+    // Persistir no banco
+    const [guiaNumero, ordem] = key.split("-").map(Number);
+    upsertRoteiro.mutate({
+      mentoradoId,
+      guiaNumero,
+      ordem,
+      headline: roteirosLocais.get(key)?.headline || "",
+      estrutura
+    });
+  }}
+/>
 ```
 
 ---
 
-### Resultado Esperado
+### Interface Durante Processamento
 
-Quando o n8n retornar:
-```json
-[{"output":"Texto do roteiro..."}]
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  Gerando Roteiros                                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Gerando roteiro 3/5...                              60%    │
+│  ████████████████████████░░░░░░░░░░░░░░░░                  │
+│                                                             │
+│  ✓ 1-2: Concluído                                          │
+│  ✓ 1-3: Concluído                                          │
+│  ⏳ 1-4: Processando...                                     │
+│  ○ 1-5: Aguardando                                         │
+│  ○ 1-6: Aguardando                                         │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  [Cancelar]                                                 │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-A Edge Function transformará para:
-```json
-{
-  "roteiros": [
-    { "key": "1-2", "estrutura": "Texto do roteiro..." }
-  ]
-}
-```
-
-E o frontend conseguirá:
-1. Encontrar o roteiro pela `key`
-2. Preencher o campo `estrutura` com o texto gerado
-3. Salvar no banco de dados
 
 ---
 
-### Arquivo a Modificar
+### Arquivos a Modificar
 
-| Arquivo | Ação |
+| Arquivo | Acao |
 |---------|------|
-| `supabase/functions/n8n-webhook/index.ts` | Adicionar transformação da resposta do n8n |
+| `src/components/mentorados/TipoRoteiroDialog.tsx` | Adicionar estados de progresso, logica de fila e UI de processamento |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Passar callback `onPartialResult` para atualizacao em tempo real |
 
+---
+
+### Beneficios
+
+1. **Feedback visual**: Usuario ve exatamente o que esta acontecendo
+2. **Resiliencia**: Se um roteiro falhar, os outros continuam
+3. **Atualizacao em tempo real**: Cada roteiro aparece na tela assim que e gerado
+4. **Persistencia imediata**: Cada roteiro e salvo no banco assim que retorna
