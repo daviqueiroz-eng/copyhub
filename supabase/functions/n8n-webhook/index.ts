@@ -14,7 +14,11 @@ serve(async (req) => {
   try {
     const payload = await req.json();
 
+    // Guardar os keys do payload original para mapear de volta
+    const originalKeys = payload.roteiros?.map((r: { key: string }) => r.key) || [];
+
     console.log("Enviando para n8n:", JSON.stringify(payload, null, 2));
+    console.log("Keys originais:", originalKeys);
 
     // Enviar para n8n
     const n8nResponse = await fetch(
@@ -45,7 +49,32 @@ serve(async (req) => {
       data = { message: "Webhook processado, aguardando resposta do n8n", roteiros: [] };
     }
 
-    return new Response(JSON.stringify(data), {
+    // Transformar resposta do n8n para o formato esperado pelo frontend
+    let transformedData;
+
+    if (Array.isArray(data)) {
+      // N8n retorna array de { output: string }
+      transformedData = {
+        roteiros: data.map((item: { output?: string }, index: number) => ({
+          key: originalKeys[index] || `unknown-${index}`,
+          estrutura: item.output || "",
+        })),
+      };
+      console.log("Resposta transformada de array:", JSON.stringify(transformedData, null, 2));
+    } else if (data.roteiros) {
+      // Já está no formato correto
+      transformedData = data;
+      console.log("Resposta já no formato correto");
+    } else if (data.raw_response || data.message) {
+      // Resposta não estruturada ou vazia
+      transformedData = data;
+    } else {
+      // Formato desconhecido - tentar extrair output se existir
+      transformedData = { roteiros: [] };
+      console.log("Formato desconhecido, retornando vazio");
+    }
+
+    return new Response(JSON.stringify(transformedData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
