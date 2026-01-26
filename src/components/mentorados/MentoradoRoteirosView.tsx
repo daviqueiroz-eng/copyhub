@@ -1884,6 +1884,57 @@ export const MentoradoRoteirosView = ({
                 />
               ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
+                {/* Barra de seleção em massa */}
+                {(() => {
+                  const allKeysInGuia = Array.from(
+                    { length: guiaAtivaConfig.quantidade }, 
+                    (_, i) => `${guiaAtiva}-${i + 1}`
+                  );
+                  const allSelected = allKeysInGuia.length > 0 && allKeysInGuia.every(key => 
+                    selectedRoteiroKeys.includes(key)
+                  );
+                  const selectedInGuia = selectedRoteiroKeys.filter(k => k.startsWith(`${guiaAtiva}-`)).length;
+                  
+                  const toggleSelectAll = () => {
+                    if (allSelected) {
+                      // Desselecionar todas da guia atual
+                      setSelectedRoteiroKeys(prev => 
+                        prev.filter(k => !k.startsWith(`${guiaAtiva}-`))
+                      );
+                    } else {
+                      // Selecionar todas da guia atual (mantendo seleções de outras guias)
+                      setSelectedRoteiroKeys(prev => {
+                        const fromOtherGuias = prev.filter(k => !k.startsWith(`${guiaAtiva}-`));
+                        return [...fromOtherGuias, ...allKeysInGuia];
+                      });
+                    }
+                  };
+                  
+                  return (
+                    <div className="flex items-center gap-4 mb-6 pb-4 border-b">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={toggleSelectAll}
+                          className="h-5 w-5"
+                        />
+                        <span 
+                          className="text-sm cursor-pointer hover:underline"
+                          onClick={toggleSelectAll}
+                        >
+                          Selecionar todas ({guiaAtivaConfig.quantidade})
+                        </span>
+                      </div>
+                      
+                      {selectedInGuia > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {selectedInGuia} selecionadas
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+                
                 {/* Título "Gerar roteiro" - aparece quando há seleção */}
                 {selectedRoteiroKeys.length > 0 && (
                   <button 
