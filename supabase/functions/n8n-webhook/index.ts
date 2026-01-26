@@ -26,9 +26,24 @@ serve(async (req) => {
       }
     );
 
-    const data = await n8nResponse.json();
+    // Ler resposta como texto primeiro
+    const responseText = await n8nResponse.text();
+    console.log("Resposta do n8n (status):", n8nResponse.status);
+    console.log("Resposta do n8n (texto):", responseText);
 
-    console.log("Resposta do n8n:", JSON.stringify(data, null, 2));
+    // Tentar parsear como JSON, se não for vazio
+    let data;
+    if (responseText && responseText.trim()) {
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        // Se não for JSON válido, retornar como texto
+        data = { raw_response: responseText };
+      }
+    } else {
+      // Resposta vazia do n8n
+      data = { message: "Webhook processado, aguardando resposta do n8n", roteiros: [] };
+    }
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
