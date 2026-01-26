@@ -98,16 +98,16 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
   return (
     <div className="flex flex-col h-full">
       {/* Header fixo */}
-      <div className="flex items-center gap-2 mb-3 pb-2 border-b shrink-0">
-        <span className="font-semibold text-sm">Mentorados</span>
+      <div className="flex items-center gap-1 sm:gap-2 mb-2 sm:mb-3 pb-2 border-b shrink-0 flex-wrap">
+        <span className="font-semibold text-xs sm:text-sm">Mentorados</span>
         {mentoradosWithInstagram.length > 0 && (
           <Button
             variant="outline"
             size="sm"
-            className="gap-1 h-6 text-xs px-2"
+            className="gap-1 h-5 sm:h-6 text-[10px] sm:text-xs px-1.5 sm:px-2"
             onClick={handleOpenAllInstagrams}
           >
-            <Instagram className="h-3 w-3 text-pink-500" />
+            <Instagram className="h-2.5 sm:h-3 w-2.5 sm:w-3 text-pink-500" />
             ({mentoradosWithInstagram.length})
           </Button>
         )}
@@ -115,10 +115,10 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
           <Button
             variant="outline"
             size="sm"
-            className="gap-1 h-6 text-xs px-2"
+            className="gap-1 h-5 sm:h-6 text-[10px] sm:text-xs px-1.5 sm:px-2"
             onClick={handleOpenAllTiktoks}
           >
-            <TiktokIcon className="h-3 w-3" />
+            <TiktokIcon className="h-2.5 sm:h-3 w-2.5 sm:w-3" />
             ({mentoradosWithTiktok.length})
           </Button>
         )}

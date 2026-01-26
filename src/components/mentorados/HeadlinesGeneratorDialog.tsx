@@ -380,17 +380,17 @@ export const HeadlinesGeneratorDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-        <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-4 md:p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold font-poppins flex items-center gap-2">
+            <DialogTitle className="text-lg md:text-xl font-bold font-poppins flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               Gere para mim
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid grid-cols-[320px_1fr_180px] gap-6 flex-1 min-h-0">
+          <div className="flex flex-col md:grid md:grid-cols-[280px_1fr_160px] gap-4 md:gap-6 flex-1 min-h-0 overflow-y-auto md:overflow-visible">
             {/* Coluna 1: Inteligência (Global + Individual) */}
-            <div className="flex flex-col gap-4 overflow-y-auto">
+            <div className="flex flex-col gap-3 md:gap-4 md:overflow-y-auto">
               {/* Inteligência Global (somente leitura) */}
               <Collapsible open={isGlobalOpen} onOpenChange={setIsGlobalOpen}>
                 <div className="border rounded-lg">
@@ -440,7 +440,7 @@ export const HeadlinesGeneratorDialog = ({
                                 setHasUnsavedGlobalChanges(true);
                               }}
                               placeholder="Descreva o método, regras de copywriting, framework..."
-                              className="min-h-[150px] resize-none text-sm mt-1"
+                              className="min-h-[100px] md:min-h-[150px] resize-none text-sm mt-1"
                             />
                           </div>
                           <Button
@@ -492,15 +492,10 @@ export const HeadlinesGeneratorDialog = ({
                   )}
                 </div>
                 <Textarea
-                  placeholder={`Descreva:
-• Nicho específico
-• Público-alvo
-• Produto/serviço
-• Tom de voz
-• Palavras-chave importantes`}
+                  placeholder={`Descreva: Nicho, Público-alvo, Produto/serviço, Tom de voz...`}
                   value={inteligenciaIndividual}
                   onChange={(e) => handleInteligenciaChange(e.target.value)}
-                  className="min-h-[180px] resize-none text-sm"
+                  className="min-h-[120px] md:min-h-[180px] resize-none text-sm"
                 />
                 {mentoradoId && (
                   <Button
@@ -543,7 +538,7 @@ export const HeadlinesGeneratorDialog = ({
             </div>
 
             {/* Coluna 2: Headlines Original + Adaptada */}
-            <div className="flex flex-col h-[60vh] border rounded-lg">
+            <div className="flex flex-col h-[40vh] md:h-[60vh] border rounded-lg">
               <ScrollArea className="flex-1">
                 <div className="p-4 space-y-6">
                   {currentPageHeadlines.length === 0 ? (
@@ -639,20 +634,23 @@ export const HeadlinesGeneratorDialog = ({
             </div>
 
             {/* Coluna 3: Ações */}
-            <div className="flex flex-col gap-4">
-              <Button
-                variant="outline"
-                onClick={handleGenerateMore}
-                disabled={generateMutation.isPending || headlinePages.length === 0}
-                className="font-poppins"
-              >
-                {generateMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-2" />
-                )}
-                Gerar mais 50 ideias
-              </Button>
+            <div className="flex flex-col gap-3 md:gap-4 md:order-none order-first pb-3 md:pb-0 border-b md:border-b-0">
+              <div className="flex flex-row md:flex-col gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleGenerateMore}
+                  disabled={generateMutation.isPending || headlinePages.length === 0}
+                  className="font-poppins flex-1 md:flex-none text-xs md:text-sm"
+                >
+                  {generateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 md:mr-2 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-1 md:mr-2" />
+                  )}
+                  <span className="hidden sm:inline">Gerar mais 50</span>
+                  <span className="sm:hidden">+50</span>
+                </Button>
+              </div>
               
               {headlinePages.length > 0 && (
                 <>
