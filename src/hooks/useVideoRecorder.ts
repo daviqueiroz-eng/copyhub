@@ -7,8 +7,6 @@ interface UseVideoRecorderOptions {
 }
 
 export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
-  const { onError } = options;
-  
   const [state, setState] = useState<RecordingState>("idle");
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
@@ -18,9 +16,26 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const onErrorRef = useRef(options.onError);
   
-  // Iniciar câmera
+  // Manter ref atualizado
+  useEffect(() => {
+    onErrorRef.current = options.onError;
+  }, [options.onError]);
+  
+  // Sincronizar stream com elemento video
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+  
+  // Iniciar câmera - função estável sem dependências
   const startCamera = useCallback(async () => {
+    // Evitar múltiplas chamadas simultâneas
+    if (streamRef.current) return;
+    
     setIsLoadingCamera(true);
     setCameraError(null);
     
@@ -34,6 +49,7 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
         audio: true,
       });
       
+      streamRef.current = mediaStream;
       setStream(mediaStream);
       
       if (videoRef.current) {
@@ -44,28 +60,29 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Erro ao acessar câmera";
       setCameraError(errorMessage);
-      onError?.(errorMessage);
+      onErrorRef.current?.(errorMessage);
       setIsLoadingCamera(false);
     }
-  }, [onError]);
+  }, []);
   
-  // Parar câmera
+  // Parar câmera - função estável sem dependências
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
+    setStream(null);
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
     setState("idle");
     setRecordedBlob(null);
     chunksRef.current = [];
-  }, [stream]);
+  }, []);
   
   // Iniciar gravação
   const startRecording = useCallback(() => {
-    if (!stream) return;
+    if (!streamRef.current) return;
     
     chunksRef.current = [];
     setRecordedBlob(null);
@@ -83,7 +100,7 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
     }
     
     try {
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = new MediaRecorder(streamRef.current, { mimeType });
       
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -101,9 +118,9 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
       setState("recording");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Erro ao iniciar gravação";
-      onError?.(errorMessage);
+      onErrorRef.current?.(errorMessage);
     }
-  }, [stream, onError]);
+  }, []);
   
   // Parar gravação
   const stopRecording = useCallback(() => {
@@ -137,11 +154,11 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}) {
   // Cleanup ao desmontar
   useEffect(() => {
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [stream]);
+  }, []);
   
   return {
     // State

@@ -96,7 +96,8 @@ export function TeleprompterDialog({
       resetScroll();
       setIsEditingText(false);
     }
-  }, [open, startCamera, stopCamera, resetScroll]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   
   // Handler para fechar dialog
   const handleClose = () => {
