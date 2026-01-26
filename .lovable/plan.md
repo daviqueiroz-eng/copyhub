@@ -1,50 +1,47 @@
 
 
-## Plano: Disparar Webhook ao Gerar Roteiro
+## Plano: Receber Resposta do Webhook e Popular Estrutura
 
 ### Objetivo
 
-Quando o usuário clicar em "Gerar" no dialog de tipo de roteiro, enviar os dados para o webhook do n8n.
+Quando o webhook n8n retornar com os roteiros gerados, atualizar o campo "estrutura" de cada headline correspondente na interface.
 
 ---
 
-### Dados a Enviar
+### Fluxo Atual vs Novo
 
-| Campo | Origem | Descrição |
-|-------|--------|-----------|
-| `informacoes_mentorado` | `mentorados.informacoes_mentorado` | Informações do mentorado |
-| `apresentacao` | `mentorados.apresentacao` | Apresentação do mentorado |
-| `headline` | Campo do roteiro selecionado | Headline para gerar |
-| `tipo_roteiro` | Tipo selecionado no dialog | Nome do tipo de roteiro |
+```text
+ATUAL:
+Clica "Gerar" → Envia para webhook → Fecha dialog → FIM
+                      ↓
+            (resposta ignorada)
+
+NOVO:
+Clica "Gerar" → Envia para webhook → Aguarda resposta
+                                           ↓
+                              Recebe JSON com roteiros gerados
+                                           ↓
+                              Atualiza campo "estrutura" de cada headline
+                                           ↓
+                              Fecha dialog → Toast de sucesso
+```
 
 ---
 
-### Estrutura do Payload
+### Formato Esperado da Resposta do n8n
+
+O webhook deve retornar um JSON assim:
 
 ```json
 {
-  "mentorado": {
-    "nome": "João Silva",
-    "informacoes_mentorado": "Texto com informações...",
-    "apresentacao": "Texto de apresentação..."
-  },
   "roteiros": [
     {
       "key": "1-1",
-      "headline": "3 coisas que ninguém te conta sobre...",
-      "estrutura": "...",
-      "tipo_roteiro": "Lista útil",
-      "tipo_config": {
-        "prompt": "...",
-        "template_estrutura": "..."
-      }
+      "estrutura": "GANCHO:\nVocê sabia que...\n\nDESENVOLVIMENTO:\n..."
     },
     {
       "key": "1-2",
-      "headline": "Por que você ainda está errando...",
-      "estrutura": "...",
-      "tipo_roteiro": "Defesa de crença",
-      "tipo_config": { ... }
+      "estrutura": "ABERTURA:\nNeste vídeo...\n\nPONTO 1:\n..."
     }
   ]
 }
@@ -54,104 +51,97 @@ Quando o usuário clicar em "Gerar" no dialog de tipo de roteiro, enviar os dado
 
 ### Mudanças Necessárias
 
-#### 1. Atualizar TipoRoteiroDialog Props
+#### 1. Modificar TipoRoteiroDialog para Retornar Resposta
 
-Adicionar prop para receber dados do mentorado:
+Atualizar a interface do callback para incluir os dados retornados pelo webhook:
 
 ```tsx
 interface TipoRoteiroDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  headlines: HeadlineParaGerar[];
-  mentoradoData: {
-    nome: string;
-    informacoes_mentorado: string | null;
-    apresentacao: string | null;
-  };
-  onConfirm: (headlines: HeadlineComTipo[]) => void;
+  // ... existentes
+  onConfirm: (
+    headlines: HeadlineComTipo[], 
+    webhookResponse: WebhookResponse | null
+  ) => void;
+}
+
+interface WebhookResponse {
+  roteiros: Array<{
+    key: string;
+    estrutura: string;
+  }>;
 }
 ```
 
 ---
 
-#### 2. Disparar Webhook no handleConfirm
+#### 2. Capturar Resposta do Webhook
 
-Fazer o POST para o webhook n8n dentro do `handleConfirm`:
+Modificar o `handleConfirm` para ler o retorno do fetch:
 
 ```tsx
 const handleConfirm = async () => {
-  const result: HeadlineComTipo[] = headlines.map(headline => {
-    const tipoId = selectedTipos[headline.key];
-    const tipo = tipos.find(t => t.id === tipoId);
-    return {
-      ...headline,
-      tipoId,
-      tipoNome: tipo?.nome || "",
-      tipoConfig: {
-        prompt: tipo?.prompt || null,
-        template_estrutura: tipo?.template_estrutura || null,
-        config_extra: tipo?.config_extra || null,
-      }
-    };
-  });
+  // ... preparar payload (existente)
 
-  // Preparar payload para n8n
-  const payload = {
-    mentorado: {
-      nome: mentoradoData.nome,
-      informacoes_mentorado: mentoradoData.informacoes_mentorado,
-      apresentacao: mentoradoData.apresentacao,
-    },
-    roteiros: result.map(r => ({
-      key: r.key,
-      headline: r.headline,
-      estrutura: r.estrutura,
-      tipo_roteiro: r.tipoNome,
-      tipo_config: r.tipoConfig,
-    })),
-  };
+  let webhookResponse: WebhookResponse | null = null;
 
-  // Enviar para webhook n8n
   try {
-    await fetch("https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros", {
+    const response = await fetch("https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    
+    if (response.ok) {
+      webhookResponse = await response.json();
+    }
   } catch (error) {
     console.error("Erro ao enviar para webhook:", error);
   }
 
-  onConfirm(result);
+  onConfirm(result, webhookResponse);
 };
 ```
 
 ---
 
-#### 3. Passar Dados do Mentorado no MentoradoRoteirosView
+#### 3. Atualizar MentoradoRoteirosView para Processar Resposta
+
+No callback do dialog, popular o campo "estrutura" com os dados retornados:
 
 ```tsx
 <TipoRoteiroDialog
-  open={showTipoRoteiroDialog}
-  onOpenChange={setShowTipoRoteiroDialog}
-  headlines={selectedRoteiroKeys.map(key => {
-    const roteiro = roteirosLocais.get(key);
-    return {
-      key,
-      headline: roteiro?.headline || "",
-      estrutura: roteiro?.estrutura || "",
-    };
-  })}
-  mentoradoData={{
-    nome: mentoradoNome,
-    informacoes_mentorado: currentMentorado?.informacoes_mentorado || null,
-    apresentacao: currentMentorado?.apresentacao || null,
-  }}
-  onConfirm={(headlinesComTipo) => {
+  // ... props existentes
+  onConfirm={(headlinesComTipo, webhookResponse) => {
+    // Atualizar estrutura de cada roteiro com a resposta
+    if (webhookResponse?.roteiros) {
+      setRoteirosLocais((prev) => {
+        const newMap = new Map(prev);
+        
+        for (const roteiroRetornado of webhookResponse.roteiros) {
+          const existing = newMap.get(roteiroRetornado.key);
+          if (existing) {
+            newMap.set(roteiroRetornado.key, {
+              ...existing,
+              estrutura: roteiroRetornado.estrutura,
+            });
+          }
+        }
+        
+        return newMap;
+      });
+
+      // Disparar save para cada roteiro atualizado
+      webhookResponse.roteiros.forEach(r => {
+        const [guiaNumero, ordem] = r.key.split("-").map(Number);
+        // Aqui poderia chamar o debounced save para persistir
+      });
+    }
+
     toast({
-      title: "Roteiros enviados!",
-      description: `${headlinesComTipo.length} roteiro(s) enviados para geração`,
+      title: "Roteiros gerados!",
+      description: `${headlinesComTipo.length} roteiro(s) foram gerados e preenchidos`,
     });
+    
     setShowTipoRoteiroDialog(false);
     setSelectedRoteiroKeys([]);
   }}
@@ -164,32 +154,28 @@ const handleConfirm = async () => {
 
 | Arquivo | Ação |
 |---------|------|
-| `src/components/mentorados/TipoRoteiroDialog.tsx` | Adicionar prop `mentoradoData` e lógica do webhook |
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Passar dados do mentorado para o dialog |
+| `src/components/mentorados/TipoRoteiroDialog.tsx` | Capturar resposta JSON do webhook e passar no callback |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Processar resposta e atualizar `roteirosLocais` com as estruturas geradas |
 
 ---
 
-### Fluxo Final
+### Experiência Final do Usuário
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  Usuário seleciona headlines com checkbox                       │
-│                         ↓                                       │
-│  Clica em "Gerar roteiro"                                       │
-│                         ↓                                       │
-│  Dialog abre → Escolhe tipo para cada headline                  │
-│                         ↓                                       │
-│  Clica em "Gerar"                                               │
-│                         ↓                                       │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │  POST para webhook n8n:                                  │    │
-│  │  - informacoes_mentorado                                 │    │
-│  │  - apresentacao                                          │    │
-│  │  - headline                                              │    │
-│  │  - tipo_roteiro                                          │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                         ↓                                       │
-│  Toast de sucesso                                               │
-└─────────────────────────────────────────────────────────────────┘
-```
+1. **Seleciona headlines** → Checkboxes nos roteiros
+2. **Clica "Gerar roteiro"** → Dialog abre
+3. **Escolhe tipo para cada headline** → Dropdown individual
+4. **Clica "Gerar"** → Mostra loading (opcional)
+5. **Webhook processa e retorna** → Estruturas são preenchidas automaticamente
+6. **Dialog fecha** → Toast de sucesso
+7. **Campos "ESTRUTURA" populados** → Usuário vê o roteiro gerado
+
+---
+
+### Detalhes Técnicos
+
+O `roteirosLocais` é um `Map<string, RoteiroLocal>` onde:
+- **Chave**: `"guiaNumero-ordem"` (ex: `"1-1"`, `"1-2"`)
+- **Valor**: `{ headline: string, estrutura: string }`
+
+Ao receber a resposta, iteramos pelos roteiros retornados e atualizamos apenas o campo `estrutura`, mantendo o `headline` existente.
 
