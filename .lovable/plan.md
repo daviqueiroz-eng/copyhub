@@ -1,129 +1,117 @@
 
 
-## Plano: Corrigir CORS Usando Edge Function
+## Plano: Transformar Resposta do n8n no Formato Esperado
 
 ### Problema Identificado
 
-O erro **"Failed to fetch"** acontece porque o navegador bloqueia requisições diretas (CORS) para domínios externos como `madarawin.app.n8n.cloud`. 
+O n8n está retornando a resposta neste formato:
+```json
+[{"output":"X remédios de farmácia..."}]
+```
 
-Requisições do frontend para APIs externas precisam passar por um proxy backend.
+Mas o frontend espera:
+```json
+{ "roteiros": [{ "key": "1-1", "estrutura": "..." }] }
+```
+
+O n8n retorna um array com a propriedade `output`, enquanto o código espera um objeto com `roteiros` contendo `key` e `estrutura`.
 
 ---
 
 ### Solução
 
-Criar uma **Edge Function** que:
-1. Recebe os dados do frontend
-2. Faz a requisição para o webhook n8n (sem restrição de CORS)
-3. Retorna a resposta para o frontend
+Modificar a Edge Function para:
+1. Guardar os `keys` do payload original
+2. Transformar a resposta do n8n para o formato esperado
+3. Mapear cada `output` de volta para seu respectivo `key`
 
 ---
 
-### Arquitetura
+### Lógica de Transformação
 
 ```text
-ANTES (bloqueado por CORS):
-┌──────────┐     ✖ CORS     ┌──────────┐
-│ Frontend │ ──────────────→ │   n8n    │
-└──────────┘                 └──────────┘
+ENTRADA (payload enviado para n8n):
+{
+  "roteiros": [
+    { "key": "1-2", "headline": "X remédios..." }
+  ]
+}
 
-DEPOIS (funciona):
-┌──────────┐              ┌──────────────┐              ┌──────────┐
-│ Frontend │ ──────────→ │ Edge Function │ ──────────→ │   n8n    │
-└──────────┘   mesma      └──────────────┘   servidor   └──────────┘
-               origem         (proxy)        para servidor
-```
+RESPOSTA DO N8N:
+[
+  { "output": "Texto do roteiro gerado..." }
+]
 
----
-
-### Mudanças Necessárias
-
-#### 1. Criar Edge Function `n8n-webhook`
-
-Nova função em `supabase/functions/n8n-webhook/index.ts`:
-
-```typescript
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const payload = await req.json();
-
-    // Enviar para n8n
-    const n8nResponse = await fetch(
-      "https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }
-    );
-
-    const data = await n8nResponse.json();
-
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-});
-```
-
----
-
-#### 2. Atualizar TipoRoteiroDialog
-
-Trocar a chamada direta para n8n pela Edge Function:
-
-```tsx
-// ANTES
-await fetch("https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(payload),
-});
-
-// DEPOIS
-import { supabase } from "@/integrations/supabase/client";
-
-const { data, error } = await supabase.functions.invoke("n8n-webhook", {
-  body: payload,
-});
-
-if (!error && data) {
-  webhookResponse = data;
+RESPOSTA TRANSFORMADA (para o frontend):
+{
+  "roteiros": [
+    { "key": "1-2", "estrutura": "Texto do roteiro gerado..." }
+  ]
 }
 ```
 
 ---
 
-### Arquivos a Criar/Modificar
+### Mudanças na Edge Function
 
-| Arquivo | Ação |
-|---------|------|
-| `supabase/functions/n8n-webhook/index.ts` | **CRIAR** - Proxy para o webhook n8n |
-| `src/components/mentorados/TipoRoteiroDialog.tsx` | Usar Edge Function ao invés de fetch direto |
+Atualizar `supabase/functions/n8n-webhook/index.ts`:
+
+```typescript
+// Guardar os keys do payload original
+const originalKeys = payload.roteiros?.map((r: { key: string }) => r.key) || [];
+
+// ... fazer o fetch para n8n ...
+
+// Transformar resposta do n8n
+let transformedData;
+
+if (Array.isArray(data)) {
+  // N8n retorna array de { output: string }
+  transformedData = {
+    roteiros: data.map((item: { output: string }, index: number) => ({
+      key: originalKeys[index] || `unknown-${index}`,
+      estrutura: item.output || "",
+    })),
+  };
+} else if (data.roteiros) {
+  // Já está no formato correto
+  transformedData = data;
+} else {
+  // Formato desconhecido
+  transformedData = { roteiros: [] };
+}
+
+return new Response(JSON.stringify(transformedData), { ... });
+```
 
 ---
 
-### Benefícios
+### Resultado Esperado
 
-1. **Sem CORS**: Servidor para servidor não tem restrição
-2. **Segurança**: URL do webhook fica no backend, não exposta no frontend
-3. **Logs**: Podemos ver os logs da Edge Function para debug
-4. **Flexibilidade**: Fácil trocar a URL do webhook sem rebuild do frontend
+Quando o n8n retornar:
+```json
+[{"output":"Texto do roteiro..."}]
+```
+
+A Edge Function transformará para:
+```json
+{
+  "roteiros": [
+    { "key": "1-2", "estrutura": "Texto do roteiro..." }
+  ]
+}
+```
+
+E o frontend conseguirá:
+1. Encontrar o roteiro pela `key`
+2. Preencher o campo `estrutura` com o texto gerado
+3. Salvar no banco de dados
+
+---
+
+### Arquivo a Modificar
+
+| Arquivo | Ação |
+|---------|------|
+| `supabase/functions/n8n-webhook/index.ts` | Adicionar transformação da resposta do n8n |
 
