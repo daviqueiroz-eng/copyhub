@@ -21,6 +21,8 @@ import {
   Video,
   Loader2,
   AlertCircle,
+  SwitchCamera,
+  ExternalLink,
 } from "lucide-react";
 import { useTeleprompter } from "@/hooks/useTeleprompter";
 import { useVideoRecorder } from "@/hooks/useVideoRecorder";
@@ -68,12 +70,14 @@ export function TeleprompterDialog({
     videoRef,
     isRecording,
     hasRecording,
+    facingMode,
     startCamera,
     stopCamera,
     startRecording,
     stopRecording,
     downloadVideo,
     clearRecording,
+    switchCamera,
   } = useVideoRecorder({
     onError: (error) => {
       toast({
@@ -83,6 +87,74 @@ export function TeleprompterDialog({
       });
     },
   });
+  
+  // Função para abrir modo flutuante
+  const openFloatingMode = () => {
+    const content = localText.replace(/\n/g, "<br>");
+    const popup = window.open("", "teleprompter", "width=400,height=600,resizable=yes");
+    if (popup) {
+      popup.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Teleprompter</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              html, body { height: 100%; }
+              body { 
+                background: rgba(0,0,0,0.9); 
+                color: white; 
+                font-size: ${fontSize}px;
+                padding: 24px;
+                min-height: 100vh;
+                line-height: 1.6;
+                font-family: system-ui, -apple-system, sans-serif;
+                overflow-y: auto;
+              }
+              .controls {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                padding: 16px;
+                background: rgba(0,0,0,0.95);
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+              }
+              .btn {
+                padding: 12px 24px;
+                border-radius: 8px;
+                border: none;
+                font-size: 16px;
+                cursor: pointer;
+                font-weight: 500;
+              }
+              .btn-primary { background: #8b5cf6; color: white; }
+              .btn-secondary { background: #374151; color: white; }
+              .content { padding-bottom: 80px; }
+            </style>
+          </head>
+          <body>
+            <div class="content">${content}</div>
+            <div class="controls">
+              <button class="btn btn-secondary" onclick="window.close()">Fechar</button>
+            </div>
+          </body>
+        </html>
+      `);
+      popup.document.close();
+      // Fechar dialog principal para usar câmera nativa
+      handleClose();
+    } else {
+      toast({
+        title: "Não foi possível abrir",
+        description: "Permita pop-ups para usar o modo flutuante.",
+        variant: "destructive",
+      });
+    }
+  };
   
   // Sincronizar texto local quando prop mudar
   useEffect(() => {
@@ -158,7 +230,7 @@ export function TeleprompterDialog({
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/80 z-10 gap-2">
                 <AlertCircle className="h-8 w-8 text-destructive" />
                 <span className="text-sm text-center px-4">{cameraError}</span>
-                <Button variant="outline" size="sm" onClick={startCamera}>
+                <Button variant="outline" size="sm" onClick={() => startCamera()}>
                   Tentar novamente
                 </Button>
               </div>
@@ -307,6 +379,27 @@ export function TeleprompterDialog({
                 >
                   <RotateCcw className="h-4 w-4" />
                   {isMobile ? "" : "Reiniciar"}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={switchCamera}
+                  className="gap-1.5"
+                  disabled={isLoadingCamera}
+                >
+                  <SwitchCamera className="h-4 w-4" />
+                  {isMobile ? "" : (facingMode === "user" ? "Câmera traseira" : "Câmera frontal")}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openFloatingMode}
+                  className="gap-1.5"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  {isMobile ? "" : "Modo flutuante"}
                 </Button>
               </div>
               

@@ -17,6 +17,12 @@ export function useTeleprompter(options: UseTeleprompterOptions = {}) {
   const textContainerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
+  const isScrollingRef = useRef(false);
+  
+  // Sincronizar ref com estado
+  useEffect(() => {
+    isScrollingRef.current = isScrolling;
+  }, [isScrolling]);
   
   // Pixels por segundo baseado na velocidade (1x = 30px/s, 3x = 90px/s)
   const pixelsPerSecond = scrollSpeed * 30;
@@ -66,6 +72,20 @@ export function useTeleprompter(options: UseTeleprompterOptions = {}) {
     setIsMirrored(prev => !prev);
   }, []);
   
+  // Função toggleScroll estável usando ref
+  const toggleScroll = useCallback(() => {
+    if (isScrollingRef.current) {
+      setIsScrolling(false);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    } else {
+      lastTimeRef.current = 0;
+      setIsScrolling(true);
+    }
+  }, []);
+  
   // Efeito para controlar a animação
   useEffect(() => {
     if (isScrolling) {
@@ -99,6 +119,6 @@ export function useTeleprompter(options: UseTeleprompterOptions = {}) {
     pauseScroll,
     resetScroll,
     toggleMirror,
-    toggleScroll: isScrolling ? pauseScroll : startScroll,
+    toggleScroll,
   };
 }
