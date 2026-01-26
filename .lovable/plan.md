@@ -1,198 +1,204 @@
 
 
-## Plano: Histórico de Alterações no Modo Revisão (Undo/Redo)
+## Plano: Seleção Múltipla de Headlines + Correção de Scroll
 
 ### Objetivo
 
-Adicionar a capacidade de voltar/desfazer alterações feitas no roteiro durante o modo revisão, tanto edições manuais quanto alterações feitas pela IA.
+Implementar duas melhorias no TipoRoteiroDialog:
+1. Permitir selecionar múltiplas headlines e aplicar um único tipo para todas de uma vez
+2. Corrigir o scroll para conseguir ver todas as headlines selecionadas
+
+---
+
+### Problema 1: Seleção Individual Ineficiente
+
+#### Comportamento Atual
+- Cada headline tem seu próprio dropdown de tipo
+- Precisa selecionar tipo para cada headline individualmente
+- Processo demorado quando há muitas headlines
+
+#### Novo Comportamento
+- Adicionar checkboxes ao lado de cada headline para seleção múltipla
+- Dropdown global no topo: "Aplicar tipo às selecionadas"
+- Botão "Selecionar todas" para facilitar
+- Ao selecionar tipo no dropdown global, aplica a todas as headlines marcadas
+
+---
+
+### Problema 2: Scroll Não Funciona
+
+#### Causa
+- O ScrollArea precisa de uma altura fixa definida para funcionar
+- Atualmente usa `flex-1` que pode não calcular altura corretamente no contexto do Dialog
+
+#### Solução
+- Adicionar altura máxima fixa ao ScrollArea (ex: `max-h-[400px]`)
+- Garantir overflow correto no viewport
 
 ---
 
 ### Interface Proposta
 
-Adicionar botões de Undo/Redo no header do modo revisão:
-
 ```text
-+-----------------------------------------------------------------------------+
-|  [X]  Roteiro 1/1 (Davi teste - Guia 2)          [↩] [↪]   [< Anterior] [Próximo >] [X] |
-+-----------------------------------------------------------------------------+
-|                                      |                                      |
-|     HEADLINE 04:                     |   Chat de Revisão                    |
-|     [texto editável]                 |                                      |
-|                                      |   [mensagens...]                     |
-|     ESTRUTURA 04:                    |                                      |
-|     [texto editável]                 |   [input]                            |
-+-----------------------------------------------------------------------------+
-```
-
-- **↩ Desfazer**: Volta para a versão anterior
-- **↪ Refazer**: Avança para a versão seguinte (se já deu undo)
-- Atalhos de teclado: Ctrl+Z (undo) e Ctrl+Shift+Z (redo)
-
----
-
-### Lógica de Histórico
-
-1. **Stack de histórico por roteiro**
-   - Cada roteiro terá seu próprio histórico de versões
-   - Limite de 50 versões para não consumir muita memória
-
-2. **Quando salvar no histórico**
-   - Após cada alteração da IA (quando `data.changed = true`)
-   - Após edição manual (quando fizer blur do campo ou mudar de roteiro)
-   - Não salvar a cada caractere digitado (apenas no debounce)
-
-3. **Estrutura do histórico**
-```typescript
-interface HistoryEntry {
-  headline: string;
-  estrutura: string;
-  timestamp: Date;
-  source: "manual" | "ai";
-}
-
-// Estado para histórico
-const [historyPerRoteiro, setHistoryPerRoteiro] = useState<Map<string, {
-  entries: HistoryEntry[];
-  currentIndex: number;
-}>>(new Map());
++----------------------------------------------------------+
+|  Gerar Roteiro                                      [X]  |
++----------------------------------------------------------+
+|                                                          |
+|  [✓] Selecionar todas    [Tipo: Dropdown ▼] [Aplicar]    |
+|                                                          |
+|  +----------------------------------------------------+  |
+|  | [✓] HEADLINE 1:                                    |  |
+|  |     faça essas 3 coisas se quiser...              |  |
+|  |     Tipo: [Selecionar tipo ▼] [⚙]                 |  |
+|  +----------------------------------------------------+  |
+|  | [✓] HEADLINE 2:                                    |  |
+|  |     eu não sei quem precisa ouvir isso...         |  |
+|  |     Tipo: [Selecionar tipo ▼] [⚙]                 |  |
+|  +----------------------------------------------------+  |
+|  | [ ] HEADLINE 3:                                    |  |
+|  |     (sem headline)                                 |  |
+|  |     Tipo: [Selecionar tipo ▼] [⚙]                 |  |
+|  +----------------------------------------------------+  |
+|                      ↓ scroll ↓                          |
+|                                                          |
+|  [+ Novo tipo]                    [Cancelar] [Gerar (4)] |
++----------------------------------------------------------+
 ```
 
 ---
 
 ### Mudanças Técnicas
 
-#### RoteiroRevisaoDialog.tsx
+#### TipoRoteiroDialog.tsx
 
 **Novos estados:**
 ```typescript
-// Histórico de alterações por roteiro
-const [historyPerRoteiro, setHistoryPerRoteiro] = useState<Map<string, {
-  entries: HistoryEntry[];
-  currentIndex: number;
-}>>(new Map());
+// Headlines selecionadas para aplicação em massa
+const [selectedHeadlines, setSelectedHeadlines] = useState<Set<string>>(new Set());
+
+// Tipo selecionado para aplicar em massa
+const [bulkTipoId, setBulkTipoId] = useState<string>("");
 ```
 
-**Funções de histórico:**
+**Funções de seleção múltipla:**
 ```typescript
-// Salvar snapshot no histórico
-const saveToHistory = (source: "manual" | "ai") => {
-  setHistoryPerRoteiro(prev => {
-    const newMap = new Map(prev);
-    const current = newMap.get(currentKey) || { entries: [], currentIndex: -1 };
-    
-    // Remover entradas futuras se estamos no meio do histórico
-    const newEntries = current.entries.slice(0, current.currentIndex + 1);
-    
-    // Adicionar nova entrada
-    newEntries.push({
-      headline: localHeadline,
-      estrutura: localEstrutura,
-      timestamp: new Date(),
-      source,
-    });
-    
-    // Limitar a 50 entradas
-    if (newEntries.length > 50) newEntries.shift();
-    
-    newMap.set(currentKey, {
-      entries: newEntries,
-      currentIndex: newEntries.length - 1,
-    });
-    
-    return newMap;
+// Toggle seleção de uma headline
+const toggleHeadlineSelection = (key: string) => {
+  setSelectedHeadlines(prev => {
+    const newSet = new Set(prev);
+    if (newSet.has(key)) {
+      newSet.delete(key);
+    } else {
+      newSet.add(key);
+    }
+    return newSet;
   });
 };
 
-// Desfazer (Undo)
-const handleUndo = () => {
-  const history = historyPerRoteiro.get(currentKey);
-  if (!history || history.currentIndex <= 0) return;
-  
-  const newIndex = history.currentIndex - 1;
-  const entry = history.entries[newIndex];
-  
-  setLocalHeadline(entry.headline);
-  setLocalEstrutura(entry.estrutura);
-  onRoteiroChange(currentKey, "headline", entry.headline);
-  onRoteiroChange(currentKey, "estrutura", entry.estrutura);
-  
-  setHistoryPerRoteiro(prev => {
-    const newMap = new Map(prev);
-    newMap.set(currentKey, { ...history, currentIndex: newIndex });
-    return newMap;
-  });
-};
-
-// Refazer (Redo)
-const handleRedo = () => {
-  const history = historyPerRoteiro.get(currentKey);
-  if (!history || history.currentIndex >= history.entries.length - 1) return;
-  
-  const newIndex = history.currentIndex + 1;
-  const entry = history.entries[newIndex];
-  
-  setLocalHeadline(entry.headline);
-  setLocalEstrutura(entry.estrutura);
-  onRoteiroChange(currentKey, "headline", entry.headline);
-  onRoteiroChange(currentKey, "estrutura", entry.estrutura);
-  
-  setHistoryPerRoteiro(prev => {
-    const newMap = new Map(prev);
-    newMap.set(currentKey, { ...history, currentIndex: newIndex });
-    return newMap;
-  });
-};
-```
-
-**Atalhos de teclado:**
-```typescript
-// Adicionar no useEffect de keydown
-if ((e.ctrlKey || e.metaKey) && e.key === "z") {
-  e.preventDefault();
-  if (e.shiftKey) {
-    handleRedo();
+// Selecionar todas
+const selectAllHeadlines = () => {
+  if (selectedHeadlines.size === headlines.length) {
+    setSelectedHeadlines(new Set());
   } else {
-    handleUndo();
+    setSelectedHeadlines(new Set(headlines.map(h => h.key)));
   }
-}
+};
+
+// Aplicar tipo às selecionadas
+const applyBulkTipo = () => {
+  if (!bulkTipoId) return;
+  
+  setSelectedTipos(prev => {
+    const newTipos = { ...prev };
+    selectedHeadlines.forEach(key => {
+      newTipos[key] = bulkTipoId;
+    });
+    return newTipos;
+  });
+  
+  // Limpar seleção após aplicar
+  setSelectedHeadlines(new Set());
+  setBulkTipoId("");
+};
 ```
 
-**UI - Botões no header:**
+**Correção do ScrollArea:**
 ```typescript
-<div className="flex items-center gap-1">
-  <Button
-    variant="ghost"
-    size="icon"
-    onClick={handleUndo}
-    disabled={!canUndo}
-    title="Desfazer (Ctrl+Z)"
-    className="h-8 w-8"
-  >
-    <Undo2 className="h-4 w-4" />
-  </Button>
-  <Button
-    variant="ghost"
-    size="icon"
-    onClick={handleRedo}
-    disabled={!canRedo}
-    title="Refazer (Ctrl+Shift+Z)"
-    className="h-8 w-8"
-  >
-    <Redo2 className="h-4 w-4" />
-  </Button>
-  {/* ... botões de navegação existentes ... */}
+<ScrollArea className="flex-1 max-h-[400px]">
+  <div className="py-4 space-y-4 pr-4">
+    {/* headlines... */}
+  </div>
+</ScrollArea>
+```
+
+**UI - Barra de seleção em massa:**
+```typescript
+{/* Barra de ações em massa */}
+<div className="flex items-center gap-3 py-3 border-b">
+  <div className="flex items-center gap-2">
+    <Checkbox
+      id="select-all"
+      checked={selectedHeadlines.size === headlines.length && headlines.length > 0}
+      onCheckedChange={selectAllHeadlines}
+    />
+    <Label htmlFor="select-all" className="text-sm cursor-pointer">
+      Selecionar todas
+    </Label>
+  </div>
+  
+  {selectedHeadlines.size > 0 && (
+    <>
+      <div className="h-4 w-px bg-border" />
+      <div className="flex items-center gap-2 flex-1">
+        <span className="text-xs text-muted-foreground">
+          {selectedHeadlines.size} selecionadas
+        </span>
+        <Select value={bulkTipoId} onValueChange={setBulkTipoId}>
+          <SelectTrigger className="h-8 w-[180px]">
+            <SelectValue placeholder="Tipo para aplicar" />
+          </SelectTrigger>
+          <SelectContent>
+            {tipos.map((tipo) => (
+              <SelectItem key={tipo.id} value={tipo.id}>
+                {tipo.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button 
+          size="sm" 
+          onClick={applyBulkTipo}
+          disabled={!bulkTipoId}
+        >
+          Aplicar
+        </Button>
+      </div>
+    </>
+  )}
 </div>
 ```
 
----
-
-### Quando Salvar no Histórico
-
-1. **Ao abrir roteiro pela primeira vez**: Salvar estado inicial
-2. **Após alteração da IA**: Quando `data.changed = true`
-3. **No blur dos campos**: Quando usuário sai do campo (edição manual)
-4. **Ao mudar de roteiro**: Se há alterações pendentes
+**Checkbox em cada headline:**
+```typescript
+<div key={headline.key} className="border rounded-lg p-4 space-y-3">
+  <div className="flex items-start gap-3">
+    <Checkbox
+      checked={selectedHeadlines.has(headline.key)}
+      onCheckedChange={() => toggleHeadlineSelection(headline.key)}
+      className="mt-0.5"
+    />
+    <div className="flex-1">
+      <span className="text-xs text-muted-foreground font-medium">
+        HEADLINE {index + 1}:
+      </span>
+      <p className="text-sm font-medium mt-1 line-clamp-2">
+        {headline.headline || "(sem headline)"}
+      </p>
+    </div>
+  </div>
+  {/* Select individual... */}
+</div>
+```
 
 ---
 
@@ -200,29 +206,27 @@ if ((e.ctrlKey || e.metaKey) && e.key === "z") {
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/mentorados/RoteiroRevisaoDialog.tsx` | Adicionar lógica de histórico, botões undo/redo e atalhos de teclado |
+| `src/components/mentorados/TipoRoteiroDialog.tsx` | Adicionar seleção múltipla, aplicação em massa e corrigir scroll |
 
 ---
 
-### Comportamento Esperado
+### Fluxo de Uso
 
-1. Usuário abre modo revisão
-2. Versão inicial é salva no histórico
-3. Usuário pede para IA alterar algo → Nova versão salva
-4. Usuário edita manualmente e sai do campo → Nova versão salva
-5. Usuário clica em ↩ Desfazer → Volta para versão anterior
-6. Usuário clica em ↪ Refazer → Avança para versão que tinha desfeito
-7. Se fizer nova alteração após undo, as versões "futuras" são descartadas
+**Cenário 1: Aplicar mesmo tipo a todas**
+1. Usuário clica em "Selecionar todas"
+2. Escolhe o tipo no dropdown "Tipo para aplicar"
+3. Clica em "Aplicar"
+4. Todos os tipos são preenchidos
+5. Clica em "Gerar"
 
----
+**Cenário 2: Tipos diferentes para algumas**
+1. Usuário seleciona headlines 1, 2, 3 (checkbox)
+2. Escolhe tipo "Reels" e clica "Aplicar"
+3. Seleciona headline 4
+4. Escolhe tipo "Stories" e clica "Aplicar"
+5. Clica em "Gerar"
 
-### Indicador Visual
-
-Mostrar quantidade de versões disponíveis para undo/redo:
-
-```text
-[↩ 3] [↪ 1]
-```
-
-Ou tooltip com informação: "3 alterações para desfazer"
+**Cenário 3: Misto**
+1. Aplica tipo em massa para a maioria
+2. Ajusta tipos individuais usando o dropdown de cada headline
 
