@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Search, Plus, Pencil, X, Check, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -602,11 +602,40 @@ export const SlashCommandPopover = ({
 
   const avatarCategory = getAvatarCategory();
 
+  // Calcular posição ajustada para não cortar em mobile
+  const adjustedPosition = useMemo(() => {
+    if (typeof window === "undefined") return position;
+    
+    const isMobile = window.innerWidth < 640;
+    const popoverWidth = isMobile ? window.innerWidth - 32 : 384; // 384 = w-96
+    
+    let left = position.left;
+    
+    if (isMobile) {
+      // Em mobile, centralizar com 16px de margem cada lado
+      left = 16;
+    } else {
+      // Em desktop, garantir que não ultrapasse a tela
+      const maxLeft = window.innerWidth - popoverWidth - 16;
+      left = Math.max(16, Math.min(position.left, maxLeft));
+    }
+    
+    // Ajustar altura também para não ultrapassar a parte inferior da tela
+    let top = position.top;
+    const maxHeight = 500; // Altura máxima aproximada do popover
+    if (top + maxHeight > window.innerHeight) {
+      // Se não couber abaixo, posicionar acima do cursor
+      top = Math.max(16, position.top - maxHeight);
+    }
+    
+    return { top, left };
+  }, [position]);
+
   return (
     <div
       ref={containerRef}
-      className="fixed z-[100] bg-background border rounded-lg shadow-lg w-96"
-      style={{ top: position.top, left: position.left }}
+      className="fixed z-[100] bg-background border rounded-lg shadow-lg w-[calc(100vw-32px)] sm:w-96 max-w-96"
+      style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
     >
       {/* Campo de busca - esconder quando estiver digitando headline */}
       {!(internalMode === "mentorados" && selectedMentorado) && (

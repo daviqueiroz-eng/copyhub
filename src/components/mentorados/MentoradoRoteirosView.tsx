@@ -1519,6 +1519,38 @@ export const MentoradoRoteirosView = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Mini-timer para mobile - visível apenas em telas < lg */}
+            <div className="lg:hidden flex items-center gap-1 border-r pr-2 mr-1">
+              <Button
+                variant={Object.values(timers).some(t => t.isRunning) ? "default" : "outline"}
+                size="sm"
+                className="gap-1.5 h-8 px-2"
+                onClick={() => setShowChecklistMobile(true)}
+                title="Abrir cronômetro"
+              >
+                {Object.values(timers).some(t => t.isRunning) ? (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                  </span>
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-muted-foreground/50"></span>
+                )}
+                <span className="font-mono text-xs">
+                  {(() => {
+                    const total = Object.values(timers).reduce((acc, t) => acc + t.segundos, 0);
+                    const hrs = Math.floor(total / 3600);
+                    const mins = Math.floor((total % 3600) / 60);
+                    const secs = total % 60;
+                    if (hrs > 0) {
+                      return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+                    }
+                    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+                  })()}
+                </span>
+              </Button>
+            </div>
+            
             {/* Botões Undo/Redo */}
             <div className="flex items-center gap-1 border-r pr-2 mr-1">
               <Button
