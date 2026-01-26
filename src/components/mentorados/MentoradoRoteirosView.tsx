@@ -2368,14 +2368,18 @@ export const MentoradoRoteirosView = ({
             estrutura: roteiro?.estrutura || "",
           };
         })}
+        mentoradoData={{
+          nome: mentoradoNome,
+          informacoes_mentorado: currentMentorado?.informacoes_mentorado || null,
+          apresentacao: currentMentorado?.apresentacao || null,
+        }}
         onConfirm={(headlinesComTipo) => {
-          console.log("Gerar roteiros com tipos individuais:", headlinesComTipo);
           toast({
-            title: "Roteiros serão gerados!",
-            description: `${headlinesComTipo.length} roteiro(s) com tipos individuais`,
+            title: "Roteiros enviados!",
+            description: `${headlinesComTipo.length} roteiro(s) enviados para geração`,
           });
           setShowTipoRoteiroDialog(false);
-          setSelectedRoteiroKeys([]); // Limpar seleção
+          setSelectedRoteiroKeys([]);
         }}
       />
     </div>

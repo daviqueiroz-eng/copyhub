@@ -47,6 +47,11 @@ interface TipoRoteiroDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   headlines: HeadlineParaGerar[];
+  mentoradoData: {
+    nome: string;
+    informacoes_mentorado: string | null;
+    apresentacao: string | null;
+  };
   onConfirm: (headlines: HeadlineComTipo[]) => void;
 }
 
@@ -54,6 +59,7 @@ export const TipoRoteiroDialog = ({
   open,
   onOpenChange,
   headlines,
+  mentoradoData,
   onConfirm,
 }: TipoRoteiroDialogProps) => {
   const [selectedTipos, setSelectedTipos] = useState<Record<string, string>>({});
@@ -81,7 +87,7 @@ export const TipoRoteiroDialog = ({
 
   const allHeadlinesHaveTipo = headlines.every(h => selectedTipos[h.key]);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const result: HeadlineComTipo[] = headlines.map(headline => {
       const tipoId = selectedTipos[headline.key];
       const tipo = tipos.find(t => t.id === tipoId);
@@ -96,6 +102,33 @@ export const TipoRoteiroDialog = ({
         }
       };
     });
+
+    // Preparar payload para n8n
+    const payload = {
+      mentorado: {
+        nome: mentoradoData.nome,
+        informacoes_mentorado: mentoradoData.informacoes_mentorado,
+        apresentacao: mentoradoData.apresentacao,
+      },
+      roteiros: result.map(r => ({
+        key: r.key,
+        headline: r.headline,
+        estrutura: r.estrutura,
+        tipo_roteiro: r.tipoNome,
+        tipo_config: r.tipoConfig,
+      })),
+    };
+
+    // Enviar para webhook n8n
+    try {
+      await fetch("https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      console.error("Erro ao enviar para webhook:", error);
+    }
     
     onConfirm(result);
   };
