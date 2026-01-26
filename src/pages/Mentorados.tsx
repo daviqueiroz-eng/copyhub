@@ -131,6 +131,8 @@ const Mentorados = () => {
         tiktok: null,
         link_trello: null,
         inteligencia_ia: null,
+        informacoes_mentorado: null,
+        apresentacao: null,
       },
       {
         onSuccess: () => {
@@ -451,34 +453,23 @@ const Mentorados = () => {
 
             <TabsContent value="comunicacao" className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="estilo">Estilo de Comunicação</Label>
+                <Label htmlFor="informacoes">Informações do mentorado</Label>
                 <Textarea
-                  id="estilo"
-                  value={selectedMentorado?.estilo_comum || ""}
-                  onChange={(e) => handleUpdateMentorado("estilo_comum", e.target.value)}
-                  placeholder="Como se comunicar melhor com este mentorado..."
+                  id="informacoes"
+                  value={selectedMentorado?.informacoes_mentorado || ""}
+                  onChange={(e) => handleUpdateMentorado("informacoes_mentorado", e.target.value)}
+                  placeholder="Informações gerais sobre o mentorado..."
                   rows={4}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="roteiros">Roteiros e Headlines que Performaram</Label>
+                <Label htmlFor="apresentacao">Apresentação</Label>
                 <Textarea
-                  id="roteiros"
-                  value={selectedMentorado?.roteiros || ""}
-                  onChange={(e) => handleUpdateMentorado("roteiros", e.target.value)}
-                  placeholder="Liste os roteiros e headlines de sucesso..."
-                  rows={4}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="observacoes">Observações do Estrategista</Label>
-                <Textarea
-                  id="observacoes"
-                  value={selectedMentorado?.observacoes || ""}
-                  onChange={(e) => handleUpdateMentorado("observacoes", e.target.value)}
-                  placeholder="Notas importantes sobre o progresso..."
+                  id="apresentacao"
+                  value={selectedMentorado?.apresentacao || ""}
+                  onChange={(e) => handleUpdateMentorado("apresentacao", e.target.value)}
+                  placeholder="Apresentação do mentorado..."
                   rows={4}
                 />
               </div>

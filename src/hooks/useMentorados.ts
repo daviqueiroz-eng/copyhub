@@ -22,6 +22,8 @@ export type Mentorado = {
   tiktok: string | null;
   link_trello: string | null;
   inteligencia_ia: string | null;
+  informacoes_mentorado: string | null;
+  apresentacao: string | null;
   user_id: string;
 };
 

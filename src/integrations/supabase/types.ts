@@ -1173,6 +1173,7 @@ export type Database = {
       }
       mentorados: {
         Row: {
+          apresentacao: string | null
           avatar: string | null
           created_at: string
           crencas: string | null
@@ -1180,6 +1181,7 @@ export type Database = {
           dores: string | null
           estilo_comum: string | null
           id: string
+          informacoes_mentorado: string | null
           iniciais: string
           instagram: string | null
           inteligencia_ia: string | null
@@ -1197,6 +1199,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          apresentacao?: string | null
           avatar?: string | null
           created_at?: string
           crencas?: string | null
@@ -1204,6 +1207,7 @@ export type Database = {
           dores?: string | null
           estilo_comum?: string | null
           id?: string
+          informacoes_mentorado?: string | null
           iniciais: string
           instagram?: string | null
           inteligencia_ia?: string | null
@@ -1221,6 +1225,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          apresentacao?: string | null
           avatar?: string | null
           created_at?: string
           crencas?: string | null
@@ -1228,6 +1233,7 @@ export type Database = {
           dores?: string | null
           estilo_comum?: string | null
           id?: string
+          informacoes_mentorado?: string | null
           iniciais?: string
           instagram?: string | null
           inteligencia_ia?: string | null
