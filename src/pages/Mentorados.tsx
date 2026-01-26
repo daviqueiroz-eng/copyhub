@@ -202,7 +202,7 @@ const Mentorados = () => {
           </TabsList>
 
           {/* Tab: Mentorados */}
-          <TabsContent value="mentorados" className="flex-1 min-h-0 flex flex-col mt-0" forceMount style={{ display: 'var(--radix-tabs-content-display, none)' }}>
+          <TabsContent value="mentorados" className="flex-1 min-h-0 flex flex-col mt-0 data-[state=inactive]:hidden">
             {/* Busca + Botão Novo */}
             <div className="flex items-center gap-2 shrink-0 pb-3">
               <div className="relative flex-1">
@@ -242,7 +242,7 @@ const Mentorados = () => {
           </TabsContent>
 
           {/* Tab: Prioridade */}
-          <TabsContent value="prioridade" className="flex-1 min-h-0 overflow-y-auto mt-0" forceMount style={{ display: 'var(--radix-tabs-content-display, none)' }}>
+          <TabsContent value="prioridade" className="flex-1 min-h-0 overflow-y-auto mt-0 data-[state=inactive]:hidden">
             <OrdemPrioridadeView />
           </TabsContent>
         </Tabs>
