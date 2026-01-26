@@ -1844,7 +1844,11 @@ export const MentoradoRoteirosView = ({
                           className="h-8 w-8 sm:h-7 sm:w-7"
                           title="Gravar com teleprompter"
                           onClick={() => {
-                            setTeleprompterText(roteiro.estrutura || "");
+                            const textoCompleto = [
+                              roteiro.headline ? `📌 HEADLINE:\n${roteiro.headline}` : "",
+                              roteiro.estrutura ? `\n\n📝 ESTRUTURA:\n${roteiro.estrutura}` : ""
+                            ].filter(Boolean).join("");
+                            setTeleprompterText(textoCompleto || "Nenhum texto disponível");
                             setShowTeleprompter(true);
                           }}
                         >
