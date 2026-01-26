@@ -1,76 +1,83 @@
 
-## Plano: Corrigir Câmera do Teleprompter que Não Abre
 
-### Problema Identificado
+## Plano: Ajustar Posição e Controles do Texto no Teleprompter
 
-O teleprompter fica travado em "Carregando câmera..." devido a dois problemas:
+### Ajustes Solicitados
 
-#### 1. Loop Infinito no useEffect
-O `useEffect` que inicia a câmera tem `startCamera` e `stopCamera` como dependências:
-
-```tsx
-useEffect(() => {
-  if (open) {
-    startCamera();  // ← Chamado repetidamente
-  } else {
-    stopCamera();
-  }
-}, [open, startCamera, stopCamera]);  // ← Estas funções mudam a cada render
-```
-
-Como `startCamera` e `stopCamera` são funções que dependem de `stream` e `onError`, elas são recriadas a cada render, causando loops infinitos de chamadas.
-
-#### 2. videoRef Não Conectado ao Elemento Video no Tempo Correto
-
-O `videoRef` é atualizado com o stream, mas há uma race condition: quando o stream é obtido, o elemento `<video>` pode não estar montado ainda ou o ref não está sincronizado.
+1. **Texto no topo** em vez de embaixo
+2. **Rolagem manual** permitindo ao usuário posicionar o texto onde quiser
+3. **Controle de largura** para deixar o texto mais estreito
 
 ---
 
-### Solução
+### Modificações
 
-#### 1. Remover Dependências Problemáticas do useEffect
+#### 1. Mover Texto para o Topo
 
-Usar refs e callbacks estáveis para evitar que o useEffect seja re-executado:
+No `TeleprompterDialog.tsx`, mudar a posição do overlay de texto:
 
+**De:**
 ```tsx
-// TeleprompterDialog.tsx
-useEffect(() => {
-  if (open) {
-    startCamera();
-  }
-  return () => {
-    stopCamera();
-  };
-}, [open]);  // ← Apenas 'open' como dependência
+<div className="absolute bottom-0 left-0 right-0 ...">
 ```
 
-E adicionar `// eslint-disable-next-line` para suprimir o warning.
-
-#### 2. Garantir que o Video Receba o Stream Corretamente
-
-Usar um `useEffect` adicional para sincronizar o stream com o elemento video:
-
+**Para:**
 ```tsx
-// useVideoRecorder.ts - adicionar efeito para sincronizar
-useEffect(() => {
-  if (videoRef.current && stream) {
-    videoRef.current.srcObject = stream;
-  }
-}, [stream]);
+<div className="absolute top-0 left-0 right-0 ...">
 ```
 
-#### 3. Estabilizar as Funções com useRef
+---
 
-Usar refs para manter referências estáveis das funções e evitar re-renders:
+#### 2. Permitir Rolagem Manual
 
+Atualmente, quando o scroll automático está pausado, o usuário já deveria conseguir rolar. Mas precisamos garantir que:
+
+- O container de texto tenha `overflow-y-auto` (já tem)
+- Funcione bem com touch em mobile
+- Adicionar `touch-pan-y` para garantir scroll suave no mobile
+
+---
+
+#### 3. Adicionar Controle de Largura do Texto
+
+**3.1 No hook `useTeleprompter.ts`:**
+
+Adicionar novo estado para largura:
 ```tsx
-// useVideoRecorder.ts
-const onErrorRef = useRef(onError);
-onErrorRef.current = onError;
+const [textWidth, setTextWidth] = useState(100); // 100% por padrão
+```
 
-const startCamera = useCallback(async () => {
-  // ... usar onErrorRef.current em vez de onError
-}, []);  // ← Sem dependências, função estável
+E expor no retorno do hook.
+
+**3.2 No `TeleprompterDialog.tsx`:**
+
+Adicionar novo slider nos controles:
+```tsx
+<div className="space-y-2">
+  <div className="flex justify-between">
+    <Label className="text-sm">Largura do texto</Label>
+    <span className="text-sm text-muted-foreground">{textWidth}%</span>
+  </div>
+  <Slider
+    value={[textWidth]}
+    min={40}
+    max={100}
+    step={5}
+    onValueChange={([v]) => setTextWidth(v)}
+  />
+</div>
+```
+
+E aplicar a largura ao container de texto:
+```tsx
+<div 
+  ref={textContainerRef}
+  className="absolute top-0 left-1/2 -translate-x-1/2 ..."
+  style={{ 
+    fontSize: `${fontSize}px`,
+    width: `${textWidth}%`
+  }}
+>
 ```
 
 ---
@@ -79,83 +86,65 @@ const startCamera = useCallback(async () => {
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/hooks/useVideoRecorder.ts` | Estabilizar callbacks, adicionar efeito para sincronizar stream com video |
-| `src/components/mentorados/TeleprompterDialog.tsx` | Simplificar useEffect, remover dependências problemáticas |
+| `src/hooks/useTeleprompter.ts` | Adicionar estado `textWidth` e `setTextWidth` |
+| `src/components/mentorados/TeleprompterDialog.tsx` | Mover texto para topo, adicionar slider de largura, garantir scroll manual |
 
 ---
 
 ### Detalhes Técnicos
 
-#### useVideoRecorder.ts - Mudanças
+#### Layout Atualizado do Texto
 
-1. **Usar ref para onError** para evitar recriação do callback:
 ```tsx
-const onErrorRef = useRef(options.onError);
-useEffect(() => {
-  onErrorRef.current = options.onError;
-}, [options.onError]);
+<div 
+  ref={textContainerRef}
+  className={cn(
+    "absolute top-0 left-1/2 -translate-x-1/2",
+    "bg-black/60 backdrop-blur-sm text-white p-4",
+    "overflow-y-auto touch-pan-y",
+    isMobile ? "h-[35%]" : "h-[40%]"
+  )}
+  style={{ 
+    fontSize: `${fontSize}px`,
+    width: `${textWidth}%`
+  }}
+>
 ```
 
-2. **Remover dependências de callbacks**:
-```tsx
-const startCamera = useCallback(async () => {
-  // ... lógica
-  onErrorRef.current?.(errorMessage);  // usar ref
-}, []);  // array vazio = função estável
+- `top-0` posiciona no topo
+- `left-1/2 -translate-x-1/2` centraliza horizontalmente
+- `touch-pan-y` garante scroll suave no mobile
+- `width: textWidth%` controla a largura dinamicamente
+
+---
+
+### Resultado Visual
+
 ```
+┌────────────────────────────────────────────────┐
+│ ┌──────────────────────────────────┐           │
+│ │     Texto aqui em cima...        │ ← Topo    │
+│ │     (scrollável manualmente)     │           │
+│ │     [largura ajustável: 40-100%] │           │
+│ └──────────────────────────────────┘           │
+│                                                │
+│                📹 Câmera                        │
+│                                                │
+│                                                │
+└────────────────────────────────────────────────┘
 
-3. **Usar ref para stream** em `stopCamera`:
-```tsx
-const streamRef = useRef<MediaStream | null>(null);
-
-const stopCamera = useCallback(() => {
-  if (streamRef.current) {
-    streamRef.current.getTracks().forEach(track => track.stop());
-    streamRef.current = null;
-  }
-  setStream(null);
-  // ...
-}, []);  // array vazio = função estável
-```
-
-4. **Adicionar efeito para sincronizar video**:
-```tsx
-useEffect(() => {
-  if (videoRef.current && stream) {
-    videoRef.current.srcObject = stream;
-  }
-}, [stream]);
-```
-
-#### TeleprompterDialog.tsx - Mudanças
-
-1. **Simplificar useEffect**:
-```tsx
-useEffect(() => {
-  if (open) {
-    startCamera();
-  }
-  return () => {
-    stopCamera();
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [open]);
+Controles:
+├─ Velocidade: [━━━●━━━]
+├─ Tamanho:    [━━━●━━━]
+├─ Largura:    [━━━●━━━]  ← NOVO
+└─ [Espelhar] [Editar] [Reiniciar]
 ```
 
 ---
 
-### Por que Isso Resolve
+### Comportamento de Scroll
 
-1. **Funções estáveis**: `startCamera` e `stopCamera` não mudam entre renders
-2. **Sem loop infinito**: useEffect só executa quando `open` muda
-3. **Stream sincronizado**: Video recebe o stream assim que ele fica disponível
-4. **Cleanup adequado**: Camera é parada quando dialog fecha
+- **Automático**: Texto sobe sozinho na velocidade configurada
+- **Manual**: Usuário pode arrastar/rolar o texto a qualquer momento
+- O scroll manual funciona mesmo durante o scroll automático (pausa automaticamente)
 
----
-
-### Testes Necessários
-
-1. Abrir teleprompter no desktop - câmera deve aparecer
-2. Abrir teleprompter no mobile - câmera deve aparecer
-3. Fechar e reabrir - deve funcionar sem travar
-4. Gravar vídeo - deve funcionar normalmente
