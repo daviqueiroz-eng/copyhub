@@ -1,210 +1,228 @@
 
 
-## Plano: Modo Revisão Clicável + Seleção de Texto Vinculada ao Chat
+## Plano: Histórico de Alterações no Modo Revisão (Undo/Redo)
 
 ### Objetivo
 
-Implementar duas melhorias:
-1. Tornar o texto "Revisar" clicável para ativar o modo revisão
-2. Ao selecionar texto no roteiro, vincular automaticamente ao chat para alterar apenas aquela parte
+Adicionar a capacidade de voltar/desfazer alterações feitas no roteiro durante o modo revisão, tanto edições manuais quanto alterações feitas pela IA.
 
 ---
 
-### Mudança 1: Label "Revisar" Clicável
+### Interface Proposta
 
-#### Comportamento Atual
-- O texto "Revisar" apenas marca/desmarca o checkbox
-- Para abrir o modo revisão, precisa clicar no ícone de Play
+Adicionar botões de Undo/Redo no header do modo revisão:
 
-#### Novo Comportamento
-- Clicar em "Revisar" abre diretamente o modo revisão
-- O timer continua funcionando normalmente com os ícones
-- O checkbox continua independente (pode marcar/desmarcar)
+```text
++-----------------------------------------------------------------------------+
+|  [X]  Roteiro 1/1 (Davi teste - Guia 2)          [↩] [↪]   [< Anterior] [Próximo >] [X] |
++-----------------------------------------------------------------------------+
+|                                      |                                      |
+|     HEADLINE 04:                     |   Chat de Revisão                    |
+|     [texto editável]                 |                                      |
+|                                      |   [mensagens...]                     |
+|     ESTRUTURA 04:                    |                                      |
+|     [texto editável]                 |   [input]                            |
++-----------------------------------------------------------------------------+
+```
 
-#### Mudanças no RoteiroChecklist.tsx
+- **↩ Desfazer**: Volta para a versão anterior
+- **↪ Refazer**: Avança para a versão seguinte (se já deu undo)
+- Atalhos de teclado: Ctrl+Z (undo) e Ctrl+Shift+Z (redo)
 
-Alterar o Label do item "Revisar" para ser clicável e chamar `onRevisarPlay`:
+---
 
+### Lógica de Histórico
+
+1. **Stack de histórico por roteiro**
+   - Cada roteiro terá seu próprio histórico de versões
+   - Limite de 50 versões para não consumir muita memória
+
+2. **Quando salvar no histórico**
+   - Após cada alteração da IA (quando `data.changed = true`)
+   - Após edição manual (quando fizer blur do campo ou mudar de roteiro)
+   - Não salvar a cada caractere digitado (apenas no debounce)
+
+3. **Estrutura do histórico**
 ```typescript
-// No map de items, verificar se é o item "revisar"
-{item.id === "revisar" ? (
-  <span
-    className={cn(
-      "text-sm cursor-pointer leading-tight flex-1 hover:text-primary hover:underline",
-      item.checked && "line-through text-muted-foreground"
-    )}
-    onClick={() => onRevisarPlay?.()}
-  >
-    {item.label}
-  </span>
-) : (
-  <Label
-    htmlFor={item.id}
-    className={cn(
-      "text-sm cursor-pointer leading-tight flex-1",
-      item.checked && "line-through text-muted-foreground"
-    )}
-  >
-    {item.label}
-  </Label>
-)}
+interface HistoryEntry {
+  headline: string;
+  estrutura: string;
+  timestamp: Date;
+  source: "manual" | "ai";
+}
+
+// Estado para histórico
+const [historyPerRoteiro, setHistoryPerRoteiro] = useState<Map<string, {
+  entries: HistoryEntry[];
+  currentIndex: number;
+}>>(new Map());
 ```
 
 ---
 
-### Mudança 2: Seleção de Texto Vinculada ao Chat
+### Mudanças Técnicas
 
-#### Comportamento Atual
-- Usuário edita diretamente no Textarea
-- Para pedir alterações, digita no chat separadamente
-- Não há conexão entre seleção e chat
-
-#### Novo Comportamento
-1. Usuário seleciona texto no roteiro
-2. O texto selecionado é destacado visualmente
-3. O input do chat mostra indicador do texto selecionado
-4. Ao digitar, a instrução é aplicada apenas à parte selecionada
-5. Prompt da IA recebe contexto específico da seleção
-
-#### Mudanças no RoteiroRevisaoDialog.tsx
+#### RoteiroRevisaoDialog.tsx
 
 **Novos estados:**
 ```typescript
-const [selectedText, setSelectedText] = useState<{
-  text: string;
-  field: "headline" | "estrutura";
-  start: number;
-  end: number;
-} | null>(null);
+// Histórico de alterações por roteiro
+const [historyPerRoteiro, setHistoryPerRoteiro] = useState<Map<string, {
+  entries: HistoryEntry[];
+  currentIndex: number;
+}>>(new Map());
 ```
 
-**Capturar seleção dos Textareas:**
+**Funções de histórico:**
 ```typescript
-const handleTextSelection = (field: "headline" | "estrutura") => {
-  const selection = window.getSelection();
-  const text = selection?.toString().trim();
-  
-  if (text && text.length > 0) {
-    setSelectedText({
-      text,
-      field,
-      start: /* posição início */,
-      end: /* posição fim */
+// Salvar snapshot no histórico
+const saveToHistory = (source: "manual" | "ai") => {
+  setHistoryPerRoteiro(prev => {
+    const newMap = new Map(prev);
+    const current = newMap.get(currentKey) || { entries: [], currentIndex: -1 };
+    
+    // Remover entradas futuras se estamos no meio do histórico
+    const newEntries = current.entries.slice(0, current.currentIndex + 1);
+    
+    // Adicionar nova entrada
+    newEntries.push({
+      headline: localHeadline,
+      estrutura: localEstrutura,
+      timestamp: new Date(),
+      source,
     });
-    inputRef.current?.focus();
-  }
+    
+    // Limitar a 50 entradas
+    if (newEntries.length > 50) newEntries.shift();
+    
+    newMap.set(currentKey, {
+      entries: newEntries,
+      currentIndex: newEntries.length - 1,
+    });
+    
+    return newMap;
+  });
+};
+
+// Desfazer (Undo)
+const handleUndo = () => {
+  const history = historyPerRoteiro.get(currentKey);
+  if (!history || history.currentIndex <= 0) return;
+  
+  const newIndex = history.currentIndex - 1;
+  const entry = history.entries[newIndex];
+  
+  setLocalHeadline(entry.headline);
+  setLocalEstrutura(entry.estrutura);
+  onRoteiroChange(currentKey, "headline", entry.headline);
+  onRoteiroChange(currentKey, "estrutura", entry.estrutura);
+  
+  setHistoryPerRoteiro(prev => {
+    const newMap = new Map(prev);
+    newMap.set(currentKey, { ...history, currentIndex: newIndex });
+    return newMap;
+  });
+};
+
+// Refazer (Redo)
+const handleRedo = () => {
+  const history = historyPerRoteiro.get(currentKey);
+  if (!history || history.currentIndex >= history.entries.length - 1) return;
+  
+  const newIndex = history.currentIndex + 1;
+  const entry = history.entries[newIndex];
+  
+  setLocalHeadline(entry.headline);
+  setLocalEstrutura(entry.estrutura);
+  onRoteiroChange(currentKey, "headline", entry.headline);
+  onRoteiroChange(currentKey, "estrutura", entry.estrutura);
+  
+  setHistoryPerRoteiro(prev => {
+    const newMap = new Map(prev);
+    newMap.set(currentKey, { ...history, currentIndex: newIndex });
+    return newMap;
+  });
 };
 ```
 
-**Indicador visual no input:**
+**Atalhos de teclado:**
 ```typescript
-{selectedText && (
-  <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border-b text-xs">
-    <span className="text-muted-foreground">Seleção:</span>
-    <span className="font-medium text-amber-700 dark:text-amber-300 truncate max-w-[200px]">
-      "{selectedText.text}"
-    </span>
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-4 w-4 shrink-0"
-      onClick={() => setSelectedText(null)}
-    >
-      <X className="h-3 w-3" />
-    </Button>
-  </div>
-)}
-```
-
-**Enviar contexto para a IA:**
-```typescript
-const { data, error } = await supabase.functions.invoke("revisar-roteiro", {
-  body: {
-    headline: localHeadline,
-    estrutura: localEstrutura,
-    mensagem: userMessage.content,
-    historico,
-    // Novo campo para seleção
-    selecao: selectedText ? {
-      texto: selectedText.text,
-      campo: selectedText.field,
-    } : null,
-  },
-});
-```
-
-#### Mudanças na Edge Function revisar-roteiro
-
-Atualizar o prompt para considerar a seleção:
-
-```typescript
-// Se há seleção, adicionar instrução específica
-if (selecao) {
-  systemPrompt += `\n\nATENÇÃO: O usuário selecionou este trecho específico do campo "${selecao.campo}":
-"${selecao.texto}"
-
-A instrução do usuário se refere APENAS a este trecho selecionado. 
-Altere SOMENTE esta parte, mantendo todo o resto do texto idêntico.`;
+// Adicionar no useEffect de keydown
+if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+  e.preventDefault();
+  if (e.shiftKey) {
+    handleRedo();
+  } else {
+    handleUndo();
+  }
 }
 ```
 
----
-
-### Interface com Seleção Ativa
-
-```text
-+--------------------------------------------+-----------------------------+
-|  HEADLINE 01:                              |  Chat de Revisão            |
-|  [Texto da headline aqui...]               |                             |
-|                                            |  +------------------------+ |
-|  ESTRUTURA 01:                             |  | Seleção: "demais"  [x] | |
-|  [                                         |  +------------------------+ |
-|   Texto com a palavra [demais] destacada   |                             |
-|   em amarelo mostrando que está            |  [________________] [Enviar]|
-|   selecionada pelo usuário                 |                             |
-|  ]                                         |  Ao digitar "muito bom"     |
-|                                            |  a IA troca só essa palavra |
-+--------------------------------------------+-----------------------------+
+**UI - Botões no header:**
+```typescript
+<div className="flex items-center gap-1">
+  <Button
+    variant="ghost"
+    size="icon"
+    onClick={handleUndo}
+    disabled={!canUndo}
+    title="Desfazer (Ctrl+Z)"
+    className="h-8 w-8"
+  >
+    <Undo2 className="h-4 w-4" />
+  </Button>
+  <Button
+    variant="ghost"
+    size="icon"
+    onClick={handleRedo}
+    disabled={!canRedo}
+    title="Refazer (Ctrl+Shift+Z)"
+    className="h-8 w-8"
+  >
+    <Redo2 className="h-4 w-4" />
+  </Button>
+  {/* ... botões de navegação existentes ... */}
+</div>
 ```
 
 ---
 
-### Arquivos a Modificar
+### Quando Salvar no Histórico
+
+1. **Ao abrir roteiro pela primeira vez**: Salvar estado inicial
+2. **Após alteração da IA**: Quando `data.changed = true`
+3. **No blur dos campos**: Quando usuário sai do campo (edição manual)
+4. **Ao mudar de roteiro**: Se há alterações pendentes
+
+---
+
+### Arquivo a Modificar
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/mentorados/RoteiroChecklist.tsx` | Tornar label "Revisar" clicável para abrir o modo |
-| `src/components/mentorados/RoteiroRevisaoDialog.tsx` | Adicionar captura de seleção e indicador visual |
-| `supabase/functions/revisar-roteiro/index.ts` | Processar campo `selecao` no prompt |
+| `src/components/mentorados/RoteiroRevisaoDialog.tsx` | Adicionar lógica de histórico, botões undo/redo e atalhos de teclado |
 
 ---
 
-### Fluxo de Uso Atualizado
+### Comportamento Esperado
 
-1. Usuário clica em "Revisar" no checklist
-2. Modo revisão abre em tela cheia
-3. Usuário lê o roteiro e seleciona "demais" com o mouse
-4. Indicador aparece: `Seleção: "demais" [x]`
-5. Usuário digita: "muito bom"
-6. IA entende: "trocar 'demais' por 'muito bom'"
-7. Apenas essa palavra é alterada no texto
-8. Seleção é limpa automaticamente
+1. Usuário abre modo revisão
+2. Versão inicial é salva no histórico
+3. Usuário pede para IA alterar algo → Nova versão salva
+4. Usuário edita manualmente e sai do campo → Nova versão salva
+5. Usuário clica em ↩ Desfazer → Volta para versão anterior
+6. Usuário clica em ↪ Refazer → Avança para versão que tinha desfeito
+7. Se fizer nova alteração após undo, as versões "futuras" são descartadas
 
 ---
 
-### Detalhes Técnicos
+### Indicador Visual
 
-**Captura de seleção:**
-- Usar eventos `onMouseUp` e `onSelect` nos Textareas
-- Guardar posição (start/end) para highlight futuro
-- Limpar seleção após aplicar mudança
+Mostrar quantidade de versões disponíveis para undo/redo:
 
-**Prompt otimizado para seleção:**
 ```text
-O usuário selecionou: "demais"
-No campo: estrutura
-Instrução: "muito bom"
-
-Ação: Substituir "demais" por "muito bom" mantendo todo o resto idêntico.
+[↩ 3] [↪ 1]
 ```
+
+Ou tooltip com informação: "3 alterações para desfazer"
 
