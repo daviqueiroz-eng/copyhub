@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,16 +129,17 @@ export const TipoRoteiroDialog = ({
 
     let webhookResponse: WebhookResponse | null = null;
 
-    // Enviar para webhook n8n e capturar resposta
+    // Enviar para Edge Function (proxy para n8n)
     try {
-      const response = await fetch("https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-roteiros", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const { data, error } = await supabase.functions.invoke("n8n-webhook", {
+        body: payload,
       });
       
-      if (response.ok) {
-        webhookResponse = await response.json();
+      if (!error && data) {
+        webhookResponse = data as WebhookResponse;
+        console.log("Resposta do webhook:", webhookResponse);
+      } else if (error) {
+        console.error("Erro na Edge Function:", error);
       }
     } catch (error) {
       console.error("Erro ao enviar para webhook:", error);
