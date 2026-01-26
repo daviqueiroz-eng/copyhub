@@ -1,205 +1,123 @@
 
 
-## Plano: Adicionar Teleprompter com Gravação de Vídeo
+## Plano: Otimizar Toolbar de Ações para Mobile
 
-### Objetivo
-Adicionar um novo botão na barra flutuante de ações do roteiro (abaixo do botão de áudio 🔊) que abre um teleprompter com gravação de vídeo.
+### Problema Identificado
+
+A toolbar flutuante com os botões de ação (copiar, deletar, TTS, áudio, teleprompter) usa:
+```css
+opacity-0 group-hover:opacity-100
+position: absolute -right-14
+```
+
+Isso significa:
+1. Os botões estão **invisíveis** (opacity-0) por padrão
+2. Só aparecem no **hover** - que não existe em touchscreen
+3. Estão posicionados **fora da área visível** em telas pequenas
 
 ---
 
-### 1. Localização do Botão
+### Solução: Toolbar Sempre Visível em Mobile
 
-O botão será adicionado na toolbar flutuante que aparece no hover de cada roteiro, logo após o botão de áudio (Volume2):
-
-```
-┌──────┐
-│  📋  │  Copiar
-├──────┤
-│  🗑️  │  Deletar
-├──────┤
-│  ⚙️  │  Config TTS
-├──────┤
-│  🔊  │  Ler estrutura
-├──────┤
-│  🎬  │  ← NOVO: Teleprompter
-└──────┘
-```
+Modificar a toolbar para ser sempre visível em dispositivos móveis usando classes responsivas.
 
 ---
 
-### 2. Novo Componente: TeleprompterDialog
+### Modificações em `MentoradoRoteirosView.tsx`
 
-Criar um novo componente dialog que inclui:
+#### 1. Tornar Toolbar Visível em Mobile
 
-#### Interface Principal
-```
-┌────────────────────────────────────────────────┐
-│ 🎬 Teleprompter                            [X] │
-├────────────────────────────────────────────────┤
-│ ┌────────────────────────────────────────────┐ │
-│ │                                            │ │
-│ │         📹 Preview da Câmera              │ │
-│ │            (espelhado)                     │ │
-│ │                                            │ │
-│ │  ┌──────────────────────────────────────┐  │ │
-│ │  │                                      │  │ │
-│ │  │     Texto do roteiro scrollando...   │  │ │
-│ │  │                                      │  │ │
-│ │  └──────────────────────────────────────┘  │ │
-│ └────────────────────────────────────────────┘ │
-├────────────────────────────────────────────────┤
-│ Velocidade: [━━━━━●━━━] 1.0x                   │
-│ Tamanho:    [━━━●━━━━━] 24px                   │
-│ [🔄 Espelhar] [📝 Editar texto]                │
-├────────────────────────────────────────────────┤
-│ [▶️ Iniciar Scroll]  [⏺️ Gravar]  [💾 Salvar]  │
-└────────────────────────────────────────────────┘
+Alterar as classes da toolbar flutuante (linha ~1783):
+
+**De:**
+```tsx
+<div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
 ```
 
-#### Funcionalidades
-- **Preview de câmera em tempo real** (frontal por padrão)
-- **Texto scrollando** sobre o preview (overlay semitransparente)
-- **Controle de velocidade** do scroll (0.5x a 3x)
-- **Controle de tamanho** da fonte (16px a 48px)
-- **Espelhamento** da câmera (útil para leitura)
-- **Gravação de vídeo** com MediaRecorder API
-- **Download direto** no dispositivo (MP4/WebM)
-
----
-
-### 3. Estrutura de Arquivos
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/components/mentorados/TeleprompterDialog.tsx` | Componente principal do teleprompter |
-| `src/hooks/useTeleprompter.ts` | Hook para controle de scroll e estado |
-| `src/hooks/useVideoRecorder.ts` | Hook para gravação de vídeo |
-
----
-
-### 4. Detalhes Técnicos
-
-#### 4.1 Captura de Vídeo
-```typescript
-// Acesso à câmera frontal
-const stream = await navigator.mediaDevices.getUserMedia({
-  video: { facingMode: "user", width: 1280, height: 720 },
-  audio: true
-});
-
-// MediaRecorder para gravação
-const mediaRecorder = new MediaRecorder(stream, {
-  mimeType: 'video/webm;codecs=vp9,opus'
-});
+**Para:**
+```tsx
+<div className="absolute -right-2 sm:-right-14 top-0 
+  opacity-100 sm:opacity-0 group-hover:opacity-100 
+  transition-opacity flex flex-row sm:flex-col gap-1
+  bg-background/90 sm:bg-transparent 
+  backdrop-blur-sm sm:backdrop-blur-none
+  rounded-lg sm:rounded-none p-1 sm:p-0
+  shadow-md sm:shadow-none
+  border sm:border-0">
 ```
 
-#### 4.2 Scroll Automático
-```typescript
-const scrollText = useCallback(() => {
-  if (!isScrolling || !textRef.current) return;
-  
-  textRef.current.scrollTop += scrollSpeed;
-  animationFrame = requestAnimationFrame(scrollText);
-}, [isScrolling, scrollSpeed]);
-```
+Esta mudança:
+- Em mobile: toolbar visível (`opacity-100`), horizontal (`flex-row`), posicionada dentro do container (`-right-2`), com background para contraste
+- Em desktop: mantém comportamento original com hover
 
-#### 4.3 Download do Vídeo
-```typescript
-const downloadVideo = () => {
-  const blob = new Blob(recordedChunks, { type: 'video/webm' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `roteiro-${Date.now()}.webm`;
-  a.click();
-};
-```
+#### 2. Aumentar Área de Toque dos Botões em Mobile
 
----
-
-### 5. Modificações Necessárias
-
-#### 5.1 MentoradoRoteirosView.tsx (linhas ~1835)
-
-Adicionar novo botão após o botão de áudio:
+Adicionar classes responsivas aos botões:
 
 ```tsx
-// Após o botão Volume2/Square (linha 1835)
 <Button
   variant="ghost"
   size="icon"
-  className="h-7 w-7"
-  title="Gravar com teleprompter"
-  onClick={() => {
-    setTeleprompterText(roteiro.estrutura || "");
-    setShowTeleprompter(true);
-  }}
+  className="h-8 w-8 sm:h-7 sm:w-7" // Maior em mobile
+  ...
 >
-  <Video className="h-3.5 w-3.5" />
+  <Video className="h-4 w-4 sm:h-3.5 sm:w-3.5" /> // Ícone maior em mobile
 </Button>
 ```
 
-E adicionar os estados e o dialog:
+---
 
-```tsx
-// Estados
-const [showTeleprompter, setShowTeleprompter] = useState(false);
-const [teleprompterText, setTeleprompterText] = useState("");
+### Resultado Visual Esperado
 
-// Dialog no final do JSX
-<TeleprompterDialog
-  open={showTeleprompter}
-  onOpenChange={setShowTeleprompter}
-  text={teleprompterText}
-  onTextChange={setTeleprompterText}
-/>
+**Mobile (sempre visível, horizontal):**
+```
+┌───────────────────────────────────────────────┐
+│ HEADLINE 01:                     [📋🗑️⚙️🔊🎬] │
+│ Digite a headline...                          │
+│                                               │
+│ ESTRUTURA 01:                                 │
+│ Digite a estrutura...                         │
+└───────────────────────────────────────────────┘
+```
+
+**Desktop (aparece no hover, vertical):**
+```
+┌─────────────────────────────────┐  ┌──┐
+│ HEADLINE 01:                    │  │📋│
+│ Digite a headline...            │  │🗑️│
+│                                 │  │⚙️│
+│ ESTRUTURA 01:                   │  │🔊│
+│ Digite a estrutura...           │  │🎬│
+└─────────────────────────────────┘  └──┘
 ```
 
 ---
 
-### 6. Compatibilidade
+### Arquivos a Modificar
 
-| Recurso | Desktop | iOS Safari | Android Chrome |
-|---------|---------|------------|----------------|
-| getUserMedia | ✅ | ✅ (iOS 11+) | ✅ |
-| MediaRecorder | ✅ | ⚠️ (iOS 14.3+) | ✅ |
-| Download automático | ✅ | ⚠️ (abre nova aba) | ✅ |
-
-**Nota iOS**: Em iOS, o download pode abrir o vídeo em uma nova aba para o usuário salvar manualmente. Vamos detectar isso e mostrar instruções apropriadas.
+| Arquivo | Mudança |
+|---------|---------|
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Adicionar classes responsivas à toolbar flutuante e seus botões |
 
 ---
 
-### 7. Fluxo de Uso
+### Detalhes Técnicos
 
-1. Usuário clica no botão 🎬 na toolbar do roteiro
-2. Dialog abre com preview da câmera e texto do roteiro
-3. Usuário ajusta velocidade e tamanho da fonte
-4. Clica em "▶️ Iniciar" para começar o scroll do texto
-5. Clica em "⏺️ Gravar" para iniciar gravação
-6. Quando terminar, clica em "⏹️ Parar"
-7. Clica em "💾 Salvar" para baixar o vídeo
+| Classe Tailwind | Mobile | Desktop |
+|-----------------|--------|---------|
+| `opacity-100 sm:opacity-0` | Sempre visível | Invisível até hover |
+| `flex-row sm:flex-col` | Botões horizontais | Botões verticais |
+| `-right-2 sm:-right-14` | Dentro do container | Fora do container |
+| `bg-background/90 sm:bg-transparent` | Com fundo | Sem fundo |
+| `h-8 w-8 sm:h-7 sm:w-7` | Área de toque maior | Menor e discreto |
 
 ---
 
-### 8. Interface Mobile
+### Benefícios
 
-Em dispositivos móveis, o layout será adaptado:
-
-```
-┌─────────────────────────┐
-│ 🎬 Teleprompter     [X] │
-├─────────────────────────┤
-│ ┌─────────────────────┐ │
-│ │   📹 Câmera         │ │
-│ │   ┌───────────────┐ │ │
-│ │   │ Texto aqui... │ │ │
-│ │   └───────────────┘ │ │
-│ └─────────────────────┘ │
-├─────────────────────────┤
-│ Velocidade: [━━●━━━]    │
-│ Tamanho: [━━━●━━]       │
-├─────────────────────────┤
-│ [▶️] [⏺️/⏹️] [💾]      │
-└─────────────────────────┘
-```
+1. **Acessibilidade**: Botões sempre clicáveis em touch
+2. **Área de toque adequada**: Botões maiores em mobile (44px+)
+3. **Feedback visual**: Background com blur para destacar a toolbar
+4. **Mantém desktop**: Comportamento original preservado
+5. **Sem mudança de UX**: Mesmos botões, mesmas funcionalidades
 
