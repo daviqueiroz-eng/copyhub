@@ -297,8 +297,8 @@ export const TipoRoteiroDialog = ({
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-6xl max-h-[85vh] flex flex-col bg-transparent border-none shadow-none p-0">
-          {/* Header wrapper com fundo próprio */}
-          <div className="bg-background rounded-t-lg px-6 pt-6 pb-4">
+          {/* Header wrapper */}
+          <div className="px-6 pt-6 pb-4">
             <DialogHeader>
               <DialogTitle>Gerar Roteiro</DialogTitle>
             </DialogHeader>
