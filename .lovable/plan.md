@@ -1,71 +1,94 @@
 
 
-## Plano: Separar Colunas em Blocos Visuais Distintos
+## Plano: Blocos Independentes (Sem Container Visual Externo)
 
-### Objetivo
-Colocar cada coluna em seu próprio container visual (com borda e fundo), criando uma separação clara entre a Etapa 1 e a Etapa 2.
+### Problema Atual
+O `DialogContent` tem um fundo e borda que faz tudo parecer estar dentro de um único bloco. As colunas internas não parecem independentes porque herdam o estilo do container pai.
 
 ---
 
-### Interface Visual
+### Solução
+
+1. **Tornar o DialogContent transparente** - remover o fundo visual do dialog
+2. **Aplicar estilos completos em cada coluna** - para que pareçam cartões independentes flutuando
+
+---
+
+### Interface Visual Desejada
 
 ```text
-+------------------------------------------------------------------+
-|  Gerar Roteiro                                               X   |
-+------------------------------------------------------------------+
-|                                                                   |
-|  ① extração do conteúdo ─────────────────── ② Selecionar estilo  |
-|                                                                   |
-|  +---------------------------+     +---------------------------+  |
-|  |                           |     |                           |  |
-|  |  HEADLINE 1:              |     |  ○ Selecionar todas       |  |
-|  |  texto da headline...     |     |                           |  |
-|  |                           |     |  HEADLINE 1:              |  |
-|  |  Insumo:                  |     |  texto da headline...     |  |
-|  |  +---------------------+  |     |  Tipo: [Selecionar ▼]     |  |
-|  |  | 1. Dado X           |  |     |                           |  |
-|  |  | 2. Fato Y           |  |     |  HEADLINE 2:              |  |
-|  |  +---------------------+  |     |  texto da headline...     |  |
-|  |                           |     |  Tipo: [Selecionar ▼]     |  |
-|  |  [Gerar]     [Próximo →]  |     |                           |  |
-|  +---------------------------+     +---------------------------+  |
-|       ^ BLOCO 1                         ^ BLOCO 2                 |
-|       (borda + fundo próprio)           (borda + fundo próprio)   |
-+------------------------------------------------------------------+
+                    Gerar Roteiro                              X
+
+  ① extração do conteúdo notável ─────────── ② Selecionar estilo
+
+  ╔═══════════════════════════════╗   ╔═══════════════════════════════╗
+  ║                               ║   ║                               ║
+  ║  HEADLINE 1:                  ║   ║  ○ Selecionar todas           ║
+  ║  texto da headline...         ║   ║                               ║
+  ║                               ║   ║  HEADLINE 1:                  ║
+  ║  Insumo:                      ║   ║  texto da headline...         ║
+  ║  +-------------------------+  ║   ║  Tipo: [Selecionar ▼]         ║
+  ║  | 1. Dado X               |  ║   ║                               ║
+  ║  | 2. Fato Y               |  ║   ║  HEADLINE 2:                  ║
+  ║  +-------------------------+  ║   ║  texto da headline...         ║
+  ║                               ║   ║  Tipo: [Selecionar ▼]         ║
+  ║  [Gerar]         [Próximo →]  ║   ║                               ║
+  ╚═══════════════════════════════╝   ╚═══════════════════════════════╝
+        ^ BLOCO INDEPENDENTE                ^ BLOCO INDEPENDENTE
+        (shadow + bg próprio)               (shadow + bg próprio)
 ```
 
 ---
 
 ### Mudanças Técnicas
 
-#### 1. Remover divisor vertical
-O divisor `<div className="w-px bg-border shrink-0 mx-4" />` não será mais necessário, pois as caixas já terão suas próprias bordas.
+#### 1. DialogContent - Remover fundo visual
 
-#### 2. Adicionar container visual a cada coluna
+Adicionar classe para sobrescrever o estilo padrão do dialog:
 
-**COLUNA 1:**
 ```typescript
+<DialogContent className="sm:max-w-6xl max-h-[85vh] flex flex-col bg-transparent border-none shadow-none p-0">
+```
+
+#### 2. Header e indicadores de etapa - Manter visíveis
+
+Criar um wrapper para o header com fundo próprio:
+
+```typescript
+<div className="bg-background rounded-t-lg px-6 pt-6 pb-4">
+  <DialogHeader>
+    <DialogTitle>Gerar Roteiro</DialogTitle>
+  </DialogHeader>
+  
+  {/* Indicadores de etapa */}
+  <div className="flex items-center gap-4 pt-4">
+    {/* ... */}
+  </div>
+</div>
+```
+
+#### 3. Container das colunas - Padding lateral
+
+```typescript
+<div className="flex gap-6 flex-1 min-h-0 overflow-hidden px-6 pb-6">
+```
+
+#### 4. Cada coluna - Estilo de cartão independente com sombra
+
+```typescript
+{/* COLUNA 1 */}
 <div className={cn(
   "flex-1 flex flex-col min-w-0 transition-opacity duration-200",
-  "border rounded-lg bg-card p-4",  // <- NOVO: borda, cantos arredondados, fundo
+  "bg-card border rounded-xl shadow-lg p-5",
   currentStep === 2 && "opacity-50 pointer-events-none"
 )}>
-```
 
-**COLUNA 2:**
-```typescript
+{/* COLUNA 2 */}
 <div className={cn(
   "flex-1 flex flex-col min-w-0 transition-opacity duration-200",
-  "border rounded-lg bg-card p-4",  // <- NOVO: borda, cantos arredondados, fundo
+  "bg-card border rounded-xl shadow-lg p-5",
   currentStep === 1 && "opacity-50 pointer-events-none"
 )}>
-```
-
-#### 3. Ajustar gap entre colunas
-
-Manter `gap-6` entre as colunas para um espaçamento equilibrado:
-```typescript
-<div className="flex gap-6 flex-1 min-h-0 overflow-hidden">
 ```
 
 ---
@@ -74,10 +97,11 @@ Manter `gap-6` entre as colunas para um espaçamento equilibrado:
 
 | Local | Mudança |
 |-------|---------|
-| Linha 348 | Mudar `gap-10` para `gap-6` |
-| Linha 351-354 | Adicionar `border rounded-lg bg-card p-4` na COLUNA 1 |
-| Linha 427 | **Remover** o divisor vertical |
-| Linha 430-433 | Adicionar `border rounded-lg bg-card p-4` na COLUNA 2 |
+| Linha ~298 | Adicionar classes ao DialogContent: `bg-transparent border-none shadow-none p-0` |
+| Linha ~300-345 | Envolver header e indicadores em wrapper com `bg-background rounded-t-lg px-6 pt-6 pb-4` |
+| Linha ~348 | Adicionar `px-6 pb-6` ao container das colunas |
+| Linha ~351-354 | Coluna 1: mudar para `bg-card border rounded-xl shadow-lg p-5` |
+| Linha ~428-431 | Coluna 2: mudar para `bg-card border rounded-xl shadow-lg p-5` |
 
 ---
 
@@ -85,5 +109,5 @@ Manter `gap-6` entre as colunas para um espaçamento equilibrado:
 
 | Arquivo | Ação |
 |---------|------|
-| `src/components/mentorados/TipoRoteiroDialog.tsx` | Adicionar bordas/fundo às colunas e remover divisor |
+| `src/components/mentorados/TipoRoteiroDialog.tsx` | Tornar dialog transparente e estilizar colunas como cartões independentes |
 
