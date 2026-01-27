@@ -547,9 +547,9 @@ export const RoteiroRevisaoDialog = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-          {/* Lado esquerdo - Roteiro editável */}
-          <div className="flex-1 flex flex-col border-b lg:border-b-0 lg:border-r overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Parte superior - Roteiro editável */}
+          <div className="flex-[0.6] flex flex-col border-b overflow-hidden">
             <div className="px-4 py-2 bg-muted/50 border-b shrink-0">
               <h3 className="font-semibold text-sm" style={{ color: "#B8860B" }}>
                 HEADLINE {String(ordem).padStart(2, "0")}:
@@ -583,8 +583,8 @@ export const RoteiroRevisaoDialog = ({
             />
           </div>
 
-          {/* Lado direito - Tabs: Chat / Ajuste Fino */}
-          <div className="flex-1 flex flex-col lg:w-[400px] lg:max-w-[400px] overflow-hidden">
+          {/* Parte inferior - Tabs: Chat / Ajuste Fino */}
+          <div className="flex-[0.4] flex flex-col overflow-hidden">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "ajuste")} className="flex flex-col h-full">
               <div className="px-4 py-2 bg-muted/50 border-b shrink-0">
                 <TabsList className="grid w-full grid-cols-2">
