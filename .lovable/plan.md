@@ -1,107 +1,64 @@
 
 
-## Plano: Blocos Independentes (Sem Container Visual Externo)
+## Plano: Remover Fundo Branco do Header e Escurecer Overlay
 
 ### Problema Atual
-O `DialogContent` tem um fundo e borda que faz tudo parecer estar dentro de um único bloco. As colunas internas não parecem independentes porque herdam o estilo do container pai.
+1. O header tem `bg-background` (linha 301) que aparece como branco no modo claro
+2. O overlay do dialog (que escurece o fundo) não está suficientemente escuro
 
 ---
 
-### Solução
+### Mudanças
 
-1. **Tornar o DialogContent transparente** - remover o fundo visual do dialog
-2. **Aplicar estilos completos em cada coluna** - para que pareçam cartões independentes flutuando
+#### 1. Header - Remover fundo branco
 
----
+**Linha 301**
 
-### Interface Visual Desejada
-
-```text
-                    Gerar Roteiro                              X
-
-  ① extração do conteúdo notável ─────────── ② Selecionar estilo
-
-  ╔═══════════════════════════════╗   ╔═══════════════════════════════╗
-  ║                               ║   ║                               ║
-  ║  HEADLINE 1:                  ║   ║  ○ Selecionar todas           ║
-  ║  texto da headline...         ║   ║                               ║
-  ║                               ║   ║  HEADLINE 1:                  ║
-  ║  Insumo:                      ║   ║  texto da headline...         ║
-  ║  +-------------------------+  ║   ║  Tipo: [Selecionar ▼]         ║
-  ║  | 1. Dado X               |  ║   ║                               ║
-  ║  | 2. Fato Y               |  ║   ║  HEADLINE 2:                  ║
-  ║  +-------------------------+  ║   ║  texto da headline...         ║
-  ║                               ║   ║  Tipo: [Selecionar ▼]         ║
-  ║  [Gerar]         [Próximo →]  ║   ║                               ║
-  ╚═══════════════════════════════╝   ╚═══════════════════════════════╝
-        ^ BLOCO INDEPENDENTE                ^ BLOCO INDEPENDENTE
-        (shadow + bg próprio)               (shadow + bg próprio)
-```
-
----
-
-### Mudanças Técnicas
-
-#### 1. DialogContent - Remover fundo visual
-
-Adicionar classe para sobrescrever o estilo padrão do dialog:
-
-```typescript
-<DialogContent className="sm:max-w-6xl max-h-[85vh] flex flex-col bg-transparent border-none shadow-none p-0">
-```
-
-#### 2. Header e indicadores de etapa - Manter visíveis
-
-Criar um wrapper para o header com fundo próprio:
-
+De:
 ```typescript
 <div className="bg-background rounded-t-lg px-6 pt-6 pb-4">
-  <DialogHeader>
-    <DialogTitle>Gerar Roteiro</DialogTitle>
-  </DialogHeader>
-  
-  {/* Indicadores de etapa */}
-  <div className="flex items-center gap-4 pt-4">
-    {/* ... */}
-  </div>
-</div>
 ```
 
-#### 3. Container das colunas - Padding lateral
+Para:
+```typescript
+<div className="px-6 pt-6 pb-4">
+```
+
+#### 2. Dialog Overlay - Escurecer mais
+
+O overlay padrão usa `bg-black/80`. Vamos aumentar para `bg-black/90`:
+
+**Linha 299** - Adicionar className personalizado no DialogContent que afeta o overlay via CSS, ou usar um DialogOverlay customizado.
+
+Como o DialogContent já está customizado, a melhor abordagem é criar um overlay mais escuro diretamente:
 
 ```typescript
-<div className="flex gap-6 flex-1 min-h-0 overflow-hidden px-6 pb-6">
+<DialogContent 
+  className="sm:max-w-6xl max-h-[85vh] flex flex-col bg-transparent border-none shadow-none p-0"
+  overlayClassName="bg-black/90"
+>
 ```
 
-#### 4. Cada coluna - Estilo de cartão independente com sombra
-
-```typescript
-{/* COLUNA 1 */}
-<div className={cn(
-  "flex-1 flex flex-col min-w-0 transition-opacity duration-200",
-  "bg-card border rounded-xl shadow-lg p-5",
-  currentStep === 2 && "opacity-50 pointer-events-none"
-)}>
-
-{/* COLUNA 2 */}
-<div className={cn(
-  "flex-1 flex flex-col min-w-0 transition-opacity duration-200",
-  "bg-card border rounded-xl shadow-lg p-5",
-  currentStep === 1 && "opacity-50 pointer-events-none"
-)}>
-```
+**Nota:** Se o componente Dialog não suportar `overlayClassName`, usaremos uma abordagem alternativa aplicando estilos via CSS com `[data-state]` ou adicionando uma classe customizada.
 
 ---
 
-### Resumo das Mudanças
+### Resultado Visual Esperado
 
-| Local | Mudança |
-|-------|---------|
-| Linha ~298 | Adicionar classes ao DialogContent: `bg-transparent border-none shadow-none p-0` |
-| Linha ~300-345 | Envolver header e indicadores em wrapper com `bg-background rounded-t-lg px-6 pt-6 pb-4` |
-| Linha ~348 | Adicionar `px-6 pb-6` ao container das colunas |
-| Linha ~351-354 | Coluna 1: mudar para `bg-card border rounded-xl shadow-lg p-5` |
-| Linha ~428-431 | Coluna 2: mudar para `bg-card border rounded-xl shadow-lg p-5` |
+```text
+╔════════════════════════════════════════════════════════════════╗
+║  (overlay escuro bg-black/90)                                  ║
+║                                                                ║
+║       Gerar Roteiro                                       X    ║
+║       (sem fundo branco - transparente)                        ║
+║                                                                ║
+║  ① extração do conteúdo notável ─────────── ② Selecionar estilo║
+║                                                                ║
+║  ╔═══════════════════════════╗   ╔═══════════════════════════╗ ║
+║  ║  BLOCO 1                  ║   ║  BLOCO 2                  ║ ║
+║  ╚═══════════════════════════╝   ╚═══════════════════════════╝ ║
+╚════════════════════════════════════════════════════════════════╝
+```
 
 ---
 
@@ -109,5 +66,6 @@ Criar um wrapper para o header com fundo próprio:
 
 | Arquivo | Ação |
 |---------|------|
-| `src/components/mentorados/TipoRoteiroDialog.tsx` | Tornar dialog transparente e estilizar colunas como cartões independentes |
+| `src/components/mentorados/TipoRoteiroDialog.tsx` | Remover `bg-background` do header e escurecer overlay |
+| `src/components/ui/dialog.tsx` | Verificar se precisa criar variante com overlay mais escuro |
 
