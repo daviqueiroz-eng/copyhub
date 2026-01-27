@@ -1,66 +1,30 @@
 
 
-## Plano: Sistema de Ajuste Fino para Revisão de Roteiros
+## Plano: Ajustes no Sistema de Ajuste Fino e Navegação para Roteiro Específico
 
-### Visão Geral
+### Mudança 1: Colar Instrução ao Clicar no Ajuste
 
-Criar um novo modo "Ajuste fino" no painel de revisão de roteiros, com:
-- Alternância entre "Chat de Revisão" e "Ajuste fino" 
-- Cadastro de tipos de ajustes personalizados
-- Seleção múltipla de ajustes
-- Campo de instrução livre
-- Disparo para webhook n8n dedicado
+**Situação Atual:**
+- Ao clicar em um tipo de ajuste, ele é selecionado com checkbox
+- O usuário precisa marcar e desmarcar múltiplos ajustes
 
----
-
-### Interface Visual
-
-```text
-╔════════════════════════════════════════════════════════════════════╗
-║  × Roteiro 1/1  (Davi teste - Guia 1)             [Undo] [Redo] →  ║
-╠════════════════════════════════════════════════════════════════════╣
-║                                    ║                               ║
-║  HEADLINE 01:                      ║  [Chat de Revisão][Ajuste fino]║
-║  faça essas 3 coisas se quiser...  ║                               ║
-║                                    ║  ┌──────────────────────────┐ ║
-║  ESTRUTURA 01:                     ║  │ ☑ falta valor prático    │ ║
-║  faça essas 3 coisas se quiser...  ║  │ ☐ Precisa de mais        │ ║
-║                                    ║  │   mistério               │ ║
-║  Você já parou para pensar que...  ║  │ ☐ Mais exemplos          │ ║
-║                                    ║  └──────────────────────────┘ ║
-║  A primeira coisa é usar a técnica ║                               ║
-║  do "tempo invisível"...           ║       [+ cadastrar]           ║
-║                                    ║                               ║
-║                                    ║  ┌────────────────────────┐   ║
-║                                    ║  │ Digite sua instrução...│ ▶ ║
-║                                    ║  └────────────────────────┘   ║
-║                                    ║                               ║
-╚════════════════════════════════════════════════════════════════════╝
-```
+**Nova Lógica:**
+- Ao clicar em um tipo de ajuste cadastrado, o sistema cola as instruções diretamente no campo de texto
+- Isso permite que o usuário visualize e edite o conteúdo antes de enviar
+- Mantém a possibilidade de escrever livremente
 
 ---
 
-### Estrutura de Dados
+### Mudança 2: Abrir Revisão no Roteiro Correto
 
-#### Nova Tabela: `tipos_ajuste`
+**Situação Atual:**
+- Ao clicar em "Revisar" (no checklist ou em qualquer lugar), o dialog sempre abre no roteiro 1
+- O `currentIndex` é resetado para 0 quando o dialog abre
 
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | uuid | PK |
-| nome | text | Nome do ajuste (ex: "falta valor prático") |
-| descricao | text | Descrição ou instrução adicional |
-| instrucoes | text | Instruções detalhadas para a IA |
-| user_id | uuid | FK para auth.users |
-| created_at | timestamp | Data de criação |
-
----
-
-### Arquivos a Criar
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `src/hooks/useTiposAjuste.ts` | Hook para CRUD de tipos de ajuste |
-| `supabase/functions/n8n-ajustes/index.ts` | Edge Function proxy para webhook de ajustes |
+**Nova Lógica:**
+- Passar um parâmetro `initialIndex` para o `RoteiroRevisaoDialog`
+- Quando clicar em "Revisar" em cima de um roteiro específico (ex: roteiro 7), abrir o dialog já posicionado nele
+- Calcular o índice correto baseado na posição do roteiro na lista de roteiros disponíveis
 
 ---
 
@@ -68,72 +32,82 @@ Criar um novo modo "Ajuste fino" no painel de revisão de roteiros, com:
 
 | Arquivo | Mudanças |
 |---------|----------|
-| `src/components/mentorados/RoteiroRevisaoDialog.tsx` | Adicionar alternância de modos (chat vs ajuste fino), painel de ajustes com seleção múltipla |
-| `supabase/config.toml` | Registrar nova edge function `n8n-ajustes` |
+| `src/components/mentorados/AjusteFinoPanel.tsx` | Remover checkboxes, ao clicar em um ajuste colar o texto das instruções no input |
+| `src/components/mentorados/RoteiroRevisaoDialog.tsx` | Adicionar prop `initialIndex` e usar como estado inicial |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Passar o índice correto quando clicar em "Revisar" de um roteiro específico |
 
 ---
 
 ### Detalhes Técnicos
 
-#### 1. Migração do Banco de Dados
+#### AjusteFinoPanel.tsx
 
-Criar tabela `tipos_ajuste` com RLS habilitado para que cada usuário veja apenas seus próprios tipos de ajuste.
+```text
+Antes:
+- Lista com checkboxes
+- Estado selectedAjustes (Set<string>)
+- Clique no item → toggle checkbox
 
-#### 2. Hook `useTiposAjuste`
-
-Similar ao `useTiposRoteiro`, com operações:
-- `useTiposAjuste()` - listar todos
-- `useCreateTipoAjuste()` - criar novo
-- `useUpdateTipoAjuste()` - editar
-- `useDeleteTipoAjuste()` - remover
-
-#### 3. Edge Function `n8n-ajustes`
-
-Proxy que envia payload para `https://madarawin.app.n8n.cloud/webhook/agente-ia-lovable-ajustes` contendo:
-- `headline`: texto da headline atual
-- `estrutura`: texto da estrutura atual
-- `ajustes`: array com os ajustes selecionados (nome + instruções)
-- `instrucao_livre`: texto digitado pelo usuário
-- `selecao`: trecho selecionado (se houver)
-
-#### 4. Componente de Ajuste Fino
-
-No `RoteiroRevisaoDialog`:
-- Tabs para alternar entre "Chat de Revisão" e "Ajuste fino"
-- Lista de ajustes com checkboxes para seleção múltipla
-- Link "cadastrar" abre modal para gerenciar tipos de ajuste
-- Input de instrução livre + botão enviar
-- Ao enviar: chama edge function → webhook retorna estrutura revisada → atualiza o roteiro
-
----
-
-### Fluxo de Uso
-
-1. Usuário abre revisão de roteiro
-2. Alterna para aba "Ajuste fino"
-3. Seleciona um ou mais ajustes cadastrados (ex: ☑ falta valor prático)
-4. Opcionalmente digita instrução adicional
-5. Clica enviar
-6. Sistema envia para webhook n8n com todos os dados
-7. Webhook retorna roteiro ajustado
-8. UI atualiza headline/estrutura automaticamente
-
----
-
-### Webhook Payload
-
-```json
-{
-  "headline": "faça essas 3 coisas se quiser ser mais produtivo em 2026!!",
-  "estrutura": "Você já parou para pensar que as maiores mudanças...",
-  "ajustes": [
-    {
-      "nome": "falta valor prático",
-      "instrucoes": "Adicionar exemplos práticos e acionáveis"
-    }
-  ],
-  "instrucao_livre": "Deixar mais curto",
-  "selecao": null
-}
+Depois:
+- Lista de cards clicáveis (sem checkbox)
+- Clique no item → cola instrução no campo de texto
+- Remove estado de seleção múltipla
+- Mantém botão "Gerenciar" para cadastrar novos tipos
 ```
+
+#### RoteiroRevisaoDialog.tsx
+
+```typescript
+// Nova prop
+interface RoteiroRevisaoDialogProps {
+  // ... props existentes
+  initialIndex?: number; // Índice inicial para abrir (default: 0)
+}
+
+// Usar initialIndex ao abrir
+useEffect(() => {
+  if (open) {
+    setCurrentIndex(initialIndex ?? 0);
+  }
+}, [open, initialIndex]);
+```
+
+#### MentoradoRoteirosView.tsx
+
+```typescript
+// Novo estado para controlar qual roteiro abrir
+const [revisaoInitialIndex, setRevisaoInitialIndex] = useState(0);
+
+// Função para abrir revisão em roteiro específico
+const openRevisaoAtRoteiro = (ordem: number) => {
+  // Calcular índice na lista filtrada de roteiros
+  const roteirosDisponiveis = [...]; // mesma lógica atual
+  const idx = roteirosDisponiveis.findIndex(r => r.key === `${guiaAtiva}-${ordem}`);
+  setRevisaoInitialIndex(idx >= 0 ? idx : 0);
+  setShowRevisaoDialog(true);
+};
+
+// Passar para RoteiroRevisaoDialog
+<RoteiroRevisaoDialog
+  initialIndex={revisaoInitialIndex}
+  // ... demais props
+/>
+```
+
+---
+
+### Fluxo de Uso Atualizado
+
+**Ajuste Fino:**
+1. Usuário abre aba "Ajuste fino"
+2. Clica em um tipo cadastrado (ex: "Falta valor prático")
+3. O texto das instruções é colado no campo de input
+4. Usuário pode editar ou adicionar mais texto
+5. Clica enviar
+
+**Revisar Roteiro Específico:**
+1. Usuário está editando o roteiro 7
+2. Clica em "Revisar" (na label ou botão)
+3. Dialog de revisão abre já mostrando o roteiro 7
+4. Pode navegar para outros roteiros normalmente
 
