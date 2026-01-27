@@ -296,61 +296,64 @@ export const TipoRoteiroDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-6xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Gerar Roteiro</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-6xl max-h-[85vh] flex flex-col bg-transparent border-none shadow-none p-0">
+          {/* Header wrapper com fundo próprio */}
+          <div className="bg-background rounded-t-lg px-6 pt-6 pb-4">
+            <DialogHeader>
+              <DialogTitle>Gerar Roteiro</DialogTitle>
+            </DialogHeader>
 
-          {/* Indicadores de etapa */}
-          <div className="flex items-center gap-4 pb-4 border-b shrink-0">
-            <button 
-              onClick={() => setCurrentStep(1)}
-              className={cn(
-                "flex items-center gap-2 transition-opacity",
-                currentStep === 1 ? "" : "opacity-50 hover:opacity-75"
-              )}
-            >
-              <div className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium",
-                currentStep === 1 
-                  ? "bg-primary text-primary-foreground" 
-                  : "border border-border"
-              )}>
-                1
-              </div>
-              <span className={currentStep === 1 ? "font-medium" : ""}>
-                extração do conteúdo notável
-              </span>
-            </button>
-            <div className="h-px flex-1 bg-border" />
-            <button 
-              onClick={() => setCurrentStep(2)}
-              className={cn(
-                "flex items-center gap-2 transition-opacity",
-                currentStep === 2 ? "" : "opacity-50 hover:opacity-75"
-              )}
-            >
-              <div className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium",
-                currentStep === 2 
-                  ? "bg-primary text-primary-foreground" 
-                  : "border border-border"
-              )}>
-                2
-              </div>
-              <span className={currentStep === 2 ? "font-medium" : ""}>
-                Selecionar estilo
-              </span>
-            </button>
+            {/* Indicadores de etapa */}
+            <div className="flex items-center gap-4 pt-4">
+              <button 
+                onClick={() => setCurrentStep(1)}
+                className={cn(
+                  "flex items-center gap-2 transition-opacity",
+                  currentStep === 1 ? "" : "opacity-50 hover:opacity-75"
+                )}
+              >
+                <div className={cn(
+                  "w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium",
+                  currentStep === 1 
+                    ? "bg-primary text-primary-foreground" 
+                    : "border border-border"
+                )}>
+                  1
+                </div>
+                <span className={currentStep === 1 ? "font-medium" : ""}>
+                  extração do conteúdo notável
+                </span>
+              </button>
+              <div className="h-px flex-1 bg-border" />
+              <button 
+                onClick={() => setCurrentStep(2)}
+                className={cn(
+                  "flex items-center gap-2 transition-opacity",
+                  currentStep === 2 ? "" : "opacity-50 hover:opacity-75"
+                )}
+              >
+                <div className={cn(
+                  "w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium",
+                  currentStep === 2 
+                    ? "bg-primary text-primary-foreground" 
+                    : "border border-border"
+                )}>
+                  2
+                </div>
+                <span className={currentStep === 2 ? "font-medium" : ""}>
+                  Selecionar estilo
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Container das duas colunas lado a lado */}
-          <div className="flex gap-6 flex-1 min-h-0 overflow-hidden">
+          <div className="flex gap-6 flex-1 min-h-0 overflow-hidden px-6 pb-6">
             
             {/* COLUNA 1 - Extração de Insumos */}
             <div className={cn(
               "flex-1 flex flex-col min-w-0 transition-opacity duration-200",
-              "border rounded-lg bg-card p-4",
+              "bg-card border rounded-xl shadow-lg p-5",
               currentStep === 2 && "opacity-50 pointer-events-none"
             )}>
               <ScrollArea className="flex-1">
@@ -427,7 +430,7 @@ export const TipoRoteiroDialog = ({
             {/* COLUNA 2 - Seleção de Tipos */}
             <div className={cn(
               "flex-1 flex flex-col min-w-0 transition-opacity duration-200",
-              "border rounded-lg bg-card p-4",
+              "bg-card border rounded-xl shadow-lg p-5",
               currentStep === 1 && "opacity-50 pointer-events-none"
             )}>
               {/* Barra de ações em massa */}
