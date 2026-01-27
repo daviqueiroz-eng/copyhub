@@ -345,7 +345,7 @@ export const TipoRoteiroDialog = ({
           </div>
 
           {/* Container das duas colunas lado a lado */}
-          <div className="flex gap-6 flex-1 min-h-0 overflow-hidden">
+          <div className="flex gap-10 flex-1 min-h-0 overflow-hidden">
             
             {/* COLUNA 1 - Extração de Insumos */}
             <div className={cn(
@@ -424,7 +424,7 @@ export const TipoRoteiroDialog = ({
             </div>
 
             {/* Divisor vertical */}
-            <div className="w-px bg-border shrink-0" />
+            <div className="w-px bg-border shrink-0 mx-4" />
 
             {/* COLUNA 2 - Seleção de Tipos */}
             <div className={cn(
