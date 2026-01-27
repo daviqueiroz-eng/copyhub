@@ -1,174 +1,141 @@
 
 
-## Plano: Transformar Ajuste Fino em Interface de Chat
+## Plano: Ajustar Layout do Ajuste Fino para Estilo Claude
 
 ### Visao Geral
 
-Redesenhar o painel de Ajuste Fino para ter aparencia de chat similar ao Lovable Cloud, mantendo toda a logica existente:
-- Historico de mensagens enviadas/recebidas em formato de conversa
-- Lista de ajustes cadastrados acessivel via botao "+"
-- Clicar em ajuste = colar instrucoes no input
-- Envio para webhook n8n-ajustes
-- Suporte a selecao de texto do roteiro
+Reorganizar o layout do `AjusteFinoPanel` para que o campo de input tenha os botoes posicionados **abaixo** dele (em uma linha separada), nao ao lado, seguindo o design do Claude.
 
 ---
 
-### Layout Proposto
+### Layout Desejado
 
 ```text
-+------------------------------------------------+
-|                                                |
-|   [Resposta da IA em formato texto com         |
-|    quebras de linha e formatacao]              |
-|                                                |
-|   [Copiar] [Like] [Dislike] [Refresh]          |
-|                                                |
-|   -----------------------------------------    |
-|                                                |
-|   [Sua mensagem anterior em destaque]          |
-|                                                |
-|   -----------------------------------------    |
-|                                                |
-|   [Nova resposta da IA...]                     |
-|                                                |
-+------------------------------------------------+
-| Responder...                              [>]  |
-| [+] [Gerenciar]                                |
-+------------------------------------------------+
++--------------------------------------------------+
+|                                                  |
+|  [Conteudo das mensagens - ScrollArea]           |
+|                                                  |
+|  Texto das respostas e instrucoes aqui...        |
+|                                                  |
+|                                                  |
+|                                                  |
+|                                                  |
++--------------------------------------------------+
+| +------------------------------------------+     |
+| | Responder...                             |     |
+| +------------------------------------------+     |
+|                                                  |
+| [+] [Clock]                   [Modelo v] [>]     |
+|                                                  |
+| IA pode cometer erros. Verifique as respostas.   |
++--------------------------------------------------+
 ```
 
 ---
 
-### Estrutura de Dados
+### Mudancas no AjusteFinoPanel.tsx
 
-Nova interface para mensagens do Ajuste Fino:
-
-```typescript
-interface AjusteMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-}
+#### Estrutura do Input (Antes)
+```text
+[ + ]  [ Textarea inline ]  [ > ]
 ```
 
-Estado adicional:
-- `messages: AjusteMessage[]` - Historico de mensagens
-- `showAjustesPopover: boolean` - Controla popover com lista de ajustes
-
----
-
-### Componentes da Interface
-
-#### 1. Area de Mensagens (ScrollArea)
-
-- Mensagens do usuario: alinhadas a direita ou estilo simples
-- Mensagens do assistente: estilo card com texto em markdown
-- Botoes de acao abaixo das respostas:
-  - Copiar (copia conteudo da mensagem)
-  - Like/Dislike (apenas visual por agora)
-  - Refresh (reenvia a ultima instrucao)
-- Loading state com spinner laranja
-
-#### 2. Input de Chat
-
-- Estilo similar ao Lovable Cloud
-- Placeholder "Responder..."
-- Botao de envio a direita
-- Botao "+" a esquerda para abrir popover de ajustes
-
-#### 3. Popover de Ajustes (via botao +)
-
-- Lista de ajustes cadastrados
-- Ao clicar em um ajuste: fecha popover e cola instrucoes no input
-- Botao "Gerenciar" para abrir TiposAjusteDialog
-
----
-
-### Arquivos a Modificar
-
-| Arquivo | Mudancas |
-|---------|----------|
-| `src/components/mentorados/AjusteFinoPanel.tsx` | Redesign completo da interface para formato de chat |
+#### Estrutura do Input (Depois)
+```text
++--------------------------------+
+| Responder...                   |
++--------------------------------+
+[+] [clock]        [modelo] [>]
+disclaimer
+```
 
 ---
 
 ### Detalhes Tecnicos
 
-#### AjusteFinoPanel.tsx - Novas Funcionalidades
+1. **Separar o Textarea dos botoes**
+   - Textarea ocupa largura total como um bloco
+   - Linha de botoes abaixo do textarea
 
-1. **Estado de mensagens por sessao**
-```typescript
-const [messages, setMessages] = useState<AjusteMessage[]>([]);
-```
+2. **Nova linha de botoes**
+   - Esquerda: botao "+" (ajustes) + botao de historico/clock (opcional)
+   - Direita: seletor de modelo (visual, nao funcional) + botao enviar
 
-2. **Mensagem de boas-vindas inicial**
-```typescript
-// Ao montar, adicionar mensagem de boas-vindas
-useEffect(() => {
-  if (messages.length === 0) {
-    setMessages([{
-      id: 'welcome',
-      role: 'assistant',
-      content: 'Selecione um tipo de ajuste ou digite sua instrucao para refinar o roteiro.',
-      timestamp: new Date(),
-    }]);
-  }
-}, []);
-```
+3. **Disclaimer embaixo**
+   - Texto pequeno similar ao Claude: "IA pode cometer erros. Verifique as respostas."
 
-3. **Ao enviar mensagem**
-```typescript
-// Adicionar mensagem do usuario
-// Chamar webhook
-// Adicionar resposta do assistente com conteudo retornado
-```
+---
 
-4. **Botoes de acao nas mensagens**
-- Copiar: `navigator.clipboard.writeText(message.content)`
-- Refresh: pegar ultima instrucao do usuario e reenviar
+### Arquivo a Modificar
 
-5. **Popover de Ajustes (botao +)**
+| Arquivo | Mudancas |
+|---------|----------|
+| `src/components/mentorados/AjusteFinoPanel.tsx` | Reorganizar estrutura do input area para layout vertical |
+
+---
+
+### Codigo Proposto para Input Area
+
 ```tsx
-<Popover>
-  <PopoverTrigger asChild>
-    <Button variant="ghost" size="icon"><Plus /></Button>
-  </PopoverTrigger>
-  <PopoverContent>
-    {tiposAjuste.map(tipo => (
-      <button onClick={() => {
-        setInstrucaoLivre(tipo.instrucoes);
-        setOpen(false);
-      }}>
-        {tipo.nome}
-      </button>
-    ))}
-  </PopoverContent>
-</Popover>
+{/* Input area */}
+<div className="border-t shrink-0 bg-background p-4">
+  {/* Indicador de selecao */}
+  {selecao && (
+    <div className="...">...</div>
+  )}
+
+  {/* Textarea - largura total */}
+  <div className="bg-muted/30 rounded-xl border mb-2">
+    <Textarea
+      value={inputValue}
+      onChange={(e) => setInputValue(e.target.value)}
+      placeholder="Responder..."
+      className="min-h-[60px] max-h-[150px] border-0 bg-transparent ..."
+    />
+  </div>
+
+  {/* Linha de botoes */}
+  <div className="flex items-center justify-between">
+    {/* Esquerda: + e clock */}
+    <div className="flex items-center gap-1">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <Plus />
+          </Button>
+        </PopoverTrigger>
+        ...
+      </Popover>
+      <Button variant="ghost" size="icon">
+        <Clock />
+      </Button>
+    </div>
+
+    {/* Direita: modelo e enviar */}
+    <div className="flex items-center gap-2">
+      <Button variant="ghost" size="sm" className="text-xs">
+        Ajuste Fino
+        <ChevronDown />
+      </Button>
+      <Button size="icon" onClick={handleEnviar}>
+        <Send /> ou <ArrowUp />
+      </Button>
+    </div>
+  </div>
+
+  {/* Disclaimer */}
+  <p className="text-[10px] text-center text-muted-foreground mt-3">
+    IA pode cometer erros. Verifique as respostas.
+  </p>
+</div>
 ```
 
 ---
 
-### Fluxo de Uso Atualizado
+### Resultado Visual
 
-1. Usuario abre aba "Ajuste Fino"
-2. Ve mensagem de boas-vindas do assistente
-3. Pode:
-   - Digitar instrucao diretamente no input
-   - Clicar no botao "+" para ver ajustes cadastrados
-   - Clicar em um ajuste para colar instrucoes no input
-4. Envia instrucao
-5. Mensagem do usuario aparece no chat
-6. Resposta do webhook aparece como mensagem do assistente
-7. Roteiro e atualizado automaticamente se houver mudancas
-
----
-
-### Consideracoes Tecnicas
-
-- Manter compatibilidade com props existentes (headline, estrutura, selecao, onUpdate, onClearSelection)
-- Mensagens sao por sessao (nao persistidas)
-- Ao mudar de roteiro, limpar historico de mensagens ou manter?
-  - **Decisao**: Manter por sessao do dialog, similar ao chat de revisao
-- Botao "Gerenciar" continua abrindo TiposAjusteDialog
+- Campo de texto destacado e ocupando largura total
+- Botoes organizados em linha separada abaixo
+- Visual mais limpo e similar ao Claude
+- Disclaimer centralizado na parte de baixo
 
