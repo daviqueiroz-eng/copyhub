@@ -1,113 +1,174 @@
 
 
-## Plano: Ajustes no Sistema de Ajuste Fino e Navegação para Roteiro Específico
+## Plano: Transformar Ajuste Fino em Interface de Chat
 
-### Mudança 1: Colar Instrução ao Clicar no Ajuste
+### Visao Geral
 
-**Situação Atual:**
-- Ao clicar em um tipo de ajuste, ele é selecionado com checkbox
-- O usuário precisa marcar e desmarcar múltiplos ajustes
-
-**Nova Lógica:**
-- Ao clicar em um tipo de ajuste cadastrado, o sistema cola as instruções diretamente no campo de texto
-- Isso permite que o usuário visualize e edite o conteúdo antes de enviar
-- Mantém a possibilidade de escrever livremente
+Redesenhar o painel de Ajuste Fino para ter aparencia de chat similar ao Lovable Cloud, mantendo toda a logica existente:
+- Historico de mensagens enviadas/recebidas em formato de conversa
+- Lista de ajustes cadastrados acessivel via botao "+"
+- Clicar em ajuste = colar instrucoes no input
+- Envio para webhook n8n-ajustes
+- Suporte a selecao de texto do roteiro
 
 ---
 
-### Mudança 2: Abrir Revisão no Roteiro Correto
+### Layout Proposto
 
-**Situação Atual:**
-- Ao clicar em "Revisar" (no checklist ou em qualquer lugar), o dialog sempre abre no roteiro 1
-- O `currentIndex` é resetado para 0 quando o dialog abre
+```text
++------------------------------------------------+
+|                                                |
+|   [Resposta da IA em formato texto com         |
+|    quebras de linha e formatacao]              |
+|                                                |
+|   [Copiar] [Like] [Dislike] [Refresh]          |
+|                                                |
+|   -----------------------------------------    |
+|                                                |
+|   [Sua mensagem anterior em destaque]          |
+|                                                |
+|   -----------------------------------------    |
+|                                                |
+|   [Nova resposta da IA...]                     |
+|                                                |
++------------------------------------------------+
+| Responder...                              [>]  |
+| [+] [Gerenciar]                                |
++------------------------------------------------+
+```
 
-**Nova Lógica:**
-- Passar um parâmetro `initialIndex` para o `RoteiroRevisaoDialog`
-- Quando clicar em "Revisar" em cima de um roteiro específico (ex: roteiro 7), abrir o dialog já posicionado nele
-- Calcular o índice correto baseado na posição do roteiro na lista de roteiros disponíveis
+---
+
+### Estrutura de Dados
+
+Nova interface para mensagens do Ajuste Fino:
+
+```typescript
+interface AjusteMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+```
+
+Estado adicional:
+- `messages: AjusteMessage[]` - Historico de mensagens
+- `showAjustesPopover: boolean` - Controla popover com lista de ajustes
+
+---
+
+### Componentes da Interface
+
+#### 1. Area de Mensagens (ScrollArea)
+
+- Mensagens do usuario: alinhadas a direita ou estilo simples
+- Mensagens do assistente: estilo card com texto em markdown
+- Botoes de acao abaixo das respostas:
+  - Copiar (copia conteudo da mensagem)
+  - Like/Dislike (apenas visual por agora)
+  - Refresh (reenvia a ultima instrucao)
+- Loading state com spinner laranja
+
+#### 2. Input de Chat
+
+- Estilo similar ao Lovable Cloud
+- Placeholder "Responder..."
+- Botao de envio a direita
+- Botao "+" a esquerda para abrir popover de ajustes
+
+#### 3. Popover de Ajustes (via botao +)
+
+- Lista de ajustes cadastrados
+- Ao clicar em um ajuste: fecha popover e cola instrucoes no input
+- Botao "Gerenciar" para abrir TiposAjusteDialog
 
 ---
 
 ### Arquivos a Modificar
 
-| Arquivo | Mudanças |
+| Arquivo | Mudancas |
 |---------|----------|
-| `src/components/mentorados/AjusteFinoPanel.tsx` | Remover checkboxes, ao clicar em um ajuste colar o texto das instruções no input |
-| `src/components/mentorados/RoteiroRevisaoDialog.tsx` | Adicionar prop `initialIndex` e usar como estado inicial |
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Passar o índice correto quando clicar em "Revisar" de um roteiro específico |
+| `src/components/mentorados/AjusteFinoPanel.tsx` | Redesign completo da interface para formato de chat |
 
 ---
 
-### Detalhes Técnicos
+### Detalhes Tecnicos
 
-#### AjusteFinoPanel.tsx
+#### AjusteFinoPanel.tsx - Novas Funcionalidades
 
-```text
-Antes:
-- Lista com checkboxes
-- Estado selectedAjustes (Set<string>)
-- Clique no item → toggle checkbox
-
-Depois:
-- Lista de cards clicáveis (sem checkbox)
-- Clique no item → cola instrução no campo de texto
-- Remove estado de seleção múltipla
-- Mantém botão "Gerenciar" para cadastrar novos tipos
+1. **Estado de mensagens por sessao**
+```typescript
+const [messages, setMessages] = useState<AjusteMessage[]>([]);
 ```
 
-#### RoteiroRevisaoDialog.tsx
-
+2. **Mensagem de boas-vindas inicial**
 ```typescript
-// Nova prop
-interface RoteiroRevisaoDialogProps {
-  // ... props existentes
-  initialIndex?: number; // Índice inicial para abrir (default: 0)
-}
-
-// Usar initialIndex ao abrir
+// Ao montar, adicionar mensagem de boas-vindas
 useEffect(() => {
-  if (open) {
-    setCurrentIndex(initialIndex ?? 0);
+  if (messages.length === 0) {
+    setMessages([{
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Selecione um tipo de ajuste ou digite sua instrucao para refinar o roteiro.',
+      timestamp: new Date(),
+    }]);
   }
-}, [open, initialIndex]);
+}, []);
 ```
 
-#### MentoradoRoteirosView.tsx
-
+3. **Ao enviar mensagem**
 ```typescript
-// Novo estado para controlar qual roteiro abrir
-const [revisaoInitialIndex, setRevisaoInitialIndex] = useState(0);
+// Adicionar mensagem do usuario
+// Chamar webhook
+// Adicionar resposta do assistente com conteudo retornado
+```
 
-// Função para abrir revisão em roteiro específico
-const openRevisaoAtRoteiro = (ordem: number) => {
-  // Calcular índice na lista filtrada de roteiros
-  const roteirosDisponiveis = [...]; // mesma lógica atual
-  const idx = roteirosDisponiveis.findIndex(r => r.key === `${guiaAtiva}-${ordem}`);
-  setRevisaoInitialIndex(idx >= 0 ? idx : 0);
-  setShowRevisaoDialog(true);
-};
+4. **Botoes de acao nas mensagens**
+- Copiar: `navigator.clipboard.writeText(message.content)`
+- Refresh: pegar ultima instrucao do usuario e reenviar
 
-// Passar para RoteiroRevisaoDialog
-<RoteiroRevisaoDialog
-  initialIndex={revisaoInitialIndex}
-  // ... demais props
-/>
+5. **Popover de Ajustes (botao +)**
+```tsx
+<Popover>
+  <PopoverTrigger asChild>
+    <Button variant="ghost" size="icon"><Plus /></Button>
+  </PopoverTrigger>
+  <PopoverContent>
+    {tiposAjuste.map(tipo => (
+      <button onClick={() => {
+        setInstrucaoLivre(tipo.instrucoes);
+        setOpen(false);
+      }}>
+        {tipo.nome}
+      </button>
+    ))}
+  </PopoverContent>
+</Popover>
 ```
 
 ---
 
 ### Fluxo de Uso Atualizado
 
-**Ajuste Fino:**
-1. Usuário abre aba "Ajuste fino"
-2. Clica em um tipo cadastrado (ex: "Falta valor prático")
-3. O texto das instruções é colado no campo de input
-4. Usuário pode editar ou adicionar mais texto
-5. Clica enviar
+1. Usuario abre aba "Ajuste Fino"
+2. Ve mensagem de boas-vindas do assistente
+3. Pode:
+   - Digitar instrucao diretamente no input
+   - Clicar no botao "+" para ver ajustes cadastrados
+   - Clicar em um ajuste para colar instrucoes no input
+4. Envia instrucao
+5. Mensagem do usuario aparece no chat
+6. Resposta do webhook aparece como mensagem do assistente
+7. Roteiro e atualizado automaticamente se houver mudancas
 
-**Revisar Roteiro Específico:**
-1. Usuário está editando o roteiro 7
-2. Clica em "Revisar" (na label ou botão)
-3. Dialog de revisão abre já mostrando o roteiro 7
-4. Pode navegar para outros roteiros normalmente
+---
+
+### Consideracoes Tecnicas
+
+- Manter compatibilidade com props existentes (headline, estrutura, selecao, onUpdate, onClearSelection)
+- Mensagens sao por sessao (nao persistidas)
+- Ao mudar de roteiro, limpar historico de mensagens ou manter?
+  - **Decisao**: Manter por sessao do dialog, similar ao chat de revisao
+- Botao "Gerenciar" continua abrindo TiposAjusteDialog
 
