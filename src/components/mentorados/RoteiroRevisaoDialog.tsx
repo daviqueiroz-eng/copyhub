@@ -49,6 +49,7 @@ interface RoteiroRevisaoDialogProps {
   mentoradoNome: string;
   inteligenciaGlobal?: string;
   inteligenciaMentorado?: string;
+  initialIndex?: number;
 }
 
 export const RoteiroRevisaoDialog = ({
@@ -57,8 +58,9 @@ export const RoteiroRevisaoDialog = ({
   roteiros,
   onRoteiroChange,
   mentoradoNome,
+  initialIndex = 0,
 }: RoteiroRevisaoDialogProps) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [messagesPerRoteiro, setMessagesPerRoteiro] = useState<Map<string, Message[]>>(new Map());
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -277,14 +279,15 @@ export const RoteiroRevisaoDialog = ({
     setSelectedText(null);
   }, [currentIndex]);
 
-  // Reset ao fechar
+  // Reset ao fechar ou definir índice inicial ao abrir
   useEffect(() => {
-    if (!open) {
-      setCurrentIndex(0);
+    if (open) {
+      setCurrentIndex(initialIndex);
+    } else {
       setInputMessage("");
       setSelectedText(null);
     }
-  }, [open]);
+  }, [open, initialIndex]);
 
   // Navegação por teclado (apenas quando não está focado em textarea)
   useEffect(() => {
