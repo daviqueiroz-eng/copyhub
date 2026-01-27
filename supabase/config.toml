@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.n8n-insumo]
 verify_jwt = false
+
+[functions.n8n-ajustes]
+verify_jwt = false
