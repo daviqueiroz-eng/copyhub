@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Settings, Check, Loader2, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
+import { Plus, Settings, Check, Loader2, ArrowRight, ArrowLeft, Sparkles, RefreshCw } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -27,7 +27,6 @@ import { TipoRoteiroConfigDialog } from "./TipoRoteiroConfigDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
 export interface HeadlineParaGerar {
   key: string;
@@ -74,8 +73,9 @@ export const TipoRoteiroDialog = ({
   // Insumos por headline (editáveis)
   const [insumos, setInsumos] = useState<Record<string, string>>({});
   
-  // Loading da geração de insumos
+  // Loading da geração de insumos (geral e individual)
   const [isGeneratingInsumos, setIsGeneratingInsumos] = useState(false);
+  const [loadingInsumoKeys, setLoadingInsumoKeys] = useState<Set<string>>(new Set());
   
   const [selectedTipos, setSelectedTipos] = useState<Record<string, string>>({});
   const [novoTipo, setNovoTipo] = useState("");
@@ -90,40 +90,79 @@ export const TipoRoteiroDialog = ({
   const { data: tipos = [] } = useTiposRoteiro();
   const createTipo = useCreateTipoRoteiro();
 
-  // Gerar insumos via Edge Function
+  // Gerar insumos um por um via n8n webhook
   const handleGenerateInsumos = async () => {
     setIsGeneratingInsumos(true);
+    
+    for (const headline of headlines) {
+      setLoadingInsumoKeys(prev => new Set(prev).add(headline.key));
+      
+      try {
+        const { data, error } = await supabase.functions.invoke("n8n-insumo", {
+          body: {
+            mentorado: mentoradoData,
+            headline: { key: headline.key, headline: headline.headline }
+          }
+        });
+        
+        if (error) throw error;
+        
+        if (data?.insumo) {
+          setInsumos(prev => ({ ...prev, [headline.key]: data.insumo }));
+        }
+      } catch (err) {
+        console.error(`Erro ao gerar insumo para ${headline.key}:`, err);
+      } finally {
+        setLoadingInsumoKeys(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(headline.key);
+          return newSet;
+        });
+      }
+    }
+    
+    setIsGeneratingInsumos(false);
+    
+    toast({
+      title: "Insumos gerados!",
+      description: `Insumos processados para ${headlines.length} headlines.`,
+    });
+  };
+
+  // Reprocessar um insumo específico
+  const handleReprocessInsumo = async (headline: HeadlineParaGerar) => {
+    setLoadingInsumoKeys(prev => new Set(prev).add(headline.key));
+    
     try {
-      const { data, error } = await supabase.functions.invoke("extract-insumos", {
+      const { data, error } = await supabase.functions.invoke("n8n-insumo", {
         body: {
           mentorado: mentoradoData,
-          headlines: headlines.map(h => ({ key: h.key, headline: h.headline }))
+          headline: { key: headline.key, headline: headline.headline }
         }
       });
       
       if (error) throw error;
       
-      const newInsumos: Record<string, string> = {};
-      if (data?.insumos) {
-        data.insumos.forEach((item: { key: string; insumo: string }) => {
-          newInsumos[item.key] = item.insumo;
-        });
+      if (data?.insumo) {
+        setInsumos(prev => ({ ...prev, [headline.key]: data.insumo }));
       }
-      setInsumos(newInsumos);
       
       toast({
-        title: "Insumos gerados!",
-        description: `${Object.keys(newInsumos).length} insumos extraídos com sucesso.`,
+        title: "Insumo reprocessado!",
       });
     } catch (err) {
-      console.error("Erro ao gerar insumos:", err);
+      console.error(`Erro ao reprocessar insumo para ${headline.key}:`, err);
       toast({
-        title: "Erro ao gerar insumos",
-        description: "Não foi possível gerar os insumos. Tente novamente.",
+        title: "Erro ao reprocessar",
+        description: "Não foi possível reprocessar o insumo.",
         variant: "destructive",
       });
     } finally {
-      setIsGeneratingInsumos(false);
+      setLoadingInsumoKeys(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(headline.key);
+        return newSet;
+      });
     }
   };
 
@@ -226,6 +265,7 @@ export const TipoRoteiroDialog = ({
       setCurrentStep(1);
       setInsumos({});
       setIsGeneratingInsumos(false);
+      setLoadingInsumoKeys(new Set());
     }
     onOpenChange(newOpen);
   };
@@ -236,19 +276,43 @@ export const TipoRoteiroDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-5xl max-h-[85vh] flex flex-col">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Gerar Roteiro</DialogTitle>
           </DialogHeader>
 
-          <div className="flex gap-6 flex-1 min-h-0">
-            {/* COLUNA 1 - Extração de Insumos */}
-            <div className={cn(
-              "flex-1 flex flex-col border-r pr-6 transition-opacity duration-300",
-              currentStep === 2 && "opacity-50 pointer-events-none"
-            )}>
-              <h3 className="font-medium text-lg mb-4">1: extração do conteúdo notável</h3>
-              
+          {/* Indicadores de etapa */}
+          <div className="flex items-center gap-4 pb-4 border-b">
+            <div className={`flex items-center gap-2 ${currentStep === 1 ? "" : "opacity-50"}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${
+                currentStep === 1 
+                  ? "bg-primary text-primary-foreground" 
+                  : "border border-border"
+              }`}>
+                1
+              </div>
+              <span className={currentStep === 1 ? "font-medium" : ""}>
+                extração do conteúdo notável
+              </span>
+            </div>
+            <div className="h-px flex-1 bg-border" />
+            <div className={`flex items-center gap-2 ${currentStep === 2 ? "" : "opacity-50"}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${
+                currentStep === 2 
+                  ? "bg-primary text-primary-foreground" 
+                  : "border border-border"
+              }`}>
+                2
+              </div>
+              <span className={currentStep === 2 ? "font-medium" : ""}>
+                Selecionar estilo
+              </span>
+            </div>
+          </div>
+
+          {/* ETAPA 1 - Extração de Insumos */}
+          {currentStep === 1 && (
+            <div className="flex flex-col flex-1 min-h-0">
               <ScrollArea className="flex-1 max-h-[400px]">
                 <div className="space-y-4 pr-4">
                   {headlines.map((headline, index) => (
@@ -261,13 +325,34 @@ export const TipoRoteiroDialog = ({
                       </p>
                       
                       <div className="mt-3">
-                        <Label className="text-xs text-muted-foreground">Insumo</Label>
-                        <Textarea
-                          value={insumos[headline.key] || ""}
-                          onChange={(e) => handleInsumoChange(headline.key, e.target.value)}
-                          placeholder="1: ideia ou referência...&#10;2: fato interessante...&#10;3: dado estatístico..."
-                          className="mt-1 min-h-[80px] text-sm"
-                        />
+                        <div className="flex items-center justify-between mb-1">
+                          <Label className="text-xs text-muted-foreground">Insumo</Label>
+                          {insumos[headline.key] && !loadingInsumoKeys.has(headline.key) && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleReprocessInsumo(headline)}
+                              className="h-6 text-xs"
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Reprocessar
+                            </Button>
+                          )}
+                        </div>
+                        
+                        {loadingInsumoKeys.has(headline.key) ? (
+                          <div className="flex items-center gap-2 p-3 border rounded-md bg-muted/50">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm text-muted-foreground">Gerando insumo...</span>
+                          </div>
+                        ) : (
+                          <Textarea
+                            value={insumos[headline.key] || ""}
+                            onChange={(e) => handleInsumoChange(headline.key, e.target.value)}
+                            placeholder="1: ideia ou referência...&#10;2: fato interessante...&#10;3: dado estatístico..."
+                            className="min-h-[80px] text-sm"
+                          />
+                        )}
                       </div>
                     </div>
                   ))}
@@ -293,14 +378,11 @@ export const TipoRoteiroDialog = ({
                 </Button>
               </div>
             </div>
-            
-            {/* COLUNA 2 - Seleção de Tipos */}
-            <div className={cn(
-              "flex-1 flex flex-col transition-opacity duration-300",
-              currentStep === 1 && "opacity-50 pointer-events-none"
-            )}>
-              <h3 className="font-medium text-lg mb-4">2: Selecionar estilo do roteiro</h3>
+          )}
 
+          {/* ETAPA 2 - Seleção de Tipos */}
+          {currentStep === 2 && (
+            <div className="flex flex-col flex-1 min-h-0">
               {/* Barra de ações em massa */}
               <div className="flex items-center gap-3 py-3 border-b flex-wrap">
                 <div className="flex items-center gap-2">
@@ -350,7 +432,7 @@ export const TipoRoteiroDialog = ({
                 )}
               </div>
 
-              <ScrollArea className="flex-1 max-h-[320px]">
+              <ScrollArea className="flex-1 max-h-[350px]">
                 <div className="py-4 space-y-4 pr-4">
                   {headlines.map((headline, index) => (
                     <div key={headline.key} className="border rounded-lg p-4 space-y-3">
@@ -479,7 +561,7 @@ export const TipoRoteiroDialog = ({
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 

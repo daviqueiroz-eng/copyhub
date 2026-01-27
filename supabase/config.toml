@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.extract-insumos]
 verify_jwt = false
+
+[functions.n8n-insumo]
+verify_jwt = false
