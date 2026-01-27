@@ -345,11 +345,12 @@ export const TipoRoteiroDialog = ({
           </div>
 
           {/* Container das duas colunas lado a lado */}
-          <div className="flex gap-10 flex-1 min-h-0 overflow-hidden">
+          <div className="flex gap-6 flex-1 min-h-0 overflow-hidden">
             
             {/* COLUNA 1 - Extração de Insumos */}
             <div className={cn(
               "flex-1 flex flex-col min-w-0 transition-opacity duration-200",
+              "border rounded-lg bg-card p-4",
               currentStep === 2 && "opacity-50 pointer-events-none"
             )}>
               <ScrollArea className="flex-1">
@@ -423,12 +424,10 @@ export const TipoRoteiroDialog = ({
               </div>
             </div>
 
-            {/* Divisor vertical */}
-            <div className="w-px bg-border shrink-0 mx-4" />
-
             {/* COLUNA 2 - Seleção de Tipos */}
             <div className={cn(
               "flex-1 flex flex-col min-w-0 transition-opacity duration-200",
+              "border rounded-lg bg-card p-4",
               currentStep === 1 && "opacity-50 pointer-events-none"
             )}>
               {/* Barra de ações em massa */}
