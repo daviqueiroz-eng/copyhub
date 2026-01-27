@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.revisar-roteiro]
 verify_jwt = false
+
+[functions.extract-insumos]
+verify_jwt = false

@@ -1149,6 +1149,7 @@ export const MentoradoRoteirosView = ({
               key: item.key,
               headline: item.headline,
               estrutura: item.estrutura,
+              insumo: item.insumo,
               tipo_roteiro: item.tipoNome,
               tipo_config: item.tipoConfig,
             }],
