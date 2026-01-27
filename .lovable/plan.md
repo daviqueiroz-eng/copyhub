@@ -1,141 +1,93 @@
 
+## Plano: Ajustar Layout para Empilhar Roteiro e Chat Verticalmente
 
-## Plano: Ajustar Layout do Ajuste Fino para Estilo Claude
+### Problema Atual
 
-### Visao Geral
+Na linha 550 do `RoteiroRevisaoDialog.tsx`:
+```tsx
+<div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+```
 
-Reorganizar o layout do `AjusteFinoPanel` para que o campo de input tenha os botoes posicionados **abaixo** dele (em uma linha separada), nao ao lado, seguindo o design do Claude.
+Isso faz com que em telas grandes (`lg:`) o conteúdo seja exibido **lado a lado** (flex-row). O usuário quer que fique **sempre empilhado** (um em cima do outro).
 
 ---
 
-### Layout Desejado
+### Solução
 
-```text
-+--------------------------------------------------+
-|                                                  |
-|  [Conteudo das mensagens - ScrollArea]           |
-|                                                  |
-|  Texto das respostas e instrucoes aqui...        |
-|                                                  |
-|                                                  |
-|                                                  |
-|                                                  |
-+--------------------------------------------------+
-| +------------------------------------------+     |
-| | Responder...                             |     |
-| +------------------------------------------+     |
-|                                                  |
-| [+] [Clock]                   [Modelo v] [>]     |
-|                                                  |
-| IA pode cometer erros. Verifique as respostas.   |
-+--------------------------------------------------+
-```
+Mudar o layout para sempre usar `flex-col`, removendo a variação `lg:flex-row`.
 
 ---
 
-### Mudancas no AjusteFinoPanel.tsx
+### Mudancas no Arquivo
 
-#### Estrutura do Input (Antes)
-```text
-[ + ]  [ Textarea inline ]  [ > ]
-```
-
-#### Estrutura do Input (Depois)
-```text
-+--------------------------------+
-| Responder...                   |
-+--------------------------------+
-[+] [clock]        [modelo] [>]
-disclaimer
-```
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/components/mentorados/RoteiroRevisaoDialog.tsx` | Alterar layout de `flex-col lg:flex-row` para apenas `flex-col` |
 
 ---
 
 ### Detalhes Tecnicos
 
-1. **Separar o Textarea dos botoes**
-   - Textarea ocupa largura total como um bloco
-   - Linha de botoes abaixo do textarea
-
-2. **Nova linha de botoes**
-   - Esquerda: botao "+" (ajustes) + botao de historico/clock (opcional)
-   - Direita: seletor de modelo (visual, nao funcional) + botao enviar
-
-3. **Disclaimer embaixo**
-   - Texto pequeno similar ao Claude: "IA pode cometer erros. Verifique as respostas."
-
----
-
-### Arquivo a Modificar
-
-| Arquivo | Mudancas |
-|---------|----------|
-| `src/components/mentorados/AjusteFinoPanel.tsx` | Reorganizar estrutura do input area para layout vertical |
-
----
-
-### Codigo Proposto para Input Area
-
+#### Linha 550 - Layout Principal
 ```tsx
-{/* Input area */}
-<div className="border-t shrink-0 bg-background p-4">
-  {/* Indicador de selecao */}
-  {selecao && (
-    <div className="...">...</div>
-  )}
+// Antes:
+<div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
 
-  {/* Textarea - largura total */}
-  <div className="bg-muted/30 rounded-xl border mb-2">
-    <Textarea
-      value={inputValue}
-      onChange={(e) => setInputValue(e.target.value)}
-      placeholder="Responder..."
-      className="min-h-[60px] max-h-[150px] border-0 bg-transparent ..."
-    />
-  </div>
-
-  {/* Linha de botoes */}
-  <div className="flex items-center justify-between">
-    {/* Esquerda: + e clock */}
-    <div className="flex items-center gap-1">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon">
-            <Plus />
-          </Button>
-        </PopoverTrigger>
-        ...
-      </Popover>
-      <Button variant="ghost" size="icon">
-        <Clock />
-      </Button>
-    </div>
-
-    {/* Direita: modelo e enviar */}
-    <div className="flex items-center gap-2">
-      <Button variant="ghost" size="sm" className="text-xs">
-        Ajuste Fino
-        <ChevronDown />
-      </Button>
-      <Button size="icon" onClick={handleEnviar}>
-        <Send /> ou <ArrowUp />
-      </Button>
-    </div>
-  </div>
-
-  {/* Disclaimer */}
-  <p className="text-[10px] text-center text-muted-foreground mt-3">
-    IA pode cometer erros. Verifique as respostas.
-  </p>
-</div>
+// Depois:
+<div className="flex-1 flex flex-col overflow-hidden">
 ```
+
+#### Linha 552 - Secao do Roteiro
+```tsx
+// Antes:
+<div className="flex-1 flex flex-col border-b lg:border-b-0 lg:border-r overflow-hidden">
+
+// Depois:
+<div className="flex-[0.6] flex flex-col border-b overflow-hidden">
+```
+- Muda de `flex-1` para `flex-[0.6]` para ocupar ~60% da altura
+- Remove `lg:border-b-0 lg:border-r` pois nao teremos mais layout lado a lado
+
+#### Linha 587 - Secao do Chat/Ajuste Fino
+```tsx
+// Antes:
+<div className="flex-1 flex flex-col lg:w-[400px] lg:max-w-[400px] overflow-hidden">
+
+// Depois:
+<div className="flex-[0.4] flex flex-col overflow-hidden">
+```
+- Muda de `flex-1 lg:w-[400px]` para `flex-[0.4]` para ocupar ~40% da altura
+- Remove restricoes de largura que eram para layout horizontal
 
 ---
 
 ### Resultado Visual
 
-- Campo de texto destacado e ocupando largura total
-- Botoes organizados em linha separada abaixo
-- Visual mais limpo e similar ao Claude
-- Disclaimer centralizado na parte de baixo
+```text
++--------------------------------------------------+
+|  Header: Roteiro 1/2 (mentorado)  [Undo] [Redo]  |
++--------------------------------------------------+
+|                                                  |
+|  HEADLINE 01:                                    |
+|  [Textarea com headline]                         |
+|                                                  |
+|  ESTRUTURA 01:                                   |
+|  [Textarea com estrutura - ocupa ~60% altura]    |
+|                                                  |
++--------------------------------------------------+
+|  [Chat de Revisao] [Ajuste Fino]                 |
+|                                                  |
+|  [Area de mensagens/chat - ocupa ~40% altura]    |
+|                                                  |
+|  [Input de resposta]                             |
++--------------------------------------------------+
+```
 
+---
+
+### Consideracoes
+
+- O roteiro (headline + estrutura) fica na parte superior
+- O chat/ajuste fino fica na parte inferior
+- Proporcao de ~60/40 para dar espaco adequado ao roteiro
+- Layout consistente em todas as telas (mobile e desktop)
