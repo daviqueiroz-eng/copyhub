@@ -1886,6 +1886,33 @@ export type Database = {
         }
         Relationships: []
       }
+      tipos_chat_revisao: {
+        Row: {
+          created_at: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          prompt_sistema: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          prompt_sistema?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          prompt_sistema?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       tipos_roteiro: {
         Row: {
           config_extra: Json | null
