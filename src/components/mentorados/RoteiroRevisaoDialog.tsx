@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -18,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { AjusteFinoPanel } from "./AjusteFinoPanel";
 
 interface HistoryEntry {
   headline: string;
@@ -60,6 +62,7 @@ export const RoteiroRevisaoDialog = ({
   const [messagesPerRoteiro, setMessagesPerRoteiro] = useState<Map<string, Message[]>>(new Map());
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"chat" | "ajuste">("chat");
   
   // Estado local para edição direta (sincronizado com prop)
   const [localHeadline, setLocalHeadline] = useState("");
@@ -264,10 +267,10 @@ export const RoteiroRevisaoDialog = ({
 
   // Focar no input quando abrir ou mudar de roteiro
   useEffect(() => {
-    if (open) {
+    if (open && activeTab === "chat") {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [open, currentIndex]);
+  }, [open, currentIndex, activeTab]);
 
   // Limpar seleção ao mudar de roteiro
   useEffect(() => {
@@ -424,7 +427,16 @@ export const RoteiroRevisaoDialog = ({
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [inputMessage, isLoading, currentRoteiro, currentKey, currentMessages, onRoteiroChange, localHeadline, localEstrutura]);
+  }, [inputMessage, isLoading, currentRoteiro, currentKey, currentMessages, onRoteiroChange, localHeadline, localEstrutura, selectedText, saveToHistory]);
+
+  // Handler para atualização vinda do AjusteFinoPanel
+  const handleAjusteUpdate = useCallback((newHeadline: string, newEstrutura: string) => {
+    setLocalHeadline(newHeadline);
+    setLocalEstrutura(newEstrutura);
+    onRoteiroChange(currentKey, "headline", newHeadline);
+    onRoteiroChange(currentKey, "estrutura", newEstrutura);
+    saveToHistory("ai", newHeadline, newEstrutura);
+  }, [currentKey, onRoteiroChange, saveToHistory]);
 
   // Adicionar mensagem inicial de boas-vindas se for a primeira vez
   useEffect(() => {
@@ -568,122 +580,139 @@ export const RoteiroRevisaoDialog = ({
             />
           </div>
 
-          {/* Lado direito - Chat */}
+          {/* Lado direito - Tabs: Chat / Ajuste Fino */}
           <div className="flex-1 flex flex-col lg:w-[400px] lg:max-w-[400px] overflow-hidden">
-            <div className="px-4 py-2 bg-muted/50 border-b shrink-0">
-              <h3 className="font-semibold text-sm">Chat de Revisão</h3>
-            </div>
-            
-            {/* Mensagens */}
-            <ScrollArea className="flex-1 px-4 py-3">
-              <div className="space-y-4">
-                {currentMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      "flex gap-2",
-                      message.role === "user" ? "justify-end" : "justify-start"
-                    )}
-                  >
-                    {message.role === "assistant" && (
-                      <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <Bot className="h-4 w-4 text-primary" />
-                      </div>
-                    )}
-                    <div
-                      className={cn(
-                        "max-w-[85%] rounded-lg px-3 py-2 text-sm",
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
-                      )}
-                    >
-                      <p className="whitespace-pre-wrap">{message.content}</p>
-                      <span className="text-[10px] opacity-60 mt-1 block">
-                        {message.timestamp.toLocaleTimeString("pt-BR", { 
-                          hour: "2-digit", 
-                          minute: "2-digit" 
-                        })}
-                      </span>
-                    </div>
-                    {message.role === "user" && (
-                      <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                        <User className="h-4 w-4" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-                
-                {isLoading && (
-                  <div className="flex gap-2 justify-start">
-                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Bot className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="bg-muted rounded-lg px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">Processando...</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} />
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "chat" | "ajuste")} className="flex flex-col h-full">
+              <div className="px-4 py-2 bg-muted/50 border-b shrink-0">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="chat">Chat de Revisão</TabsTrigger>
+                  <TabsTrigger value="ajuste">Ajuste Fino</TabsTrigger>
+                </TabsList>
               </div>
-            </ScrollArea>
-
-            {/* Input */}
-            <div className="border-t shrink-0">
-              {/* Indicador de seleção */}
-              {selectedText && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border-b text-xs">
-                  <span className="text-muted-foreground">Seleção:</span>
-                  <span className="font-medium text-amber-700 dark:text-amber-300 truncate max-w-[200px]">
-                    "{selectedText.text}"
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-4 w-4 shrink-0 ml-auto"
-                    onClick={() => setSelectedText(null)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
               
-              <div className="px-4 py-3">
-                <div className="flex gap-2">
-                  <Input
-                    ref={inputRef}
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder={selectedText ? `O que fazer com "${selectedText.text.substring(0, 20)}${selectedText.text.length > 20 ? '...' : ''}"?` : "Digite sua instrução..."}
-                    disabled={isLoading}
-                    className="flex-1"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
+              <TabsContent value="chat" className="flex-1 flex flex-col mt-0 overflow-hidden">
+                {/* Mensagens */}
+                <ScrollArea className="flex-1 px-4 py-3">
+                  <div className="space-y-4">
+                    {currentMessages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={cn(
+                          "flex gap-2",
+                          message.role === "user" ? "justify-end" : "justify-start"
+                        )}
+                      >
+                        {message.role === "assistant" && (
+                          <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <Bot className="h-4 w-4 text-primary" />
+                          </div>
+                        )}
+                        <div
+                          className={cn(
+                            "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                            message.role === "user"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
+                          )}
+                        >
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                          <span className="text-[10px] opacity-60 mt-1 block">
+                            {message.timestamp.toLocaleTimeString("pt-BR", { 
+                              hour: "2-digit", 
+                              minute: "2-digit" 
+                            })}
+                          </span>
+                        </div>
+                        {message.role === "user" && (
+                          <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                            <User className="h-4 w-4" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {isLoading && (
+                      <div className="flex gap-2 justify-start">
+                        <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <Bot className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="bg-muted rounded-lg px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm text-muted-foreground">Processando...</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+
+                {/* Input */}
+                <div className="border-t shrink-0">
+                  {/* Indicador de seleção */}
+                  {selectedText && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/50 border-b text-xs">
+                      <span className="text-muted-foreground">Seleção:</span>
+                      <span className="font-medium text-accent-foreground truncate max-w-[200px]">
+                        "{selectedText.text}"
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 shrink-0 ml-auto"
+                        onClick={() => setSelectedText(null)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <div className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <Input
+                        ref={inputRef}
+                        value={inputMessage}
+                        onChange={(e) => setInputMessage(e.target.value)}
+                        placeholder={selectedText ? `O que fazer com "${selectedText.text.substring(0, 20)}${selectedText.text.length > 20 ? '...' : ''}"?` : "Digite sua instrução..."}
+                        disabled={isLoading}
+                        className="flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                      />
+                      <Button
+                        size="icon"
+                        onClick={handleSendMessage}
+                        disabled={!inputMessage.trim() || isLoading}
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {selectedText 
+                        ? "Digite para alterar o trecho selecionado"
+                        : "Selecione texto à esquerda ou digite instrução • ← → para navegar"
                       }
-                    }}
-                  />
-                  <Button
-                    size="icon"
-                    onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || isLoading}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                    </p>
+                  </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {selectedText 
-                    ? "Digite para alterar o trecho selecionado"
-                    : "Selecione texto à esquerda ou digite instrução • ← → para navegar"
-                  }
-                </p>
-              </div>
-            </div>
+              </TabsContent>
+              
+              <TabsContent value="ajuste" className="flex-1 flex flex-col mt-0 overflow-hidden">
+                <AjusteFinoPanel
+                  headline={localHeadline}
+                  estrutura={localEstrutura}
+                  selecao={selectedText}
+                  onUpdate={handleAjusteUpdate}
+                  onClearSelection={() => setSelectedText(null)}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </SheetContent>

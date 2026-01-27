@@ -1859,6 +1859,33 @@ export type Database = {
           },
         ]
       }
+      tipos_ajuste: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          instrucoes: string | null
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          instrucoes?: string | null
+          nome: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          instrucoes?: string | null
+          nome?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tipos_roteiro: {
         Row: {
           config_extra: Json | null
