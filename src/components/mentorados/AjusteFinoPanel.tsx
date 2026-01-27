@@ -12,6 +12,8 @@ import {
   ThumbsDown,
   RefreshCw,
   Check,
+  Clock,
+  ChevronDown,
 } from "lucide-react";
 import { useTiposAjuste } from "@/hooks/useTiposAjuste";
 import { TiposAjusteDialog } from "./TiposAjusteDialog";
@@ -287,10 +289,10 @@ export const AjusteFinoPanel = ({
       </ScrollArea>
 
       {/* Input area */}
-      <div className="border-t shrink-0 bg-background">
+      <div className="border-t shrink-0 bg-background p-4">
         {/* Indicador de seleção */}
         {selecao && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-accent/50 border-b text-xs">
+          <div className="flex items-center gap-2 px-3 py-2 mb-3 bg-accent/50 rounded-lg text-xs">
             <span className="text-muted-foreground">Seleção:</span>
             <span className="font-medium text-accent-foreground truncate max-w-[250px]">
               "{selecao.text}"
@@ -298,15 +300,33 @@ export const AjusteFinoPanel = ({
           </div>
         )}
 
-        <div className="p-3">
-          <div className="flex items-end gap-2 bg-muted/50 rounded-xl border p-2">
-            {/* Botão + para ajustes */}
+        {/* Textarea - largura total */}
+        <div className="bg-muted/30 rounded-xl border mb-3">
+          <Textarea
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Responder..."
+            disabled={isProcessing}
+            className="min-h-[60px] max-h-[150px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                handleEnviar();
+              }
+            }}
+          />
+        </div>
+
+        {/* Linha de botões */}
+        <div className="flex items-center justify-between">
+          {/* Esquerda: + e clock */}
+          <div className="flex items-center gap-1">
             <Popover open={ajustesPopoverOpen} onOpenChange={setAjustesPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-lg"
+                  className="h-8 w-8 rounded-lg"
                   disabled={isProcessing}
                 >
                   <Plus className="h-4 w-4" />
@@ -367,25 +387,29 @@ export const AjusteFinoPanel = ({
               </PopoverContent>
             </Popover>
 
-            {/* Input de texto */}
-            <Textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Digite sua instrução..."
-              disabled={isProcessing}
-              className="flex-1 min-h-[40px] max-h-[120px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-sm"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                  e.preventDefault();
-                  handleEnviar();
-                }
-              }}
-            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg text-muted-foreground"
+              title="Histórico"
+            >
+              <Clock className="h-4 w-4" />
+            </Button>
+          </div>
 
-            {/* Botão de enviar */}
+          {/* Direita: modelo e enviar */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground gap-1"
+            >
+              Ajuste Fino
+              <ChevronDown className="h-3 w-3" />
+            </Button>
             <Button
               size="icon"
-              className="h-8 w-8 shrink-0 rounded-lg"
+              className="h-8 w-8 rounded-lg"
               onClick={handleEnviar}
               disabled={isProcessing || !inputValue.trim()}
             >
@@ -396,10 +420,12 @@ export const AjusteFinoPanel = ({
               )}
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
-            Ctrl+Enter para enviar
-          </p>
         </div>
+
+        {/* Disclaimer */}
+        <p className="text-[10px] text-center text-muted-foreground mt-3">
+          IA pode cometer erros. Verifique as respostas.
+        </p>
       </div>
 
       {/* Dialog de gerenciamento */}
