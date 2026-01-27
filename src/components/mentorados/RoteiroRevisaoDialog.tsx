@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -14,12 +16,16 @@ import {
   User,
   Loader2,
   Undo2,
-  Redo2
+  Redo2,
+  ChevronDown,
+  Settings2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { AjusteFinoPanel } from "./AjusteFinoPanel";
+import { TiposChatDialog } from "./TiposChatDialog";
+import { useTiposChatRevisao, TipoChatRevisao } from "@/hooks/useTiposChatRevisao";
 
 interface HistoryEntry {
   headline: string;
@@ -65,6 +71,12 @@ export const RoteiroRevisaoDialog = ({
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "ajuste">("chat");
+  
+  // Estado para tipo de chat selecionado
+  const [selectedTipoChatId, setSelectedTipoChatId] = useState<string | null>(null);
+  const [showTiposChatDialog, setShowTiposChatDialog] = useState(false);
+  const { data: tiposChat = [] } = useTiposChatRevisao();
+  const selectedTipoChat = tiposChat.find(t => t.id === selectedTipoChatId) || null;
   
   // Estado local para edição direta (sincronizado com prop)
   const [localHeadline, setLocalHeadline] = useState("");
@@ -370,6 +382,7 @@ export const RoteiroRevisaoDialog = ({
             texto: selectedText.text,
             campo: selectedText.field,
           } : null,
+          promptSistema: selectedTipoChat?.prompt_sistema || null,
         },
       });
 
@@ -696,12 +709,66 @@ export const RoteiroRevisaoDialog = ({
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      {selectedText 
-                        ? "Digite para alterar o trecho selecionado"
-                        : "Selecione texto à esquerda ou digite instrução • ← → para navegar"
-                      }
-                    </p>
+                    
+                    {/* Seletor de tipo de chat e dicas */}
+                    <div className="flex items-center justify-between mt-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2 gap-1">
+                            <Settings2 className="h-3 w-3" />
+                            {selectedTipoChat?.nome || "Padrão"}
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-52 p-2" align="start">
+                          <div className="space-y-1">
+                            <button
+                              onClick={() => setSelectedTipoChatId(null)}
+                              className={cn(
+                                "w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors",
+                                !selectedTipoChatId && "bg-accent"
+                              )}
+                            >
+                              <span className="font-medium">Padrão</span>
+                              <span className="block text-xs text-muted-foreground">Faz apenas o que é pedido</span>
+                            </button>
+                            
+                            {tiposChat.map(tipo => (
+                              <button
+                                key={tipo.id}
+                                onClick={() => setSelectedTipoChatId(tipo.id)}
+                                className={cn(
+                                  "w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors",
+                                  selectedTipoChatId === tipo.id && "bg-accent"
+                                )}
+                              >
+                                <span className="font-medium">{tipo.nome}</span>
+                                {tipo.descricao && (
+                                  <span className="block text-xs text-muted-foreground truncate">{tipo.descricao}</span>
+                                )}
+                              </button>
+                            ))}
+                            
+                            <Separator className="my-1" />
+                            
+                            <button
+                              onClick={() => setShowTiposChatDialog(true)}
+                              className="w-full text-left text-sm px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
+                            >
+                              <Settings2 className="h-3 w-3 inline mr-1" />
+                              Gerenciar tipos
+                            </button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      
+                      <p className="text-[10px] text-muted-foreground">
+                        {selectedText 
+                          ? "Alterar trecho selecionado"
+                          : "← → navegar"
+                        }
+                      </p>
+                    </div>
                   </div>
                 </div>
               </TabsContent>
@@ -719,6 +786,12 @@ export const RoteiroRevisaoDialog = ({
           </div>
         </div>
       </SheetContent>
+      
+      {/* Dialog para gerenciar tipos de chat */}
+      <TiposChatDialog 
+        open={showTiposChatDialog} 
+        onOpenChange={setShowTiposChatDialog} 
+      />
     </Sheet>
   );
 };

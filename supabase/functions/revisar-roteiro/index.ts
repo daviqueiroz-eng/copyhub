@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `Você é um assistente de revisão de roteiros de vídeos curtos.
+const DEFAULT_SYSTEM_PROMPT = `Você é um assistente de revisão de roteiros de vídeos curtos.
 
 REGRAS ABSOLUTAS:
 1. Faça SOMENTE a alteração solicitada pelo usuário
@@ -26,7 +26,7 @@ serve(async (req) => {
   }
 
   try {
-    const { headline, estrutura, mensagem, historico = [], selecao } = await req.json();
+    const { headline, estrutura, mensagem, historico = [], selecao, promptSistema } = await req.json();
 
     if (!mensagem) {
       return new Response(
@@ -62,9 +62,12 @@ A instrução do usuário se refere APENAS a este trecho selecionado.
 Altere SOMENTE esta parte, mantendo todo o resto do texto IDÊNTICO.`;
     }
 
+    // Usar prompt customizado ou padrão
+    const systemPrompt = promptSistema || DEFAULT_SYSTEM_PROMPT;
+
     // Montar mensagens do chat
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       { role: "user", content: roteiroContext },
       ...historico.map((msg: { role: string; content: string }) => ({
         role: msg.role,
