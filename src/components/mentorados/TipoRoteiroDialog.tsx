@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ import { TipoRoteiroConfigDialog } from "./TipoRoteiroConfigDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export interface HeadlineParaGerar {
   key: string;
@@ -87,8 +88,27 @@ export const TipoRoteiroDialog = ({
   const [selectedHeadlines, setSelectedHeadlines] = useState<Set<string>>(new Set());
   const [bulkTipoId, setBulkTipoId] = useState<string>("");
 
+  // Refs para textareas com altura dinâmica
+  const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+
   const { data: tipos = [] } = useTiposRoteiro();
   const createTipo = useCreateTipoRoteiro();
+
+  // Ajustar altura do textarea baseado no conteúdo
+  const adjustTextareaHeight = (key: string) => {
+    const textarea = textareaRefs.current[key];
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.max(80, textarea.scrollHeight)}px`;
+    }
+  };
+
+  // Ajustar alturas quando insumos mudam
+  useEffect(() => {
+    Object.keys(insumos).forEach(key => {
+      adjustTextareaHeight(key);
+    });
+  }, [insumos]);
 
   // Gerar insumos um por um via n8n webhook
   const handleGenerateInsumos = async () => {
@@ -276,45 +296,64 @@ export const TipoRoteiroDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogContent className="sm:max-w-6xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Gerar Roteiro</DialogTitle>
           </DialogHeader>
 
           {/* Indicadores de etapa */}
-          <div className="flex items-center gap-4 pb-4 border-b">
-            <div className={`flex items-center gap-2 ${currentStep === 1 ? "" : "opacity-50"}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${
+          <div className="flex items-center gap-4 pb-4 border-b shrink-0">
+            <button 
+              onClick={() => setCurrentStep(1)}
+              className={cn(
+                "flex items-center gap-2 transition-opacity",
+                currentStep === 1 ? "" : "opacity-50 hover:opacity-75"
+              )}
+            >
+              <div className={cn(
+                "w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium",
                 currentStep === 1 
                   ? "bg-primary text-primary-foreground" 
                   : "border border-border"
-              }`}>
+              )}>
                 1
               </div>
               <span className={currentStep === 1 ? "font-medium" : ""}>
                 extração do conteúdo notável
               </span>
-            </div>
+            </button>
             <div className="h-px flex-1 bg-border" />
-            <div className={`flex items-center gap-2 ${currentStep === 2 ? "" : "opacity-50"}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${
+            <button 
+              onClick={() => setCurrentStep(2)}
+              className={cn(
+                "flex items-center gap-2 transition-opacity",
+                currentStep === 2 ? "" : "opacity-50 hover:opacity-75"
+              )}
+            >
+              <div className={cn(
+                "w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium",
                 currentStep === 2 
                   ? "bg-primary text-primary-foreground" 
                   : "border border-border"
-              }`}>
+              )}>
                 2
               </div>
               <span className={currentStep === 2 ? "font-medium" : ""}>
                 Selecionar estilo
               </span>
-            </div>
+            </button>
           </div>
 
-          {/* ETAPA 1 - Extração de Insumos */}
-          {currentStep === 1 && (
-            <div className="flex flex-col flex-1 min-h-0">
-              <ScrollArea className="flex-1 max-h-[400px]">
-                <div className="space-y-4 pr-4">
+          {/* Container das duas colunas lado a lado */}
+          <div className="flex gap-6 flex-1 min-h-0 overflow-hidden">
+            
+            {/* COLUNA 1 - Extração de Insumos */}
+            <div className={cn(
+              "flex-1 flex flex-col min-w-0 transition-opacity duration-200",
+              currentStep === 2 && "opacity-50 pointer-events-none"
+            )}>
+              <ScrollArea className="flex-1">
+                <div className="space-y-4 pr-4 py-2">
                   {headlines.map((headline, index) => (
                     <div key={headline.key} className="border rounded-lg p-4">
                       <span className="text-xs text-muted-foreground font-medium">
@@ -347,10 +386,15 @@ export const TipoRoteiroDialog = ({
                           </div>
                         ) : (
                           <Textarea
+                            ref={(el) => { textareaRefs.current[headline.key] = el; }}
                             value={insumos[headline.key] || ""}
-                            onChange={(e) => handleInsumoChange(headline.key, e.target.value)}
+                            onChange={(e) => {
+                              handleInsumoChange(headline.key, e.target.value);
+                              adjustTextareaHeight(headline.key);
+                            }}
                             placeholder="1: ideia ou referência...&#10;2: fato interessante...&#10;3: dado estatístico..."
-                            className="min-h-[80px] text-sm"
+                            className="text-sm resize-none overflow-hidden"
+                            style={{ minHeight: '80px' }}
                           />
                         )}
                       </div>
@@ -359,7 +403,7 @@ export const TipoRoteiroDialog = ({
                 </div>
               </ScrollArea>
               
-              <div className="flex justify-between pt-4 border-t mt-4">
+              <div className="flex justify-between pt-4 border-t mt-2 shrink-0">
                 <Button 
                   variant="outline" 
                   onClick={handleGenerateInsumos} 
@@ -378,13 +422,17 @@ export const TipoRoteiroDialog = ({
                 </Button>
               </div>
             </div>
-          )}
 
-          {/* ETAPA 2 - Seleção de Tipos */}
-          {currentStep === 2 && (
-            <div className="flex flex-col flex-1 min-h-0">
+            {/* Divisor vertical */}
+            <div className="w-px bg-border shrink-0" />
+
+            {/* COLUNA 2 - Seleção de Tipos */}
+            <div className={cn(
+              "flex-1 flex flex-col min-w-0 transition-opacity duration-200",
+              currentStep === 1 && "opacity-50 pointer-events-none"
+            )}>
               {/* Barra de ações em massa */}
-              <div className="flex items-center gap-3 py-3 border-b flex-wrap">
+              <div className="flex items-center gap-3 py-3 border-b flex-wrap shrink-0">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="select-all-tipos"
@@ -432,7 +480,7 @@ export const TipoRoteiroDialog = ({
                 )}
               </div>
 
-              <ScrollArea className="flex-1 max-h-[350px]">
+              <ScrollArea className="flex-1">
                 <div className="py-4 space-y-4 pr-4">
                   {headlines.map((headline, index) => (
                     <div key={headline.key} className="border rounded-lg p-4 space-y-3">
@@ -505,7 +553,7 @@ export const TipoRoteiroDialog = ({
                 </div>
               </ScrollArea>
 
-              <div className="border-t pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-4">
+              <div className="border-t pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-2 shrink-0">
                 {showAddForm ? (
                   <div className="flex gap-2 w-full sm:w-auto">
                     <Input
@@ -561,7 +609,7 @@ export const TipoRoteiroDialog = ({
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
 
