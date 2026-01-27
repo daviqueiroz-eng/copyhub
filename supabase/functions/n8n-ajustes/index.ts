@@ -17,7 +17,7 @@ serve(async (req) => {
 
     // Forward to n8n webhook
     const n8nResponse = await fetch(
-      "https://madarawin.app.n8n.cloud/webhook/agente-ia-lovable-ajustes",
+      "https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-ajustes",
       {
         method: "POST",
         headers: {
