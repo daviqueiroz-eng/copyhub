@@ -244,6 +244,8 @@ export const MentoradoRoteirosView = ({
   
   // Estado para dialog de revisão com IA
   const [showRevisaoDialog, setShowRevisaoDialog] = useState(false);
+  const [revisaoInitialIndex, setRevisaoInitialIndex] = useState(0);
+  const [lastFocusedRoteiroKey, setLastFocusedRoteiroKey] = useState<string | null>(null);
   
   // Estado para geração em massa com painel lateral
   const [bulkProgress, setBulkProgress] = useState<BulkProgressState | null>(null);
@@ -860,6 +862,9 @@ export const MentoradoRoteirosView = ({
     handleChange(guiaNumero, ordem, field, value);
 
     const key = `${guiaNumero}-${ordem}`;
+    
+    // Rastrear o último roteiro editado para abrir a revisão no lugar certo
+    setLastFocusedRoteiroKey(key);
 
     // Calcular posição do popover baseado na posição fixa
     const popoverWidth = 320;
@@ -2151,7 +2156,25 @@ export const MentoradoRoteirosView = ({
               setFeedbackTimers(t);
               setShowFeedbackDialog(true);
             }}
-            onRevisarPlay={() => setShowRevisaoDialog(true)}
+            onRevisarPlay={() => {
+              // Calcular índice baseado no último roteiro em foco
+              const guiaConfig = guias.find(g => g.numero === guiaAtiva);
+              if (guiaConfig && !guiaConfig.isOverdelivery && lastFocusedRoteiroKey) {
+                const roteirosParaRevisar: string[] = [];
+                for (let ordem = 1; ordem <= guiaConfig.quantidade; ordem++) {
+                  const key = `${guiaAtiva}-${ordem}`;
+                  const roteiro = roteirosLocais.get(key);
+                  if (roteiro?.estrutura?.trim()) {
+                    roteirosParaRevisar.push(key);
+                  }
+                }
+                const idx = roteirosParaRevisar.indexOf(lastFocusedRoteiroKey);
+                setRevisaoInitialIndex(idx >= 0 ? idx : 0);
+              } else {
+                setRevisaoInitialIndex(0);
+              }
+              setShowRevisaoDialog(true);
+            }}
           />
         </div>
       </div>
@@ -2183,7 +2206,25 @@ export const MentoradoRoteirosView = ({
                 setFeedbackTimers(t);
                 setShowFeedbackDialog(true);
               }}
-              onRevisarPlay={() => setShowRevisaoDialog(true)}
+              onRevisarPlay={() => {
+                // Calcular índice baseado no último roteiro em foco
+                const guiaConfig = guias.find(g => g.numero === guiaAtiva);
+                if (guiaConfig && !guiaConfig.isOverdelivery && lastFocusedRoteiroKey) {
+                  const roteirosParaRevisar: string[] = [];
+                  for (let ordem = 1; ordem <= guiaConfig.quantidade; ordem++) {
+                    const key = `${guiaAtiva}-${ordem}`;
+                    const roteiro = roteirosLocais.get(key);
+                    if (roteiro?.estrutura?.trim()) {
+                      roteirosParaRevisar.push(key);
+                    }
+                  }
+                  const idx = roteirosParaRevisar.indexOf(lastFocusedRoteiroKey);
+                  setRevisaoInitialIndex(idx >= 0 ? idx : 0);
+                } else {
+                  setRevisaoInitialIndex(0);
+                }
+                setShowRevisaoDialog(true);
+              }}
             />
           </div>
         </SheetContent>
@@ -2556,6 +2597,7 @@ export const MentoradoRoteirosView = ({
       <RoteiroRevisaoDialog
         open={showRevisaoDialog}
         onOpenChange={setShowRevisaoDialog}
+        initialIndex={revisaoInitialIndex}
         roteiros={(() => {
           // Filtrar roteiros da guia ativa que têm estrutura preenchida
           const guiaConfig = guias.find(g => g.numero === guiaAtiva);

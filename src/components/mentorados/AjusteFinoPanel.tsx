@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Settings, Send, Loader2, Plus } from "lucide-react";
-import { useTiposAjuste, TipoAjuste } from "@/hooks/useTiposAjuste";
+import { useTiposAjuste } from "@/hooks/useTiposAjuste";
 import { TiposAjusteDialog } from "./TiposAjusteDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -25,27 +24,25 @@ export const AjusteFinoPanel = ({
   onClearSelection,
 }: AjusteFinoPanelProps) => {
   const { data: tiposAjuste = [], isLoading: loadingTipos } = useTiposAjuste();
-  const [selectedAjustes, setSelectedAjustes] = useState<Set<string>>(new Set());
   const [instrucaoLivre, setInstrucaoLivre] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [showTiposDialog, setShowTiposDialog] = useState(false);
 
-  const toggleAjuste = (id: string) => {
-    setSelectedAjustes((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+  // Ao clicar em um ajuste, colar as instruções no campo de texto
+  const handleAjusteClick = (instrucoes: string | null | undefined) => {
+    if (!instrucoes) return;
+    setInstrucaoLivre((prev) => {
+      if (prev.trim()) {
+        return `${prev}\n\n${instrucoes}`;
       }
-      return next;
+      return instrucoes;
     });
   };
 
   const handleEnviar = async () => {
-    if (selectedAjustes.size === 0 && !instrucaoLivre.trim()) {
+    if (!instrucaoLivre.trim()) {
       toast({
-        title: "Selecione ao menos um ajuste ou digite uma instrução",
+        title: "Digite uma instrução",
         variant: "destructive",
       });
       return;
@@ -54,23 +51,11 @@ export const AjusteFinoPanel = ({
     setIsProcessing(true);
 
     try {
-      // Montar array de ajustes selecionados
-      const ajustesSelecionados: { nome: string; instrucoes: string }[] = [];
-      selectedAjustes.forEach((id) => {
-        const tipo = tiposAjuste.find((t) => t.id === id);
-        if (tipo) {
-          ajustesSelecionados.push({
-            nome: tipo.nome,
-            instrucoes: tipo.instrucoes || tipo.descricao || "",
-          });
-        }
-      });
-
       const payload = {
         headline,
         estrutura,
-        ajustes: ajustesSelecionados,
-        instrucao_livre: instrucaoLivre.trim() || null,
+        ajustes: [],
+        instrucao_livre: instrucaoLivre.trim(),
         selecao: selecao
           ? {
               texto: selecao.text,
@@ -98,8 +83,7 @@ export const AjusteFinoPanel = ({
         }
       }
 
-      // Limpar seleções após sucesso
-      setSelectedAjustes(new Set());
+      // Limpar após sucesso
       setInstrucaoLivre("");
       onClearSelection();
     } catch (error) {
@@ -130,7 +114,7 @@ export const AjusteFinoPanel = ({
         </Button>
       </div>
 
-      {/* Lista de ajustes */}
+      {/* Lista de ajustes (clicáveis) */}
       <ScrollArea className="flex-1 px-4 py-3">
         <div className="space-y-2">
           {loadingTipos && (
@@ -140,24 +124,19 @@ export const AjusteFinoPanel = ({
           )}
 
           {tiposAjuste.map((tipo) => (
-            <label
+            <button
               key={tipo.id}
-              className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+              type="button"
+              onClick={() => handleAjusteClick(tipo.instrucoes)}
+              className="w-full text-left p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
             >
-              <Checkbox
-                checked={selectedAjustes.has(tipo.id)}
-                onCheckedChange={() => toggleAjuste(tipo.id)}
-                className="mt-0.5"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm">{tipo.nome}</p>
-                {tipo.descricao && (
-                  <p className="text-xs text-muted-foreground truncate">
-                    {tipo.descricao}
-                  </p>
-                )}
-              </div>
-            </label>
+              <p className="font-medium text-sm">{tipo.nome}</p>
+              {tipo.descricao && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {tipo.descricao}
+                </p>
+              )}
+            </button>
           ))}
 
           {!loadingTipos && tiposAjuste.length === 0 && (
@@ -178,7 +157,7 @@ export const AjusteFinoPanel = ({
         </div>
       </ScrollArea>
 
-      {/* Input de instrução livre */}
+      {/* Input de instrução */}
       <div className="border-t shrink-0">
         {/* Indicador de seleção */}
         {selecao && (
@@ -192,39 +171,37 @@ export const AjusteFinoPanel = ({
 
         <div className="px-4 py-3">
           <div className="flex gap-2">
-            <Input
+            <Textarea
               value={instrucaoLivre}
               onChange={(e) => setInstrucaoLivre(e.target.value)}
-              placeholder="Instrução adicional (opcional)..."
+              placeholder="Clique em um ajuste acima ou digite sua instrução..."
               disabled={isProcessing}
-              className="flex-1"
+              className="flex-1 min-h-[80px] resize-none"
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                   e.preventDefault();
                   handleEnviar();
                 }
               }}
             />
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-[10px] text-muted-foreground">
+              Ctrl+Enter para enviar
+            </p>
             <Button
-              size="icon"
+              size="sm"
               onClick={handleEnviar}
-              disabled={
-                isProcessing ||
-                (selectedAjustes.size === 0 && !instrucaoLivre.trim())
-              }
+              disabled={isProcessing || !instrucaoLivre.trim()}
             >
               {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
               ) : (
-                <Send className="h-4 w-4" />
+                <Send className="h-4 w-4 mr-1" />
               )}
+              Enviar
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            {selectedAjustes.size > 0
-              ? `${selectedAjustes.size} ajuste(s) selecionado(s)`
-              : "Selecione ajustes acima ou digite uma instrução"}
-          </p>
         </div>
       </div>
 
