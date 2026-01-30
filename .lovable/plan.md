@@ -1,106 +1,173 @@
 
 
-## Plano: Restaurar Exibicao das Sugestoes de Headlines (MentoradoHeadlinesList)
+## Plano: Separar Versao Admin e Usuario no Upload de Excel
 
-### Problema Identificado
+### Situacao Atual
 
-O componente `MentoradoHeadlinesList` foi removido da renderizacao do `MentoradoRoteirosView.tsx`. 
-O comentario na linha 62 diz: "MentoradoHeadlinesList removido - seleção agora é feita diretamente nos campos de headline"
+O sistema ja tem suporte tecnico para headlines globais (`is_global = true`), mas a interface mistura tudo:
 
-**Resultado:**
-- Quando voce usa `/m` para registrar uma headline, ela e salva no banco (`headlines_criadas`)
-- Porem NAO existe mais nenhum lugar na interface onde essas headlines sao exibidas
-- A secao "Ideias de Headlines" simplesmente sumiu
+- O toggle "Compartilhar com toda a equipe" so aparece **apos** o admin selecionar um arquivo
+- Nao ha uma separacao visual clara entre os modos
+- Usuarios nao entendem facilmente que existem headlines compartilhadas pela equipe
 
 ---
 
-### Solucao
+### Solucao Proposta
 
-Restaurar a importacao e renderizacao do `MentoradoHeadlinesList` no `MentoradoRoteirosView.tsx`.
+Criar duas abas claras no dialogo de upload:
 
----
+**Aba 1 - "Minhas Headlines"** (para todos)
+- Usuario ve apenas SEUS arquivos importados
+- Faz upload de arquivos que so ele ve
 
-### Onde Deve Aparecer
-
-Existem duas opcoes de posicionamento:
-
-**Opcao 1 - Sidebar (ao lado do checklist):**
-Adicionar abaixo do RoteiroChecklist, na barra lateral direita
-
-**Opcao 2 - Acima dos roteiros:**
-Mostrar a lista de headlines sugeridas logo antes da lista de roteiros, para facilitar copiar/usar
+**Aba 2 - "Headlines da Equipe"** (para todos lerem, so admin escreve)
+- Todos os usuarios veem os arquivos compartilhados pelo admin
+- APENAS admin ve o botao de "Upload Excel" nesta aba
+- Quando admin faz upload nesta aba, automaticamente `is_global = true`
 
 ---
 
-### Posicionamento Recomendado
+### Layout Visual
 
-Baseado na memoria do sistema e no fluxo de trabalho, a opcao mais pratica e colocar as sugestoes de headlines **abaixo do checklist lateral**, assim o usuario pode ver as ideias enquanto trabalha nos roteiros.
+```text
++----------------------------------------------------------+
+|  Upload de Excel com Headlines                            X |
+|----------------------------------------------------------|
+| [Minhas Headlines] [Headlines da Equipe]                   |
+|----------------------------------------------------------|
+|                                                            |
+|  Aba "Headlines da Equipe" (para usuario comum):          |
+|  +------------------------------------------------------+ |
+|  | [Arquivo] Headlines - Emagrecimento      (150)  [Eq] | |
+|  | [Arquivo] Headlines - Cristaos           (200)  [Eq] | |
+|  | [Arquivo] Headlines - Pets               (80)   [Eq] | |
+|  +------------------------------------------------------+ |
+|  Total: 430 headlines disponiveis da equipe               |
+|                                                            |
+|  Aba "Headlines da Equipe" (para ADMIN):                  |
+|  [Upload Excel para Equipe]  <- botao de upload           |
+|  +------------------------------------------------------+ |
+|  | [Arquivo] Headlines - Emagrecimento (150) [Eq] [X]   | |
+|  | [Arquivo] Headlines - Cristaos      (200) [Eq] [X]   | |
+|  +------------------------------------------------------+ |
+|                                                            |
++----------------------------------------------------------+
+```
 
 ---
 
 ### Arquivos a Modificar
 
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Restaurar import e adicionar renderizacao do MentoradoHeadlinesList |
+| Arquivo | Mudancas |
+|---------|----------|
+| `src/components/mentorados/ExcelUploadDialog.tsx` | Adicionar Tabs para separar "Minhas" vs "Equipe", logica condicional para admin |
+| `src/hooks/useUserHeadlinesExcel.ts` | Adicionar query separada para headlines globais e pessoais |
 
 ---
 
 ### Detalhes Tecnicos
 
-#### 1. Restaurar Import
+#### 1. Novo Hook: Separar Queries
 
 ```typescript
-// Linha 62 - descomentar/restaurar
-import { MentoradoHeadlinesList } from "./MentoradoHeadlinesList";
+// Headlines pessoais do usuario (nao globais)
+export const useMyHeadlinesExcel = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["my-headlines-excel", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_headlines_excel")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_global", false)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+};
+
+// Headlines globais (da equipe)
+export const useTeamHeadlinesExcel = () => {
+  return useQuery({
+    queryKey: ["team-headlines-excel"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_headlines_excel")
+        .select("*")
+        .eq("is_global", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+};
 ```
 
-#### 2. Adicionar Renderizacao
-
-Inserir o componente na sidebar, abaixo do RoteiroChecklist:
+#### 2. Interface com Tabs
 
 ```tsx
-{/* Na sidebar direita, após o RoteiroChecklist */}
-<MentoradoHeadlinesList 
-  mentoradoId={mentoradoId}
-/>
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+// Dentro do DialogContent:
+<Tabs defaultValue="minhas">
+  <TabsList className="grid w-full grid-cols-2">
+    <TabsTrigger value="minhas">Minhas Headlines</TabsTrigger>
+    <TabsTrigger value="equipe">Headlines da Equipe</TabsTrigger>
+  </TabsList>
+  
+  <TabsContent value="minhas">
+    {/* Area de upload pessoal */}
+    {/* Lista de arquivos proprios */}
+  </TabsContent>
+  
+  <TabsContent value="equipe">
+    {/* Area de upload - APENAS se isAdmin */}
+    {isAdmin && <UploadArea ... isGlobal={true} />}
+    
+    {/* Lista de arquivos da equipe */}
+    {teamFileGroups.map(...)}
+    
+    {/* Mensagem se nao for admin */}
+    {!isAdmin && teamHeadlines.length === 0 && (
+      <p>Nenhuma headline compartilhada pela equipe ainda.</p>
+    )}
+  </TabsContent>
+</Tabs>
 ```
 
-O componente ja existe e funciona:
-- Busca headlines da tabela `headlines_criadas` filtradas por `mentorado_id`
-- Mostra com cabecalho "Ideias de Headlines (N)"
-- Permite copiar e excluir headlines
-- So aparece se houver headlines para o mentorado
+#### 3. Logica de Upload
+
+Quando o upload for feito na aba "Equipe":
+- `is_global` sera automaticamente `true`
+- Apenas admins tem acesso a essa aba para upload
+
+Quando o upload for feito na aba "Minhas":
+- `is_global` sera `false`
+- Qualquer usuario pode fazer upload
 
 ---
 
-### Layout Final
+### Fluxo de Uso
 
-```text
-+------------------------------------------+-------------------+
-| ROTEIROS                                 | Checklist         |
-| +--------------------------------------+ | [ ] Headlines     |
-| | HEADLINE 01:                         | | [ ] Roteiros      |
-| | ...                                  | | [ ] Revisar       |
-| | ESTRUTURA 01:                        | | ...               |
-| | ...                                  | |                   |
-| +--------------------------------------+ |-------------------|
-|                                          | Ideias de         |
-|                                          | Headlines (3)     |
-|                                          | +-----------------+
-|                                          | | headline 1    X |
-|                                          | | headline 2    X |
-|                                          | | headline 3    X |
-|                                          | +-----------------+
-+------------------------------------------+-------------------+
-```
+**Usuario Comum:**
+1. Abre o dialogo de upload
+2. Ve aba "Minhas Headlines" - pode fazer upload pessoal
+3. Ve aba "Headlines da Equipe" - ve headlines compartilhadas pelo admin (sem botao de upload)
+
+**Admin:**
+1. Abre o dialogo de upload
+2. Aba "Minhas Headlines" - upload pessoal (so ele ve)
+3. Aba "Headlines da Equipe" - upload que TODOS os usuarios verao
 
 ---
 
 ### Consideracoes
 
-- O componente `MentoradoHeadlinesList` ja existe e esta funcional
-- Apenas precisa ser re-adicionado ao render da view
-- Nao requer mudancas no banco de dados ou hooks
-- O `/m` continua funcionando normalmente para registrar novas headlines
+- O toggle de "Compartilhar" sera removido - a aba define isso automaticamente
+- Na aba "Equipe", o admin ve botao de delete apenas para arquivos que ELE subiu
+- Badges visuais: "Meu" (azul) na aba pessoal, "Equipe" (amarelo/globo) na aba de equipe
+- Manter a query existente `useUserHeadlinesExcel` para uso no `HeadlinesRandomDialog` (que busca ambas)
 
