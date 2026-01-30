@@ -251,6 +251,42 @@ export type Database = {
         }
         Relationships: []
       }
+      check_roteiro_viral: {
+        Row: {
+          ativo: boolean | null
+          campo: string
+          created_at: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          ordem: number | null
+          regra_tipo: string
+          regra_valor: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          campo?: string
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          ordem?: number | null
+          regra_tipo?: string
+          regra_valor?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          campo?: string
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          ordem?: number | null
+          regra_tipo?: string
+          regra_valor?: string | null
+        }
+        Relationships: []
+      }
       comentarios_aulas: {
         Row: {
           aula_id: string

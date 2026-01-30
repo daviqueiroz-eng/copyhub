@@ -1,12 +1,15 @@
 
-## Plano: Implementar Check do Roteiro Viral
+## Plano: Implementar Check do Roteiro Viral ✅ CONCLUÍDO
 
-### Visao Geral
+### Status: Implementado
 
-Criar um sistema de verificacao automatica de roteiros virais onde:
-1. **Apenas administradores** podem cadastrar itens de check (regras/padroes) e como identifica-los
-2. O acesso de configuracao e feito clicando em "Revisar" no cronometro (item do checklist)
-3. Os checks aparecem ao lado de cada roteiro quando as regras nao estao sendo cumpridas
+O sistema de verificação automática de roteiros virais foi implementado com sucesso:
+1. ✅ Tabela `check_roteiro_viral` criada com RLS (apenas admin pode modificar)
+2. ✅ Hook `useCheckRoteiroViral.ts` para CRUD e função de verificação
+3. ✅ `CheckRoteiroViralDialog.tsx` para admin gerenciar checks
+4. ✅ `CheckRoteiroViralPanel.tsx` para mostrar checks que falharam
+5. ✅ Botão de config no item "Revisar" do checklist (apenas para admin)
+6. ✅ Painel de checks integrado ao lado de cada roteiro
 
 ---
 
