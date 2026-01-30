@@ -16,9 +16,9 @@ serve(async (req) => {
 
     console.log("Enviando para n8n insumo:", JSON.stringify(payload, null, 2));
 
-    // Enviar para n8n webhook de insumos (teste)
+    // Enviar para n8n webhook de insumos (produção)
     const n8nResponse = await fetch(
-      "https://madarawin.app.n8n.cloud/webhook-test/agente-ia-lovable-insumo",
+      "https://madarawin.app.n8n.cloud/webhook/agente-ia-lovable-insumo",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
