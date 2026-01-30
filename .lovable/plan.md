@@ -1,268 +1,293 @@
 
-## Plano: Implementar Check do Roteiro Viral ✅ CONCLUÍDO
 
-### Status: Implementado
+## Plano: Verificacao Inteligente com IA + Novo Layout do Check Viral
 
-O sistema de verificação automática de roteiros virais foi implementado com sucesso:
-1. ✅ Tabela `check_roteiro_viral` criada com RLS (apenas admin pode modificar)
-2. ✅ Hook `useCheckRoteiroViral.ts` para CRUD e função de verificação
-3. ✅ `CheckRoteiroViralDialog.tsx` para admin gerenciar checks
-4. ✅ `CheckRoteiroViralPanel.tsx` para mostrar checks que falharam
-5. ✅ Botão de config no item "Revisar" do checklist (apenas para admin)
-6. ✅ Painel de checks integrado ao lado de cada roteiro
+### Resumo das Mudancas
+
+O usuario identificou dois problemas:
+1. A descricao do check deveria ser usada por uma IA para verificar dinamicamente o roteiro, em vez de regras fixas
+2. O painel de checks ao lado do roteiro esta deformando o layout e ficando visualmente ruim
 
 ---
 
-### Layout do Check do Roteiro Viral
+### Problema 1: Verificacao Inteligente Baseada na Descricao
 
-Seguindo a imagem de referencia, os checks aparecerao ao lado de cada roteiro:
+**Situacao Atual:**
+- A `descricao` e apenas um texto informativo exibido como tooltip
+- A verificacao usa regras fixas: `contem`, `nao_contem`, `regex`, `mentorado_nome`
+- Exemplo: "nome do mentorado errado" usa regra fixa que busca primeiro nome
 
-```text
-+--------------------------------+     +----------------------+
-| HEADLINE 05:                   |     | Check do             |
-| X coisas incriveis...          |     | roteiro viral        |
-|--------------------------------|     |----------------------|
-| ESTRUTURA 05:                  |     | ○ faltou cta         |
-| Primeiro, seu gosto por        |     | ○ sem apresentacao   |
-| comida muda de verdade...      |     | ○ Nome do mentorado  |
-|                                |     |   errado             |
-|                   1139 chars   |     | ○ sem itensificador  |
-+--------------------------------+     +----------------------+
+**Solucao Proposta:**
+Adicionar um novo tipo de regra chamado `ia` (ou `inteligente`) que usa a descricao do check para que a IA analise o roteiro e determine se o criterio esta sendo cumprido.
+
+#### Fluxo da Verificacao Inteligente:
+
+1. Admin cadastra o check com:
+   - Nome: "Nome do mentorado errado"
+   - Tipo de regra: **Inteligente (IA)**
+   - Descricao: "ela vai verificar o nome do mentorado cadastrado e vai conferir se durante o roteiro, foi mencionado o nome de forma correta"
+
+2. Quando o usuario edita um roteiro, os checks com `regra_tipo = "ia"` sao verificados chamando uma edge function que:
+   - Recebe: headline, estrutura, nome do mentorado, e a descricao do check
+   - A IA analisa se o criterio da descricao esta sendo cumprido
+   - Retorna: `{ passa: boolean, motivo?: string }`
+
+#### Arquivos a Modificar:
+
+| Arquivo | Mudancas |
+|---------|----------|
+| `src/hooks/useCheckRoteiroViral.ts` | Adicionar tipo "ia" e funcao de verificacao assincrona |
+| `src/components/mentorados/CheckRoteiroViralDialog.tsx` | Adicionar opcao "Inteligente (IA)" no seletor de tipo de regra |
+| `supabase/functions/verificar-check-viral/index.ts` | **NOVA** - Edge function que usa IA para verificar o check |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Adicionar logica de verificacao assincrona para checks tipo IA |
+
+#### Nova Edge Function: verificar-check-viral
+
+```typescript
+// Recebe: headline, estrutura, mentoradoNome, descricaoCheck
+// Usa IA para determinar se o roteiro atende ao criterio descrito
+// Retorna: { passa: boolean, motivo?: string }
+
+const prompt = `
+Voce e um verificador de roteiros virais.
+
+MENTORADO: ${mentoradoNome}
+HEADLINE: ${headline}
+ESTRUTURA: ${estrutura}
+
+CRITERIO A VERIFICAR:
+"${descricaoCheck}"
+
+Analise se o roteiro ATENDE ao criterio descrito acima.
+Responda com JSON: { "passa": true/false, "motivo": "explicacao curta" }
+`;
 ```
 
 ---
 
-### Estrutura do Banco de Dados
+### Problema 2: Layout do Painel de Checks
 
-Nova tabela `check_roteiro_viral`:
+**Situacao Atual:**
+- O `CheckRoteiroViralPanel` aparece ao lado de cada roteiro com `flex gap-4`
+- Isso comprime o conteudo do roteiro e deforma o texto
+- Layout visualmente ruim, especialmente com varios checks
 
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | uuid | Identificador unico |
-| nome | text | Nome do check (ex: "faltou cta") |
-| descricao | text | Descricao do que o check verifica |
-| regra_tipo | text | Tipo de regra: "contem", "nao_contem", "regex", "mentorado_nome" |
-| regra_valor | text | Valor a verificar (ex: palavras-chave, padrao regex) |
-| campo | text | Campo a verificar: "headline", "estrutura", "ambos" |
-| ativo | boolean | Se o check esta ativo |
-| ordem | integer | Ordem de exibicao |
-| created_at | timestamp | Data de criacao |
+**Solucao Proposta:**
+Mover os checks para dentro da area do roteiro, abaixo da contagem de caracteres, de forma compacta e inline. Usar badges/chips em vez de um painel lateral.
 
----
+#### Novo Layout:
 
-### Tipos de Regras Suportadas
+```text
++--------------------------------------------------+
+| HEADLINE 01:                                      |
+| Os vicios nao suportam esses dois versiculos...   |
++--------------------------------------------------+
+| ESTRUTURA 01:                                     |
+| Os vicios nao suportam esses dois versiculos...   |
+|                                                   |
+| Voce ja sentiu que uma forca invisivel te protege |
+| na hora da tentacao? E isso que esses versiculos  |
+| fazem quando sao repetidos mentalmente com fe.    |
+|                                                   |
+|                                   1139 caracteres |
++--------------------------------------------------+
+| [!] Nome do mentorado errado  [!] Faltou CTA     | <-- chips/badges
++--------------------------------------------------+
+```
 
-1. **contem** - Texto deve conter determinadas palavras (para CTA, apresentacao, etc)
-2. **nao_contem** - Texto NAO deve conter determinadas palavras
-3. **regex** - Padrao regex para verificacoes mais complexas
-4. **mentorado_nome** - Verificar se o nome do mentorado aparece corretamente no texto
+#### Caracteristicas do Novo Layout:
 
----
+- **Badges/Chips compactos** em vez de painel lateral
+- **Inline abaixo do roteiro** - nao afeta a largura do texto
+- **Cor de alerta** (vermelho/amarelo) para indicar problema
+- **Tooltip** com descricao do check ao passar o mouse
+- **Clicavel** - futuramente pode abrir sugestao de correcao
 
-### Exemplos de Checks Pre-configurados
-
-| Nome | Regra Tipo | Regra Valor | Campo |
-|------|------------|-------------|-------|
-| "faltou cta" | contem | "segue, siga, compartilha, curte" | estrutura |
-| "sem apresentacao" | contem | "eu me chamo, meu nome, eu sou" | estrutura |
-| "Nome do mentorado errado" | mentorado_nome | - | estrutura |
-| "sem intensificador" | contem | "como nunca antes, de verdade, realmente" | estrutura |
-
----
-
-### Arquivos a Criar/Modificar
+#### Arquivos a Modificar:
 
 | Arquivo | Mudancas |
 |---------|----------|
-| **Migracao SQL** | Criar tabela `check_roteiro_viral` com RLS (apenas admin escreve) |
-| `src/hooks/useCheckRoteiroViral.ts` | Hook para CRUD dos checks (admin) e leitura (todos) |
-| `src/components/mentorados/CheckRoteiroViralDialog.tsx` | Dialog para admin gerenciar checks (abre pelo "Revisar") |
-| `src/components/mentorados/CheckRoteiroViralPanel.tsx` | Painel lateral que mostra checks nao cumpridos |
-| `src/components/mentorados/RoteiroChecklist.tsx` | Adicionar botao de config no item "Revisar" (apenas admin) |
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Integrar o painel de checks ao lado dos roteiros |
+| `src/components/mentorados/CheckRoteiroViralPanel.tsx` | Transformar em layout horizontal de badges |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Mover o painel para dentro do bloco do roteiro (abaixo do contador de caracteres) |
 
 ---
 
 ### Detalhes Tecnicos
 
-#### 1. Migracao SQL
+#### 1. Novo Tipo de Regra no Dialog
 
-```sql
-CREATE TABLE public.check_roteiro_viral (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  nome TEXT NOT NULL,
-  descricao TEXT,
-  regra_tipo TEXT NOT NULL DEFAULT 'contem', -- contem, nao_contem, regex, mentorado_nome
-  regra_valor TEXT, -- palavras separadas por virgula ou regex
-  campo TEXT NOT NULL DEFAULT 'estrutura', -- headline, estrutura, ambos
-  ativo BOOLEAN DEFAULT true,
-  ordem INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- RLS: Todos podem ler, apenas admin pode modificar
-ALTER TABLE public.check_roteiro_viral ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Todos podem ver checks"
-  ON public.check_roteiro_viral FOR SELECT
-  TO authenticated
-  USING (true);
-
-CREATE POLICY "Apenas admin pode criar checks"
-  ON public.check_roteiro_viral FOR INSERT
-  TO authenticated
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
-
-CREATE POLICY "Apenas admin pode atualizar checks"
-  ON public.check_roteiro_viral FOR UPDATE
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-
-CREATE POLICY "Apenas admin pode deletar checks"
-  ON public.check_roteiro_viral FOR DELETE
-  TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+Adicionar ao `REGRA_TIPOS`:
+```typescript
+const REGRA_TIPOS = [
+  { value: "contem", label: "Contem (palavras separadas por virgula)" },
+  { value: "nao_contem", label: "Nao contem" },
+  { value: "regex", label: "Expressao regular" },
+  { value: "mentorado_nome", label: "Nome do mentorado" },
+  { value: "ia", label: "Inteligente (IA)" },  // NOVO
+];
 ```
 
-#### 2. Hook useCheckRoteiroViral
+Quando o tipo for "ia", a descricao passa a ser **obrigatoria** e e ela que define o que a IA deve verificar.
+
+#### 2. Verificacao Assincrona para Checks IA
+
+Como a verificacao com IA e assincrona, precisamos:
+
+1. Verificar checks de regras fixas imediatamente (como hoje)
+2. Para checks tipo "ia", disparar verificacao em background
+3. Armazenar resultado em estado local
+4. Usar debounce para nao chamar a cada tecla
 
 ```typescript
-export interface CheckRoteiroViral {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  regra_tipo: 'contem' | 'nao_contem' | 'regex' | 'mentorado_nome';
-  regra_valor: string | null;
-  campo: 'headline' | 'estrutura' | 'ambos';
-  ativo: boolean;
-  ordem: number;
-  created_at: string;
-}
+// Estado para armazenar resultados de checks IA
+const [iaCheckResults, setIaCheckResults] = useState<Map<string, boolean>>(new Map());
 
-// Query para buscar todos os checks ativos
-// Mutations para CRUD (verificando role admin)
+// Debounce de 2 segundos apos parar de digitar
+useEffect(() => {
+  const checksIA = checksVirais.filter(c => c.regra_tipo === "ia");
+  if (checksIA.length === 0) return;
+  
+  const timer = setTimeout(() => {
+    checksIA.forEach(check => {
+      verificarCheckComIA(check, headline, estrutura, mentoradoNome)
+        .then(passa => {
+          setIaCheckResults(prev => new Map(prev).set(check.id, passa));
+        });
+    });
+  }, 2000);
+  
+  return () => clearTimeout(timer);
+}, [headline, estrutura, checksVirais]);
 ```
 
-#### 3. Funcao de Verificacao
+#### 3. Novo Layout do CheckRoteiroViralPanel
 
-```typescript
-const verificarCheck = (
-  check: CheckRoteiroViral,
-  headline: string,
-  estrutura: string,
-  mentoradoNome: string
-): boolean => {
-  const textoParaVerificar = check.campo === 'headline' 
-    ? headline 
-    : check.campo === 'estrutura' 
-      ? estrutura 
-      : `${headline} ${estrutura}`;
+```tsx
+export const CheckRoteiroViralPanel = ({ checks, className }: Props) => {
+  if (checks.length === 0) return null;
 
-  switch (check.regra_tipo) {
-    case 'contem':
-      // Verificar se ALGUMA das palavras aparece
-      const palavras = check.regra_valor?.split(',').map(p => p.trim().toLowerCase()) || [];
-      return palavras.some(p => textoParaVerificar.toLowerCase().includes(p));
-      
-    case 'nao_contem':
-      // Verificar se NENHUMA das palavras aparece
-      const palavrasProibidas = check.regra_valor?.split(',').map(p => p.trim().toLowerCase()) || [];
-      return !palavrasProibidas.some(p => textoParaVerificar.toLowerCase().includes(p));
-      
-    case 'regex':
-      const regex = new RegExp(check.regra_valor || '', 'i');
-      return regex.test(textoParaVerificar);
-      
-    case 'mentorado_nome':
-      // Verificar se nome do mentorado aparece (primeiro nome ou nome completo)
-      const primeiroNome = mentoradoNome.split(' ')[0].toLowerCase();
-      return textoParaVerificar.toLowerCase().includes(primeiroNome);
-      
-    default:
-      return true;
-  }
+  return (
+    <div className={cn("flex flex-wrap gap-2 mt-2", className)}>
+      {checks.map((check) => (
+        <div
+          key={check.id}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive/10 text-destructive border border-destructive/20"
+          title={check.descricao || undefined}
+        >
+          <AlertCircle className="h-3.5 w-3.5" />
+          <span className="text-xs font-medium">{check.nome}</span>
+        </div>
+      ))}
+    </div>
+  );
 };
 ```
 
-#### 4. Integracao no RoteiroChecklist - Botao de Config no "Revisar"
+#### 4. Integracao no MentoradoRoteirosView
+
+Mover o painel para DENTRO do bloco do roteiro, abaixo do contador de caracteres:
 
 ```tsx
-// No item "Revisar" do checklist
-{item.id === "revisar" && isAdmin && (
-  <Button
-    variant="ghost"
-    size="icon"
-    className="h-6 w-6"
-    onClick={() => setShowCheckViralDialog(true)}
-    title="Configurar checks do roteiro viral"
-  >
-    <Settings className="h-3.5 w-3.5" />
-  </Button>
-)}
-```
-
-#### 5. Painel de Checks ao Lado dos Roteiros
-
-No `MentoradoRoteirosView`, o painel aparecera entre o roteiro e o checklist (ou ao lado direito de cada roteiro individualmente):
-
-```tsx
-// Por roteiro - mostrar checks que falharam
-const checksQueFalharam = checksAtivos.filter(check => 
-  !verificarCheck(check, roteiro.headline, roteiro.estrutura, mentoradoNome)
-);
-
-{checksQueFalharam.length > 0 && (
-  <CheckRoteiroViralPanel 
-    checks={checksQueFalharam}
-    className="mt-4"
-  />
-)}
-```
-
----
-
-### Fluxo de Uso
-
-**Para Administrador:**
-1. Vai ate a pagina de roteiros de qualquer mentorado
-2. No checklist lateral, no item "Revisar", clica no icone de config (engrenagem)
-3. Abre o dialog de gerenciamento de checks
-4. Pode criar/editar/excluir/reordenar os checks
-5. Define regras como "contem palavras X" ou "nao contem Y"
-
-**Para Usuarios:**
-1. Ao editar roteiros, veem automaticamente os checks que falharam
-2. Cada roteiro mostra apenas os checks que NAO passaram
-3. Quando corrigem o texto, o check some automaticamente (reativo)
-
----
-
-### Design do CheckRoteiroViralPanel
-
-Layout visual inspirado na imagem de referencia:
-
-```tsx
-<div className="border rounded-xl p-4 bg-background">
-  <h4 className="font-bold text-center mb-4">
-    Check do<br/>roteiro viral
-  </h4>
-  <div className="space-y-3">
-    {checksQueFalharam.map(check => (
-      <div key={check.id} className="flex items-center gap-2 border rounded-lg p-3">
-        <div className="w-4 h-4 rounded-full border-2 border-current" />
-        <span className="text-sm font-medium">{check.nome}</span>
-      </div>
-    ))}
+{/* Estrutura */}
+<div className="mb-4">
+  <span className="font-poppins font-bold text-[#B8860B] text-base">
+    ESTRUTURA {String(ordem).padStart(2, "0")}:
+  </span>
+  <InlineSpellCheckEditor ... />
+  <div className="text-right text-xs text-muted-foreground mt-1">
+    {roteiro.estrutura?.length || 0} caracteres
   </div>
+  
+  {/* Checks que falharam - AGORA AQUI DENTRO */}
+  {checksQueFalharam.length > 0 && (
+    <CheckRoteiroViralPanel checks={checksQueFalharam} />
+  )}
 </div>
+
+{/* Remover o painel do flex lateral */}
 ```
+
+---
+
+### Edge Function: verificar-check-viral
+
+```typescript
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+serve(async (req) => {
+  // ... cors headers ...
+  
+  const { headline, estrutura, mentoradoNome, descricaoCheck, checkNome } = await req.json();
+  
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash-lite", // Modelo rapido e barato
+      messages: [
+        {
+          role: "system",
+          content: `Voce verifica se roteiros de video atendem a criterios especificos.
+Responda APENAS com JSON: { "passa": true/false, "motivo": "explicacao curta" }
+Seja rigoroso e objetivo.`
+        },
+        {
+          role: "user",
+          content: `MENTORADO: ${mentoradoNome}
+
+HEADLINE:
+${headline || "(vazio)"}
+
+ESTRUTURA:
+${estrutura || "(vazio)"}
+
+VERIFICAR SE ATENDE AO CRITERIO:
+"${descricaoCheck}"
+
+O roteiro atende a este criterio?`
+        }
+      ],
+      response_format: { type: "json_object" }
+    }),
+  });
+  
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  
+  try {
+    const result = JSON.parse(content);
+    return new Response(JSON.stringify(result), { headers: corsHeaders });
+  } catch {
+    return new Response(JSON.stringify({ passa: true, motivo: "Erro ao processar" }), { headers: corsHeaders });
+  }
+});
+```
+
+---
+
+### Resumo dos Arquivos
+
+| Arquivo | Acao | Descricao |
+|---------|------|-----------|
+| `supabase/functions/verificar-check-viral/index.ts` | CRIAR | Edge function que verifica check usando IA |
+| `src/hooks/useCheckRoteiroViral.ts` | MODIFICAR | Adicionar funcao de verificacao assincrona |
+| `src/components/mentorados/CheckRoteiroViralDialog.tsx` | MODIFICAR | Adicionar tipo "Inteligente (IA)" |
+| `src/components/mentorados/CheckRoteiroViralPanel.tsx` | MODIFICAR | Transformar em badges horizontais |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | MODIFICAR | Reposicionar painel e adicionar logica para checks IA |
 
 ---
 
 ### Consideracoes
 
-- Checks sao globais (nao por usuario) - todos veem os mesmos
-- Apenas admin pode criar/editar/excluir
-- Verificacao e feita em tempo real no frontend (reativo)
-- Quando roteiro passa em todos os checks, o painel nao aparece
-- Interface acessivel via checklist para manter fluxo de trabalho
+- Checks tipo "ia" tem custo de API (Gemini Flash Lite e barato mas nao e gratis)
+- Debounce de 2s evita chamadas excessivas
+- Checks de regras fixas continuam funcionando instantaneamente
+- O novo layout horizontal de badges nao afeta a largura do texto
+- Tooltip mostra a descricao completa do check
+- Futuramente: clicar no badge pode abrir sugestao de correcao
+
