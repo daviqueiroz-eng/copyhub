@@ -13,6 +13,47 @@ export interface UserHeadlineExcel {
   is_global: boolean;
 }
 
+// Headlines pessoais do usuário (não globais)
+export const useMyHeadlinesExcel = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["my-headlines-excel", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from("user_headlines_excel")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_global", false)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as UserHeadlineExcel[];
+    },
+    enabled: !!user?.id,
+  });
+};
+
+// Headlines globais (da equipe)
+export const useTeamHeadlinesExcel = () => {
+  return useQuery({
+    queryKey: ["team-headlines-excel"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_headlines_excel")
+        .select("*")
+        .eq("is_global", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as UserHeadlineExcel[];
+    },
+  });
+};
+
+// Hook combinado para uso onde precisa de ambas (ex: HeadlinesRandomDialog)
 export const useUserHeadlinesExcel = () => {
   const { user } = useAuth();
 

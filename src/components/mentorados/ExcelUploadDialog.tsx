@@ -9,11 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Upload, FileSpreadsheet, Trash2, Loader2, CheckCircle2, Globe, User } from "lucide-react";
 import * as XLSX from "xlsx";
-import { useImportExcelHeadlines, useUserHeadlinesExcel, useDeleteHeadlinesByFile } from "@/hooks/useUserHeadlinesExcel";
+import { 
+  useImportExcelHeadlines, 
+  useMyHeadlinesExcel, 
+  useTeamHeadlinesExcel,
+  useDeleteHeadlinesByFile 
+} from "@/hooks/useUserHeadlinesExcel";
 import { useUserRole } from "@/hooks/useAuth";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -62,25 +67,37 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
   const [isProcessing, setIsProcessing] = useState(false);
   const [sheetsInfo, setSheetsInfo] = useState<SheetInfo[]>([]);
   const [selectedSheets, setSelectedSheets] = useState<string[]>([]);
-  const [isGlobal, setIsGlobal] = useState(false);
+  const [activeTab, setActiveTab] = useState<"minhas" | "equipe">("minhas");
 
   const { user } = useAuth();
   const { data: userRole } = useUserRole();
   const isAdmin = userRole === "admin";
 
-  const { data: existingHeadlines = [] } = useUserHeadlinesExcel();
+  const { data: myHeadlines = [] } = useMyHeadlinesExcel();
+  const { data: teamHeadlines = [] } = useTeamHeadlinesExcel();
   const importMutation = useImportExcelHeadlines();
   const deleteMutation = useDeleteHeadlinesByFile();
 
-  // Agrupar headlines por arquivo
-  const fileGroups = existingHeadlines.reduce((acc, h) => {
-    const key = h.arquivo_origem || "Sem arquivo";
-    if (!acc[key]) acc[key] = { headlines: [], isGlobal: false, isOwn: false };
-    acc[key].headlines.push(h);
-    acc[key].isGlobal = h.is_global;
-    acc[key].isOwn = h.user_id === user?.id;
-    return acc;
-  }, {} as Record<string, { headlines: typeof existingHeadlines; isGlobal: boolean; isOwn: boolean }>);
+  // Agrupar headlines por arquivo - Pessoais
+  const myFileGroups = useMemo(() => {
+    return myHeadlines.reduce((acc, h) => {
+      const key = h.arquivo_origem || "Sem arquivo";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(h);
+      return acc;
+    }, {} as Record<string, typeof myHeadlines>);
+  }, [myHeadlines]);
+
+  // Agrupar headlines por arquivo - Equipe
+  const teamFileGroups = useMemo(() => {
+    return teamHeadlines.reduce((acc, h) => {
+      const key = h.arquivo_origem || "Sem arquivo";
+      if (!acc[key]) acc[key] = { headlines: [], isOwn: false };
+      acc[key].headlines.push(h);
+      acc[key].isOwn = h.user_id === user?.id;
+      return acc;
+    }, {} as Record<string, { headlines: typeof teamHeadlines; isOwn: boolean }>);
+  }, [teamHeadlines, user?.id]);
 
   // Processar arquivo Excel e extrair info de todas as abas
   const processExcelFile = async (selectedFile: File) => {
@@ -183,6 +200,7 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
   const handleImport = async () => {
     if (!file || selectedSheets.length === 0) return;
     
+    const isGlobal = activeTab === "equipe";
     const headlinesToImport: { headline: string; estrutura?: string; arquivo_origem: string; is_global?: boolean }[] = [];
     
     for (const sheet of sheetsInfo) {
@@ -192,7 +210,7 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
         headlinesToImport.push({
           headline,
           arquivo_origem: `${file.name} - ${sheet.name}`,
-          is_global: isAdmin && isGlobal,
+          is_global: isGlobal,
         });
       }
     }
@@ -203,7 +221,6 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
     setFile(null);
     setSheetsInfo([]);
     setSelectedSheets([]);
-    setIsGlobal(false);
   };
 
   const handleDeleteFile = async (fileName: string) => {
@@ -218,9 +235,140 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
       setFile(null);
       setSheetsInfo([]);
       setSelectedSheets([]);
-      setIsGlobal(false);
+      setActiveTab("minhas");
     }
   }, [open]);
+
+  // Componente de Upload Area
+  const UploadArea = () => (
+    <div
+      onDrop={handleDrop}
+      onDragOver={(e) => e.preventDefault()}
+      className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer"
+      onClick={() => document.getElementById("excel-upload")?.click()}
+    >
+      <input
+        id="excel-upload"
+        type="file"
+        accept=".xlsx,.xls"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">
+        Arraste um arquivo Excel ou clique para selecionar
+      </p>
+      {file && (
+        <p className="text-sm font-medium mt-2 text-primary">{file.name}</p>
+      )}
+    </div>
+  );
+
+  // Componente de seleção de abas do Excel
+  const SheetSelector = () => (
+    <>
+      {/* Loading */}
+      {isProcessing && (
+        <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Processando arquivo...
+        </div>
+      )}
+
+      {/* Seleção de Abas */}
+      {sheetsInfo.length > 0 && !isProcessing && (
+        <div className="space-y-3 border rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">
+              Abas do Excel ({sheetsInfo.length} encontradas)
+            </Label>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={selectAllSheets}
+                disabled={selectedSheets.length === sheetsInfo.length}
+              >
+                Todas
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={deselectAllSheets}
+                disabled={selectedSheets.length === 0}
+              >
+                Nenhuma
+              </Button>
+            </div>
+          </div>
+          
+          <ScrollArea className="h-[150px] border rounded-md">
+            <div className="p-2 space-y-1">
+              {sheetsInfo.map((sheet) => (
+                <div 
+                  key={sheet.name}
+                  className={`flex items-center gap-3 p-2 rounded-md transition-colors cursor-pointer ${
+                    selectedSheets.includes(sheet.name) 
+                      ? 'bg-primary/10' 
+                      : 'hover:bg-muted/50'
+                  }`}
+                  onClick={() => toggleSheet(sheet.name)}
+                >
+                  <Checkbox
+                    id={`sheet-${sheet.name}`}
+                    checked={selectedSheets.includes(sheet.name)}
+                    onCheckedChange={() => toggleSheet(sheet.name)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm">{sheet.name}</span>
+                    <span className="text-muted-foreground text-xs ml-2">
+                      ({sheet.headlines.length} headlines)
+                    </span>
+                  </div>
+                  {selectedSheets.includes(sheet.name) && (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          {/* Resumo das headlines selecionadas */}
+          {selectedSheets.length > 0 && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <span className="font-medium text-sm">
+                  Total: {totalSelectedHeadlines} headlines de {selectedSheets.length} aba(s)
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Botão de Importar */}
+      {sheetsInfo.length > 0 && selectedSheets.length > 0 && !isProcessing && (
+        <Button
+          onClick={handleImport}
+          disabled={importMutation.isPending}
+          className="w-full"
+        >
+          {importMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : activeTab === "equipe" ? (
+            <Globe className="h-4 w-4 mr-2" />
+          ) : (
+            <User className="h-4 w-4 mr-2" />
+          )}
+          {activeTab === "equipe"
+            ? `Compartilhar ${totalSelectedHeadlines} headlines com a equipe`
+            : `Importar ${totalSelectedHeadlines} headlines`
+          }
+        </Button>
+      )}
+    </>
+  );
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -232,197 +380,61 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-4">
-          {/* Área de upload */}
-          <div
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-            className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer"
-            onClick={() => document.getElementById("excel-upload")?.click()}
-          >
-            <input
-              id="excel-upload"
-              type="file"
-              accept=".xlsx,.xls"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Arraste um arquivo Excel ou clique para selecionar
-            </p>
-            {file && (
-              <p className="text-sm font-medium mt-2 text-primary">{file.name}</p>
-            )}
-          </div>
+        <Tabs 
+          value={activeTab} 
+          onValueChange={(v) => {
+            setActiveTab(v as "minhas" | "equipe");
+            // Limpar upload ao trocar de aba
+            setFile(null);
+            setSheetsInfo([]);
+            setSelectedSheets([]);
+          }}
+          className="flex-1 overflow-hidden flex flex-col"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="minhas" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Minhas Headlines
+            </TabsTrigger>
+            <TabsTrigger value="equipe" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              Headlines da Equipe
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Loading */}
-          {isProcessing && (
-            <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Processando arquivo...
-            </div>
-          )}
+          {/* Aba: Minhas Headlines */}
+          <TabsContent value="minhas" className="flex-1 overflow-hidden flex flex-col gap-4 mt-4">
+            {/* Área de upload */}
+            <UploadArea />
+            
+            <SheetSelector />
 
-          {/* Seleção de Abas */}
-          {sheetsInfo.length > 0 && !isProcessing && (
-            <div className="space-y-3 border rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">
-                  Abas do Excel ({sheetsInfo.length} encontradas)
-                </Label>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={selectAllSheets}
-                    disabled={selectedSheets.length === sheetsInfo.length}
-                  >
-                    Todas
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={deselectAllSheets}
-                    disabled={selectedSheets.length === 0}
-                  >
-                    Nenhuma
-                  </Button>
+            {/* Lista de arquivos pessoais */}
+            {Object.keys(myFileGroups).length > 0 && (
+              <div className="border rounded-lg">
+                <div className="bg-muted px-3 py-2 text-xs font-medium flex justify-between items-center">
+                  <span className="flex items-center gap-2">
+                    <User className="h-3.5 w-3.5" />
+                    Meus Arquivos
+                  </span>
+                  <span className="text-muted-foreground">
+                    {myHeadlines.length} headlines
+                  </span>
                 </div>
-              </div>
-              
-              <ScrollArea className="h-[180px] border rounded-md">
-                <div className="p-2 space-y-1">
-                  {sheetsInfo.map((sheet) => (
-                    <div 
-                      key={sheet.name}
-                      className={`flex items-center gap-3 p-2 rounded-md transition-colors cursor-pointer ${
-                        selectedSheets.includes(sheet.name) 
-                          ? 'bg-primary/10' 
-                          : 'hover:bg-muted/50'
-                      }`}
-                      onClick={() => toggleSheet(sheet.name)}
-                    >
-                      <Checkbox
-                        id={`sheet-${sheet.name}`}
-                        checked={selectedSheets.includes(sheet.name)}
-                        onCheckedChange={() => toggleSheet(sheet.name)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium text-sm">{sheet.name}</span>
-                        <span className="text-muted-foreground text-xs ml-2">
-                          ({sheet.headlines.length} headlines)
-                        </span>
-                      </div>
-                      {selectedSheets.includes(sheet.name) && (
-                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-
-              {/* Resumo das headlines selecionadas */}
-              {selectedSheets.length > 0 && (
-                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <span className="font-medium text-sm">
-                      Total: {totalSelectedHeadlines} headlines de {selectedSheets.length} aba(s)
-                    </span>
-                  </div>
-                  
-                  {/* Preview das primeiras headlines */}
-                  <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
-                    {sheetsInfo
-                      .filter(s => selectedSheets.includes(s.name))
-                      .slice(0, 3)
-                      .map(sheet => (
-                        <div key={sheet.name} className="truncate">
-                          • <span className="font-medium">{sheet.name}</span>: "{sheet.headlines[0]?.substring(0, 50)}..."
+                <ScrollArea className="max-h-32">
+                  <div className="p-2 space-y-1">
+                    {Object.entries(myFileGroups).map(([fileName, headlines]) => (
+                      <div
+                        key={fileName}
+                        className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileSpreadsheet className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate">{fileName}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            ({headlines.length})
+                          </span>
                         </div>
-                      ))}
-                    {selectedSheets.length > 3 && (
-                      <div className="text-muted-foreground">
-                        ... e mais {selectedSheets.length - 3} aba(s)
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Toggle de Compartilhamento (apenas admin) */}
-          {isAdmin && sheetsInfo.length > 0 && selectedSheets.length > 0 && !isProcessing && (
-            <div className="flex items-center gap-3 p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
-              <Switch 
-                id="global-switch"
-                checked={isGlobal}
-                onCheckedChange={setIsGlobal}
-              />
-              <Label htmlFor="global-switch" className="flex items-center gap-2 cursor-pointer">
-                <Globe className="h-4 w-4 text-amber-600" />
-                <span className="text-sm font-medium">Compartilhar com toda a equipe</span>
-              </Label>
-            </div>
-          )}
-
-          {/* Botão de Importar */}
-          {sheetsInfo.length > 0 && selectedSheets.length > 0 && !isProcessing && (
-            <Button
-              onClick={handleImport}
-              disabled={importMutation.isPending}
-              className="w-full"
-            >
-              {importMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                isGlobal && isAdmin ? <Globe className="h-4 w-4 mr-2" /> : null
-              )}
-              {isGlobal && isAdmin 
-                ? `Compartilhar ${totalSelectedHeadlines} headlines com a equipe`
-                : `Importar ${totalSelectedHeadlines} headlines`
-              }
-            </Button>
-          )}
-
-          {/* Lista de arquivos já importados */}
-          {Object.keys(fileGroups).length > 0 && (
-            <div className="border rounded-lg">
-              <div className="bg-muted px-3 py-2 text-xs font-medium flex justify-between items-center">
-                <span>Arquivos Importados</span>
-                <span className="text-muted-foreground">
-                  {existingHeadlines.length} headlines total
-                </span>
-              </div>
-              <ScrollArea className="max-h-40">
-                <div className="p-2 space-y-1">
-                  {Object.entries(fileGroups).map(([fileName, group]) => (
-                    <div
-                      key={fileName}
-                      className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted/50"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FileSpreadsheet className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm truncate">{fileName}</span>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          ({group.headlines.length})
-                        </span>
-                        {group.isGlobal && (
-                          <Badge variant="secondary" className="text-xs shrink-0">
-                            <Globe className="h-3 w-3 mr-1" />
-                            Equipe
-                          </Badge>
-                        )}
-                        {!group.isOwn && !group.isGlobal && (
-                          <Badge variant="outline" className="text-xs shrink-0">
-                            <User className="h-3 w-3 mr-1" />
-                            De outro usuário
-                          </Badge>
-                        )}
-                      </div>
-                      {group.isOwn && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -432,14 +444,95 @@ export const ExcelUploadDialog = ({ open, onClose }: ExcelUploadDialogProps) => 
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
-                      )}
-                    </div>
-                  ))}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Aba: Headlines da Equipe */}
+          <TabsContent value="equipe" className="flex-1 overflow-hidden flex flex-col gap-4 mt-4">
+            {/* Área de upload - APENAS ADMIN */}
+            {isAdmin ? (
+              <>
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Globe className="h-4 w-4 text-amber-600" />
+                    <span className="font-medium text-amber-700 dark:text-amber-400">
+                      Modo Admin: Headlines serão compartilhadas com toda a equipe
+                    </span>
+                  </div>
                 </div>
-              </ScrollArea>
-            </div>
-          )}
-        </div>
+                <UploadArea />
+                <SheetSelector />
+              </>
+            ) : (
+              <div className="bg-muted/50 rounded-lg p-4 text-center text-sm text-muted-foreground">
+                <Globe className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Apenas administradores podem adicionar headlines para a equipe.</p>
+                <p className="text-xs mt-1">Você pode visualizar e usar as headlines compartilhadas abaixo.</p>
+              </div>
+            )}
+
+            {/* Lista de arquivos da equipe */}
+            {Object.keys(teamFileGroups).length > 0 ? (
+              <div className="border rounded-lg">
+                <div className="bg-amber-500/10 px-3 py-2 text-xs font-medium flex justify-between items-center">
+                  <span className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                    <Globe className="h-3.5 w-3.5" />
+                    Arquivos da Equipe
+                  </span>
+                  <span className="text-muted-foreground">
+                    {teamHeadlines.length} headlines
+                  </span>
+                </div>
+                <ScrollArea className="max-h-40">
+                  <div className="p-2 space-y-1">
+                    {Object.entries(teamFileGroups).map(([fileName, group]) => (
+                      <div
+                        key={fileName}
+                        className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileSpreadsheet className="h-4 w-4 text-amber-600 shrink-0" />
+                          <span className="text-sm truncate">{fileName}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            ({group.headlines.length})
+                          </span>
+                          <Badge variant="secondary" className="text-xs shrink-0 bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                            <Globe className="h-3 w-3 mr-1" />
+                            Equipe
+                          </Badge>
+                        </div>
+                        {/* Apenas o admin que fez upload pode deletar */}
+                        {group.isOwn && isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteFile(fileName)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            ) : (
+              !isAdmin && (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  <FileSpreadsheet className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                  <p>Nenhuma headline compartilhada pela equipe ainda.</p>
+                </div>
+              )
+            )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
