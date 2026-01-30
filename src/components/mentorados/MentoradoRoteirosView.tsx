@@ -68,7 +68,7 @@ import { SelectionEditDialog } from "./SelectionEditDialog";
 import { BulkProgressPanel, BulkProgressState } from "./BulkProgressPanel";
 import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
 import { CheckRoteiroViralPanel } from "./CheckRoteiroViralPanel";
-import { useCheckRoteiroViralAtivos, verificarCheck } from "@/hooks/useCheckRoteiroViral";
+import { useCheckRoteiroViralAtivos, verificarCheck, verificarCheckComIA, CheckRoteiroViral } from "@/hooks/useCheckRoteiroViral";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
 
@@ -265,6 +265,11 @@ export const MentoradoRoteirosView = ({
   
   // Hook para checks do roteiro viral
   const { data: checksVirais = [] } = useCheckRoteiroViralAtivos();
+  
+  // Estado para resultados de verificação IA por roteiro
+  // Chave: "roteiroKey:checkId", valor: { passa, motivo, loading }
+  const [iaCheckResults, setIaCheckResults] = useState<Map<string, { passa: boolean; motivo?: string; loading?: boolean }>>(new Map());
+  const iaCheckDebounceRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Buscar categorias do avatar do mentorado atual
   const currentMentorado = mentorados.find(m => m.id === mentoradoId);
@@ -717,6 +722,86 @@ export const MentoradoRoteirosView = ({
     
     return () => clearInterval(checkInactivity);
   }, [timers]);
+
+  // Verificação assíncrona de checks IA - com debounce de 2 segundos
+  useEffect(() => {
+    const checksIA = checksVirais.filter(c => c.regra_tipo === "ia" && c.descricao);
+    if (checksIA.length === 0) return;
+    
+    // Para cada roteiro da guia ativa, verificar os checks IA
+    const guiaAtivaConfig = guias.find(g => g.numero === guiaAtiva);
+    if (!guiaAtivaConfig || guiaAtivaConfig.isOverdelivery) return;
+    
+    // Função para verificar um check específico para um roteiro
+    const verificarCheckIA = async (key: string, check: CheckRoteiroViral) => {
+      const roteiro = roteirosLocais.get(key);
+      if (!roteiro || (!roteiro.headline?.trim() && !roteiro.estrutura?.trim())) {
+        return; // Sem conteúdo, não verificar
+      }
+      
+      const resultKey = `${key}:${check.id}`;
+      
+      // Marcar como carregando
+      setIaCheckResults(prev => {
+        const newMap = new Map(prev);
+        newMap.set(resultKey, { passa: true, loading: true });
+        return newMap;
+      });
+      
+      try {
+        const resultado = await verificarCheckComIA(
+          check,
+          roteiro.headline || "",
+          roteiro.estrutura || "",
+          mentoradoNome
+        );
+        
+        setIaCheckResults(prev => {
+          const newMap = new Map(prev);
+          newMap.set(resultKey, { passa: resultado.passa, motivo: resultado.motivo, loading: false });
+          return newMap;
+        });
+      } catch (error) {
+        console.error("Erro ao verificar check IA:", error);
+        setIaCheckResults(prev => {
+          const newMap = new Map(prev);
+          newMap.set(resultKey, { passa: true, loading: false });
+          return newMap;
+        });
+      }
+    };
+    
+    // Debounce por roteiro
+    for (let ordem = 1; ordem <= guiaAtivaConfig.quantidade; ordem++) {
+      const key = `${guiaAtiva}-${ordem}`;
+      const roteiro = roteirosLocais.get(key);
+      
+      // Se não tem conteúdo, pular
+      if (!roteiro || (!roteiro.headline?.trim() && !roteiro.estrutura?.trim())) {
+        continue;
+      }
+      
+      // Cancelar timer anterior para este roteiro
+      const existingTimer = iaCheckDebounceRef.current.get(key);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+      
+      // Novo timer - 2 segundos de debounce
+      const timer = setTimeout(() => {
+        checksIA.forEach(check => {
+          verificarCheckIA(key, check);
+        });
+      }, 2000);
+      
+      iaCheckDebounceRef.current.set(key, timer);
+    }
+    
+    // Cleanup
+    return () => {
+      iaCheckDebounceRef.current.forEach(timer => clearTimeout(timer));
+    };
+  }, [roteirosLocais, checksVirais, guiaAtiva, guias, mentoradoNome]);
 
   const handleChange = useCallback((
     guiaNumero: number,
@@ -2167,17 +2252,38 @@ export const MentoradoRoteirosView = ({
                         <div className="text-right text-xs text-muted-foreground mt-1">
                           {roteiro.estrutura?.length || 0} caracteres
                         </div>
+                        
+                        {/* Painel de checks do roteiro viral - agora inline como badges */}
+                        {(() => {
+                          // Criar um mapa só com resultados deste roteiro
+                          const roteiroIaResults = new Map<string, { passa: boolean; motivo?: string; loading?: boolean }>();
+                          checksVirais.forEach(check => {
+                            if (check.regra_tipo === "ia") {
+                              const resultKey = `${key}:${check.id}`;
+                              const result = iaCheckResults.get(resultKey);
+                              if (result) {
+                                roteiroIaResults.set(check.id, result);
+                              }
+                            }
+                          });
+                          
+                          // Checks fixos que falharam + checks IA (que serão filtrados pelo panel)
+                          const checksParaMostrar = checksQueFalharam.filter(c => c.regra_tipo !== "ia");
+                          const checksIA = checksVirais.filter(c => c.regra_tipo === "ia");
+                          const todosChecks = [...checksParaMostrar, ...checksIA];
+                          
+                          if (todosChecks.length === 0) return null;
+                          
+                          return (
+                            <CheckRoteiroViralPanel 
+                              checks={todosChecks}
+                              iaResults={roteiroIaResults}
+                            />
+                          );
+                        })()}
                       </div>
                       
                       </div> {/* Fim do conteúdo principal flex-1 */}
-                      
-                      {/* Painel de checks do roteiro viral */}
-                      {checksQueFalharam.length > 0 && (
-                        <CheckRoteiroViralPanel 
-                          checks={checksQueFalharam}
-                          className="hidden sm:block sticky top-8 self-start"
-                        />
-                      )}
                       
                     </div>
                     
