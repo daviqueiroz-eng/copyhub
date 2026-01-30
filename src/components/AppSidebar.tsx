@@ -1,9 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
-  MessageSquare,
   Users,
-  Sparkles,
-  FileText,
   ClipboardCheck,
   GraduationCap,
   Calendar,
@@ -11,9 +8,7 @@ import {
   UserCog,
   BarChart3,
   Zap,
-  LayoutDashboard,
   CheckSquare,
-  Video,
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,14 +25,9 @@ import { Badge } from "@/components/ui/badge";
 import { useAtividadesNaoVisualizadas } from "@/hooks/useAtividadesGerais";
 
 const menuItems = [
-  { title: "Mural", url: "/", icon: MessageSquare },
-  { title: "Dash Geral", url: "/dash-geral", icon: LayoutDashboard },
   { title: "Acompanhamento", url: "/acompanhamento", icon: BarChart3 },
   { title: "Meus Mentorados", url: "/mentorados", icon: Users },
   { title: "Core Manager", url: "/core-manager", icon: CheckSquare },
-  { title: "Instagram Reels", url: "/instagram-reels", icon: Video },
-  { title: "Banco de Prompts", url: "/prompts", icon: Sparkles },
-  { title: "Planilhas Importantes", url: "/headlines", icon: FileText },
   { title: "Teste de Conhecimento", url: "/testes", icon: ClipboardCheck },
   { title: "Treinamentos", url: "/treinamentos", icon: GraduationCap },
   { title: "Atividades", url: "/modo-flow", icon: Zap },

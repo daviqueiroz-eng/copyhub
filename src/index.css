@@ -40,7 +40,7 @@ All colors MUST be HSL.
 
     --sidebar-background: 240 10% 3.9%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 238 76% 62%;
+    --sidebar-primary: 0 0% 100%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 6% 10%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
@@ -90,7 +90,7 @@ All colors MUST be HSL.
 
     --sidebar-background: 240 10% 3.9%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 238 76% 62%;
+    --sidebar-primary: 0 0% 100%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 6% 10%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
