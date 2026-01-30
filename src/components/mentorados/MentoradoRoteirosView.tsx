@@ -64,7 +64,7 @@ import { TipoRoteiroDialog, HeadlineComTipo } from "./TipoRoteiroDialog";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
 import { TeleprompterDialog } from "./TeleprompterDialog";
-import { RoteiroInlineChat } from "./RoteiroInlineChat";
+import { SelectionEditDialog } from "./SelectionEditDialog";
 import { BulkProgressPanel, BulkProgressState } from "./BulkProgressPanel";
 import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
 
@@ -247,6 +247,16 @@ export const MentoradoRoteirosView = ({
   // Estado para geração em massa com painel lateral
   const [bulkProgress, setBulkProgress] = useState<BulkProgressState | null>(null);
   const [bulkHeadlines, setBulkHeadlines] = useState<Array<{ key: string; headline: string }>>([]);
+  
+  // Estado para edição por seleção de texto
+  const [selectionEdit, setSelectionEdit] = useState<{
+    open: boolean;
+    text: string;
+    campo: "headline" | "estrutura";
+    roteiroKey: string;
+    headline: string;
+    estrutura: string;
+  } | null>(null);
   
   // Hook para inteligência global
   const { data: inteligenciaGlobal } = useInteligenciaGlobal();
@@ -2074,6 +2084,24 @@ export const MentoradoRoteirosView = ({
                           }}
                           onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "headline")}
                           onBlur={() => handleFieldBlur(guiaAtiva, ordem, "headline")}
+                          onMouseUp={(e) => {
+                            const target = e.currentTarget;
+                            const start = target.selectionStart;
+                            const end = target.selectionEnd;
+                            if (start !== end && end - start > 0) {
+                              const selectedText = target.value.substring(start, end);
+                              if (selectedText.trim().length > 0) {
+                                setSelectionEdit({
+                                  open: true,
+                                  text: selectedText,
+                                  campo: "headline",
+                                  roteiroKey: key,
+                                  headline: roteiro.headline,
+                                  estrutura: roteiro.estrutura,
+                                });
+                              }
+                            }
+                          }}
                           placeholder="Digite a headline... (use / para comandos)"
                           className="text-[15px] min-h-[28px] mt-1"
                           errors={getErrorsForField(guiaAtiva, ordem, "headline")}
@@ -2099,6 +2127,24 @@ export const MentoradoRoteirosView = ({
                             const target = e.currentTarget;
                             cursorPositionRef.current.set(key, target.selectionStart || 0);
                           }}
+                          onMouseUp={(e) => {
+                            const target = e.currentTarget;
+                            const start = target.selectionStart;
+                            const end = target.selectionEnd;
+                            if (start !== end && end - start > 0) {
+                              const selectedText = target.value.substring(start, end);
+                              if (selectedText.trim().length > 0) {
+                                setSelectionEdit({
+                                  open: true,
+                                  text: selectedText,
+                                  campo: "estrutura",
+                                  roteiroKey: key,
+                                  headline: roteiro.headline,
+                                  estrutura: roteiro.estrutura,
+                                });
+                              }
+                            }
+                          }}
                           placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                           className="text-[14px] min-h-[60px] mt-1"
                           errors={getErrorsForField(guiaAtiva, ordem, "estrutura")}
@@ -2111,18 +2157,6 @@ export const MentoradoRoteirosView = ({
                         </div>
                       </div>
 
-                      {/* Chat inline - aparece se estrutura tem conteúdo */}
-                      {roteiro.estrutura?.trim() && (
-                        <RoteiroInlineChat
-                          roteiroKey={key}
-                          headline={roteiro.headline}
-                          estrutura={roteiro.estrutura}
-                          onUpdate={(h, e) => {
-                            handleChange(guiaAtiva, ordem, "headline", h);
-                            handleChange(guiaAtiva, ordem, "estrutura", e);
-                          }}
-                        />
-                      )}
 
                       {/* Separator line */}
                       {ordem < guiaAtivaConfig.quantidade && (
@@ -2562,7 +2596,24 @@ export const MentoradoRoteirosView = ({
         />
       )}
 
-      {/* Chat inline integrado nos roteiros - RoteiroRevisaoDialog removido */}
+      {/* Dialog de edição por seleção de texto */}
+      {selectionEdit && (
+        <SelectionEditDialog
+          open={selectionEdit.open}
+          onOpenChange={(open) => {
+            if (!open) setSelectionEdit(null);
+          }}
+          selectedText={selectionEdit.text}
+          campo={selectionEdit.campo}
+          headline={selectionEdit.headline}
+          estrutura={selectionEdit.estrutura}
+          onUpdate={(h, e) => {
+            const [guia, ordem] = selectionEdit.roteiroKey.split("-").map(Number);
+            handleChange(guia, ordem, "headline", h);
+            handleChange(guia, ordem, "estrutura", e);
+          }}
+        />
+      )}
     </div>
   );
 };
