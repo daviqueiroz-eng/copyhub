@@ -1,179 +1,202 @@
 
 
-## Plano: Configurar Tipos de Chat para o Chat de Revisao
+## Plano: Integrar Chat de Revisao Inline nos Roteiros
 
 ### Visao Geral
 
-Criar um sistema de tipos configuráveis para o "Chat de Revisao", similar ao que já existe para o "Ajuste Fino". O usuário poderá escolher diferentes estilos/comportamentos para o assistente de revisão, cada um com seu próprio prompt de sistema.
+Remover o "Modo Revisar" separado (RoteiroRevisaoDialog como dialog full-screen) e integrar o chat diretamente abaixo de cada roteiro que tem texto na estrutura. O layout sera similar a imagem de referencia, com o campo de input estilo Claude/Lovable.
 
 ---
 
-### Layout Proposto (Input do Chat)
+### Layout Proposto (Por Roteiro)
 
 ```text
 +--------------------------------------------------+
-|  [Mensagens do chat...]                          |
+| ○  HEADLINE 05:                                  |
+| X coisas incríveis que vão acontecer...          |
++--------------------------------------------------+
+| ESTRUTURA 05:                                    |
+|                                                  |
+| Primeiro, seu gosto por comida muda de verdade.. |
+| [textarea expandida com scroll proprio]           |
+|                                                  |
+|                                           🔴 2   |
+|                                  1139 caracteres |
 +--------------------------------------------------+
 | +------------------------------------------+     |
-| | Digite sua instrução...                  |     |
+| | Responder...                             |     |
 | +------------------------------------------+     |
 |                                                  |
-| [+]               [Tipo de Chat v] [>]           |
+| [+] [Clock]               [Sonnet 4.5 v] [>]     |
 |                                                  |
 +--------------------------------------------------+
 ```
 
-O botão "Tipo de Chat" abrirá um dropdown/popover para:
-- Selecionar um tipo existente
-- Gerenciar tipos (adicionar, editar, excluir)
+O chat so aparece quando:
+- A estrutura tem texto (nao esta vazia)
 
 ---
 
-### Estrutura do Banco de Dados
+### Arquivos a Modificar
 
-Nova tabela `tipos_chat_revisao`:
-
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| id | uuid | Identificador único |
-| nome | text | Nome do tipo (ex: "Padrão", "Objetivo", "Criativo") |
-| descricao | text | Descrição curta do comportamento |
-| prompt_sistema | text | Prompt de sistema para a IA |
-| user_id | uuid | Referência ao usuário |
-| created_at | timestamp | Data de criação |
-
----
-
-### Tipos Padrão Sugeridos
-
-1. **Padrão** - Comportamento atual (faz apenas o que é pedido)
-2. **Objetivo** - Foco em clareza e concisão
-3. **Criativo** - Sugere melhorias e variações
-4. **Correção** - Foca em gramática e ortografia
-
----
-
-### Arquivos a Criar/Modificar
-
-| Arquivo | Mudanças |
+| Arquivo | Mudancas |
 |---------|----------|
-| **Migração SQL** | Criar tabela `tipos_chat_revisao` com RLS |
-| `src/hooks/useTiposChatRevisao.ts` | Hook para CRUD dos tipos de chat |
-| `src/components/mentorados/TiposChatDialog.tsx` | Dialog para gerenciar tipos (similar a TiposAjusteDialog) |
-| `src/components/mentorados/RoteiroRevisaoDialog.tsx` | Adicionar seletor de tipo no input do chat |
-| `supabase/functions/revisar-roteiro/index.ts` | Receber e usar o prompt do tipo selecionado |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Integrar chat inline abaixo de cada roteiro com estrutura preenchida |
+| `src/components/mentorados/RoteiroInlineChat.tsx` | **NOVO** - Componente de chat inline inspirado no AjusteFinoPanel |
+| `src/components/mentorados/RoteiroChecklist.tsx` | Remover ou ajustar callback `onRevisarPlay` |
 
 ---
 
-### Detalhes Técnicos
+### Detalhes Tecnicos
 
-#### 1. Migração SQL
+#### 1. Novo Componente: RoteiroInlineChat.tsx
 
-```sql
-CREATE TABLE public.tipos_chat_revisao (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  nome text NOT NULL,
-  descricao text,
-  prompt_sistema text,
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at timestamp with time zone DEFAULT now()
-);
-
--- RLS
-ALTER TABLE public.tipos_chat_revisao ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Usuários podem ver seus tipos de chat"
-  ON public.tipos_chat_revisao FOR SELECT
-  TO authenticated
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Usuários podem criar tipos de chat"
-  ON public.tipos_chat_revisao FOR INSERT
-  TO authenticated
-  WITH CHECK (user_id = auth.uid());
-
--- ... demais políticas
-```
-
-#### 2. Hook useTiposChatRevisao
-
-```typescript
-export interface TipoChatRevisao {
-  id: string;
-  nome: string;
-  descricao: string | null;
-  prompt_sistema: string | null;
-  user_id: string;
-  created_at: string;
-}
-
-export const useTiposChatRevisao = () => {
-  // Similar ao useTiposAjuste
-  // Query para buscar tipos do usuário
-};
-```
-
-#### 3. Seletor no Chat de Revisão
+Componente compacto de chat para cada roteiro, inspirado no AjusteFinoPanel:
 
 ```tsx
-// Estado para tipo selecionado
-const [selectedTipoChat, setSelectedTipoChat] = useState<string | null>(null);
-
-// No input area, adicionar botão com popover
-<Popover>
-  <PopoverTrigger asChild>
-    <Button variant="ghost" size="sm">
-      {tipoAtivo?.nome || "Padrão"}
-      <ChevronDown className="h-4 w-4 ml-1" />
-    </Button>
-  </PopoverTrigger>
-  <PopoverContent>
-    {tiposChatRevisao.map(tipo => (
-      <button onClick={() => setSelectedTipoChat(tipo.id)}>
-        {tipo.nome}
-      </button>
-    ))}
-    <Separator />
-    <button onClick={() => setShowTiposChatDialog(true)}>
-      Gerenciar
-    </button>
-  </PopoverContent>
-</Popover>
+interface RoteiroInlineChatProps {
+  roteiroKey: string;
+  headline: string;
+  estrutura: string;
+  onUpdate: (headline: string, estrutura: string) => void;
+}
 ```
 
-#### 4. Edge Function - Receber Prompt Customizado
+**Caracteristicas:**
+- Input estilo Claude (textarea + botoes abaixo)
+- Botao "+" para tipos de ajuste
+- Botao de historico (clock) - placeholder
+- Seletor de modelo/tipo de chat
+- Botao enviar
+- Mensagens aparecem acima do input (colapsavel)
+- Chama edge function `revisar-roteiro` existente
 
-```typescript
-// revisar-roteiro/index.ts
-const { headline, estrutura, mensagem, historico, selecao, promptSistema } = await req.json();
+#### 2. Integracao no MentoradoRoteirosView
 
-// Usar prompt customizado ou padrão
-const systemPrompt = promptSistema || SYSTEM_PROMPT_PADRAO;
+Adicionar o chat inline apos cada bloco de estrutura:
 
-const messages = [
-  { role: "system", content: systemPrompt },
-  // ... resto
-];
+```tsx
+{/* Estrutura */}
+<div className="mb-4">
+  <span className="font-poppins font-bold text-[#B8860B] text-base">
+    ESTRUTURA {String(ordem).padStart(2, "0")}:
+  </span>
+  <InlineSpellCheckEditor ... />
+  <div className="text-right text-xs text-muted-foreground mt-1">
+    {roteiro.estrutura?.length || 0} caracteres
+  </div>
+</div>
+
+{/* Chat inline - aparece se estrutura tem conteudo */}
+{roteiro.estrutura?.trim() && (
+  <RoteiroInlineChat
+    roteiroKey={key}
+    headline={roteiro.headline}
+    estrutura={roteiro.estrutura}
+    onUpdate={(h, e) => {
+      handleChange(guiaAtiva, ordem, "headline", h);
+      handleChange(guiaAtiva, ordem, "estrutura", e);
+    }}
+  />
+)}
 ```
+
+#### 3. Design do Chat Inline
+
+Sera compacto e integrado:
+- Fundo levemente diferenciado (`bg-muted/30`)
+- Altura inicial minima (~120px)
+- Mensagens colapsaveis (mostrar ultimas 2 por padrao)
+- Input sempre visivel
+
+#### 4. Remocao/Ajuste do Modo Revisar Separado
+
+**Opcao A - Manter RoteiroRevisaoDialog mas nao usar:**
+- Remover callback `onRevisarPlay` do checklist
+- Comentar/remover estado `showRevisaoDialog`
+
+**Opcao B - Remover completamente:**
+- Deletar RoteiroRevisaoDialog.tsx
+- Remover imports e estados relacionados
+
+**Recomendacao:** Opcao A inicialmente (mais seguro), depois limpar se funcionar bem.
 
 ---
 
 ### Fluxo de Uso
 
-1. Usuário abre Chat de Revisão
-2. Por padrão, usa o tipo "Padrão" (prompt atual)
-3. Pode clicar no seletor de tipo para:
-   - Escolher outro tipo cadastrado
-   - Acessar "Gerenciar" para criar/editar tipos
-4. Ao enviar mensagem, o prompt do tipo selecionado é enviado para a edge function
-5. A IA responde de acordo com o comportamento configurado
+1. Usuario edita roteiros normalmente
+2. Quando estrutura tem texto, chat aparece abaixo
+3. Usuario pode pedir ajustes diretamente ali
+4. Respostas da IA atualizam o roteiro automaticamente
+5. Historico de mensagens fica visivel inline
 
 ---
 
-### Considerações
+### Estados Necessarios por Roteiro
 
-- O tipo selecionado é mantido por sessão (não persistido)
-- Criar tipo "Padrão" ao primeiro uso se não houver nenhum
-- Permitir editar o prompt de sistema de cada tipo
-- O botão "+" (ajustes rápidos) pode ser mantido separado do seletor de tipo
+```tsx
+// Mensagens por roteiro (Map<key, Message[]>)
+const [messagesPerRoteiro, setMessagesPerRoteiro] = useState<Map<string, Message[]>>(new Map());
+
+// Tipo de chat selecionado por roteiro (opcional - pode ser global)
+const [selectedTipoChat, setSelectedTipoChat] = useState<string | null>(null);
+```
+
+---
+
+### Componente RoteiroInlineChat - Estrutura
+
+```tsx
+const RoteiroInlineChat = ({ 
+  roteiroKey, 
+  headline, 
+  estrutura, 
+  onUpdate 
+}: Props) => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  
+  const { data: tiposChat = [] } = useTiposChatRevisao();
+  const [selectedTipoChatId, setSelectedTipoChatId] = useState<string | null>(null);
+  
+  const handleSend = async () => {
+    // Similar ao handleEnviar do AjusteFinoPanel
+    // Chama supabase.functions.invoke("revisar-roteiro", {...})
+    // Atualiza roteiro via onUpdate
+  };
+  
+  return (
+    <div className="mt-4 border rounded-xl bg-muted/20 overflow-hidden">
+      {/* Mensagens (colapsavel) */}
+      {messages.length > 0 && (
+        <div className="...">
+          {/* Mostrar ultimas N mensagens */}
+        </div>
+      )}
+      
+      {/* Input area */}
+      <div className="p-3 border-t bg-background">
+        <Textarea ... />
+        <div className="flex items-center justify-between mt-2">
+          {/* Esquerda: + e clock */}
+          {/* Direita: tipo de chat e enviar */}
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+### Consideracoes
+
+- Chat inline e mais leve que dialog full-screen
+- Usuario ve contexto do roteiro enquanto interage com IA
+- Pode ter varios chats abertos ao mesmo tempo (um por roteiro)
+- Historico de mensagens pode ser persistido em localStorage por sessao
+- O seletor de "modelo" (Sonnet 4.5) e visual apenas, podendo futuramente conectar a tipos_chat_revisao
 
