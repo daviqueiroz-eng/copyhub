@@ -2,9 +2,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, RotateCcw, Check } from "lucide-react";
+import { Play, Pause, RotateCcw, Check, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useAuth";
+import { CheckRoteiroViralDialog } from "./CheckRoteiroViralDialog";
 
 const INACTIVITY_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutos em ms
 
@@ -59,6 +61,11 @@ export const RoteiroChecklist = ({
   const [checklistLoaded, setChecklistLoaded] = useState(false);
   const intervalsRef = useRef<Record<string, NodeJS.Timeout | null>>({});
   const prevGuiaRef = useRef<number | null>(null);
+  
+  // Estado para dialog de checks viral (apenas admin)
+  const { data: userRole } = useUserRole();
+  const isAdmin = userRole === "admin";
+  const [showCheckViralDialog, setShowCheckViralDialog] = useState(false);
   
   // Refs para timer baseado em timestamp (persistente mesmo minimizado)
   const startTimestampsRef = useRef<Record<string, number | null>>({});
@@ -424,12 +431,26 @@ export const RoteiroChecklist = ({
                 <Label
                   htmlFor={item.id}
                   className={cn(
-                    "text-sm cursor-pointer leading-tight flex-1",
+                    "text-sm cursor-pointer leading-tight",
+                    item.id === "revisar" && isAdmin ? "" : "flex-1",
                     item.checked && "line-through text-muted-foreground"
                   )}
                 >
                   {item.label}
                 </Label>
+                
+                {/* Botão de config para checks virais - apenas admin no item Revisar */}
+                {item.id === "revisar" && isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => setShowCheckViralDialog(true)}
+                    title="Configurar checks do roteiro viral"
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                  </Button>
+                )}
                 
                 {/* Timer controls inline para itens com timing */}
                 {item.hasTiming && timer && (
@@ -522,6 +543,12 @@ export const RoteiroChecklist = ({
           </div>
         )}
       </div>
+      
+      {/* Dialog para configurar checks do roteiro viral */}
+      <CheckRoteiroViralDialog
+        open={showCheckViralDialog}
+        onOpenChange={setShowCheckViralDialog}
+      />
     </div>
   );
 };

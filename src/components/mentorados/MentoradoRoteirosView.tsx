@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +67,8 @@ import { TeleprompterDialog } from "./TeleprompterDialog";
 import { SelectionEditDialog } from "./SelectionEditDialog";
 import { BulkProgressPanel, BulkProgressState } from "./BulkProgressPanel";
 import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
+import { CheckRoteiroViralPanel } from "./CheckRoteiroViralPanel";
+import { useCheckRoteiroViralAtivos, verificarCheck } from "@/hooks/useCheckRoteiroViral";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
 
@@ -260,6 +262,9 @@ export const MentoradoRoteirosView = ({
   
   // Hook para inteligência global
   const { data: inteligenciaGlobal } = useInteligenciaGlobal();
+  
+  // Hook para checks do roteiro viral
+  const { data: checksVirais = [] } = useCheckRoteiroViralAtivos();
 
   // Buscar categorias do avatar do mentorado atual
   const currentMentorado = mentorados.find(m => m.id === mentoradoId);
@@ -1960,11 +1965,16 @@ export const MentoradoRoteirosView = ({
                   const roteiro = roteirosLocais.get(key) || { headline: "", estrutura: "" };
                   const isSaving = savingKeys.has(key);
                   const isSaved = savedKeys.has(key);
+                  
+                  // Calcular checks que falharam para este roteiro
+                  const checksQueFalharam = checksVirais.filter(check => 
+                    !verificarCheck(check, roteiro.headline, roteiro.estrutura, mentoradoNome)
+                  );
 
                   return (
+                    <React.Fragment key={key}>
                     <div
-                      key={key}
-                      className="group relative mb-8"
+                      className="group relative mb-8 flex gap-4"
                     >
                       {/* Floating toolbar - mobile: always visible, horizontal; desktop: hover, vertical */}
                       <div className="absolute -right-2 sm:-right-14 top-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex flex-row sm:flex-col gap-1 bg-background/90 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none rounded-lg sm:rounded-none p-1 sm:p-0 shadow-md sm:shadow-none border sm:border-0">
@@ -2042,7 +2052,9 @@ export const MentoradoRoteirosView = ({
                           <Video className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                         </Button>
                       </div>
-
+                      
+                      {/* Conteúdo principal do roteiro */}
+                      <div className="flex-1 min-w-0">
                       {/* Status indicators */}
                       {(isSaving || isSaved) && (
                         <div className="absolute -left-14 top-0 text-xs">
@@ -2156,13 +2168,24 @@ export const MentoradoRoteirosView = ({
                           {roteiro.estrutura?.length || 0} caracteres
                         </div>
                       </div>
-
-
-                      {/* Separator line */}
-                      {ordem < guiaAtivaConfig.quantidade && (
-                        <hr className="border-t border-border/50 mt-6" />
+                      
+                      </div> {/* Fim do conteúdo principal flex-1 */}
+                      
+                      {/* Painel de checks do roteiro viral */}
+                      {checksQueFalharam.length > 0 && (
+                        <CheckRoteiroViralPanel 
+                          checks={checksQueFalharam}
+                          className="hidden sm:block sticky top-8 self-start"
+                        />
                       )}
+                      
                     </div>
+                    
+                    {/* Separator line */}
+                    {ordem < guiaAtivaConfig.quantidade && (
+                      <hr className="border-t border-border/50 mt-6 mb-8" />
+                    )}
+                    </React.Fragment>
                   );
                 })}
                 
