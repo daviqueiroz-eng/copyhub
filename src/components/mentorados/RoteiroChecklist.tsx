@@ -41,7 +41,6 @@ interface RoteiroChecklistProps {
   onActiveTimerChange: (id: string | null) => void;
   timersLoaded: boolean;
   onComplete?: (timers: TimersRecord) => void;
-  onRevisarPlay?: () => void;
 }
 
 export const RoteiroChecklist = ({ 
@@ -53,7 +52,6 @@ export const RoteiroChecklist = ({
   onActiveTimerChange,
   timersLoaded,
   onComplete,
-  onRevisarPlay,
 }: RoteiroChecklistProps) => {
   const checklistStorageKey = `roteiro-checklist-${mentoradoId}-${guiaNumero}`;
   
@@ -305,11 +303,6 @@ export const RoteiroChecklist = ({
       newTimers[id] = { ...timer, finalizado: false, isRunning: true };
       onTimersChange(newTimers);
       onActiveTimerChange(id);
-      
-      // Abrir dialog de revisão se for o timer "revisar"
-      if (id === "revisar" && onRevisarPlay) {
-        onRevisarPlay();
-      }
     } else if (timer.isRunning) {
       // Pausar
       onTimersChange({
@@ -328,11 +321,6 @@ export const RoteiroChecklist = ({
       newTimers[id] = { ...timer, isRunning: true };
       onTimersChange(newTimers);
       onActiveTimerChange(id);
-      
-      // Abrir dialog de revisão se for o timer "revisar"
-      if (id === "revisar" && onRevisarPlay) {
-        onRevisarPlay();
-      }
     }
   };
 
@@ -433,27 +421,15 @@ export const RoteiroChecklist = ({
                   checked={item.checked}
                   onCheckedChange={() => handleToggle(item.id)}
                 />
-                {item.id === "revisar" ? (
-                  <span
-                    className={cn(
-                      "text-sm cursor-pointer leading-tight flex-1 hover:text-primary hover:underline",
-                      item.checked && "line-through text-muted-foreground"
-                    )}
-                    onClick={() => onRevisarPlay?.()}
-                  >
-                    {item.label}
-                  </span>
-                ) : (
-                  <Label
-                    htmlFor={item.id}
-                    className={cn(
-                      "text-sm cursor-pointer leading-tight flex-1",
-                      item.checked && "line-through text-muted-foreground"
-                    )}
-                  >
-                    {item.label}
-                  </Label>
-                )}
+                <Label
+                  htmlFor={item.id}
+                  className={cn(
+                    "text-sm cursor-pointer leading-tight flex-1",
+                    item.checked && "line-through text-muted-foreground"
+                  )}
+                >
+                  {item.label}
+                </Label>
                 
                 {/* Timer controls inline para itens com timing */}
                 {item.hasTiming && timer && (
