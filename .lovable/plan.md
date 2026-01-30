@@ -1,112 +1,100 @@
 
 
-## Plano: Integrar Instagram Reels (Inteligencia Core) via Iframe
-
-### Resumo
-
-Adicionar uma nova pagina que exibe a ferramenta de extracao de transcricoes de reels do Inteligencia Core via iframe, seguindo o mesmo padrao ja utilizado no "Core Manager".
-
----
+## Plano: Remover Instagram Reels e Ajustar Menu Lateral
 
 ### O que sera feito
 
-1. **Criar nova pagina**: `src/pages/InstagramReels.tsx` com iframe apontando para `https://inteligenciacore.com.br/dashboard/admin/instagram-reels`
-
-2. **Adicionar rota no App.tsx**: Nova rota `/instagram-reels` protegida
-
-3. **Adicionar ao menu lateral**: Novo item no `AppSidebar.tsx` com icone apropriado (Instagram ou Video)
+1. **Remover pagina Instagram Reels** (iframe nao funcionou)
+2. **Ocultar itens do menu lateral**:
+   - Mural
+   - Dash Geral
+   - Banco de Prompts
+   - Planilhas Importantes
+3. **Mudar cor das letras do menu** de roxo para branco
 
 ---
 
-### Layout da Nova Pagina
+### Arquivos a Modificar
 
-```text
-+----------------------------------------------------------+
-| Instagram Reels                                           |
-| Extracao de transcricoes de videos                        |
-+----------------------------------------------------------+
-|                                                          |
-|   [IFRAME - inteligenciacore.com.br/dashboard/admin/     |
-|              instagram-reels]                             |
-|                                                          |
-|   (ocupando 100% da altura disponivel)                    |
-|                                                          |
-+----------------------------------------------------------+
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/components/AppSidebar.tsx` | Remover itens do menu e ajustar cor |
+| `src/App.tsx` | Remover rota do Instagram Reels |
+| `src/pages/InstagramReels.tsx` | DELETAR arquivo |
+| `src/index.css` | Ajustar `--sidebar-primary` de roxo para branco |
+
+---
+
+### Detalhes Tecnicos
+
+#### 1. AppSidebar.tsx - Remover itens e imports
+
+**Remover do array `menuItems`:**
+```typescript
+// REMOVER estas linhas:
+{ title: "Mural", url: "/", icon: MessageSquare },
+{ title: "Dash Geral", url: "/dash-geral", icon: LayoutDashboard },
+{ title: "Instagram Reels", url: "/instagram-reels", icon: Video },
+{ title: "Banco de Prompts", url: "/prompts", icon: Sparkles },
+{ title: "Planilhas Importantes", url: "/headlines", icon: FileText },
 ```
 
----
-
-### Arquivos a Criar/Modificar
-
-| Arquivo | Acao | Descricao |
-|---------|------|-----------|
-| `src/pages/InstagramReels.tsx` | CRIAR | Nova pagina com iframe |
-| `src/App.tsx` | MODIFICAR | Adicionar rota `/instagram-reels` |
-| `src/components/AppSidebar.tsx` | MODIFICAR | Adicionar item no menu lateral |
-
----
-
-### Codigo da Nova Pagina
-
-```tsx
-// src/pages/InstagramReels.tsx
-const InstagramReels = () => {
-  return (
-    <div className="h-full w-full flex flex-col">
-      <div className="border-b bg-background p-4">
-        <h1 className="text-2xl font-bold text-foreground">Instagram Reels</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Extracao de transcricoes de videos
-        </p>
-      </div>
-      <div className="flex-1 relative">
-        <iframe
-          src="https://inteligenciacore.com.br/dashboard/admin/instagram-reels"
-          className="absolute inset-0 w-full h-full border-0"
-          title="Instagram Reels - Inteligencia Core"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          loading="lazy"
-        />
-      </div>
-    </div>
-  );
-};
-
-export default InstagramReels;
+**Remover imports nao utilizados:**
+```typescript
+// Remover: MessageSquare, Sparkles, FileText, LayoutDashboard, Video
 ```
 
+#### 2. index.css - Mudar cor do texto sidebar
+
+Alterar a variavel `--sidebar-primary` de roxo (`238 76% 62%`) para branco (`0 0% 100%`):
+
+```css
+/* Linha 43 e 93 - mudar de: */
+--sidebar-primary: 238 76% 62%;
+
+/* Para: */
+--sidebar-primary: 0 0% 100%;
+```
+
+Isso afetara:
+- Cor do texto "Central da Equipe"
+- Cor do texto dos itens ativos no menu
+
+#### 3. App.tsx - Remover rota
+
+```typescript
+// Remover import:
+import InstagramReels from "./pages/InstagramReels";
+
+// Remover rota:
+<Route path="/instagram-reels" element={<ProtectedRoute><InstagramReels /></ProtectedRoute>} />
+```
+
+#### 4. Deletar arquivo
+
+Remover `src/pages/InstagramReels.tsx`
+
 ---
 
-### Item do Menu Lateral
+### Menu Final
 
-Sera adicionado um novo item com:
-- **Titulo**: "Instagram Reels"
-- **URL**: `/instagram-reels`
-- **Icone**: `Video` ou `Instagram` (do lucide-react)
-- **Posicao**: Abaixo do "Core Manager" ou proximo a ferramentas de analise
+Itens que permanecem:
 
----
-
-### Consideracoes Importantes
-
-**Autenticacao:**
-- O site do Inteligencia Core tem sua propria tela de login
-- O usuario precisara fazer login no Inteligencia Core separadamente (dentro do iframe)
-- O login do nosso sistema nao e compartilhado com o Inteligencia Core
-
-**Restricoes de iframe:**
-- Se o site do Inteligencia Core tiver protecao contra iframe (X-Frame-Options ou Content-Security-Policy), o embed nao funcionara
-- Nesse caso, seria necessario contatar o administrador do Inteligencia Core para liberar o dominio do seu app
-
-**Alternativa se iframe nao funcionar:**
-- Abrir em nova aba (link externo) em vez de embed
-- Ou consumir uma API do Inteligencia Core se disponivel
+| Item | URL |
+|------|-----|
+| Acompanhamento | /acompanhamento |
+| Meus Mentorados | /mentorados |
+| Core Manager | /core-manager |
+| Teste de Conhecimento | /testes |
+| Treinamentos | /treinamentos |
+| Atividades | /modo-flow |
+| Calendario | /calendario |
+| Ideias de Melhorias | /ideias-melhorias |
+| Gerenciar Usuarios | /usuarios |
 
 ---
 
-### Proximos Passos Apos Implementacao
+### Nota sobre Rota Inicial
 
-1. Testar se o iframe carrega corretamente
-2. Se nao carregar, verificar console do navegador por erros de CORS/X-Frame-Options
-3. Se necessario, ajustar para abrir em nova aba
+Como o "Mural" (rota `/`) sera removido do menu, a primeira pagina visivel sera "Acompanhamento". O usuario pode querer redirecionar a rota `/` para `/acompanhamento` no futuro.
 
