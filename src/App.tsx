@@ -24,6 +24,7 @@ import GerenciarUsuarios from "./pages/GerenciarUsuarios";
 import Atividades from "./pages/Atividades";
 import DashGeral from "./pages/DashGeral";
 import CoreStudioTasks from "./pages/CoreStudioTasks";
+import InstagramReels from "./pages/InstagramReels";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/perfil" element={<Navigate to="/acompanhamento" replace />} />
               <Route path="/mentorados" element={<ProtectedRoute><Mentorados /></ProtectedRoute>} />
               <Route path="/core-manager" element={<ProtectedRoute><CoreStudioTasks /></ProtectedRoute>} />
+              <Route path="/instagram-reels" element={<ProtectedRoute><InstagramReels /></ProtectedRoute>} />
               <Route path="/prompts" element={<ProtectedRoute><Prompts /></ProtectedRoute>} />
               <Route path="/headlines" element={<ProtectedRoute><Headlines /></ProtectedRoute>} />
               <Route path="/testes" element={<ProtectedRoute><Testes /></ProtectedRoute>} />
