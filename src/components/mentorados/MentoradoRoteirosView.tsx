@@ -59,7 +59,7 @@ import {
 import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
-// MentoradoHeadlinesList removido - seleção agora é feita diretamente nos campos de headline
+import { MentoradoHeadlinesList } from "./MentoradoHeadlinesList";
 import { TipoRoteiroDialog, HeadlineComTipo } from "./TipoRoteiroDialog";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
@@ -2327,6 +2327,9 @@ export const MentoradoRoteirosView = ({
               setShowFeedbackDialog(true);
             }}
           />
+          
+          {/* Ideias de Headlines - sugestões salvas via /m */}
+          <MentoradoHeadlinesList mentoradoId={mentoradoId} />
         </div>
       </div>
       
