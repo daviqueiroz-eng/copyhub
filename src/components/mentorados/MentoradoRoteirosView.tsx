@@ -64,7 +64,7 @@ import { TipoRoteiroDialog, HeadlineComTipo } from "./TipoRoteiroDialog";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
 import { TeleprompterDialog } from "./TeleprompterDialog";
-import { RoteiroRevisaoDialog } from "./RoteiroRevisaoDialog";
+import { RoteiroInlineChat } from "./RoteiroInlineChat";
 import { BulkProgressPanel, BulkProgressState } from "./BulkProgressPanel";
 import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
 
@@ -242,10 +242,7 @@ export const MentoradoRoteirosView = ({
   const [selectedRoteiroKeys, setSelectedRoteiroKeys] = useState<string[]>([]);
   const [showTipoRoteiroDialog, setShowTipoRoteiroDialog] = useState(false);
   
-  // Estado para dialog de revisão com IA
-  const [showRevisaoDialog, setShowRevisaoDialog] = useState(false);
-  const [revisaoInitialIndex, setRevisaoInitialIndex] = useState(0);
-  const [lastFocusedRoteiroKey, setLastFocusedRoteiroKey] = useState<string | null>(null);
+  // Estado para geração em massa com painel lateral
   
   // Estado para geração em massa com painel lateral
   const [bulkProgress, setBulkProgress] = useState<BulkProgressState | null>(null);
@@ -862,9 +859,6 @@ export const MentoradoRoteirosView = ({
     handleChange(guiaNumero, ordem, field, value);
 
     const key = `${guiaNumero}-${ordem}`;
-    
-    // Rastrear o último roteiro editado para abrir a revisão no lugar certo
-    setLastFocusedRoteiroKey(key);
 
     // Calcular posição do popover baseado na posição fixa
     const popoverWidth = 320;
@@ -2117,6 +2111,19 @@ export const MentoradoRoteirosView = ({
                         </div>
                       </div>
 
+                      {/* Chat inline - aparece se estrutura tem conteúdo */}
+                      {roteiro.estrutura?.trim() && (
+                        <RoteiroInlineChat
+                          roteiroKey={key}
+                          headline={roteiro.headline}
+                          estrutura={roteiro.estrutura}
+                          onUpdate={(h, e) => {
+                            handleChange(guiaAtiva, ordem, "headline", h);
+                            handleChange(guiaAtiva, ordem, "estrutura", e);
+                          }}
+                        />
+                      )}
+
                       {/* Separator line */}
                       {ordem < guiaAtivaConfig.quantidade && (
                         <hr className="border-t border-border/50 mt-6" />
@@ -2156,25 +2163,6 @@ export const MentoradoRoteirosView = ({
               setFeedbackTimers(t);
               setShowFeedbackDialog(true);
             }}
-            onRevisarPlay={() => {
-              // Calcular índice baseado no último roteiro em foco
-              const guiaConfig = guias.find(g => g.numero === guiaAtiva);
-              if (guiaConfig && !guiaConfig.isOverdelivery && lastFocusedRoteiroKey) {
-                const roteirosParaRevisar: string[] = [];
-                for (let ordem = 1; ordem <= guiaConfig.quantidade; ordem++) {
-                  const key = `${guiaAtiva}-${ordem}`;
-                  const roteiro = roteirosLocais.get(key);
-                  if (roteiro?.estrutura?.trim()) {
-                    roteirosParaRevisar.push(key);
-                  }
-                }
-                const idx = roteirosParaRevisar.indexOf(lastFocusedRoteiroKey);
-                setRevisaoInitialIndex(idx >= 0 ? idx : 0);
-              } else {
-                setRevisaoInitialIndex(0);
-              }
-              setShowRevisaoDialog(true);
-            }}
           />
         </div>
       </div>
@@ -2205,25 +2193,6 @@ export const MentoradoRoteirosView = ({
               onComplete={(t) => {
                 setFeedbackTimers(t);
                 setShowFeedbackDialog(true);
-              }}
-              onRevisarPlay={() => {
-                // Calcular índice baseado no último roteiro em foco
-                const guiaConfig = guias.find(g => g.numero === guiaAtiva);
-                if (guiaConfig && !guiaConfig.isOverdelivery && lastFocusedRoteiroKey) {
-                  const roteirosParaRevisar: string[] = [];
-                  for (let ordem = 1; ordem <= guiaConfig.quantidade; ordem++) {
-                    const key = `${guiaAtiva}-${ordem}`;
-                    const roteiro = roteirosLocais.get(key);
-                    if (roteiro?.estrutura?.trim()) {
-                      roteirosParaRevisar.push(key);
-                    }
-                  }
-                  const idx = roteirosParaRevisar.indexOf(lastFocusedRoteiroKey);
-                  setRevisaoInitialIndex(idx >= 0 ? idx : 0);
-                } else {
-                  setRevisaoInitialIndex(0);
-                }
-                setShowRevisaoDialog(true);
               }}
             />
           </div>
@@ -2593,59 +2562,7 @@ export const MentoradoRoteirosView = ({
         />
       )}
 
-      {/* Dialog de Revisão com IA */}
-      <RoteiroRevisaoDialog
-        open={showRevisaoDialog}
-        onOpenChange={setShowRevisaoDialog}
-        initialIndex={revisaoInitialIndex}
-        roteiros={(() => {
-          // Filtrar roteiros da guia ativa que têm estrutura preenchida
-          const guiaConfig = guias.find(g => g.numero === guiaAtiva);
-          if (!guiaConfig || guiaConfig.isOverdelivery) return [];
-          
-          const roteirosParaRevisar: Array<{ key: string; headline: string; estrutura: string }> = [];
-          
-          for (let ordem = 1; ordem <= guiaConfig.quantidade; ordem++) {
-            const key = `${guiaAtiva}-${ordem}`;
-            const roteiro = roteirosLocais.get(key);
-            // Incluir apenas roteiros que têm estrutura preenchida
-            if (roteiro?.estrutura?.trim()) {
-              roteirosParaRevisar.push({
-                key,
-                headline: roteiro.headline || "",
-                estrutura: roteiro.estrutura,
-              });
-            }
-          }
-          
-          return roteirosParaRevisar;
-        })()}
-        onRoteiroChange={(key, field, value) => {
-          // Atualizar estado local
-          setRoteirosLocais(prev => {
-            const newMap = new Map(prev);
-            const existing = newMap.get(key);
-            if (existing) {
-              newMap.set(key, { ...existing, [field]: value });
-            }
-            return newMap;
-          });
-          
-          // Salvar no banco
-          const [guiaNumero, ordem] = key.split("-").map(Number);
-          const existing = roteirosLocais.get(key);
-          upsertRoteiro.mutate({
-            mentoradoId: mentoradoId,
-            guiaNumero: guiaNumero,
-            ordem: ordem,
-            headline: field === "headline" ? value : (existing?.headline || ""),
-            estrutura: field === "estrutura" ? value : (existing?.estrutura || ""),
-          });
-        }}
-        mentoradoNome={mentoradoNome}
-        inteligenciaGlobal={inteligenciaGlobal?.conteudo}
-        inteligenciaMentorado={currentMentorado?.inteligencia_ia || undefined}
-      />
+      {/* Chat inline integrado nos roteiros - RoteiroRevisaoDialog removido */}
     </div>
   );
 };
