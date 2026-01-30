@@ -1,173 +1,112 @@
 
 
-## Plano: Separar Versao Admin e Usuario no Upload de Excel
+## Plano: Integrar Instagram Reels (Inteligencia Core) via Iframe
 
-### Situacao Atual
+### Resumo
 
-O sistema ja tem suporte tecnico para headlines globais (`is_global = true`), mas a interface mistura tudo:
-
-- O toggle "Compartilhar com toda a equipe" so aparece **apos** o admin selecionar um arquivo
-- Nao ha uma separacao visual clara entre os modos
-- Usuarios nao entendem facilmente que existem headlines compartilhadas pela equipe
+Adicionar uma nova pagina que exibe a ferramenta de extracao de transcricoes de reels do Inteligencia Core via iframe, seguindo o mesmo padrao ja utilizado no "Core Manager".
 
 ---
 
-### Solucao Proposta
+### O que sera feito
 
-Criar duas abas claras no dialogo de upload:
+1. **Criar nova pagina**: `src/pages/InstagramReels.tsx` com iframe apontando para `https://inteligenciacore.com.br/dashboard/admin/instagram-reels`
 
-**Aba 1 - "Minhas Headlines"** (para todos)
-- Usuario ve apenas SEUS arquivos importados
-- Faz upload de arquivos que so ele ve
+2. **Adicionar rota no App.tsx**: Nova rota `/instagram-reels` protegida
 
-**Aba 2 - "Headlines da Equipe"** (para todos lerem, so admin escreve)
-- Todos os usuarios veem os arquivos compartilhados pelo admin
-- APENAS admin ve o botao de "Upload Excel" nesta aba
-- Quando admin faz upload nesta aba, automaticamente `is_global = true`
+3. **Adicionar ao menu lateral**: Novo item no `AppSidebar.tsx` com icone apropriado (Instagram ou Video)
 
 ---
 
-### Layout Visual
+### Layout da Nova Pagina
 
 ```text
 +----------------------------------------------------------+
-|  Upload de Excel com Headlines                            X |
-|----------------------------------------------------------|
-| [Minhas Headlines] [Headlines da Equipe]                   |
-|----------------------------------------------------------|
-|                                                            |
-|  Aba "Headlines da Equipe" (para usuario comum):          |
-|  +------------------------------------------------------+ |
-|  | [Arquivo] Headlines - Emagrecimento      (150)  [Eq] | |
-|  | [Arquivo] Headlines - Cristaos           (200)  [Eq] | |
-|  | [Arquivo] Headlines - Pets               (80)   [Eq] | |
-|  +------------------------------------------------------+ |
-|  Total: 430 headlines disponiveis da equipe               |
-|                                                            |
-|  Aba "Headlines da Equipe" (para ADMIN):                  |
-|  [Upload Excel para Equipe]  <- botao de upload           |
-|  +------------------------------------------------------+ |
-|  | [Arquivo] Headlines - Emagrecimento (150) [Eq] [X]   | |
-|  | [Arquivo] Headlines - Cristaos      (200) [Eq] [X]   | |
-|  +------------------------------------------------------+ |
-|                                                            |
+| Instagram Reels                                           |
+| Extracao de transcricoes de videos                        |
++----------------------------------------------------------+
+|                                                          |
+|   [IFRAME - inteligenciacore.com.br/dashboard/admin/     |
+|              instagram-reels]                             |
+|                                                          |
+|   (ocupando 100% da altura disponivel)                    |
+|                                                          |
 +----------------------------------------------------------+
 ```
 
 ---
 
-### Arquivos a Modificar
+### Arquivos a Criar/Modificar
 
-| Arquivo | Mudancas |
-|---------|----------|
-| `src/components/mentorados/ExcelUploadDialog.tsx` | Adicionar Tabs para separar "Minhas" vs "Equipe", logica condicional para admin |
-| `src/hooks/useUserHeadlinesExcel.ts` | Adicionar query separada para headlines globais e pessoais |
+| Arquivo | Acao | Descricao |
+|---------|------|-----------|
+| `src/pages/InstagramReels.tsx` | CRIAR | Nova pagina com iframe |
+| `src/App.tsx` | MODIFICAR | Adicionar rota `/instagram-reels` |
+| `src/components/AppSidebar.tsx` | MODIFICAR | Adicionar item no menu lateral |
 
 ---
 
-### Detalhes Tecnicos
-
-#### 1. Novo Hook: Separar Queries
-
-```typescript
-// Headlines pessoais do usuario (nao globais)
-export const useMyHeadlinesExcel = () => {
-  const { user } = useAuth();
-  return useQuery({
-    queryKey: ["my-headlines-excel", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_headlines_excel")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("is_global", false)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
-};
-
-// Headlines globais (da equipe)
-export const useTeamHeadlinesExcel = () => {
-  return useQuery({
-    queryKey: ["team-headlines-excel"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_headlines_excel")
-        .select("*")
-        .eq("is_global", true)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-};
-```
-
-#### 2. Interface com Tabs
+### Codigo da Nova Pagina
 
 ```tsx
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+// src/pages/InstagramReels.tsx
+const InstagramReels = () => {
+  return (
+    <div className="h-full w-full flex flex-col">
+      <div className="border-b bg-background p-4">
+        <h1 className="text-2xl font-bold text-foreground">Instagram Reels</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Extracao de transcricoes de videos
+        </p>
+      </div>
+      <div className="flex-1 relative">
+        <iframe
+          src="https://inteligenciacore.com.br/dashboard/admin/instagram-reels"
+          className="absolute inset-0 w-full h-full border-0"
+          title="Instagram Reels - Inteligencia Core"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          loading="lazy"
+        />
+      </div>
+    </div>
+  );
+};
 
-// Dentro do DialogContent:
-<Tabs defaultValue="minhas">
-  <TabsList className="grid w-full grid-cols-2">
-    <TabsTrigger value="minhas">Minhas Headlines</TabsTrigger>
-    <TabsTrigger value="equipe">Headlines da Equipe</TabsTrigger>
-  </TabsList>
-  
-  <TabsContent value="minhas">
-    {/* Area de upload pessoal */}
-    {/* Lista de arquivos proprios */}
-  </TabsContent>
-  
-  <TabsContent value="equipe">
-    {/* Area de upload - APENAS se isAdmin */}
-    {isAdmin && <UploadArea ... isGlobal={true} />}
-    
-    {/* Lista de arquivos da equipe */}
-    {teamFileGroups.map(...)}
-    
-    {/* Mensagem se nao for admin */}
-    {!isAdmin && teamHeadlines.length === 0 && (
-      <p>Nenhuma headline compartilhada pela equipe ainda.</p>
-    )}
-  </TabsContent>
-</Tabs>
+export default InstagramReels;
 ```
 
-#### 3. Logica de Upload
+---
 
-Quando o upload for feito na aba "Equipe":
-- `is_global` sera automaticamente `true`
-- Apenas admins tem acesso a essa aba para upload
+### Item do Menu Lateral
 
-Quando o upload for feito na aba "Minhas":
-- `is_global` sera `false`
-- Qualquer usuario pode fazer upload
+Sera adicionado um novo item com:
+- **Titulo**: "Instagram Reels"
+- **URL**: `/instagram-reels`
+- **Icone**: `Video` ou `Instagram` (do lucide-react)
+- **Posicao**: Abaixo do "Core Manager" ou proximo a ferramentas de analise
 
 ---
 
-### Fluxo de Uso
+### Consideracoes Importantes
 
-**Usuario Comum:**
-1. Abre o dialogo de upload
-2. Ve aba "Minhas Headlines" - pode fazer upload pessoal
-3. Ve aba "Headlines da Equipe" - ve headlines compartilhadas pelo admin (sem botao de upload)
+**Autenticacao:**
+- O site do Inteligencia Core tem sua propria tela de login
+- O usuario precisara fazer login no Inteligencia Core separadamente (dentro do iframe)
+- O login do nosso sistema nao e compartilhado com o Inteligencia Core
 
-**Admin:**
-1. Abre o dialogo de upload
-2. Aba "Minhas Headlines" - upload pessoal (so ele ve)
-3. Aba "Headlines da Equipe" - upload que TODOS os usuarios verao
+**Restricoes de iframe:**
+- Se o site do Inteligencia Core tiver protecao contra iframe (X-Frame-Options ou Content-Security-Policy), o embed nao funcionara
+- Nesse caso, seria necessario contatar o administrador do Inteligencia Core para liberar o dominio do seu app
+
+**Alternativa se iframe nao funcionar:**
+- Abrir em nova aba (link externo) em vez de embed
+- Ou consumir uma API do Inteligencia Core se disponivel
 
 ---
 
-### Consideracoes
+### Proximos Passos Apos Implementacao
 
-- O toggle de "Compartilhar" sera removido - a aba define isso automaticamente
-- Na aba "Equipe", o admin ve botao de delete apenas para arquivos que ELE subiu
-- Badges visuais: "Meu" (azul) na aba pessoal, "Equipe" (amarelo/globo) na aba de equipe
-- Manter a query existente `useUserHeadlinesExcel` para uso no `HeadlinesRandomDialog` (que busca ambas)
+1. Testar se o iframe carrega corretamente
+2. Se nao carregar, verificar console do navegador por erros de CORS/X-Frame-Options
+3. Se necessario, ajustar para abrir em nova aba
 
