@@ -37,6 +37,7 @@ const REGRA_TIPOS = [
   { value: "nao_contem", label: "Não contém" },
   { value: "regex", label: "Expressão regular" },
   { value: "mentorado_nome", label: "Nome do mentorado" },
+  { value: "ia", label: "Inteligente (IA) - usa descrição" },
 ];
 
 const CAMPOS = [
@@ -235,7 +236,7 @@ export const CheckRoteiroViralDialog = ({
                             </SelectContent>
                           </Select>
                         </div>
-                        {formData.regra_tipo !== "mentorado_nome" && (
+                        {formData.regra_tipo !== "mentorado_nome" && formData.regra_tipo !== "ia" && (
                           <div>
                             <Label className="text-xs">
                               Valor da regra{" "}
@@ -262,8 +263,10 @@ export const CheckRoteiroViralDialog = ({
                           </div>
                         )}
                         <div>
-                          <Label className="text-xs">Descrição (opcional)</Label>
-                          <Input
+                          <Label className="text-xs">
+                            Descrição {formData.regra_tipo === "ia" ? "*" : "(opcional)"}
+                          </Label>
+                          <Textarea
                             value={formData.descricao}
                             onChange={(e) =>
                               setFormData((f) => ({
@@ -271,9 +274,18 @@ export const CheckRoteiroViralDialog = ({
                                 descricao: e.target.value,
                               }))
                             }
-                            placeholder="Descrição do que este check verifica"
-                            className="h-8 text-sm"
+                            placeholder={
+                              formData.regra_tipo === "ia"
+                                ? "Descreva o que a IA deve verificar. Ex: verificar se o nome do mentorado está escrito corretamente ao longo do roteiro"
+                                : "Descrição do que este check verifica"
+                            }
+                            className="text-sm min-h-[60px]"
                           />
+                          {formData.regra_tipo === "ia" && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              A IA usará esta descrição para analisar o roteiro automaticamente
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center justify-between pt-2">
                           <div className="flex items-center gap-2">
@@ -325,6 +337,8 @@ export const CheckRoteiroViralDialog = ({
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {check.regra_tipo === "mentorado_nome"
                               ? "Verifica nome do mentorado"
+                              : check.regra_tipo === "ia"
+                              ? "🤖 IA verifica automaticamente"
                               : check.regra_valor}
                           </p>
                           {check.descricao && (
@@ -419,7 +433,7 @@ export const CheckRoteiroViralDialog = ({
                     </SelectContent>
                   </Select>
                 </div>
-                {formData.regra_tipo !== "mentorado_nome" && (
+                {formData.regra_tipo !== "mentorado_nome" && formData.regra_tipo !== "ia" && (
                   <div>
                     <Label className="text-xs">
                       Valor da regra{" "}
@@ -445,8 +459,10 @@ export const CheckRoteiroViralDialog = ({
                   </div>
                 )}
                 <div>
-                  <Label className="text-xs">Descrição (opcional)</Label>
-                  <Input
+                  <Label className="text-xs">
+                    Descrição {formData.regra_tipo === "ia" ? "*" : "(opcional)"}
+                  </Label>
+                  <Textarea
                     value={formData.descricao}
                     onChange={(e) =>
                       setFormData((f) => ({
@@ -454,9 +470,18 @@ export const CheckRoteiroViralDialog = ({
                         descricao: e.target.value,
                       }))
                     }
-                    placeholder="Descrição do que este check verifica"
-                    className="h-8 text-sm"
+                    placeholder={
+                      formData.regra_tipo === "ia"
+                        ? "Descreva o que a IA deve verificar. Ex: verificar se o nome do mentorado está escrito corretamente ao longo do roteiro"
+                        : "Descrição do que este check verifica"
+                    }
+                    className="text-sm min-h-[60px]"
                   />
+                  {formData.regra_tipo === "ia" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      A IA usará esta descrição para analisar o roteiro automaticamente
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch

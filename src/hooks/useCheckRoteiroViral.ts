@@ -135,13 +135,18 @@ export const useDeleteCheckRoteiroViral = () => {
   });
 };
 
-// Função para verificar se um check passa
+// Função para verificar se um check passa (regras fixas)
 export const verificarCheck = (
   check: CheckRoteiroViral,
   headline: string,
   estrutura: string,
   mentoradoNome: string
 ): boolean => {
+  // Checks do tipo "ia" são verificados de forma assíncrona
+  if (check.regra_tipo === "ia") {
+    return true; // Retorna true por padrão, será verificado de forma assíncrona
+  }
+
   const textoParaVerificar =
     check.campo === "headline"
       ? headline
@@ -187,5 +192,39 @@ export const verificarCheck = (
 
     default:
       return true;
+  }
+};
+
+// Função para verificar check com IA (assíncrona)
+export const verificarCheckComIA = async (
+  check: CheckRoteiroViral,
+  headline: string,
+  estrutura: string,
+  mentoradoNome: string
+): Promise<{ passa: boolean; motivo?: string }> => {
+  if (check.regra_tipo !== "ia" || !check.descricao) {
+    return { passa: true };
+  }
+
+  try {
+    const response = await supabase.functions.invoke("verificar-check-viral", {
+      body: {
+        headline,
+        estrutura,
+        mentoradoNome,
+        descricaoCheck: check.descricao,
+        checkNome: check.nome,
+      },
+    });
+
+    if (response.error) {
+      console.error("Erro ao verificar check com IA:", response.error);
+      return { passa: true, motivo: "Erro na verificação" };
+    }
+
+    return response.data as { passa: boolean; motivo?: string };
+  } catch (error) {
+    console.error("Erro ao verificar check com IA:", error);
+    return { passa: true, motivo: "Erro na verificação" };
   }
 };

@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.n8n-ajustes]
 verify_jwt = false
+
+[functions.verificar-check-viral]
+verify_jwt = false
