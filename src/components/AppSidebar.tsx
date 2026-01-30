@@ -13,6 +13,7 @@ import {
   Zap,
   LayoutDashboard,
   CheckSquare,
+  Video,
 } from "lucide-react";
 import {
   Sidebar,
@@ -34,6 +35,7 @@ const menuItems = [
   { title: "Acompanhamento", url: "/acompanhamento", icon: BarChart3 },
   { title: "Meus Mentorados", url: "/mentorados", icon: Users },
   { title: "Core Manager", url: "/core-manager", icon: CheckSquare },
+  { title: "Instagram Reels", url: "/instagram-reels", icon: Video },
   { title: "Banco de Prompts", url: "/prompts", icon: Sparkles },
   { title: "Planilhas Importantes", url: "/headlines", icon: FileText },
   { title: "Teste de Conhecimento", url: "/testes", icon: ClipboardCheck },
