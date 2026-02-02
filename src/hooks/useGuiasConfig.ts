@@ -9,6 +9,8 @@ export interface GuiaConfig {
   numero: number;
   quantidade: number;
   is_overdelivery: boolean;
+  nome_customizado?: string | null;
+  ordem_personalizada?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -113,6 +115,64 @@ export const useUpdateGuiaQuantidade = () => {
       const { error } = await supabase
         .from("mentorados_guias_config")
         .update({ quantidade: data.quantidade })
+        .eq("user_id", user.id)
+        .eq("mentorado_id", data.mentorado_id)
+        .eq("numero", data.numero);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["guias-config", variables.mentorado_id],
+      });
+    },
+  });
+};
+
+export const useUpdateGuiaNome = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (data: {
+      mentorado_id: string;
+      numero: number;
+      nome_customizado: string;
+    }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("mentorados_guias_config")
+        .update({ nome_customizado: data.nome_customizado })
+        .eq("user_id", user.id)
+        .eq("mentorado_id", data.mentorado_id)
+        .eq("numero", data.numero);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["guias-config", variables.mentorado_id],
+      });
+    },
+  });
+};
+
+export const useUpdateGuiaOrdem = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (data: {
+      mentorado_id: string;
+      numero: number;
+      ordem_personalizada: number;
+    }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("mentorados_guias_config")
+        .update({ ordem_personalizada: data.ordem_personalizada })
         .eq("user_id", user.id)
         .eq("mentorado_id", data.mentorado_id)
         .eq("numero", data.numero);
