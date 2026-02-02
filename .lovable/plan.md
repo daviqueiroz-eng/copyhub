@@ -1,273 +1,203 @@
 
 
-## Plano: Melhorar Layout de Grifadas e Adicionar "7 Gatilhos"
+## Plano: Layout Horizontal para Popovers e Dialogs de Seleção
 
 ### Resumo
 
-Implementar 3 melhorias na interface de analise:
-1. Mudar layout das palavras grifadas de vertical para horizontal
-2. Criar nova categoria "7 Gatilhos" com multi-selecao
-3. Permitir multi-selecao no dialog de "Conteudo Notavel"
+Alterar o layout do popover de seleção de cor e dos dialogs de "Conteúdo Notável" e "7 Gatilhos" para exibir o **texto selecionado à esquerda** e as **opções à direita**, em formato lado a lado.
 
 ---
 
-### 1. Layout Horizontal para Palavras Grifadas
+### Problema Atual
 
-**Atual:** Cards empilhados verticalmente
-**Novo:** Cards em linha horizontal (wrap quando necessario)
+O popover e os dialogs estão com layout vertical:
 
 ```text
-ATUAL:                          NOVO:
-+------------------------+      +----------+ +----------+ +----------+
-| "Palavra 1..."         |      |Palavra 1 | |Palavra 2 | |Palavra 3 |
-+------------------------+      +----------+ +----------+ +----------+
-| "Palavra 2..."         |      +----------+ +----------+
-+------------------------+      |Palavra 4 | |Palavra 5 |
-| "Palavra 3..."         |      +----------+ +----------+
++------------------------+
+| Texto selecionado      |
+| "(texto aqui...)"      |
++------------------------+
+| Qual elemento é?       |
+| ■ Desejo               |
+| ■ Headline             |
+| ■ ...                  |
 +------------------------+
 ```
 
-**Arquivo:** `src/components/HighlightsList.tsx`
+### Layout Desejado
 
-**Mudancas:**
-- Trocar `space-y-2` por `flex flex-wrap gap-2`
-- Cards menores: remover padding extra e diminuir tamanho
-- Tooltip no hover para mostrar texto completo
-- Manter botao de excluir no hover
+Layout horizontal com texto à esquerda e opções à direita:
 
----
-
-### 2. Nova Categoria "7 Gatilhos" com Multi-Selecao
-
-**Comportamento:**
-1. Usuario seleciona texto
-2. Popover aparece com lista de cores
-3. Se clicar em "7 Gatilhos", abre um dialog de multi-selecao
-4. Pode marcar varias opcoes (checkboxes)
-5. Confirma e o highlight e salvo com as opcoes selecionadas
-
-**Opcoes do "7 Gatilhos":**
-- Recompensa
-- Misterio
-- Reconhecimento
-- Popularidade/Autoridade
-- Crenca
-- Disrupcao
-- Atencao imediata
-
-**Requisito:** A categoria "7 Gatilhos" precisa existir na tabela `cores_analise` do banco de dados (pode ser criada pelo admin no painel de cores).
-
-**Arquivo:** `src/pages/AnaliseRoteiroGame.tsx`
-
-**Novos estados:**
-```typescript
-const [showGatilhosDialog, setShowGatilhosDialog] = useState(false);
-const [gatilhosSelecionados, setGatilhosSelecionados] = useState<string[]>([]);
-const [highlightPendenteGatilhos, setHighlightPendenteGatilhos] = useState<Highlight | null>(null);
-```
-
-**Novo dialog:**
 ```text
-+------------------------------------------+
-| Quais gatilhos estao presentes?          |
-+------------------------------------------+
-| [ ] Recompensa                           |
-| [ ] Misterio                             |
-| [ ] Reconhecimento                       |
-| [ ] Popularidade/Autoridade              |
-| [ ] Crenca                               |
-| [ ] Disrupcao                            |
-| [ ] Atencao imediata                     |
-|                                          |
-| [Cancelar]               [Confirmar]     |
-+------------------------------------------+
-```
-
-**Logica:**
-- Na funcao `handleSelectColorFromPopover`, verificar se a cor clicada e "7 Gatilhos"
-- Se for, abrir o dialog de multi-selecao ao inves de aplicar diretamente
-- Ao confirmar, salvar as opcoes selecionadas em `annotations` do highlight
-
----
-
-### 3. Multi-Selecao em "Conteudo Notavel"
-
-**Atual:** So pode selecionar UMA estrutura
-**Novo:** Pode selecionar VARIAS estruturas com checkboxes
-
-**Arquivo:** `src/pages/AnaliseRoteiroGame.tsx`
-
-**Mudancas no Dialog de Estrutura (linhas 2509-2560):**
-- Trocar de botoes exclusivos para checkboxes
-- Novo estado `estruturasSelecionadas: string[]` (array ao inves de string unica)
-- Botao "Confirmar" salva array em `annotations`
-
-**Layout atualizado:**
-```text
-+------------------------------------------+
-| Qual o conteudo notavel?                 |
-| (selecione todas que se aplicam)         |
-+------------------------------------------+
-| [x] Valor pratico                        |
-| [ ] Historia                             |
-| [x] Prova/ argumentacao                  |
-| [ ] Ponto de identificacao               |
-| [ ] Opiniao polemica                     |
-| [ ] Fatos curiosos                       |
-|                                          |
-| [Cancelar]               [Confirmar]     |
-+------------------------------------------+
++-------------------+-------------------+
+| Texto selecionado | Qual elemento é?  |
+| "(texto aqui...)" | ■ Desejo          |
+|                   | ■ Headline        |
+|                   | ■ Conteúdo notável|
+|                   | ■ ...             |
++-------------------+-------------------+
 ```
 
 ---
 
 ### Arquivos a Modificar
 
-| Arquivo | Mudanca |
+| Arquivo | Mudança |
 |---------|---------|
-| `src/components/HighlightsList.tsx` | Layout horizontal com flex-wrap |
-| `src/pages/AnaliseRoteiroGame.tsx` | Novo dialog "7 Gatilhos" + multi-selecao em "Conteudo Notavel" |
+| `src/pages/AnaliseRoteiroGame.tsx` | Alterar layout dos 3 elementos para horizontal |
 
 ---
 
-### Detalhes Tecnicos
+### Detalhes Técnicos
 
-#### HighlightsList.tsx - Novo Layout
+#### 1. Popover de Seleção de Cor (linhas 2118-2175)
 
+**Antes:**
 ```tsx
-// De:
-<div className="space-y-2">
-
-// Para:
-<div className="flex flex-wrap gap-2">
-  {filteredHighlights.map((highlight) => (
-    <div
-      key={highlight.id}
-      className="group relative bg-card border rounded-lg px-2 py-1 hover:bg-accent transition-colors max-w-[200px]"
-      title={highlight.text}  // Tooltip com texto completo
-    >
-      <button onClick={() => onHighlightClick(highlight.id)}>
-        <div className="flex items-center gap-1">
-          <div
-            className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{ backgroundColor: highlight.color }}
-          />
-          <span className="text-xs truncate">
-            {highlight.text.length > 30 
-              ? `${highlight.text.slice(0, 30)}...` 
-              : highlight.text}
-          </span>
-        </div>
-      </button>
-      {/* Botao delete no hover */}
-    </div>
-  ))}
+<div className="fixed z-50 ... min-w-[300px]">
+  <div className="mb-4">
+    <h4>Texto selecionado</h4>
+    <p>{texto}</p>
+  </div>
+  <div>
+    <h4>Qual elemento é?</h4>
+    <div>{cores.map(...)}</div>
+  </div>
 </div>
 ```
 
-#### Dialog "7 Gatilhos"
-
+**Depois:**
 ```tsx
-<Dialog open={showGatilhosDialog} onOpenChange={setShowGatilhosDialog}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Quais gatilhos estao presentes?</DialogTitle>
-    </DialogHeader>
-    <div className="space-y-3">
-      {[
-        "Recompensa",
-        "Misterio", 
-        "Reconhecimento",
-        "Popularidade/Autoridade",
-        "Crenca",
-        "Disrupcao",
-        "Atencao imediata"
-      ].map((gatilho) => (
-        <div key={gatilho} className="flex items-center space-x-2">
-          <Checkbox
-            checked={gatilhosSelecionados.includes(gatilho)}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                setGatilhosSelecionados([...gatilhosSelecionados, gatilho]);
-              } else {
-                setGatilhosSelecionados(gatilhosSelecionados.filter(g => g !== gatilho));
-              }
-            }}
-          />
-          <label>{gatilho}</label>
-        </div>
+<div className="fixed z-50 ... min-w-[500px]">
+  <div className="flex gap-4">
+    {/* Coluna Esquerda - Texto */}
+    <div className="flex-1 border-r pr-4">
+      <h4>Texto selecionado</h4>
+      <p className="max-h-[250px] overflow-y-auto">{texto}</p>
+    </div>
+    
+    {/* Coluna Direita - Opções */}
+    <div className="flex-1">
+      <h4>Qual elemento é?</h4>
+      <div>{cores.map(...)}</div>
+    </div>
+  </div>
+  <div className="mt-3 pt-3 border-t">
+    <Button>Cancelar</Button>
+  </div>
+</div>
+```
+
+#### 2. Dialog de Conteúdo Notável (linhas 2522-2587)
+
+**Antes:**
+```tsx
+<DialogContent>
+  <DialogHeader>
+    <DialogTitle>Qual o conteúdo notável?</DialogTitle>
+  </DialogHeader>
+  <div className="space-y-3">
+    {estruturas.map(...)}
+  </div>
+</DialogContent>
+```
+
+**Depois:**
+```tsx
+<DialogContent className="max-w-[600px]">
+  <DialogHeader>
+    <DialogTitle>Qual o conteúdo notável?</DialogTitle>
+  </DialogHeader>
+  <div className="flex gap-4">
+    {/* Coluna Esquerda - Texto selecionado */}
+    <div className="flex-1 border-r pr-4">
+      <h4 className="text-sm font-medium mb-2">Texto selecionado</h4>
+      <p className="text-sm bg-muted p-2 rounded max-h-[200px] overflow-y-auto">
+        {highlightPendenteEstrutura?.text || ""}
+      </p>
+    </div>
+    
+    {/* Coluna Direita - Opções */}
+    <div className="flex-1 space-y-3">
+      {estruturas.map((estrutura) => (
+        <Checkbox ... />
       ))}
     </div>
-    <div className="flex justify-end gap-2">
-      <Button variant="outline" onClick={() => /* cancelar */}>
-        Cancelar
-      </Button>
-      <Button onClick={() => /* confirmar e salvar */} disabled={gatilhosSelecionados.length === 0}>
-        Confirmar
-      </Button>
-    </div>
-  </DialogContent>
-</Dialog>
+  </div>
+</DialogContent>
 ```
 
-#### Multi-Selecao "Conteudo Notavel"
+#### 3. Dialog de 7 Gatilhos (linhas 2589-2655)
+
+Mesma estrutura do Conteúdo Notável:
 
 ```tsx
-// Novo estado (trocar de string para array)
-const [estruturasSelecionadas, setEstruturasSelecionadas] = useState<string[]>([]);
-
-// No dialog, trocar Button por Checkbox
-{["Valor pratico", "Historia", ...].map((estrutura) => (
-  <div key={estrutura} className="flex items-center space-x-2">
-    <Checkbox
-      checked={estruturasSelecionadas.includes(estrutura)}
-      onCheckedChange={(checked) => {
-        if (checked) {
-          setEstruturasSelecionadas([...estruturasSelecionadas, estrutura]);
-        } else {
-          setEstruturasSelecionadas(estruturasSelecionadas.filter(e => e !== estrutura));
-        }
-      }}
-    />
-    <label>{estrutura}</label>
+<DialogContent className="max-w-[600px]">
+  <DialogHeader>
+    <DialogTitle>Quais gatilhos estão presentes?</DialogTitle>
+  </DialogHeader>
+  <div className="flex gap-4">
+    {/* Coluna Esquerda - Texto selecionado */}
+    <div className="flex-1 border-r pr-4">
+      <h4 className="text-sm font-medium mb-2">Texto selecionado</h4>
+      <p className="text-sm bg-muted p-2 rounded max-h-[200px] overflow-y-auto">
+        {highlightPendenteGatilhos?.text || ""}
+      </p>
+    </div>
+    
+    {/* Coluna Direita - Opções */}
+    <div className="flex-1 space-y-3">
+      {gatilhos.map(...)}
+    </div>
   </div>
-))}
+</DialogContent>
 ```
 
 ---
 
-### Fluxo de Uso
+### Visual Final
 
-**Selecionar "7 Gatilhos":**
-1. Usuario seleciona texto no roteiro
-2. Popover aparece com lista de cores
-3. Clica em "7 Gatilhos"
-4. Dialog abre com checkboxes
-5. Marca: Misterio, Reconhecimento
-6. Clica "Confirmar"
-7. Highlight e criado com annotation: "Misterio, Reconhecimento"
-
-**Selecionar "Conteudo Notavel":**
-1. Usuario seleciona texto
-2. Clica em "Conteudo Notavel" no popover
-3. Dialog abre com checkboxes
-4. Marca: Valor pratico, Prova/argumentacao
-5. Clica "Confirmar"
-6. Highlight e criado com annotations: ["Valor pratico", "Prova/ argumentacao"]
-
----
-
-### Exibicao das Anotacoes
-
-Na lista de palavras grifadas e no tooltip, mostrar as anotacoes selecionadas:
-
+#### Popover de Seleção de Cor
 ```text
-+----------+
-|Texto abc |
-|[Valor]   |
-|[Prova]   |
-+----------+
++--------------------------------------------+
+| Texto selecionado    | Qual elemento é?    |
+| "(0:00) Hoje eu vou  | ■ Desejo            |
+| te mostrar 5 formas  | ■ Headline          |
+| de ganhar dinheiro   | ■ Intensificador    |
+| online sem..."       | ■ Conteúdo notável  |
+|                      | ■ Apresentação mag. |
+|                      | ■ CTA               |
+|                      | ■ Reconhecimento    |
+|                      | ■ Prova             |
+|                      | ■ 7 Gatilhos        |
++--------------------------------------------+
+|              [Cancelar]                    |
++--------------------------------------------+
 ```
 
-Ou em formato de badges pequenas abaixo do texto grifado.
+#### Dialog Conteúdo Notável / 7 Gatilhos
+```text
++------------------------------------------------+
+|        Qual o conteúdo notável?                |
+|    (selecione todas as opções que se aplicam)  |
++------------------------+-----------------------+
+| Texto selecionado      | [ ] Valor prático     |
+| "(texto do roteiro     | [ ] História          |
+| que foi selecionado    | [ ] Prova/argumentação|
+| pelo usuário...)"      | [ ] Ponto de identif. |
+|                        | [ ] Opinião polêmica  |
+|                        | [ ] Fatos curiosos    |
++------------------------+-----------------------+
+|                   [Cancelar] [Confirmar]       |
++------------------------------------------------+
+```
+
+---
+
+### Benefícios
+
+1. **Contexto visível**: O texto selecionado fica sempre visível enquanto escolhe a opção
+2. **Melhor uso do espaço**: Layout horizontal aproveita melhor a largura da tela
+3. **Consistência**: Todos os 3 elementos (popover, dialog estrutura, dialog gatilhos) seguem o mesmo padrão
+4. **UX melhorada**: Usuário não precisa rolar para ver as opções
 
