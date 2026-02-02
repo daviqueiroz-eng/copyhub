@@ -2156,21 +2156,32 @@ const AnaliseRoteiroGame = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="novo-nicho">Nicho</Label>
-                <Select
-                  value={novoRoteiroForm.nicho_id}
-                  onValueChange={(value) => setNovoRoteiroForm({ ...novoRoteiroForm, nicho_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um nicho" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nichos.map((nicho) => (
-                      <SelectItem key={nicho.id} value={nicho.id}>
-                        {nicho.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={novoRoteiroForm.nicho_id}
+                    onValueChange={(value) => setNovoRoteiroForm({ ...novoRoteiroForm, nicho_id: value })}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecione um nicho" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {nichos.map((nicho) => (
+                        <SelectItem key={nicho.id} value={nicho.id}>
+                          {nicho.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowNovoNichoDialog(true)}
+                    title="Adicionar novo nicho"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div>
                 <Label htmlFor="novo-ordem">Ordem</Label>
