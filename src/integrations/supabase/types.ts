@@ -1850,6 +1850,91 @@ export type Database = {
           },
         ]
       }
+      sprints_iniciativas: {
+        Row: {
+          arquivada: boolean | null
+          created_at: string | null
+          created_by: string
+          criterio_conclusao: string | null
+          descricao: string | null
+          dono_id: string | null
+          id: string
+          impacto: string | null
+          prazo_entrega: string | null
+          status: string | null
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          arquivada?: boolean | null
+          created_at?: string | null
+          created_by: string
+          criterio_conclusao?: string | null
+          descricao?: string | null
+          dono_id?: string | null
+          id?: string
+          impacto?: string | null
+          prazo_entrega?: string | null
+          status?: string | null
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          arquivada?: boolean | null
+          created_at?: string | null
+          created_by?: string
+          criterio_conclusao?: string | null
+          descricao?: string | null
+          dono_id?: string | null
+          id?: string
+          impacto?: string | null
+          prazo_entrega?: string | null
+          status?: string | null
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprints_iniciativas_dono_id_fkey"
+            columns: ["dono_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      sprints_tarefas: {
+        Row: {
+          concluida: boolean | null
+          created_at: string | null
+          id: string
+          iniciativa_id: string
+          texto: string
+        }
+        Insert: {
+          concluida?: boolean | null
+          created_at?: string | null
+          id?: string
+          iniciativa_id: string
+          texto: string
+        }
+        Update: {
+          concluida?: boolean | null
+          created_at?: string | null
+          id?: string
+          iniciativa_id?: string
+          texto?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprints_tarefas_iniciativa_id_fkey"
+            columns: ["iniciativa_id"]
+            isOneToOne: false
+            referencedRelation: "sprints_iniciativas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sublinhados_corretos: {
         Row: {
           cor_id: string
