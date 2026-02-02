@@ -2118,42 +2118,44 @@ const AnaliseRoteiroGame = () => {
       {/* Popover de Seleção de Cor */}
       {showColorPopover && pendingSelection && (
         <div
-          className="fixed z-50 bg-background border rounded-lg shadow-xl p-4 min-w-[300px]"
+          className="fixed z-50 bg-background border rounded-lg shadow-xl p-4 min-w-[520px]"
           style={{
-            left: `${Math.min(popoverPosition.x, window.innerWidth - 320)}px`,
+            left: `${Math.min(popoverPosition.x, window.innerWidth - 540)}px`,
             top: `${Math.max(popoverPosition.y - 300, 20)}px`,
             transform: 'translateX(-50%)'
           }}
         >
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-muted-foreground mb-2">
-              Texto selecionado
-            </h4>
-            <p className="text-sm bg-muted p-2 rounded max-h-20 overflow-y-auto">
-              {pendingSelection.text.length > 100 
-                ? `${pendingSelection.text.slice(0, 100)}...` 
-                : pendingSelection.text}
-            </p>
-          </div>
-          
-          <div>
-            <h4 className="text-lg font-semibold text-center mb-3 italic">
-              Qual elemento é?
-            </h4>
-            <div className="space-y-2 border rounded-lg p-3">
-              {cores.map((cor) => (
-                <button
-                  key={cor.id}
-                  onClick={() => handleSelectColorFromPopover(cor.cor)}
-                  className="w-full flex items-center gap-3 p-2 rounded hover:bg-accent transition-colors text-left"
-                >
-                  <div
-                    className="w-4 h-4 rounded flex-shrink-0"
-                    style={{ backgroundColor: cor.cor }}
-                  />
-                  <span className="text-sm">{cor.nome}</span>
-                </button>
-              ))}
+          <div className="flex gap-4">
+            {/* Coluna Esquerda - Texto selecionado */}
+            <div className="flex-1 border-r pr-4">
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                Texto selecionado
+              </h4>
+              <p className="text-sm bg-muted p-2 rounded max-h-[250px] overflow-y-auto">
+                {pendingSelection.text}
+              </p>
+            </div>
+            
+            {/* Coluna Direita - Opções */}
+            <div className="flex-1">
+              <h4 className="text-lg font-semibold text-center mb-3 italic">
+                Qual elemento é?
+              </h4>
+              <div className="space-y-2 border rounded-lg p-3 max-h-[250px] overflow-y-auto">
+                {cores.map((cor) => (
+                  <button
+                    key={cor.id}
+                    onClick={() => handleSelectColorFromPopover(cor.cor)}
+                    className="w-full flex items-center gap-3 p-2 rounded hover:bg-accent transition-colors text-left"
+                  >
+                    <div
+                      className="w-4 h-4 rounded flex-shrink-0"
+                      style={{ backgroundColor: cor.cor }}
+                    />
+                    <span className="text-sm">{cor.nome}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           
@@ -2521,42 +2523,55 @@ const AnaliseRoteiroGame = () => {
 
       {/* Dialog de Estrutura do Roteiro (Conteúdo Notável) - Multi-seleção */}
       <Dialog open={showEstruturaDialog} onOpenChange={setShowEstruturaDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Qual o conteúdo notável?</DialogTitle>
             <DialogDescription>
               Selecione todas as opções que se aplicam
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            {[
-              "Valor prático",
-              "Historia",
-              "Prova/ argumentação",
-              "Ponto de identificação",
-              "Opinião polêmica",
-              "Fatos curiosos"
-            ].map((estrutura) => (
-              <div key={estrutura} className="flex items-center space-x-3">
-                <Checkbox
-                  id={`estrutura-dialog-${estrutura}`}
-                  checked={estruturasSelecionadas.includes(estrutura)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setEstruturasSelecionadas([...estruturasSelecionadas, estrutura]);
-                    } else {
-                      setEstruturasSelecionadas(estruturasSelecionadas.filter(e => e !== estrutura));
-                    }
-                  }}
-                />
-                <label
-                  htmlFor={`estrutura-dialog-${estrutura}`}
-                  className="text-sm font-medium leading-none cursor-pointer"
-                >
-                  {estrutura}
-                </label>
-              </div>
-            ))}
+          <div className="flex gap-4">
+            {/* Coluna Esquerda - Texto selecionado */}
+            <div className="flex-1 border-r pr-4">
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                Texto selecionado
+              </h4>
+              <p className="text-sm bg-muted p-2 rounded max-h-[200px] overflow-y-auto">
+                {highlightPendenteEstrutura?.text || ""}
+              </p>
+            </div>
+            
+            {/* Coluna Direita - Opções */}
+            <div className="flex-1 space-y-3">
+              {[
+                "Valor prático",
+                "Historia",
+                "Prova/ argumentação",
+                "Ponto de identificação",
+                "Opinião polêmica",
+                "Fatos curiosos"
+              ].map((estrutura) => (
+                <div key={estrutura} className="flex items-center space-x-3">
+                  <Checkbox
+                    id={`estrutura-dialog-${estrutura}`}
+                    checked={estruturasSelecionadas.includes(estrutura)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setEstruturasSelecionadas([...estruturasSelecionadas, estrutura]);
+                      } else {
+                        setEstruturasSelecionadas(estruturasSelecionadas.filter(e => e !== estrutura));
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`estrutura-dialog-${estrutura}`}
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    {estrutura}
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => {
@@ -2588,43 +2603,56 @@ const AnaliseRoteiroGame = () => {
 
       {/* Dialog de 7 Gatilhos - Multi-seleção */}
       <Dialog open={showGatilhosDialog} onOpenChange={setShowGatilhosDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Quais gatilhos estão presentes?</DialogTitle>
             <DialogDescription>
               Selecione todos os gatilhos que se aplicam
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            {[
-              "Recompensa",
-              "Mistério",
-              "Reconhecimento",
-              "Popularidade/Autoridade",
-              "Crença",
-              "Disrupção",
-              "Atenção imediata"
-            ].map((gatilho) => (
-              <div key={gatilho} className="flex items-center space-x-3">
-                <Checkbox
-                  id={`gatilho-dialog-${gatilho}`}
-                  checked={gatilhosSelecionados.includes(gatilho)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setGatilhosSelecionados([...gatilhosSelecionados, gatilho]);
-                    } else {
-                      setGatilhosSelecionados(gatilhosSelecionados.filter(g => g !== gatilho));
-                    }
-                  }}
-                />
-                <label
-                  htmlFor={`gatilho-dialog-${gatilho}`}
-                  className="text-sm font-medium leading-none cursor-pointer"
-                >
-                  {gatilho}
-                </label>
-              </div>
-            ))}
+          <div className="flex gap-4">
+            {/* Coluna Esquerda - Texto selecionado */}
+            <div className="flex-1 border-r pr-4">
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                Texto selecionado
+              </h4>
+              <p className="text-sm bg-muted p-2 rounded max-h-[200px] overflow-y-auto">
+                {highlightPendenteGatilhos?.text || ""}
+              </p>
+            </div>
+            
+            {/* Coluna Direita - Opções */}
+            <div className="flex-1 space-y-3">
+              {[
+                "Recompensa",
+                "Mistério",
+                "Reconhecimento",
+                "Popularidade/Autoridade",
+                "Crença",
+                "Disrupção",
+                "Atenção imediata"
+              ].map((gatilho) => (
+                <div key={gatilho} className="flex items-center space-x-3">
+                  <Checkbox
+                    id={`gatilho-dialog-${gatilho}`}
+                    checked={gatilhosSelecionados.includes(gatilho)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setGatilhosSelecionados([...gatilhosSelecionados, gatilho]);
+                      } else {
+                        setGatilhosSelecionados(gatilhosSelecionados.filter(g => g !== gatilho));
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`gatilho-dialog-${gatilho}`}
+                    className="text-sm font-medium leading-none cursor-pointer"
+                  >
+                    {gatilho}
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => {
