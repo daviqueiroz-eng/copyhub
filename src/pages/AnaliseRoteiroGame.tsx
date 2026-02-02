@@ -144,10 +144,15 @@ const AnaliseRoteiroGame = () => {
   const [modoFiltroAvancado, setModoFiltroAvancado] = useState(false);
   const [filtroEstruturaSelecionada, setFiltroEstruturaSelecionada] = useState<string>("all");
   
-  // Estados para dialog de estrutura de conteúdo notável
+  // Estados para dialog de estrutura de conteúdo notável (multi-seleção)
   const [showEstruturaDialog, setShowEstruturaDialog] = useState(false);
   const [highlightPendenteEstrutura, setHighlightPendenteEstrutura] = useState<Highlight | null>(null);
-  const [estruturaSelecionada, setEstruturaSelecionada] = useState<string>("");
+  const [estruturasSelecionadas, setEstruturasSelecionadas] = useState<string[]>([]);
+  
+  // Estados para dialog de 7 Gatilhos (multi-seleção)
+  const [showGatilhosDialog, setShowGatilhosDialog] = useState(false);
+  const [highlightPendenteGatilhos, setHighlightPendenteGatilhos] = useState<Highlight | null>(null);
+  const [gatilhosSelecionados, setGatilhosSelecionados] = useState<string[]>([]);
   
   // Estado para comentários expandidos/minimizados
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
@@ -564,11 +569,19 @@ const AnaliseRoteiroGame = () => {
 
     // Verificar se é "Conteúdo Notável" para abrir dialog de estrutura
     const corConteudoNotavel = cores.find(c => c.nome === "Conteúdo notável");
+    // Verificar se é "7 Gatilhos" para abrir dialog de gatilhos
+    const corGatilhos = cores.find(c => c.nome === "7 Gatilhos");
     
     if (color === corConteudoNotavel?.cor) {
-      // Armazenar highlight pendente e abrir dialog
+      // Armazenar highlight pendente e abrir dialog de estrutura
       setHighlightPendenteEstrutura(newHighlight);
+      setEstruturasSelecionadas([]);
       setShowEstruturaDialog(true);
+    } else if (color === corGatilhos?.cor) {
+      // Armazenar highlight pendente e abrir dialog de gatilhos
+      setHighlightPendenteGatilhos(newHighlight);
+      setGatilhosSelecionados([]);
+      setShowGatilhosDialog(true);
     } else {
       // Adicionar normalmente
       setHighlightsHistory([...highlightsHistory, highlights]);
@@ -2506,11 +2519,14 @@ const AnaliseRoteiroGame = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Estrutura do Roteiro (Conteúdo Notável) */}
+      {/* Dialog de Estrutura do Roteiro (Conteúdo Notável) - Multi-seleção */}
       <Dialog open={showEstruturaDialog} onOpenChange={setShowEstruturaDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>qual o conteúdo notável?</DialogTitle>
+            <DialogTitle>Qual o conteúdo notável?</DialogTitle>
+            <DialogDescription>
+              Selecione todas as opções que se aplicam
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {[
@@ -2521,38 +2537,117 @@ const AnaliseRoteiroGame = () => {
               "Opinião polêmica",
               "Fatos curiosos"
             ].map((estrutura) => (
-              <Button
-                key={estrutura}
-                variant={estruturaSelecionada === estrutura ? "default" : "outline"}
-                className="w-full justify-start"
-                onClick={() => setEstruturaSelecionada(estrutura)}
-              >
-                {estrutura}
-              </Button>
+              <div key={estrutura} className="flex items-center space-x-3">
+                <Checkbox
+                  id={`estrutura-dialog-${estrutura}`}
+                  checked={estruturasSelecionadas.includes(estrutura)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setEstruturasSelecionadas([...estruturasSelecionadas, estrutura]);
+                    } else {
+                      setEstruturasSelecionadas(estruturasSelecionadas.filter(e => e !== estrutura));
+                    }
+                  }}
+                />
+                <label
+                  htmlFor={`estrutura-dialog-${estrutura}`}
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  {estrutura}
+                </label>
+              </div>
             ))}
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => {
               setShowEstruturaDialog(false);
               setHighlightPendenteEstrutura(null);
-              setEstruturaSelecionada("");
+              setEstruturasSelecionadas([]);
             }}>
               Cancelar
             </Button>
             <Button onClick={() => {
-              if (highlightPendenteEstrutura && estruturaSelecionada) {
+              if (highlightPendenteEstrutura && estruturasSelecionadas.length > 0) {
                 const highlightComEstrutura = {
                   ...highlightPendenteEstrutura,
-                  annotation: estruturaSelecionada,
-                  annotations: [estruturaSelecionada]
+                  annotation: estruturasSelecionadas.join(", "),
+                  annotations: estruturasSelecionadas
                 };
                 setHighlightsHistory([...highlightsHistory, highlights]);
                 setHighlights([...highlights, highlightComEstrutura]);
                 setShowEstruturaDialog(false);
                 setHighlightPendenteEstrutura(null);
-                setEstruturaSelecionada("");
+                setEstruturasSelecionadas([]);
               }
-            }} disabled={!estruturaSelecionada}>
+            }} disabled={estruturasSelecionadas.length === 0}>
+              Confirmar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de 7 Gatilhos - Multi-seleção */}
+      <Dialog open={showGatilhosDialog} onOpenChange={setShowGatilhosDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Quais gatilhos estão presentes?</DialogTitle>
+            <DialogDescription>
+              Selecione todos os gatilhos que se aplicam
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {[
+              "Recompensa",
+              "Mistério",
+              "Reconhecimento",
+              "Popularidade/Autoridade",
+              "Crença",
+              "Disrupção",
+              "Atenção imediata"
+            ].map((gatilho) => (
+              <div key={gatilho} className="flex items-center space-x-3">
+                <Checkbox
+                  id={`gatilho-dialog-${gatilho}`}
+                  checked={gatilhosSelecionados.includes(gatilho)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setGatilhosSelecionados([...gatilhosSelecionados, gatilho]);
+                    } else {
+                      setGatilhosSelecionados(gatilhosSelecionados.filter(g => g !== gatilho));
+                    }
+                  }}
+                />
+                <label
+                  htmlFor={`gatilho-dialog-${gatilho}`}
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  {gatilho}
+                </label>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => {
+              setShowGatilhosDialog(false);
+              setHighlightPendenteGatilhos(null);
+              setGatilhosSelecionados([]);
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={() => {
+              if (highlightPendenteGatilhos && gatilhosSelecionados.length > 0) {
+                const highlightComGatilhos = {
+                  ...highlightPendenteGatilhos,
+                  annotation: gatilhosSelecionados.join(", "),
+                  annotations: gatilhosSelecionados
+                };
+                setHighlightsHistory([...highlightsHistory, highlights]);
+                setHighlights([...highlights, highlightComGatilhos]);
+                setShowGatilhosDialog(false);
+                setHighlightPendenteGatilhos(null);
+                setGatilhosSelecionados([]);
+              }
+            }} disabled={gatilhosSelecionados.length === 0}>
               Confirmar
             </Button>
           </div>
