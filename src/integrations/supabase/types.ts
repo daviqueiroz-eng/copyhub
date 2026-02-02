@@ -1321,7 +1321,9 @@ export type Database = {
           id: string
           is_overdelivery: boolean
           mentorado_id: string
+          nome_customizado: string | null
           numero: number
+          ordem_personalizada: number | null
           quantidade: number
           updated_at: string | null
           user_id: string
@@ -1331,7 +1333,9 @@ export type Database = {
           id?: string
           is_overdelivery?: boolean
           mentorado_id: string
+          nome_customizado?: string | null
           numero: number
+          ordem_personalizada?: number | null
           quantidade?: number
           updated_at?: string | null
           user_id: string
@@ -1341,7 +1345,9 @@ export type Database = {
           id?: string
           is_overdelivery?: boolean
           mentorado_id?: string
+          nome_customizado?: string | null
           numero?: number
+          ordem_personalizada?: number | null
           quantidade?: number
           updated_at?: string | null
           user_id?: string

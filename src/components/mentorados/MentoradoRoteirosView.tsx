@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrelloImport, TrelloCard } from "@/hooks/useTrelloImport";
 import {
@@ -13,8 +14,13 @@ import {
   useUpsertGuiaConfig,
   useDeleteGuiaConfig,
   useUpdateGuiaQuantidade,
+  useUpdateGuiaNome,
+  useUpdateGuiaOrdem,
 } from "@/hooks/useGuiasConfig";
 import { Button } from "@/components/ui/button";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -91,10 +97,12 @@ type RoteiroLocal = {
   estrutura: string;
 };
 
-type GuiaConfig = {
+type GuiaConfigLocal = {
   numero: number;
   quantidade: number;
   isOverdelivery?: boolean;
+  nome_customizado?: string | null;
+  ordem_personalizada?: number | null;
 };
 
 type OverdeliveryBloco = {
@@ -104,13 +112,126 @@ type OverdeliveryBloco = {
   roteiros: { ordem: number; headline: string; estrutura: string }[];
 };
 
+// Componente sortable para guias com drag-and-drop e edição de nome
+const SortableGuiaItem = ({
+  guia,
+  isActive,
+  isEditing,
+  tempNome,
+  filledCount,
+  onSelect,
+  onStartEdit,
+  onNameChange,
+  onSaveName,
+  onCancelEdit,
+  onDelete,
+}: {
+  guia: GuiaConfigLocal;
+  isActive: boolean;
+  isEditing: boolean;
+  tempNome: string;
+  filledCount: number;
+  onSelect: () => void;
+  onStartEdit: () => void;
+  onNameChange: (name: string) => void;
+  onSaveName: () => void;
+  onCancelEdit: () => void;
+  onDelete: () => void;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: guia.numero });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="group flex items-center gap-1">
+      {/* Grip para arrastar */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing p-1 hidden lg:block opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <GripVertical className="h-3 w-3 text-muted-foreground" />
+      </div>
+      
+      {isEditing ? (
+        <Input
+          value={tempNome}
+          onChange={(e) => onNameChange(e.target.value)}
+          onBlur={onSaveName}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.currentTarget.blur();
+            }
+            if (e.key === "Escape") {
+              onCancelEdit();
+            }
+          }}
+          className="h-8 text-sm flex-1"
+          autoFocus
+        />
+      ) : (
+        <Button
+          variant={isActive ? "default" : "ghost"}
+          className="flex-1 justify-center lg:justify-start gap-2 px-2 lg:px-4"
+          onClick={onSelect}
+          onDoubleClick={onStartEdit}
+        >
+          {guia.isOverdelivery ? (
+            <>
+              <Package className="h-4 w-4 lg:hidden" />
+              <span className="hidden lg:inline flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                {guia.nome_customizado || "Overdelivery"}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="lg:hidden">{guia.numero}</span>
+              <span className="hidden lg:inline truncate">
+                {guia.nome_customizado || `Guia ${guia.numero}`}
+              </span>
+              <span className="ml-auto text-xs opacity-70 hidden lg:inline">
+                {filledCount}/{guia.quantidade}
+              </span>
+            </>
+          )}
+        </Button>
+      )}
+      
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 hidden lg:flex"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        title="Apagar guia"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+};
+
 export const MentoradoRoteirosView = ({
   mentoradoId,
   mentoradoNome,
   onClose,
 }: MentoradoRoteirosViewProps) => {
   const [guiaAtiva, setGuiaAtiva] = useState(1);
-  const [guias, setGuias] = useState<GuiaConfig[]>([]);
+  const [guias, setGuias] = useState<GuiaConfigLocal[]>([]);
   const [showFirstGuiaDialog, setShowFirstGuiaDialog] = useState(true);
   const [roteirosLocais, setRoteirosLocais] = useState<Map<string, RoteiroLocal>>(new Map());
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
@@ -270,6 +391,42 @@ export const MentoradoRoteirosView = ({
   // Chave: "roteiroKey:checkId", valor: { passa, motivo, loading }
   const [iaCheckResults, setIaCheckResults] = useState<Map<string, { passa: boolean; motivo?: string; loading?: boolean }>>(new Map());
   const iaCheckDebounceRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  
+  // Estados para toggles de IA e Cronômetro (salvos em localStorage)
+  const [iaEnabled, setIaEnabled] = useState(() => {
+    const saved = localStorage.getItem(`roteiro-ia-enabled-${mentoradoId}`);
+    return saved !== null ? saved === "true" : true;
+  });
+  const [cronometroEnabled, setCronometroEnabled] = useState(() => {
+    const saved = localStorage.getItem(`roteiro-cronometro-enabled-${mentoradoId}`);
+    return saved !== null ? saved === "true" : true;
+  });
+  
+  // Estados para edição de nome de guia
+  const [editingGuiaNome, setEditingGuiaNome] = useState<number | null>(null);
+  const [tempGuiaNome, setTempGuiaNome] = useState("");
+  
+  // Hooks para atualizar nome e ordem
+  const updateGuiaNome = useUpdateGuiaNome();
+  const updateGuiaOrdem = useUpdateGuiaOrdem();
+  
+  // Sensor para drag and drop com distância mínima
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+  
+  // Persistir toggles no localStorage
+  useEffect(() => {
+    localStorage.setItem(`roteiro-ia-enabled-${mentoradoId}`, String(iaEnabled));
+  }, [iaEnabled, mentoradoId]);
+  
+  useEffect(() => {
+    localStorage.setItem(`roteiro-cronometro-enabled-${mentoradoId}`, String(cronometroEnabled));
+  }, [cronometroEnabled, mentoradoId]);
 
   // Buscar categorias do avatar do mentorado atual
   const currentMentorado = mentorados.find(m => m.id === mentoradoId);
@@ -302,11 +459,15 @@ export const MentoradoRoteirosView = ({
     
     // Se temos configurações no banco, usá-las (mantém isOverdelivery)
     if (guiasConfigDb.length > 0) {
-      const guiasDoDb: GuiaConfig[] = guiasConfigDb.map(g => ({
-        numero: g.numero,
-        quantidade: g.quantidade,
-        isOverdelivery: g.is_overdelivery,
-      }));
+      const guiasDoDb: GuiaConfigLocal[] = guiasConfigDb
+        .sort((a, b) => (a.ordem_personalizada ?? a.numero) - (b.ordem_personalizada ?? b.numero))
+        .map(g => ({
+          numero: g.numero,
+          quantidade: g.quantidade,
+          isOverdelivery: g.is_overdelivery,
+          nome_customizado: g.nome_customizado,
+          ordem_personalizada: g.ordem_personalizada,
+        }));
       setGuias(guiasDoDb);
       setShowFirstGuiaDialog(false);
       return;
@@ -318,7 +479,7 @@ export const MentoradoRoteirosView = ({
     
     if (guiasExistentes.size > 0) {
       const maxGuia = Math.max(...guiasExistentes);
-      const guiasAtualizadas: GuiaConfig[] = [];
+      const guiasAtualizadas: GuiaConfigLocal[] = [];
       
       for (let i = 1; i <= maxGuia; i++) {
         const roteirosGuia = roteiros.filter(r => r.guia_numero === i);
@@ -923,6 +1084,9 @@ export const MentoradoRoteirosView = ({
 
   // Função para verificar se o timer está ativo e mostrar alerta
   const checkTimerAndAlert = useCallback((field: "headline" | "estrutura") => {
+    // Se cronômetro está desabilitado, não alertar
+    if (!cronometroEnabled) return;
+    
     // Se o timer de revisão está ativo, não mostrar alerta (usuário está revisando)
     if (timers["revisar"]?.isRunning) return;
     
@@ -943,7 +1107,7 @@ export const MentoradoRoteirosView = ({
         setTimeout(() => setShowTimerAlert(false), 5000);
       }
     }
-  }, [timers]);
+  }, [timers, cronometroEnabled]);
 
   // Detectar /1 ou /2 para abrir diretamente o modo correto
   const handleInputChange2 = useCallback((
@@ -1835,45 +1999,62 @@ export const MentoradoRoteirosView = ({
         <div className="w-14 lg:w-48 border-r bg-muted/30 flex flex-col shrink-0">
           <ScrollArea className="flex-1">
             <div className="p-2 lg:p-3 space-y-1">
-              {guias.map((guia) => (
-                <div key={guia.numero} className="group flex items-center gap-1">
-                  <Button
-                    variant={guiaAtiva === guia.numero ? "default" : "ghost"}
-                    className="flex-1 justify-center lg:justify-start gap-2 px-2 lg:px-4"
-                    onClick={() => handleGuiaChange(guia.numero)}
-                  >
-                    {guia.isOverdelivery ? (
-                      <>
-                        <Package className="h-4 w-4 lg:hidden" />
-                        <span className="hidden lg:inline flex items-center gap-2">
-                          <Package className="h-4 w-4" />
-                          Overdelivery
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="lg:hidden">{guia.numero}</span>
-                        <span className="hidden lg:inline">Guia {guia.numero}</span>
-                        <span className="ml-auto text-xs opacity-70 hidden lg:inline">
-                          {getFilledCount(guia.numero)}/{guia.quantidade}
-                        </span>
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 hidden lg:flex"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setGuiaToDelete(guia.numero);
-                    }}
-                    title="Apagar guia"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={(event: DragEndEvent) => {
+                  const { active, over } = event;
+                  if (active.id !== over?.id && over) {
+                    const oldIndex = guias.findIndex(g => g.numero === active.id);
+                    const newIndex = guias.findIndex(g => g.numero === over.id);
+                    const reordered = arrayMove(guias, oldIndex, newIndex);
+                    setGuias(reordered);
+                    
+                    // Atualizar ordem_personalizada no banco para cada guia
+                    reordered.forEach((guia, index) => {
+                      updateGuiaOrdem.mutate({
+                        mentorado_id: mentoradoId,
+                        numero: guia.numero,
+                        ordem_personalizada: index,
+                      });
+                    });
+                  }
+                }}
+              >
+                <SortableContext
+                  items={guias.map(g => g.numero)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {guias.map((guia) => (
+                    <SortableGuiaItem
+                      key={guia.numero}
+                      guia={guia}
+                      isActive={guiaAtiva === guia.numero}
+                      isEditing={editingGuiaNome === guia.numero}
+                      tempNome={tempGuiaNome}
+                      filledCount={getFilledCount(guia.numero)}
+                      onSelect={() => handleGuiaChange(guia.numero)}
+                      onStartEdit={() => {
+                        setEditingGuiaNome(guia.numero);
+                        setTempGuiaNome(guia.nome_customizado || (guia.isOverdelivery ? "Overdelivery" : `Guia ${guia.numero}`));
+                      }}
+                      onNameChange={setTempGuiaNome}
+                      onSaveName={() => {
+                        if (tempGuiaNome.trim()) {
+                          updateGuiaNome.mutate({
+                            mentorado_id: mentoradoId,
+                            numero: guia.numero,
+                            nome_customizado: tempGuiaNome,
+                          });
+                        }
+                        setEditingGuiaNome(null);
+                      }}
+                      onCancelEdit={() => setEditingGuiaNome(null)}
+                      onDelete={() => setGuiaToDelete(guia.numero)}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             </div>
           </ScrollArea>
           <div className="p-2 lg:p-3 border-t space-y-2">
@@ -1886,6 +2067,29 @@ export const MentoradoRoteirosView = ({
                 <p><span className="font-mono bg-muted px-1 rounded">/i</span> Intensificadores</p>
                 <p><span className="font-mono bg-muted px-1 rounded">/p</span> Prompts</p>
                 <p><span className="font-mono bg-muted px-1 rounded">/m</span> Registrar heads</p>
+              </div>
+            </div>
+            
+            {/* Seção de Configurações */}
+            <div className="pb-2 border-b hidden lg:block">
+              <p className="text-sm font-semibold mb-2 text-muted-foreground">Configurações</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">IA</span>
+                  <Switch
+                    checked={iaEnabled}
+                    onCheckedChange={setIaEnabled}
+                    className="scale-75"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Cronômetro</span>
+                  <Switch
+                    checked={cronometroEnabled}
+                    onCheckedChange={setCronometroEnabled}
+                    className="scale-75"
+                  />
+                </div>
               </div>
             </div>
 
@@ -2182,6 +2386,7 @@ export const MentoradoRoteirosView = ({
                           onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "headline")}
                           onBlur={() => handleFieldBlur(guiaAtiva, ordem, "headline")}
                           onMouseUp={(e) => {
+                            if (!iaEnabled) return;
                             const target = e.currentTarget;
                             const start = target.selectionStart;
                             const end = target.selectionEnd;
@@ -2225,6 +2430,7 @@ export const MentoradoRoteirosView = ({
                             cursorPositionRef.current.set(key, target.selectionStart || 0);
                           }}
                           onMouseUp={(e) => {
+                            if (!iaEnabled) return;
                             const target = e.currentTarget;
                             const start = target.selectionStart;
                             const end = target.selectionEnd;
