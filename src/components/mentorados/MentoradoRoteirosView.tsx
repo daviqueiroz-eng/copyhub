@@ -2063,6 +2063,7 @@ export const MentoradoRoteirosView = ({
               <p className="text-sm font-semibold mb-2 text-muted-foreground">Atalhos</p>
               <div className="space-y-1 text-xs text-muted-foreground">
                 <p><span className="font-mono bg-muted px-1 rounded">/</span> Mapa do avatar</p>
+                <p><span className="font-mono bg-muted px-1 rounded">/3</span> Headlines</p>
                 <p><span className="font-mono bg-muted px-1 rounded">/c</span> CTAs</p>
                 <p><span className="font-mono bg-muted px-1 rounded">/i</span> Intensificadores</p>
                 <p><span className="font-mono bg-muted px-1 rounded">/p</span> Prompts</p>
