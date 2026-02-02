@@ -73,6 +73,15 @@ const AnaliseRoteiroGame = () => {
 
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  
+  // Estados para popover de seleção de cor
+  const [showColorPopover, setShowColorPopover] = useState(false);
+  const [popoverPosition, setPopoverPosition] = useState({ x: 0, y: 0 });
+  const [pendingSelection, setPendingSelection] = useState<{
+    text: string;
+    startPos: number;
+    endPos: number;
+  } | null>(null);
   const [highlightsHistory, setHighlightsHistory] = useState<Highlight[][]>([]);
   const [currentRoteiroId, setCurrentRoteiroId] = useState<string | null>(null);
   const [showCompletedDialog, setShowCompletedDialog] = useState(false);
@@ -216,14 +225,7 @@ const AnaliseRoteiroGame = () => {
     });
   };
 
-  // Não selecionar automaticamente - usuário escolhe manualmente
-
-  // Selecionar primeira cor automaticamente
-  useEffect(() => {
-    if (cores.length > 0 && !selectedColor) {
-      setSelectedColor(cores[0].cor);
-    }
-  }, [cores, selectedColor]);
+  // Não selecionar automaticamente - usuário escolhe via popover
 
   // Listeners globais para drag de comentários
   useEffect(() => {
@@ -467,7 +469,7 @@ const AnaliseRoteiroGame = () => {
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || !selectedColor) return;
+    if (!selection || selection.rangeCount === 0) return;
     if (!currentRoteiro) return;
 
     // Usar helpers para calcular posições corretas
@@ -481,26 +483,43 @@ const AnaliseRoteiroGame = () => {
     const selectedText = currentRoteiro.conteudo.slice(startPos, endPos);
     if (!selectedText.trim()) return;
 
+    // Calcular posição do popover (próximo à seleção)
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    
+    // Posicionar popover acima da seleção, centralizado
+    setPopoverPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10
+    });
+    
+    setPendingSelection({ text: selectedText, startPos, endPos });
+    setShowColorPopover(true);
+  };
+
+  // Função para aplicar a cor selecionada no popover
+  const handleSelectColorFromPopover = (color: string) => {
+    if (!pendingSelection) return;
+
+    const { startPos, endPos, text } = pendingSelection;
+
     // Verificar se já existe highlight na mesma posição
     const exactDuplicate = highlights.find(h => 
       isExactDuplicate(h, { startPos, endPos })
     );
 
     if (exactDuplicate) {
-      if (exactDuplicate.color === selectedColor) {
-        // Mesma cor - apenas avisar e ignorar
+      if (exactDuplicate.color === color) {
         toast({
           title: "Palavra já grifada",
           description: "Esta palavra já está grifada com esta cor.",
         });
-        selection.removeAllRanges();
-        return;
       } else {
         // Cor diferente - SUBSTITUIR AUTOMATICAMENTE
         setHighlightsHistory([...highlightsHistory, highlights]);
         setHighlights(highlights.map(h => 
           h.id === exactDuplicate.id 
-            ? { ...h, color: selectedColor }
+            ? { ...h, color: color }
             : h
         ));
         
@@ -508,10 +527,12 @@ const AnaliseRoteiroGame = () => {
           title: "Cor alterada",
           description: "A cor do highlight foi atualizada.",
         });
-        
-        selection.removeAllRanges();
-        return;
       }
+      
+      setShowColorPopover(false);
+      setPendingSelection(null);
+      window.getSelection()?.removeAllRanges();
+      return;
     }
 
     // Verificar sobreposição parcial
@@ -525,15 +546,17 @@ const AnaliseRoteiroGame = () => {
         description: "Esta seleção se sobrepõe a uma palavra já grifada. Selecione a palavra completa para trocar a cor.",
         variant: "destructive",
       });
-      selection.removeAllRanges();
+      setShowColorPopover(false);
+      setPendingSelection(null);
+      window.getSelection()?.removeAllRanges();
       return;
     }
 
     // Nenhum problema - adicionar novo highlight
     const newHighlight: Highlight = {
       id: crypto.randomUUID(),
-      text: selectedText,
-      color: selectedColor,
+      text: text,
+      color: color,
       startPos,
       endPos,
       annotation: undefined,
@@ -542,7 +565,7 @@ const AnaliseRoteiroGame = () => {
     // Verificar se é "Conteúdo Notável" para abrir dialog de estrutura
     const corConteudoNotavel = cores.find(c => c.nome === "Conteúdo notável");
     
-    if (selectedColor === corConteudoNotavel?.cor) {
+    if (color === corConteudoNotavel?.cor) {
       // Armazenar highlight pendente e abrir dialog
       setHighlightPendenteEstrutura(newHighlight);
       setShowEstruturaDialog(true);
@@ -552,7 +575,9 @@ const AnaliseRoteiroGame = () => {
       setHighlights([...highlights, newHighlight]);
     }
 
-    selection.removeAllRanges();
+    setShowColorPopover(false);
+    setPendingSelection(null);
+    window.getSelection()?.removeAllRanges();
   };
 
   // Determinar posição do comentário baseado na localização da palavra
@@ -1753,62 +1778,106 @@ const AnaliseRoteiroGame = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_1fr] gap-6">
-        {/* Coluna Esquerda - Legenda de Cores + Lista de Highlights */}
-        <div className="space-y-4 sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto">
-          <Card className="p-4">
-            <h3 className="text-sm font-semibold mb-3">Legenda</h3>
-            <div className="space-y-2">
-              {cores.map((cor) => (
-                <button
-                  key={cor.id}
-                  onClick={() => setSelectedColor(cor.cor)}
-                  className={`w-full flex items-center gap-2 p-2 rounded-lg transition-all hover:bg-accent ${
-                    selectedColor === cor.cor ? "bg-accent ring-2 ring-primary" : ""
-                  }`}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Coluna Esquerda - Conteúdo do Roteiro */}
+        <div className="space-y-4">
+          {/* Barra de ferramentas compacta */}
+          <Card className="p-3">
+            <div className="flex flex-wrap items-center gap-2 justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUndo}
+                  disabled={highlightsHistory.length === 0}
+                  title="Desfazer último sublinhado (Ctrl+Z)"
                 >
-                  <div
-                    className="w-5 h-5 rounded border-2 border-border flex-shrink-0"
-                    style={{ backgroundColor: cor.cor }}
-                  />
-                  <span className="text-xs font-medium text-left">{cor.nome}</span>
-                </button>
-              ))}
-            </div>
-            
-            {/* Botões de Ação */}
-            <div className="space-y-2 mt-4 pt-4 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleUndo}
-                disabled={highlightsHistory.length === 0}
-                title="Desfazer último sublinhado (Ctrl+Z)"
-                className="w-full"
-              >
-                Desfazer
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setHighlights([]);
-                  setHighlightsHistory([]);
-                  setEstruturaInvisivel("");
-                  setGatilhosAtencao("");
-                  setEstruturaRoteiro("");
-                  setEstruturaRoteiroCheckboxes([]);
-                  setCargaCognitiva(5);
-                  setOQueTornouViral("");
-                  setMelhoriasPotencial("");
-                }}
-                className="w-full"
-              >
-                Limpar Tudo
-              </Button>
+                  Desfazer
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setHighlights([]);
+                    setHighlightsHistory([]);
+                    setEstruturaInvisivel("");
+                    setGatilhosAtencao("");
+                    setEstruturaRoteiro("");
+                    setEstruturaRoteiroCheckboxes([]);
+                    setCargaCognitiva(5);
+                    setOQueTornouViral("");
+                    setMelhoriasPotencial("");
+                  }}
+                >
+                  Limpar Tudo
+                </Button>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {highlights.length} {highlights.length === 1 ? 'grifada' : 'grifadas'}
+                </span>
+              </div>
             </div>
           </Card>
 
+          {/* Conteúdo do Roteiro */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">{currentRoteiro.titulo}</h2>
+            {currentRoteiro.link_video && (
+              <div className="mb-4 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    const processedUrl = getWatchableVideoUrl(currentRoteiro.link_video!);
+                    if (processedUrl) {
+                      window.open(processedUrl, '_blank');
+                    } else {
+                      toast({
+                        title: "Link inválido",
+                        description: "Não foi possível abrir o vídeo. Verifique o link.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Assistir Vídeo do Roteiro
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => handleCopyVideoLink(currentRoteiro.link_video!)}
+                >
+                  <Copy className="w-4 h-4" />
+                  Copiar Link
+                </Button>
+              </div>
+            )}
+            
+            {filterColor === "all" ? (
+              <div
+                id="roteiro-content"
+                className="relative prose prose-sm max-w-none whitespace-pre-wrap text-foreground leading-relaxed select-text cursor-text"
+                onMouseUp={handleTextSelection}
+              >
+                {renderHighlightedText(currentRoteiro.conteudo)}
+              </div>
+            ) : (
+              <HighlightsTable
+                highlights={highlights.filter(h => h.color === filterColor)}
+                colorName={cores.find(c => c.cor === filterColor)?.nome || ""}
+                color={filterColor}
+                onRemoveHighlight={handleRemoveHighlight}
+              />
+            )}
+          </Card>
+          
+          {/* Lista de Palavras Grifadas colapsável */}
           <Card className="p-4">
             <HighlightsList
               highlights={highlights}
@@ -1820,62 +1889,6 @@ const AnaliseRoteiroGame = () => {
             />
           </Card>
         </div>
-
-        {/* Coluna Central - Conteúdo do Roteiro */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">{currentRoteiro.titulo}</h2>
-          {currentRoteiro.link_video && (
-            <div className="mb-4 flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => {
-                  const processedUrl = getWatchableVideoUrl(currentRoteiro.link_video!);
-                  if (processedUrl) {
-                    window.open(processedUrl, '_blank');
-                  } else {
-                    toast({
-                      title: "Link inválido",
-                      description: "Não foi possível abrir o vídeo. Verifique o link.",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-              >
-                <ExternalLink className="w-4 h-4" />
-                Assistir Vídeo do Roteiro
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-2"
-                onClick={() => handleCopyVideoLink(currentRoteiro.link_video!)}
-              >
-                <Copy className="w-4 h-4" />
-                Copiar Link
-              </Button>
-            </div>
-          )}
-          
-          {filterColor === "all" ? (
-            <div
-              id="roteiro-content"
-              className="relative prose prose-sm max-w-none whitespace-pre-wrap text-foreground leading-relaxed select-text cursor-text"
-              onMouseUp={handleTextSelection}
-            >
-              {renderHighlightedText(currentRoteiro.conteudo)}
-            </div>
-          ) : (
-            <HighlightsTable
-              highlights={highlights.filter(h => h.color === filterColor)}
-              colorName={cores.find(c => c.cor === filterColor)?.nome || ""}
-              color={filterColor}
-              onRemoveHighlight={handleRemoveHighlight}
-            />
-          )}
-        </Card>
 
         {/* Coluna Direita - Análise */}
         <div className="space-y-4">
@@ -2086,6 +2099,65 @@ const AnaliseRoteiroGame = () => {
           </Card>
         </div>
       </div>
+        </div>
+      )}
+
+      {/* Popover de Seleção de Cor */}
+      {showColorPopover && pendingSelection && (
+        <div
+          className="fixed z-50 bg-background border rounded-lg shadow-xl p-4 min-w-[300px]"
+          style={{
+            left: `${Math.min(popoverPosition.x, window.innerWidth - 320)}px`,
+            top: `${Math.max(popoverPosition.y - 300, 20)}px`,
+            transform: 'translateX(-50%)'
+          }}
+        >
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">
+              Texto selecionado
+            </h4>
+            <p className="text-sm bg-muted p-2 rounded max-h-20 overflow-y-auto">
+              {pendingSelection.text.length > 100 
+                ? `${pendingSelection.text.slice(0, 100)}...` 
+                : pendingSelection.text}
+            </p>
+          </div>
+          
+          <div>
+            <h4 className="text-lg font-semibold text-center mb-3 italic">
+              Qual elemento é?
+            </h4>
+            <div className="space-y-2 border rounded-lg p-3">
+              {cores.map((cor) => (
+                <button
+                  key={cor.id}
+                  onClick={() => handleSelectColorFromPopover(cor.cor)}
+                  className="w-full flex items-center gap-3 p-2 rounded hover:bg-accent transition-colors text-left"
+                >
+                  <div
+                    className="w-4 h-4 rounded flex-shrink-0"
+                    style={{ backgroundColor: cor.cor }}
+                  />
+                  <span className="text-sm">{cor.nome}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="mt-3 pt-3 border-t">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                setShowColorPopover(false);
+                setPendingSelection(null);
+                window.getSelection()?.removeAllRanges();
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
         </div>
       )}
 
