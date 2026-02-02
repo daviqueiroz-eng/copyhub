@@ -782,17 +782,20 @@ const AnaliseRoteiroGame = () => {
       criador_conteudo: novoRoteiroForm.criador_conteudo || undefined,
       visualizacoes: novoRoteiroForm.visualizacoes || undefined,
     }, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setShowNovoRoteiroDialog(false);
         setNovoRoteiroForm({ 
           titulo: "", conteudo: "", nicho_id: "", link_video: "", 
           ordem: 0, criador_conteudo: "", visualizacoes: "", tipoUpload: "privado" 
         });
+        
+        // Ir automaticamente para análise do roteiro recém-criado
+        setIsFocusMode(true);
+        handleSelectRoteiro(data.id);
+        
         toast({
           title: "Roteiro criado",
-          description: isPrivate 
-            ? "Seu roteiro privado foi salvo e só você pode vê-lo."
-            : "O novo roteiro foi adicionado e está visível para todos.",
+          description: "O roteiro foi criado e está pronto para análise.",
         });
       },
     });
