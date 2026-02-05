@@ -71,6 +71,7 @@ import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
 import { TeleprompterDialog } from "./TeleprompterDialog";
 import { SelectionEditDialog } from "./SelectionEditDialog";
+import { SelecionarEstruturaDialog } from "./SelecionarEstruturaDialog";
 import { BulkProgressPanel, BulkProgressState } from "./BulkProgressPanel";
 import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
 import { CheckRoteiroViralPanel } from "./CheckRoteiroViralPanel";
@@ -364,6 +365,7 @@ export const MentoradoRoteirosView = ({
   // Estado para seleção de roteiros (por key ex: "1-1", "1-2") e tipo de roteiro
   const [selectedRoteiroKeys, setSelectedRoteiroKeys] = useState<string[]>([]);
   const [showTipoRoteiroDialog, setShowTipoRoteiroDialog] = useState(false);
+  const [showSelecionarEstruturaDialog, setShowSelecionarEstruturaDialog] = useState(false);
   
   // Estado para geração em massa com painel lateral
   
@@ -2240,14 +2242,22 @@ export const MentoradoRoteirosView = ({
                   );
                 })()}
                 
-                {/* Título "Gerar roteiro" - aparece quando há seleção */}
+                {/* Título "Gerar roteiro" e "Selecionar estrutura" - aparecem quando há seleção */}
                 {selectedRoteiroKeys.length > 0 && (
-                  <button 
-                    className="mb-8 text-2xl font-serif hover:underline cursor-pointer text-foreground"
-                    onClick={() => setShowTipoRoteiroDialog(true)}
-                  >
-                    Gerar roteiro
-                  </button>
+                  <div className="flex gap-6 mb-8">
+                    <button 
+                      className="text-2xl font-serif hover:underline cursor-pointer text-foreground"
+                      onClick={() => setShowTipoRoteiroDialog(true)}
+                    >
+                      Gerar roteiro
+                    </button>
+                    <button 
+                      className="text-2xl font-serif hover:underline cursor-pointer text-foreground"
+                      onClick={() => setShowSelecionarEstruturaDialog(true)}
+                    >
+                      Selecionar estrutura
+                    </button>
+                  </div>
                 )}
                 
                 {Array.from({ length: guiaAtivaConfig.quantidade }, (_, i) => i + 1).map((ordem) => {
@@ -2890,15 +2900,23 @@ export const MentoradoRoteirosView = ({
         </div>
       )}
 
-      {/* Botão flutuante para gerar roteiro quando há roteiros selecionados */}
+      {/* Botões flutuantes para gerar roteiro e selecionar estrutura quando há roteiros selecionados */}
       {selectedRoteiroKeys.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 lg:hidden">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 lg:hidden flex gap-2">
           <Button 
             className="gap-2 shadow-lg"
             onClick={() => setShowTipoRoteiroDialog(true)}
           >
             <FileEdit className="h-4 w-4" />
-            Gerar roteiro ({selectedRoteiroKeys.length})
+            Gerar ({selectedRoteiroKeys.length})
+          </Button>
+          <Button 
+            variant="outline"
+            className="gap-2 shadow-lg bg-background"
+            onClick={() => setShowSelecionarEstruturaDialog(true)}
+          >
+            <Copy className="h-4 w-4" />
+            Estrutura
           </Button>
         </div>
       )}
@@ -2921,6 +2939,20 @@ export const MentoradoRoteirosView = ({
           apresentacao: currentMentorado?.apresentacao || null,
         }}
         onStartBulkGeneration={processBulkGeneration}
+      />
+
+      {/* Dialog para seleção de estrutura e cópia */}
+      <SelecionarEstruturaDialog
+        open={showSelecionarEstruturaDialog}
+        onOpenChange={setShowSelecionarEstruturaDialog}
+        headlines={selectedRoteiroKeys.map(key => {
+          const roteiro = roteirosLocais.get(key);
+          return {
+            key,
+            headline: roteiro?.headline || "",
+            estrutura: roteiro?.estrutura || "",
+          };
+        })}
       />
 
       {/* Painel de progresso lateral para geração em massa */}
