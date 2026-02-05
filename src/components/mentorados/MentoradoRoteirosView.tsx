@@ -1305,6 +1305,35 @@ export const MentoradoRoteirosView = ({
     });
   };
 
+  const handleCopyRoteiroSimplificado = async (guiaNumero: number, ordem: number) => {
+    const key = `${guiaNumero}-${ordem}`;
+    const roteiro = roteirosLocais.get(key);
+    
+    if (!roteiro?.estrutura) {
+      toast({
+        title: "Estrutura vazia",
+        description: "Preencha a estrutura antes de copiar.",
+      });
+      return;
+    }
+
+    const plainText = `headline: ${roteiro.headline || ''}\n\nEstrutura:\n${roteiro.estrutura}`;
+
+    try {
+      await navigator.clipboard.writeText(plainText);
+      toast({
+        title: "Copiado!",
+        description: "Headline e estrutura copiadas no formato simplificado.",
+      });
+    } catch {
+      toast({
+        title: "Erro",
+        description: "Não foi possível copiar.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleCopyAllRoteiros = async () => {
     const guiaConfig = guias.find(g => g.numero === guiaAtiva);
     const htmlParts: string[] = [];
@@ -2351,6 +2380,18 @@ export const MentoradoRoteirosView = ({
                         >
                           <Video className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                         </Button>
+                        {/* Botão de cópia simplificada - só aparece quando estrutura preenchida */}
+                        {roteiro.estrutura?.trim() && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 sm:h-7 sm:w-7"
+                            title="Copiar headline + estrutura"
+                            onClick={() => handleCopyRoteiroSimplificado(guiaAtiva, ordem)}
+                          >
+                            <ClipboardCopy className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                          </Button>
+                        )}
                       </div>
                       
                       {/* Conteúdo principal do roteiro */}
