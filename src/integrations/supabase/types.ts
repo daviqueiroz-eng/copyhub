@@ -1372,6 +1372,7 @@ export type Database = {
           id: string
           mentorado_id: string
           ordem: number
+          tipo_roteiro_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1384,6 +1385,7 @@ export type Database = {
           id?: string
           mentorado_id: string
           ordem: number
+          tipo_roteiro_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1396,6 +1398,7 @@ export type Database = {
           id?: string
           mentorado_id?: string
           ordem?: number
+          tipo_roteiro_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1405,6 +1408,13 @@ export type Database = {
             columns: ["mentorado_id"]
             isOneToOne: false
             referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorados_roteiros_tipo_roteiro_id_fkey"
+            columns: ["tipo_roteiro_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_roteiro"
             referencedColumns: ["id"]
           },
         ]

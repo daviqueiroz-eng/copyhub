@@ -75,6 +75,14 @@ import { SelecionarEstruturaDialog } from "./SelecionarEstruturaDialog";
 import { BulkProgressPanel, BulkProgressState } from "./BulkProgressPanel";
 import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
 import { CheckRoteiroViralPanel } from "./CheckRoteiroViralPanel";
+import { useTiposRoteiro } from "@/hooks/useTiposRoteiro";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCheckRoteiroViralAtivos, verificarCheck, verificarCheckComIA, CheckRoteiroViral } from "@/hooks/useCheckRoteiroViral";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
@@ -96,6 +104,7 @@ interface MentoradoRoteirosViewProps {
 type RoteiroLocal = {
   headline: string;
   estrutura: string;
+  tipo_roteiro_id?: string | null;
 };
 
 type GuiaConfigLocal = {
@@ -331,6 +340,7 @@ export const MentoradoRoteirosView = ({
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
   const { data: mentorados = [] } = useMentorados();
   const { data: trelloImport } = useTrelloImport();
+  const { data: tiposRoteiro = [] } = useTiposRoteiro();
   const upsertRoteiro = useUpsertMentoradoRoteiro();
   const deleteGuia = useDeleteGuia();
   const updateMentorado = useUpdateMentorado();
@@ -518,6 +528,7 @@ export const MentoradoRoteirosView = ({
       newMap.set(key, {
         headline: r.headline || "",
         estrutura: r.estrutura || "",
+        tipo_roteiro_id: r.tipo_roteiro_id || null,
       });
     });
     
@@ -711,7 +722,7 @@ export const MentoradoRoteirosView = ({
 
   // Função para salvar
   const saveRoteiro = useCallback(
-    (guiaNumero: number, ordem: number, headline: string, estrutura: string) => {
+    (guiaNumero: number, ordem: number, headline: string, estrutura: string, tipoRoteiroId?: string | null) => {
       const key = `${guiaNumero}-${ordem}`;
       
       // Não salvar se ambos estiverem vazios
@@ -731,6 +742,7 @@ export const MentoradoRoteirosView = ({
           ordem,
           headline,
           estrutura,
+          tipoRoteiroId,
         },
         {
           onSuccess: () => {
@@ -1258,13 +1270,31 @@ export const MentoradoRoteirosView = ({
     
     setRoteirosLocais((prev) => {
       const newMap = new Map(prev);
-      newMap.set(key, { headline: "", estrutura: "" });
+      newMap.set(key, { headline: "", estrutura: "", tipo_roteiro_id: null });
       return newMap;
     });
 
     // Salvar como vazio
-    saveRoteiro(guiaNumero, ordem, "", "");
+    saveRoteiro(guiaNumero, ordem, "", "", null);
   };
+
+  // Função para alterar o tipo de roteiro
+  const handleTipoRoteiroChange = useCallback((guiaNumero: number, ordem: number, tipoId: string | null) => {
+    const key = `${guiaNumero}-${ordem}`;
+    
+    setRoteirosLocais((prev) => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(key) || { headline: "", estrutura: "" };
+      newMap.set(key, { ...existing, tipo_roteiro_id: tipoId });
+      return newMap;
+    });
+    
+    // Salvar imediatamente a mudança de tipo
+    const roteiro = roteirosLocais.get(key);
+    if (roteiro) {
+      saveRoteiro(guiaNumero, ordem, roteiro.headline, roteiro.estrutura, tipoId);
+    }
+  }, [roteirosLocais, saveRoteiro]);
 
   const handleCopyRoteiro = async (guiaNumero: number, ordem: number) => {
     const key = `${guiaNumero}-${ordem}`;
@@ -1309,21 +1339,25 @@ export const MentoradoRoteirosView = ({
     const key = `${guiaNumero}-${ordem}`;
     const roteiro = roteirosLocais.get(key);
     
-    if (!roteiro?.estrutura) {
+    // Buscar o tipo de roteiro selecionado
+    const tipoRoteiroId = roteiro?.tipo_roteiro_id;
+    const tipo = tiposRoteiro.find(t => t.id === tipoRoteiroId);
+    
+    if (!tipo?.template_estrutura) {
       toast({
-        title: "Estrutura vazia",
-        description: "Preencha a estrutura antes de copiar.",
+        title: "Tipo não selecionado",
+        description: "Selecione um tipo de estrutura ao lado da headline.",
       });
       return;
     }
 
-    const plainText = `headline: ${roteiro.headline || ''}\n\nEstrutura:\n${roteiro.estrutura}`;
+    const plainText = `headline: ${roteiro?.headline || ''}\n\nEstrutura:\n${tipo.template_estrutura}`;
 
     try {
       await navigator.clipboard.writeText(plainText);
       toast({
         title: "Copiado!",
-        description: "Headline e estrutura copiadas no formato simplificado.",
+        description: "Headline e estrutura do tipo copiadas.",
       });
     } catch {
       toast({
@@ -2380,13 +2414,13 @@ export const MentoradoRoteirosView = ({
                         >
                           <Video className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                         </Button>
-                        {/* Botão de cópia simplificada - só aparece quando estrutura preenchida */}
-                        {roteiro.estrutura?.trim() && (
+                        {/* Botão de cópia simplificada - só aparece quando tipo selecionado */}
+                        {roteiro.tipo_roteiro_id && (
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 sm:h-7 sm:w-7"
-                            title="Copiar headline + estrutura"
+                            title="Copiar headline + estrutura do tipo"
                             onClick={() => handleCopyRoteiroSimplificado(guiaAtiva, ordem)}
                           >
                             <ClipboardCopy className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
@@ -2414,7 +2448,7 @@ export const MentoradoRoteirosView = ({
 
                       {/* Headline */}
                       <div className="mb-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-wrap">
                           <Checkbox
                             checked={selectedRoteiroKeys.includes(key)}
                             onCheckedChange={(checked) => {
@@ -2429,6 +2463,24 @@ export const MentoradoRoteirosView = ({
                           <span className="font-poppins font-bold text-[#B8860B] text-base">
                             HEADLINE {String(ordem).padStart(2, "0")}:
                           </span>
+                          {/* Select de tipo de estrutura */}
+                          <Select
+                            value={roteiro.tipo_roteiro_id || ""}
+                            onValueChange={(value) => {
+                              handleTipoRoteiroChange(guiaAtiva, ordem, value || null);
+                            }}
+                          >
+                            <SelectTrigger className="h-6 text-xs w-auto min-w-[100px] border-dashed">
+                              <SelectValue placeholder="Tipo..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {tiposRoteiro.map(tipo => (
+                                <SelectItem key={tipo.id} value={tipo.id}>
+                                  {tipo.nome}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
