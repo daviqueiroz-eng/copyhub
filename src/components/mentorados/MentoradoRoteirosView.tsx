@@ -2414,18 +2414,6 @@ export const MentoradoRoteirosView = ({
                         >
                           <Video className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                         </Button>
-                        {/* Botão de cópia simplificada - só aparece quando tipo selecionado */}
-                        {roteiro.tipo_roteiro_id && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 sm:h-7 sm:w-7"
-                            title="Copiar headline + estrutura do tipo"
-                            onClick={() => handleCopyRoteiroSimplificado(guiaAtiva, ordem)}
-                          >
-                            <ClipboardCopy className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                          </Button>
-                        )}
                       </div>
                       
                       {/* Conteúdo principal do roteiro */}
@@ -2481,6 +2469,18 @@ export const MentoradoRoteirosView = ({
                               ))}
                             </SelectContent>
                           </Select>
+                          {/* Botão de cópia simplificada - ao lado do select */}
+                          {roteiro.tipo_roteiro_id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              title="Copiar headline + estrutura do tipo"
+                              onClick={() => handleCopyRoteiroSimplificado(guiaAtiva, ordem)}
+                            >
+                              <ClipboardCopy className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
