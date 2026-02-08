@@ -3126,9 +3126,13 @@ export const MentoradoRoteirosView = ({
                   setShowMentoradoCarousel(false);
                 }}
               >
-                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
-                  {m.iniciais}
-                </div>
+                {m.avatar ? (
+                  <img src={m.avatar} alt={m.nome} className="w-16 h-16 rounded-full object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
+                    {m.iniciais}
+                  </div>
+                )}
                 <span className="text-white text-xs font-medium max-w-[80px] truncate">
                   {m.nome.split(" ")[0]}
                 </span>
