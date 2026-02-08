@@ -1,9 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Plus, Search, ExternalLink, Instagram, Trash2, FileText, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,7 @@ import { OrdemPrioridadeView } from "@/components/mentorados/OrdemPrioridadeView
 import { MentoradoRoteirosView } from "@/components/mentorados/MentoradoRoteirosView";
 import { MapaAvatarSection } from "@/components/mentorados/MapaAvatarSection";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AvatarCategory {
   id: string;
@@ -79,6 +80,7 @@ const Mentorados = () => {
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
   const [isRoteirosViewOpen, setIsRoteirosViewOpen] = useState(false);
 
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const { data: mentorados = [] } = useMentorados();
   const createMentorado = useCreateMentorado();
@@ -148,9 +150,23 @@ const Mentorados = () => {
     setIsDetailSheetOpen(true);
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedMentorado) return;
+    const ext = file.name.split('.').pop();
+    const path = `${selectedMentorado.id}/avatar.${ext}`;
+    const { error } = await supabase.storage.from('mentorado-avatars').upload(path, file, { upsert: true });
+    if (error) {
+      toast({ title: "Erro ao enviar foto", description: error.message, variant: "destructive" });
+      return;
+    }
+    const { data } = supabase.storage.from('mentorado-avatars').getPublicUrl(path);
+    handleUpdateMentorado("avatar", data.publicUrl);
+  };
+
   const handleUpdateMentorado = (field: keyof Mentorado, value: string) => {
     if (!selectedMentorado) return;
-    
+
     const updated = { ...selectedMentorado, [field]: value };
     setSelectedMentorado(updated);
     
@@ -340,11 +356,19 @@ const Mentorados = () => {
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
             <div className="flex items-center gap-4 mb-4">
-              <Avatar className="h-16 w-16">
+              <Avatar className="h-16 w-16 cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                <AvatarImage src={selectedMentorado?.avatar || undefined} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
                   {selectedMentorado?.iniciais}
                 </AvatarFallback>
               </Avatar>
+              <input 
+                ref={avatarInputRef} 
+                type="file" 
+                accept="image/*" 
+                hidden 
+                onChange={handleAvatarUpload} 
+              />
               <div>
                 <SheetTitle className="text-2xl">{selectedMentorado?.nome}</SheetTitle>
                 <SheetDescription>{selectedMentorado?.plano}</SheetDescription>
