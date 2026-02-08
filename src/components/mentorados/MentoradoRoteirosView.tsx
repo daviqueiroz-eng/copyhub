@@ -99,6 +99,7 @@ interface MentoradoRoteirosViewProps {
   mentoradoId: string;
   mentoradoNome: string;
   onClose: () => void;
+  onSwitchMentorado?: (mentorado: { id: string; nome: string; iniciais: string }) => void;
 }
 
 type RoteiroLocal = {
@@ -239,7 +240,9 @@ export const MentoradoRoteirosView = ({
   mentoradoId,
   mentoradoNome,
   onClose,
+  onSwitchMentorado,
 }: MentoradoRoteirosViewProps) => {
+  const [showMentoradoCarousel, setShowMentoradoCarousel] = useState(false);
   const [guiaAtiva, setGuiaAtiva] = useState(1);
   const [guias, setGuias] = useState<GuiaConfigLocal[]>([]);
   const [showFirstGuiaDialog, setShowFirstGuiaDialog] = useState(true);
@@ -430,8 +433,26 @@ export const MentoradoRoteirosView = ({
       },
     })
   );
-  
-  // Persistir toggles no localStorage
+
+  // Carrossel de mentorados com Tab
+  useEffect(() => {
+    const handleTabKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+      
+      if (e.key === "Tab") {
+        e.preventDefault();
+        setShowMentoradoCarousel(prev => !prev);
+      }
+      if (e.key === "Escape" && showMentoradoCarousel) {
+        setShowMentoradoCarousel(false);
+      }
+    };
+    
+    window.addEventListener("keydown", handleTabKey);
+    return () => window.removeEventListener("keydown", handleTabKey);
+  }, [showMentoradoCarousel]);
+
   useEffect(() => {
     localStorage.setItem(`roteiro-ia-enabled-${mentoradoId}`, String(iaEnabled));
   }, [iaEnabled, mentoradoId]);
@@ -3077,6 +3098,44 @@ export const MentoradoRoteirosView = ({
             handleChange(guia, ordem, "estrutura", e);
           }}
         />
+      )}
+
+      {/* Carrossel de mentorados (Tab) */}
+      {showMentoradoCarousel && mentorados && mentorados.length > 0 && (
+        <div 
+          className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center"
+          onClick={() => setShowMentoradoCarousel(false)}
+        >
+          <div 
+            className="flex gap-4 px-8 py-6 overflow-x-auto max-w-[90vw]"
+            onClick={(e) => e.stopPropagation()}
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {mentorados.map((m) => (
+              <button
+                key={m.id}
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all shrink-0 ${
+                  m.id === mentoradoId 
+                    ? "ring-2 ring-primary bg-white/10 scale-105" 
+                    : "opacity-70 hover:opacity-100 hover:scale-110 hover:bg-white/10"
+                }`}
+                onClick={() => {
+                  if (m.id !== mentoradoId) {
+                    onSwitchMentorado?.(m);
+                  }
+                  setShowMentoradoCarousel(false);
+                }}
+              >
+                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
+                  {m.iniciais}
+                </div>
+                <span className="text-white text-xs font-medium max-w-[80px] truncate">
+                  {m.nome.split(" ")[0]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

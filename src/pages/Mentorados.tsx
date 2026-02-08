@@ -601,6 +601,10 @@ const Mentorados = () => {
           mentoradoId={selectedMentorado.id}
           mentoradoNome={selectedMentorado.nome}
           onClose={() => setIsRoteirosViewOpen(false)}
+          onSwitchMentorado={(m) => {
+            const full = mentorados.find(mt => mt.id === m.id);
+            if (full) setSelectedMentorado(full);
+          }}
         />
       )}
     </div>
