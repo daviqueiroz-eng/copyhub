@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Upload, Filter, AlertCircle, FileText, Check, ChevronsUpDown, Star, CalendarDays, LayoutGrid, Calendar } from "lucide-react";
+import { Upload, Filter, AlertCircle, FileText, Check, ChevronsUpDown, Star, CalendarDays, LayoutGrid, Calendar, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,8 @@ import {
 import { TrelloUploadDialog } from "./TrelloUploadDialog";
 import { PrioridadeCard } from "./PrioridadeCard";
 import { PrioridadeCalendar } from "./PrioridadeCalendar";
+import { ControleView } from "./ControleView";
+import { useMentorados } from "@/hooks/useMentorados";
 import {
   useTrelloImport,
   extractUniqueCopywriters,
@@ -32,7 +34,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 type PeriodFilter = "all" | "today" | "week" | "month";
-type ViewMode = "grid" | "calendar";
+type ViewMode = "controle" | "grid" | "calendar";
 
 const FAVORITE_COPYWRITER_KEY = "favorito_copywriter";
 
@@ -41,7 +43,7 @@ export function OrdemPrioridadeView() {
   const [selectedCopywriter, setSelectedCopywriter] = useState<string>("");
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("controle");
   const [favoriteCopywriter, setFavoriteCopywriter] = useState<string>(() => {
     return localStorage.getItem(FAVORITE_COPYWRITER_KEY) || "";
   });
@@ -49,6 +51,7 @@ export function OrdemPrioridadeView() {
   const { data: trelloImport, isLoading } = useTrelloImport();
   const { data: userRole } = useUserRole();
   const { data: profile } = useProfile();
+  const { data: mentoradosList = [] } = useMentorados();
   const isAdmin = userRole === "admin";
 
   const cards = useMemo(() => {
@@ -320,6 +323,10 @@ export function OrdemPrioridadeView() {
             onValueChange={(value) => value && setViewMode(value as ViewMode)}
             className="border rounded-lg p-1 bg-muted/50 self-start sm:self-auto"
           >
+            <ToggleGroupItem value="controle" aria-label="Visualização controle" className="gap-1 sm:gap-1.5 data-[state=on]:bg-background px-2 sm:px-3">
+              <ClipboardList className="h-4 w-4" />
+              <span className="hidden sm:inline text-sm">Controle</span>
+            </ToggleGroupItem>
             <ToggleGroupItem value="grid" aria-label="Visualização em grade" className="gap-1 sm:gap-1.5 data-[state=on]:bg-background px-2 sm:px-3">
               <LayoutGrid className="h-4 w-4" />
               <span className="hidden sm:inline text-sm">Grid</span>
@@ -358,8 +365,10 @@ export function OrdemPrioridadeView() {
         </Card>
       )}
 
-      {/* Lista de cards ou estado vazio */}
-      {!trelloImport ? (
+      {/* Content based on view mode */}
+      {viewMode === "controle" ? (
+        <ControleView mentorados={mentoradosList} />
+      ) : !trelloImport ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Upload className="h-12 w-12 text-muted-foreground/50 mb-4" />

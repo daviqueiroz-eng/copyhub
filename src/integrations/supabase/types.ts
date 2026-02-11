@@ -441,6 +441,53 @@ export type Database = {
           },
         ]
       }
+      controle_levas: {
+        Row: {
+          concluida: boolean
+          created_at: string
+          data_inicio: string
+          data_prevista: string | null
+          data_real: string | null
+          dias_uteis: number | null
+          id: string
+          mentorado_id: string
+          numero_leva: number
+          user_id: string
+        }
+        Insert: {
+          concluida?: boolean
+          created_at?: string
+          data_inicio: string
+          data_prevista?: string | null
+          data_real?: string | null
+          dias_uteis?: number | null
+          id?: string
+          mentorado_id: string
+          numero_leva?: number
+          user_id: string
+        }
+        Update: {
+          concluida?: boolean
+          created_at?: string
+          data_inicio?: string
+          data_prevista?: string | null
+          data_real?: string | null
+          dias_uteis?: number | null
+          id?: string
+          mentorado_id?: string
+          numero_leva?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "controle_levas_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       controle_producao: {
         Row: {
           created_at: string
