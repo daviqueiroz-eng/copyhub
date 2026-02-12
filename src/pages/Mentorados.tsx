@@ -43,7 +43,7 @@ import {
 } from "@/hooks/useMentorados";
 import { GeralView } from "@/components/mentorados/GeralView";
 import { GrupoView } from "@/components/mentorados/GrupoView";
-import { OrdemPrioridadeView } from "@/components/mentorados/OrdemPrioridadeView";
+
 import { MentoradoRoteirosView } from "@/components/mentorados/MentoradoRoteirosView";
 import { MapaAvatarSection } from "@/components/mentorados/MapaAvatarSection";
 import { useAuth } from "@/contexts/AuthContext";
@@ -260,8 +260,14 @@ const Mentorados = () => {
           </TabsContent>
 
           {/* Tab: Prioridade */}
-          <TabsContent value="prioridade" className="flex-1 min-h-0 overflow-y-auto mt-0 data-[state=inactive]:hidden">
-            <OrdemPrioridadeView />
+          <TabsContent value="prioridade" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
+            <iframe
+              src="https://controledementorado.lovable.app/"
+              className="w-full h-full border-0 min-h-[70vh]"
+              title="Controle de Mentorado"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              loading="lazy"
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -307,17 +313,15 @@ const Mentorados = () => {
           </Tabs>
         </div>
 
-        {/* Lado direito: Ordem de Prioridade */}
-        <div className="flex-1 min-w-0 border-l pl-6 flex flex-col min-h-0">
-          <div className="shrink-0 pb-4">
-            <h2 className="text-3xl font-bold text-foreground">Ordem de Prioridade</h2>
-            <p className="text-muted-foreground mt-1">
-              Entregas organizadas por data
-            </p>
-          </div>
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <OrdemPrioridadeView />
-          </div>
+        {/* Lado direito: Controle de Mentorado */}
+        <div className="flex-1 min-w-0 border-l flex flex-col min-h-0">
+          <iframe
+            src="https://controledementorado.lovable.app/"
+            className="w-full h-full border-0"
+            title="Controle de Mentorado"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            loading="lazy"
+          />
         </div>
       </div>
 
