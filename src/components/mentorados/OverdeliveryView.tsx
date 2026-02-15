@@ -52,7 +52,7 @@ interface OverdeliveryViewProps {
   isSaved?: boolean;
   isLoading?: boolean;
   onCheckTimer?: (field: "headlines" | "roteiros") => void;
-  onOpenIframeDialog?: () => void;
+  
 }
 
 export const OverdeliveryView = ({
@@ -70,7 +70,7 @@ export const OverdeliveryView = ({
   isSaved = false,
   isLoading = false,
   onCheckTimer,
-  onOpenIframeDialog,
+  
 }: OverdeliveryViewProps) => {
   const [editingTitulo, setEditingTitulo] = useState<string | null>(null);
   
@@ -196,26 +196,6 @@ export const OverdeliveryView = ({
         targetField: field,
         position: { top, left },
       });
-    } else if (textBeforeCursor.endsWith("/4")) {
-      // Limpar /4 e abrir dialog iframe
-      const textAfterCursor = value.slice(cursorPos);
-      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
-      onBlocosChange(
-        blocos.map((b) => {
-          if (b.id === blocoId) {
-            return {
-              ...b,
-              roteiros: b.roteiros.map((r) =>
-                r.ordem === ordem ? { ...r, [field]: cleanValue } : r
-              ),
-            };
-          }
-          return b;
-        })
-      );
-      cursorPositionRef.current.set(key, cursorPos - 2);
-      onOpenIframeDialog?.();
-      setSlashCommand(prev => ({ ...prev, isOpen: false }));
     } else if (textBeforeCursor.endsWith("/3")) {
       // Limpar /3 e abrir modal de headlines
       const textAfterCursor = value.slice(cursorPos);
