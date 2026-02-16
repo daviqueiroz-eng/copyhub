@@ -251,7 +251,7 @@ export const MentoradoRoteirosView = ({
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   const [showNewGuiaDialog, setShowNewGuiaDialog] = useState(false);
   const [showHeadlinesModal, setShowHeadlinesModal] = useState(false);
-  
+  const [showIframeDialog, setShowIframeDialog] = useState(false);
   const [headlinesTargetKey, setHeadlinesTargetKey] = useState<string>("");
   const [savedHeadlines, setSavedHeadlines] = useState<AnalysisHeadline[]>([]);
   const [showFindReplace, setShowFindReplace] = useState(false);
@@ -1193,6 +1193,14 @@ export const MentoradoRoteirosView = ({
         targetField: field,
         position: { top, left },
       });
+    } else if (textBeforeCursor.endsWith("/4")) {
+      // Abrir dialog com iframe do Chat IA
+      const textAfterCursor = value.slice(cursorPos);
+      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
+      handleChange(guiaNumero, ordem, field, cleanValue);
+      cursorPositionRef.current.set(key, cursorPos - 2);
+      setShowIframeDialog(true);
+      setSlashCommand(prev => ({ ...prev, isOpen: false }));
     } else if (textBeforeCursor.endsWith("/3")) {
       // Abrir modal de headlines aleatórias
       // Limpar o /3 do valor - preservando o texto após o cursor
@@ -2155,7 +2163,7 @@ export const MentoradoRoteirosView = ({
                 <p><span className="font-mono bg-muted px-1 rounded">/i</span> Intensificadores</p>
                 <p><span className="font-mono bg-muted px-1 rounded">/p</span> Prompts</p>
                 <p><span className="font-mono bg-muted px-1 rounded">/m</span> Registrar heads</p>
-                
+                <p><span className="font-mono bg-muted px-1 rounded">/4</span> Chat IA</p>
               </div>
             </div>
             
@@ -2274,7 +2282,7 @@ export const MentoradoRoteirosView = ({
                   isSaved={overdeliverySaved}
                   isLoading={isLoadingOverdelivery}
                  onCheckTimer={checkAndShowTimerAlert}
-                 
+                 onOpenIframeDialog={() => setShowIframeDialog(true)}
                 />
               ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
@@ -3104,6 +3112,17 @@ export const MentoradoRoteirosView = ({
       )}
 
       {/* Carrossel de mentorados (Tab) */}
+      {/* Dialog iframe Chat IA (/4) */}
+      <Dialog open={showIframeDialog} onOpenChange={setShowIframeDialog}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0">
+          <DialogTitle className="sr-only">Chat IA</DialogTitle>
+          <iframe
+            src="http://52.70.107.176:3000/dashboard/4/new-chat/21"
+            className="w-full h-full border-0 rounded-lg"
+            title="Chat IA"
+          />
+        </DialogContent>
+      </Dialog>
 
       {showMentoradoCarousel && mentorados && mentorados.length > 0 && (
         <div 
