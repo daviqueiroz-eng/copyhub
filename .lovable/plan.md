@@ -1,61 +1,91 @@
 
 
-## Plano: Comando /4 para abrir iframe integrado
+## Plano: Bloco de Notas Flutuante no Roteiro (estilo Docs)
 
 ### Resumo
 
-Ao digitar `/4` em qualquer campo de headline ou roteiro, um dialog fullscreen sera aberto contendo um iframe do site `http://52.70.107.176:3000/dashboard/4/new-chat/21`. O comando funciona nos campos normais e nos blocos de Overdelivery.
+Adicionar um botao redondo flutuante com icone de livro dentro da tela de Roteiros. Ao clicar, abre um painel flutuante estilo Apple Notes/Google Docs que:
+- E arrastavel (posicao livre na tela)
+- E redimensionavel
+- Mostra as notas do mentorado atual
+- Permite trocar entre mentorados sem sair do roteiro
+- Permite copiar conteudo das notas para o roteiro
+- Minimiza ao clicar no X (nao fecha/destroi)
 
 ---
+
+### Nova Tabela no Banco de Dados
+
+**`mentorado_notas`** - notas por mentorado, vinculadas ao usuario
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| id | uuid (PK) | ID unico |
+| user_id | uuid | Dono da nota |
+| mentorado_id | uuid (FK mentorados) | Mentorado associado |
+| conteudo | text | Conteudo livre da nota |
+| created_at | timestamptz | Criacao |
+| updated_at | timestamptz | Ultima atualizacao |
+
+RLS: usuarios autenticados fazem CRUD nas suas proprias linhas (`user_id = auth.uid()`). Um registro por mentorado por usuario (upsert por `user_id + mentorado_id`).
+
+---
+
+### Arquivos a Criar
+
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/hooks/useMentoradoNotas.ts` | Hook CRUD para `mentorado_notas` (fetch, upsert, delete) |
+| `src/components/mentorados/FloatingNotesPanel.tsx` | Painel flutuante arrastavel e redimensionavel com editor de notas |
 
 ### Arquivos a Modificar
 
 | Arquivo | Descricao |
 |---------|-----------|
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Adicionar estado e handler para /4, renderizar dialog com iframe |
-| `src/components/mentorados/OverdeliveryView.tsx` | Adicionar handler para /4, propagar abertura do dialog para o pai |
-| `src/components/mentorados/SlashCommandPopover.tsx` | Adicionar /4 na legenda do footer |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Adicionar botao flutuante e renderizar o FloatingNotesPanel |
 
 ---
 
-### Detalhes
+### Detalhes de Implementacao
 
-**1. MentoradoRoteirosView.tsx**
+**1. FloatingNotesPanel.tsx - Painel flutuante**
 
-- Novo estado: `showIframeDialog` (boolean)
-- Na funcao de deteccao de comandos (linha ~1195), adicionar deteccao de `/4`:
-  - Limpar o `/4` do texto (mesmo padrao do `/3`)
-  - Setar `showIframeDialog = true`
-  - Fechar o popover se estiver aberto
-- Renderizar um `Dialog` fullscreen com o iframe:
+- **Botao flutuante**: Circulo com icone `BookOpen` (lucide), posicao fixa no canto inferior direito, z-index alto
+- **Painel aberto**: Container com position fixed, arrastavel via barra de titulo (mousedown/mousemove), redimensionavel via handle no canto inferior direito
+- **Layout interno**:
+  - Barra de titulo com nome do mentorado atual, seletor de mentorados (dropdown), botao copiar e botao X (minimiza)
+  - Area de texto (textarea) com auto-save (debounce 1.5s), estilo limpo como Apple Notes
+  - Sidebar lateral esquerda com lista de mentorados (pastas), similar a imagem de referencia
+- **Sidebar de mentorados**: Lista vertical com nome e preview do conteudo, ao clicar troca para as notas daquele mentorado
+- **Botao copiar**: Copia todo o conteudo da nota para o clipboard
+- **X**: Apenas minimiza (seta `isOpen = false`), nao destroi o componente
+- **Redimensionamento**: Handle no canto inferior direito com cursor `nwse-resize`, min-width 400px, min-height 300px
 
-```tsx
-<Dialog open={showIframeDialog} onOpenChange={setShowIframeDialog}>
-  <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0">
-    <iframe
-      src="http://52.70.107.176:3000/dashboard/4/new-chat/21"
-      className="w-full h-full border-0 rounded-lg"
-      title="Chat IA"
-    />
-  </DialogContent>
-</Dialog>
-```
+**2. useMentoradoNotas.ts - Hook**
 
-**2. OverdeliveryView.tsx**
+- `useMentoradoNota(mentoradoId)` - busca nota do mentorado
+- `useUpsertMentoradoNota()` - cria ou atualiza nota (upsert por user_id + mentorado_id)
+- Auto-save com debounce no componente
 
-- Receber nova prop `onOpenIframeDialog` do pai
-- Na deteccao de `/4`, limpar o texto e chamar `onOpenIframeDialog()`
+**3. MentoradoRoteirosView.tsx - Integracao**
 
-**3. SlashCommandPopover.tsx - Legenda**
-
-- Adicionar `/4` na linha de atalhos do footer do popover
-
-**4. Legenda de Atalhos na sidebar**
-
-- Adicionar linha `/4 Chat IA` na secao de Atalhos (linha ~2152)
+- Importar e renderizar `FloatingNotesPanel` passando:
+  - `mentoradoId` atual
+  - `mentoradoNome` atual
+  - Lista de `mentorados` (ja disponivel via `useMentorados`)
+- O painel fica flutuando sobre o conteudo do roteiro
 
 ---
 
-### Resultado
+### Fluxo do Usuario
 
-O usuario digita `/4` em qualquer campo de headline ou roteiro e um dialog grande abre com o site integrado via iframe, permitindo interagir sem sair da pagina de roteiros.
+1. Usuario esta editando roteiros de um mentorado
+2. Ve um botao redondo com icone de livro no canto inferior direito
+3. Clica no botao -> painel de notas abre flutuando
+4. Escreve anotacoes livremente (auto-save)
+5. Pode arrastar o painel para qualquer posicao
+6. Pode redimensionar o painel
+7. Na sidebar esquerda do painel, ve outros mentorados e pode clicar para ver/editar notas deles
+8. Pode copiar texto das notas e colar no roteiro
+9. Clica X -> painel minimiza, botao redondo volta a aparecer
+
