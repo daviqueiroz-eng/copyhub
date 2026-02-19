@@ -1254,6 +1254,41 @@ export type Database = {
           },
         ]
       }
+      mentorado_notas: {
+        Row: {
+          conteudo: string | null
+          created_at: string
+          id: string
+          mentorado_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conteudo?: string | null
+          created_at?: string
+          id?: string
+          mentorado_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conteudo?: string | null
+          created_at?: string
+          id?: string
+          mentorado_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorado_notas_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorados: {
         Row: {
           apresentacao: string | null
