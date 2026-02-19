@@ -76,6 +76,7 @@ import { BulkProgressPanel, BulkProgressState } from "./BulkProgressPanel";
 import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
 import { CheckRoteiroViralPanel } from "./CheckRoteiroViralPanel";
 import { useTiposRoteiro } from "@/hooks/useTiposRoteiro";
+import { FloatingNotesPanel } from "./FloatingNotesPanel";
 import {
   Select,
   SelectContent,
@@ -3141,6 +3142,13 @@ export const MentoradoRoteirosView = ({
           </div>
         </div>
       )}
+
+      {/* Floating Notes Panel */}
+      <FloatingNotesPanel
+        currentMentoradoId={mentoradoId}
+        currentMentoradoNome={mentoradoNome}
+        mentorados={mentorados || []}
+      />
     </div>
   );
 };
