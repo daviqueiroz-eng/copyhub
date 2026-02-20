@@ -1,98 +1,57 @@
 
 
-## Plano: Auto-deteccao de Tipo por IA + Configuracao na Engrenagem + Fix de Scroll
+## Plano: Deteccao de Tipo via Webhook n8n
 
 ### Resumo
 
-Tres mudancas:
-1. **Auto-deteccao de tipo**: Quando o usuario digita/cola uma headline, a IA analisa o texto e muda automaticamente o dropdown "Tipo..." para o tipo correto
-2. **Configuracao na engrenagem**: Adicionar uma nova aba/secao no dialog que abre ao clicar na engrenagem do "Revisar" para configurar as regras de deteccao automatica de tipo (com campo de instrucoes para ensinar a IA)
-3. **Fix de scroll**: Corrigir o scroll do `CheckRoteiroViralDialog` para permitir rolar o conteudo
+Substituir a deteccao de tipo por IA (edge function `detectar-tipo-roteiro`) por um webhook n8n. Quando o usuario termina de escrever a headline, o sistema envia a headline para o webhook configuravel. O n8n processa e retorna o nome do tipo (ex: "Lista util", "defesa de crenca"). O sistema compara o nome retornado com os tipos cadastrados e preenche automaticamente o dropdown.
 
 ---
 
-### Detalhes Tecnicos
+### Mudancas
 
-#### 1. Nova coluna na tabela `tipos_roteiro`
+#### 1. Configuracao do webhook na aba "Deteccao de Tipo" (CheckRoteiroViralDialog)
 
-Adicionar `palavras_chave` (text, nullable) e `instrucoes_deteccao` (text, nullable) para cada tipo de roteiro. O campo `palavras_chave` armazena palavras/frases separadas por virgula que ajudam na deteccao rapida. O campo `instrucoes_deteccao` guarda instrucoes para a IA aprender a identificar o tipo.
+Na aba "Deteccao de Tipo" que ja existe dentro da engrenagem, adicionar:
+- Campo de URL do webhook (input) no topo, antes da lista de tipos
+- Salvar a URL no localStorage (chave `webhook_deteccao_tipo_url`)
+- Manter os campos de palavras-chave e instrucoes dos tipos como referencia/documentacao para o usuario configurar no n8n
 
-**Migracao SQL:**
-```sql
-ALTER TABLE tipos_roteiro 
-  ADD COLUMN palavras_chave text,
-  ADD COLUMN instrucoes_deteccao text;
-```
+#### 2. Substituir a logica de deteccao no MentoradoRoteirosView
 
-#### 2. Edge Function `detectar-tipo-roteiro`
+Trocar a chamada da edge function `detectar-tipo-roteiro` por um `fetch` direto ao webhook n8n configurado:
 
-Nova edge function que recebe a headline e a lista de tipos (com nomes, palavras-chave e instrucoes) e retorna o ID do tipo detectado:
+- Enviar: `{ headline: "texto da headline" }`
+- Esperar resposta: `{ tipo: "Lista util" }` (ou campo similar com o nome do tipo)
+- Comparar o nome retornado (case-insensitive, trim) com `tiposRoteiro` cadastrados
+- Se bater, preencher o dropdown automaticamente
+- Se nao tiver webhook configurado, nao faz nada (skip silencioso)
 
-- Usa Lovable AI (google/gemini-3-flash-preview)
-- Prompt do sistema: "Voce e um classificador de headlines de video. Com base na headline fornecida e nas descricoes dos tipos disponiveis, retorne o tipo mais adequado."
-- Retorna `{ tipo_id: string | null }` usando tool calling para output estruturado
-- Se nenhum tipo for identificado, retorna null
+#### 3. Teste na aba de configuracao
 
-#### 3. Logica de auto-deteccao no `MentoradoRoteirosView.tsx`
-
-- Apos o usuario terminar de digitar a headline (debounce 2s apos parar de digitar OU no blur do campo headline):
-  - Se a headline tiver conteudo significativo (> 10 caracteres)
-  - Se o tipo ainda nao foi definido manualmente (tipo_roteiro_id == null)
-  - Chamar a edge function com a headline e os tipos disponiveis
-  - Se retornar um tipo, atualizar automaticamente o dropdown
-- O usuario pode sempre mudar manualmente depois (a auto-deteccao so roda quando nao tem tipo selecionado)
-- Mostrar um indicador sutil (Loader2 pequeno ao lado do select) enquanto detecta
-
-#### 4. Configuracao na engrenagem do "Revisar"
-
-Modificar o `CheckRoteiroViralDialog` para ter 2 abas:
-- **Aba 1: "Checks Virais"** (conteudo atual - regras de validacao)
-- **Aba 2: "Deteccao de Tipo"** (nova - configurar como a IA detecta tipos)
-
-Na aba "Deteccao de Tipo":
-- Lista dos tipos de roteiro existentes (da tabela `tipos_roteiro`)
-- Para cada tipo, campos editaveis:
-  - Nome (readonly, vem do tipo)
-  - Palavras-chave (input - separadas por virgula)
-  - Instrucoes para IA (textarea - descrever como identificar este tipo)
-- Botao "Salvar" que atualiza os campos na tabela `tipos_roteiro`
-- Botao "Testar" que pega a headline atual e roda a deteccao para validar
-
-#### 5. Fix de scroll no `CheckRoteiroViralDialog`
-
-O dialog atual usa `max-h-[85vh]` mas o `ScrollArea` pode nao estar respeitando o limite. Correcao:
-- Adicionar `overflow-hidden` no `DialogContent`
-- Garantir que o `ScrollArea` tenha altura calculada corretamente com `max-h` explicito
-- Usar `flex flex-col` e `min-h-0` para garantir que o flex child permita scroll
+O botao "Testar" existente na aba "Deteccao de Tipo" tambem sera atualizado para usar o webhook ao inves da edge function.
 
 ---
-
-### Arquivos a Criar
-
-| Arquivo | Descricao |
-|---------|-----------|
-| `supabase/functions/detectar-tipo-roteiro/index.ts` | Edge function que classifica headline em tipo usando IA |
 
 ### Arquivos a Modificar
 
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/hooks/useTiposRoteiro.ts` | Adicionar campos `palavras_chave` e `instrucoes_deteccao` no tipo |
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Adicionar logica de auto-deteccao com debounce |
-| `src/components/mentorados/CheckRoteiroViralDialog.tsx` | Adicionar aba "Deteccao de Tipo" + fix de scroll |
-| `src/components/mentorados/RoteiroChecklist.tsx` | Nenhuma mudanca necessaria (engrenagem ja abre o dialog) |
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/components/mentorados/CheckRoteiroViralDialog.tsx` | Adicionar campo de URL do webhook na aba "Deteccao de Tipo", atualizar teste para usar webhook |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Trocar `supabase.functions.invoke("detectar-tipo-roteiro")` por `fetch` ao webhook n8n, match por nome do tipo |
+
+### Nenhum arquivo novo necessario
+
+A edge function `detectar-tipo-roteiro` pode ser mantida como fallback mas nao sera mais chamada.
 
 ---
 
-### Fluxo do Usuario
+### Fluxo
 
-1. Usuario abre roteiros de um mentorado
-2. Digita uma headline: "faca essas 3 coisas se quiser ser mais produtivo em 2026!!"
-3. Apos 2 segundos sem digitar, um loader aparece ao lado do dropdown "Tipo..."
-4. A IA identifica que e um tipo "Lista" e automaticamente muda o dropdown
-5. Para configurar a deteccao, clica na engrenagem do "Revisar" no checklist
-6. No dialog, vai para a aba "Deteccao de Tipo"
-7. Para o tipo "Lista", adiciona palavras-chave: "3 coisas, 5 dicas, X maneiras"
-8. Adiciona instrucoes: "Headlines que prometem uma quantidade especifica de itens, dicas ou passos"
-9. Salva e testa com uma headline para validar
+1. Usuario configura a URL do webhook na engrenagem > aba "Deteccao de Tipo"
+2. Usuario digita uma headline no roteiro
+3. Apos 2s sem digitar, sistema envia `{ headline }` para o webhook
+4. n8n processa e retorna `{ tipo: "Lista util" }`
+5. Sistema compara "Lista util" com os nomes dos tipos cadastrados
+6. Se encontrar match, preenche o dropdown automaticamente
 
