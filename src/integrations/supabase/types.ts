@@ -2138,7 +2138,9 @@ export type Database = {
           created_at: string | null
           descricao: string | null
           id: string
+          instrucoes_deteccao: string | null
           nome: string
+          palavras_chave: string | null
           prompt: string | null
           template_estrutura: string | null
           user_id: string
@@ -2148,7 +2150,9 @@ export type Database = {
           created_at?: string | null
           descricao?: string | null
           id?: string
+          instrucoes_deteccao?: string | null
           nome: string
+          palavras_chave?: string | null
           prompt?: string | null
           template_estrutura?: string | null
           user_id: string
@@ -2158,7 +2162,9 @@ export type Database = {
           created_at?: string | null
           descricao?: string | null
           id?: string
+          instrucoes_deteccao?: string | null
           nome?: string
+          palavras_chave?: string | null
           prompt?: string | null
           template_estrutura?: string | null
           user_id?: string

@@ -408,6 +408,11 @@ export const MentoradoRoteirosView = ({
   const [iaCheckResults, setIaCheckResults] = useState<Map<string, { passa: boolean; motivo?: string; loading?: boolean }>>(new Map());
   const iaCheckDebounceRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   
+  // Auto-detecção de tipo por IA
+  const [detectingTipoKeys, setDetectingTipoKeys] = useState<Set<string>>(new Set());
+  const tipoDetectDebounceRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const manualTipoChangeRef = useRef<Set<string>>(new Set());
+  
   // Estados para toggles de IA e Cronômetro (salvos em localStorage)
   const [iaEnabled, setIaEnabled] = useState(() => {
     const saved = localStorage.getItem(`roteiro-ia-enabled-${mentoradoId}`);
@@ -1304,6 +1309,13 @@ export const MentoradoRoteirosView = ({
   const handleTipoRoteiroChange = useCallback((guiaNumero: number, ordem: number, tipoId: string | null) => {
     const key = `${guiaNumero}-${ordem}`;
     
+    // Mark as manually changed so auto-detection won't override
+    if (tipoId) {
+      manualTipoChangeRef.current.add(key);
+    } else {
+      manualTipoChangeRef.current.delete(key);
+    }
+    
     setRoteirosLocais((prev) => {
       const newMap = new Map(prev);
       const existing = newMap.get(key) || { headline: "", estrutura: "" };
@@ -1317,6 +1329,88 @@ export const MentoradoRoteirosView = ({
       saveRoteiro(guiaNumero, ordem, roteiro.headline, roteiro.estrutura, tipoId);
     }
   }, [roteirosLocais, saveRoteiro]);
+
+  // Auto-detecção de tipo por IA
+  const triggerTipoDetection = useCallback((key: string, headline: string) => {
+    // Cancel previous timer
+    const existing = tipoDetectDebounceRef.current.get(key);
+    if (existing) clearTimeout(existing);
+    
+    // Don't detect if headline is too short, no tipos, or manually set
+    if (headline.length < 10 || tiposRoteiro.length === 0 || manualTipoChangeRef.current.has(key)) {
+      return;
+    }
+    
+    // Check if tipo already set
+    const roteiro = roteirosLocais.get(key);
+    if (roteiro?.tipo_roteiro_id) return;
+    
+    const timer = setTimeout(async () => {
+      setDetectingTipoKeys(prev => new Set(prev).add(key));
+      
+      try {
+        const tiposParaDeteccao = tiposRoteiro.map(t => ({
+          id: t.id,
+          nome: t.nome,
+          descricao: t.descricao,
+          palavras_chave: t.palavras_chave,
+          instrucoes_deteccao: t.instrucoes_deteccao,
+        }));
+        
+        const { data, error } = await supabase.functions.invoke("detectar-tipo-roteiro", {
+          body: { headline, tipos: tiposParaDeteccao },
+        });
+        
+        if (!error && data?.tipo_id) {
+          const [guiaStr, ordemStr] = key.split("-");
+          const guiaNum = parseInt(guiaStr);
+          const ordemNum = parseInt(ordemStr);
+          
+          // Only set if still no tipo set (user might have changed it while waiting)
+          setRoteirosLocais(prev => {
+            const current = prev.get(key);
+            if (current && !current.tipo_roteiro_id && !manualTipoChangeRef.current.has(key)) {
+              const newMap = new Map(prev);
+              newMap.set(key, { ...current, tipo_roteiro_id: data.tipo_id });
+              // Save to DB
+              saveRoteiro(guiaNum, ordemNum, current.headline, current.estrutura, data.tipo_id);
+              return newMap;
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.error("Auto-detect tipo error:", err);
+      } finally {
+        setDetectingTipoKeys(prev => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    }, 2000);
+    
+    tipoDetectDebounceRef.current.set(key, timer);
+  }, [tiposRoteiro, roteirosLocais, saveRoteiro]);
+
+  // useEffect to trigger auto-detection when headlines change
+  const prevHeadlinesRef = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    const guiaConfig = guias.find(g => g.numero === guiaAtiva);
+    if (!guiaConfig || guiaConfig.isOverdelivery) return;
+    
+    for (let ordem = 1; ordem <= guiaConfig.quantidade; ordem++) {
+      const key = `${guiaAtiva}-${ordem}`;
+      const roteiro = roteirosLocais.get(key);
+      const headline = roteiro?.headline || "";
+      const prevHeadline = prevHeadlinesRef.current.get(key) || "";
+      
+      if (headline !== prevHeadline && headline.length >= 10) {
+        triggerTipoDetection(key, headline);
+      }
+      prevHeadlinesRef.current.set(key, headline);
+    }
+  }, [roteirosLocais, guiaAtiva, guias, triggerTipoDetection]);
 
   const handleCopyRoteiro = async (guiaNumero: number, ordem: number) => {
     const key = `${guiaNumero}-${ordem}`;
@@ -2491,6 +2585,9 @@ export const MentoradoRoteirosView = ({
                               ))}
                             </SelectContent>
                           </Select>
+                          {detectingTipoKeys.has(key) && (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                          )}
                           {/* Botão de cópia simplificada - ao lado do select */}
                           {roteiro.tipo_roteiro_id && (
                             <Button

@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.verificar-check-viral]
 verify_jwt = false
+
+[functions.detectar-tipo-roteiro]
+verify_jwt = false
