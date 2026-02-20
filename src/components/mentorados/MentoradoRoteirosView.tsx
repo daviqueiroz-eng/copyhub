@@ -77,6 +77,7 @@ import { useInteligenciaGlobal } from "@/hooks/useInteligenciaGlobal";
 import { CheckRoteiroViralPanel } from "./CheckRoteiroViralPanel";
 import { useTiposRoteiro } from "@/hooks/useTiposRoteiro";
 import { FloatingNotesPanel } from "./FloatingNotesPanel";
+import { TipoRoteiroConfigDialog } from "./TipoRoteiroConfigDialog";
 import {
   Select,
   SelectContent,
@@ -412,6 +413,8 @@ export const MentoradoRoteirosView = ({
   const [detectingTipoKeys, setDetectingTipoKeys] = useState<Set<string>>(new Set());
   const tipoDetectDebounceRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const manualTipoChangeRef = useRef<Set<string>>(new Set());
+  const [configTipoDialogOpen, setConfigTipoDialogOpen] = useState(false);
+  const [configTipoSelected, setConfigTipoSelected] = useState<typeof tiposRoteiro[0] | null>(null);
   
   // Estados para toggles de IA e Cronômetro (salvos em localStorage)
   const [iaEnabled, setIaEnabled] = useState(() => {
@@ -1330,88 +1333,63 @@ export const MentoradoRoteirosView = ({
     }
   }, [roteirosLocais, saveRoteiro]);
 
-   // Auto-detecção de tipo via webhook proxy (edge function)
-  const triggerTipoDetection = useCallback((key: string, headline: string) => {
-    // Cancel previous timer
-    const existing = tipoDetectDebounceRef.current.get(key);
-    if (existing) clearTimeout(existing);
-    
+   // Auto-detecção de tipo via webhook proxy (edge function) — disparado no blur
+  const triggerTipoDetection = useCallback(async (key: string, headline: string) => {
     // Don't detect if headline is too short, no tipos, or manually set
     if (headline.length < 10 || tiposRoteiro.length === 0 || manualTipoChangeRef.current.has(key)) {
       return;
     }
     
-    const timer = setTimeout(async () => {
-      // Check for webhook URL
-      const webhookUrl = localStorage.getItem("webhook_deteccao_tipo_url");
-      if (!webhookUrl?.trim()) return;
-      
-      setDetectingTipoKeys(prev => new Set(prev).add(key));
-      
-      try {
-        const { data, error } = await supabase.functions.invoke("detectar-tipo-roteiro", {
-          body: { headline, webhookUrl },
-        });
-        
-        if (error) {
-          console.error("Webhook proxy error:", error);
-          return;
-        }
-        
-        const tipoNome = (data?.tipo || data?.type || data?.nome || "").toString().trim();
-        
-        if (tipoNome) {
-          const match = tiposRoteiro.find(t => t.nome.trim().toLowerCase() === tipoNome.toLowerCase());
-          
-          if (match) {
-            const [guiaStr, ordemStr] = key.split("-");
-            const guiaNum = parseInt(guiaStr);
-            const ordemNum = parseInt(ordemStr);
-            
-            setRoteirosLocais(prev => {
-              const current = prev.get(key);
-              if (current && !manualTipoChangeRef.current.has(key)) {
-                const newMap = new Map(prev);
-                newMap.set(key, { ...current, tipo_roteiro_id: match.id });
-                saveRoteiro(guiaNum, ordemNum, current.headline, current.estrutura, match.id);
-                return newMap;
-              }
-              return prev;
-            });
-          }
-        }
-      } catch (err: any) {
-        console.error("Webhook tipo detection error:", err);
-      } finally {
-        setDetectingTipoKeys(prev => {
-          const next = new Set(prev);
-          next.delete(key);
-          return next;
-        });
-      }
-    }, 2000);
+    // Check for webhook URL
+    const webhookUrl = localStorage.getItem("webhook_deteccao_tipo_url");
+    if (!webhookUrl?.trim()) return;
     
-    tipoDetectDebounceRef.current.set(key, timer);
+    setDetectingTipoKeys(prev => new Set(prev).add(key));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("detectar-tipo-roteiro", {
+        body: { headline, webhookUrl },
+      });
+      
+      if (error) {
+        console.error("Webhook proxy error:", error);
+        return;
+      }
+      
+      const tipoNome = (data?.tipo || data?.type || data?.nome || "").toString().trim();
+      
+      if (tipoNome) {
+        const match = tiposRoteiro.find(t => t.nome.trim().toLowerCase() === tipoNome.toLowerCase());
+        
+        if (match) {
+          const [guiaStr, ordemStr] = key.split("-");
+          const guiaNum = parseInt(guiaStr);
+          const ordemNum = parseInt(ordemStr);
+          
+          setRoteirosLocais(prev => {
+            const current = prev.get(key);
+            if (current && !manualTipoChangeRef.current.has(key)) {
+              const newMap = new Map(prev);
+              newMap.set(key, { ...current, tipo_roteiro_id: match.id });
+              saveRoteiro(guiaNum, ordemNum, current.headline, current.estrutura, match.id);
+              return newMap;
+            }
+            return prev;
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error("Webhook tipo detection error:", err);
+    } finally {
+      setDetectingTipoKeys(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
   }, [tiposRoteiro, saveRoteiro]);
 
-  // useEffect to trigger auto-detection when headlines change
-  const prevHeadlinesRef = useRef<Map<string, string>>(new Map());
-  useEffect(() => {
-    const guiaConfig = guias.find(g => g.numero === guiaAtiva);
-    if (!guiaConfig || guiaConfig.isOverdelivery) return;
-    
-    for (let ordem = 1; ordem <= guiaConfig.quantidade; ordem++) {
-      const key = `${guiaAtiva}-${ordem}`;
-      const roteiro = roteirosLocais.get(key);
-      const headline = roteiro?.headline || "";
-      const prevHeadline = prevHeadlinesRef.current.get(key) || "";
-      
-      if (headline !== prevHeadline && headline.length >= 10) {
-        triggerTipoDetection(key, headline);
-      }
-      prevHeadlinesRef.current.set(key, headline);
-    }
-  }, [roteirosLocais, guiaAtiva, guias, triggerTipoDetection]);
+  // useEffect removido — detecção agora é disparada no blur do campo headline
 
   const handleCopyRoteiro = async (guiaNumero: number, ordem: number) => {
     const key = `${guiaNumero}-${ordem}`;
@@ -1914,7 +1892,7 @@ export const MentoradoRoteirosView = ({
 
   const guiaAtivaConfig = guias.find(g => g.numero === guiaAtiva) || { numero: 1, quantidade: 10 };
 
-  // Handler de blur para marcar campo como finalizado
+  // Handler de blur para marcar campo como finalizado + disparar detecção de tipo
   const handleFieldBlur = useCallback((
     guiaNumero: number,
     ordem: number,
@@ -1934,7 +1912,12 @@ export const MentoradoRoteirosView = ({
       }
       return next;
     });
-  }, [roteirosLocais]);
+
+    // Disparar detecção de tipo ao sair do campo headline
+    if (field === "headline" && value && value.trim().length >= 10) {
+      triggerTipoDetection(key, value);
+    }
+  }, [roteirosLocais, triggerTipoDetection]);
 
   // Inicializar campos finalizados quando roteiros são carregados do banco
   useEffect(() => {
@@ -2586,6 +2569,25 @@ export const MentoradoRoteirosView = ({
                                   {tipo.nome}
                                 </SelectItem>
                               ))}
+                              {roteiro.tipo_roteiro_id && (
+                                <>
+                                  <div className="border-t my-1" />
+                                  <button
+                                    className="w-full text-left px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const tipo = tiposRoteiro.find(t => t.id === roteiro.tipo_roteiro_id);
+                                      if (tipo) {
+                                        setConfigTipoSelected(tipo);
+                                        setConfigTipoDialogOpen(true);
+                                      }
+                                    }}
+                                  >
+                                    ⚙️ Configurar
+                                  </button>
+                                </>
+                              )}
                             </SelectContent>
                           </Select>
                           {detectingTipoKeys.has(key) && (
@@ -3248,6 +3250,12 @@ export const MentoradoRoteirosView = ({
         currentMentoradoId={mentoradoId}
         currentMentoradoNome={mentoradoNome}
         mentorados={mentorados || []}
+      />
+      {/* Dialog de configuração do tipo de roteiro */}
+      <TipoRoteiroConfigDialog
+        open={configTipoDialogOpen}
+        onOpenChange={setConfigTipoDialogOpen}
+        tipo={configTipoSelected}
       />
     </div>
   );
