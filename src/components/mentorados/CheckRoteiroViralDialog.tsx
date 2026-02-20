@@ -71,6 +71,7 @@ export const CheckRoteiroViralDialog = ({
   const [testingDeteccao, setTestingDeteccao] = useState(false);
   const [testHeadline, setTestHeadline] = useState("");
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [webhookUrl, setWebhookUrl] = useState(() => localStorage.getItem("webhook_deteccao_tipo_url") || "");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -226,9 +227,18 @@ export const CheckRoteiroViralDialog = ({
     }
   };
 
+  const handleWebhookUrlChange = (url: string) => {
+    setWebhookUrl(url);
+    localStorage.setItem("webhook_deteccao_tipo_url", url);
+  };
+
   const handleTestDeteccao = async () => {
     if (!testHeadline.trim()) {
       toast({ title: "Digite uma headline para testar", variant: "destructive" });
+      return;
+    }
+    if (!webhookUrl.trim()) {
+      toast({ title: "Configure a URL do webhook primeiro", variant: "destructive" });
       return;
     }
     
@@ -236,32 +246,36 @@ export const CheckRoteiroViralDialog = ({
     setTestResult(null);
     
     try {
-      // Build tipos with current edits applied
-      const tiposParaTeste = tiposRoteiro.map(t => {
-        const edit = deteccaoEdits.get(t.id);
-        return {
-          id: t.id,
-          nome: t.nome,
-          descricao: t.descricao,
-          palavras_chave: edit?.palavras_chave ?? t.palavras_chave,
-          instrucoes_deteccao: edit?.instrucoes_deteccao ?? t.instrucoes_deteccao,
-        };
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ headline: testHeadline }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       
-      const { data, error } = await supabase.functions.invoke("detectar-tipo-roteiro", {
-        body: { headline: testHeadline, tipos: tiposParaTeste },
-      });
+      const data = await response.json();
+      const tipoNome = (data.tipo || data.type || data.nome || "").toString().trim();
       
-      if (error) throw error;
-      
-      if (data.tipo_id) {
-        const tipo = tiposRoteiro.find(t => t.id === data.tipo_id);
-        setTestResult(`✅ Detectado: ${tipo?.nome || data.tipo_id}`);
+      if (tipoNome) {
+        const match = tiposRoteiro.find(t => t.nome.trim().toLowerCase() === tipoNome.toLowerCase());
+        if (match) {
+          setTestResult(`✅ Detectado: ${match.nome}`);
+        } else {
+          setTestResult(`⚠️ Retornou "${tipoNome}" mas não bate com nenhum tipo cadastrado`);
+        }
       } else {
-        setTestResult("❌ Nenhum tipo detectado");
+        setTestResult("❌ Nenhum tipo retornado pelo webhook");
       }
-    } catch (error) {
-      setTestResult("⚠️ Erro ao testar");
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        setTestResult("⚠️ Timeout - webhook não respondeu em 10s");
+      } else {
+        setTestResult("⚠️ Erro ao chamar webhook");
+      }
     } finally {
       setTestingDeteccao(false);
     }
@@ -656,8 +670,22 @@ export const CheckRoteiroViralDialog = ({
           <TabsContent value="deteccao" className="flex-1 min-h-0 flex flex-col">
             <ScrollArea className="flex-1">
               <div className="space-y-4 pr-4">
+                {/* Webhook URL */}
+                <div className="border rounded-lg p-3 space-y-2 bg-muted/30">
+                  <Label className="text-xs font-medium">URL do Webhook (n8n)</Label>
+                  <Input
+                    value={webhookUrl}
+                    onChange={(e) => handleWebhookUrlChange(e.target.value)}
+                    placeholder="https://seu-n8n.app.n8n.cloud/webhook/..."
+                    className="h-8 text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    O sistema envia <code className="bg-muted px-1 rounded">{"{ headline: \"...\" }"}</code> e espera receber <code className="bg-muted px-1 rounded">{"{ tipo: \"Nome do tipo\" }"}</code>
+                  </p>
+                </div>
+
                 <p className="text-sm text-muted-foreground">
-                  Configure como a IA detecta automaticamente o tipo de cada headline. Adicione palavras-chave e instruções para ensinar a IA.
+                  Use as informações abaixo como referência para configurar seu workflow no n8n.
                 </p>
 
                 {tiposRoteiro.length === 0 ? (
