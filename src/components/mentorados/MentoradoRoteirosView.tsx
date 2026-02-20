@@ -1346,50 +1346,51 @@ export const MentoradoRoteirosView = ({
     if (roteiro?.tipo_roteiro_id) return;
     
     const timer = setTimeout(async () => {
+      // Check for webhook URL
+      const webhookUrl = localStorage.getItem("webhook_deteccao_tipo_url");
+      if (!webhookUrl?.trim()) return;
+      
       setDetectingTipoKeys(prev => new Set(prev).add(key));
       
       try {
-        const tiposParaDeteccao = tiposRoteiro.map(t => ({
-          id: t.id,
-          nome: t.nome,
-          descricao: t.descricao,
-          palavras_chave: t.palavras_chave,
-          instrucoes_deteccao: t.instrucoes_deteccao,
-        }));
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
         
-        const { data, error } = await supabase.functions.invoke("detectar-tipo-roteiro", {
-          body: { headline, tipos: tiposParaDeteccao },
+        const response = await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ headline }),
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
         
-        // 402/429 errors from AI gateway - silently skip
-        if (error) {
-          const errorMsg = typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error);
-          if (errorMsg.includes("402") || errorMsg.includes("Payment required") || errorMsg.includes("429") || errorMsg.includes("Rate limit")) {
-            console.warn("AI detection skipped (quota/rate limit)");
-            return;
+        const data = await response.json();
+        const tipoNome = (data.tipo || data.type || data.nome || "").toString().trim();
+        
+        if (tipoNome) {
+          const match = tiposRoteiro.find(t => t.nome.trim().toLowerCase() === tipoNome.toLowerCase());
+          
+          if (match) {
+            const [guiaStr, ordemStr] = key.split("-");
+            const guiaNum = parseInt(guiaStr);
+            const ordemNum = parseInt(ordemStr);
+            
+            setRoteirosLocais(prev => {
+              const current = prev.get(key);
+              if (current && !current.tipo_roteiro_id && !manualTipoChangeRef.current.has(key)) {
+                const newMap = new Map(prev);
+                newMap.set(key, { ...current, tipo_roteiro_id: match.id });
+                saveRoteiro(guiaNum, ordemNum, current.headline, current.estrutura, match.id);
+                return newMap;
+              }
+              return prev;
+            });
           }
         }
-        
-        if (!error && data?.tipo_id) {
-          const [guiaStr, ordemStr] = key.split("-");
-          const guiaNum = parseInt(guiaStr);
-          const ordemNum = parseInt(ordemStr);
-          
-          // Only set if still no tipo set (user might have changed it while waiting)
-          setRoteirosLocais(prev => {
-            const current = prev.get(key);
-            if (current && !current.tipo_roteiro_id && !manualTipoChangeRef.current.has(key)) {
-              const newMap = new Map(prev);
-              newMap.set(key, { ...current, tipo_roteiro_id: data.tipo_id });
-              // Save to DB
-              saveRoteiro(guiaNum, ordemNum, current.headline, current.estrutura, data.tipo_id);
-              return newMap;
-            }
-            return prev;
-          });
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          console.error("Webhook tipo detection error:", err);
         }
-      } catch (err) {
-        console.error("Auto-detect tipo error:", err);
       } finally {
         setDetectingTipoKeys(prev => {
           const next = new Set(prev);
