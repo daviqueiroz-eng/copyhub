@@ -10,6 +10,8 @@ export interface TipoRoteiro {
   prompt: string | null;
   template_estrutura: string | null;
   config_extra: Json | null;
+  palavras_chave: string | null;
+  instrucoes_deteccao: string | null;
   user_id: string;
   created_at: string;
 }
