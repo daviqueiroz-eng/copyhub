@@ -246,19 +246,16 @@ export const CheckRoteiroViralDialog = ({
     setTestResult(null);
     
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ headline: testHeadline }),
-        signal: controller.signal,
+      const { data, error } = await supabase.functions.invoke("detectar-tipo-roteiro", {
+        body: { headline: testHeadline, webhookUrl },
       });
-      clearTimeout(timeoutId);
       
-      const data = await response.json();
-      const tipoNome = (data.tipo || data.type || data.nome || "").toString().trim();
+      if (error) {
+        setTestResult("⚠️ Erro ao chamar proxy do webhook");
+        return;
+      }
+      
+      const tipoNome = (data?.tipo || data?.type || data?.nome || "").toString().trim();
       
       if (tipoNome) {
         const match = tiposRoteiro.find(t => t.nome.trim().toLowerCase() === tipoNome.toLowerCase());

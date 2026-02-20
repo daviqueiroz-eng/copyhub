@@ -1330,7 +1330,7 @@ export const MentoradoRoteirosView = ({
     }
   }, [roteirosLocais, saveRoteiro]);
 
-  // Auto-detecção de tipo por IA
+   // Auto-detecção de tipo via webhook proxy (edge function)
   const triggerTipoDetection = useCallback((key: string, headline: string) => {
     // Cancel previous timer
     const existing = tipoDetectDebounceRef.current.get(key);
@@ -1341,10 +1341,6 @@ export const MentoradoRoteirosView = ({
       return;
     }
     
-    // Check if tipo already set
-    const roteiro = roteirosLocais.get(key);
-    if (roteiro?.tipo_roteiro_id) return;
-    
     const timer = setTimeout(async () => {
       // Check for webhook URL
       const webhookUrl = localStorage.getItem("webhook_deteccao_tipo_url");
@@ -1353,19 +1349,16 @@ export const MentoradoRoteirosView = ({
       setDetectingTipoKeys(prev => new Set(prev).add(key));
       
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        
-        const response = await fetch(webhookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ headline }),
-          signal: controller.signal,
+        const { data, error } = await supabase.functions.invoke("detectar-tipo-roteiro", {
+          body: { headline, webhookUrl },
         });
-        clearTimeout(timeoutId);
         
-        const data = await response.json();
-        const tipoNome = (data.tipo || data.type || data.nome || "").toString().trim();
+        if (error) {
+          console.error("Webhook proxy error:", error);
+          return;
+        }
+        
+        const tipoNome = (data?.tipo || data?.type || data?.nome || "").toString().trim();
         
         if (tipoNome) {
           const match = tiposRoteiro.find(t => t.nome.trim().toLowerCase() === tipoNome.toLowerCase());
@@ -1377,7 +1370,7 @@ export const MentoradoRoteirosView = ({
             
             setRoteirosLocais(prev => {
               const current = prev.get(key);
-              if (current && !current.tipo_roteiro_id && !manualTipoChangeRef.current.has(key)) {
+              if (current && !manualTipoChangeRef.current.has(key)) {
                 const newMap = new Map(prev);
                 newMap.set(key, { ...current, tipo_roteiro_id: match.id });
                 saveRoteiro(guiaNum, ordemNum, current.headline, current.estrutura, match.id);
@@ -1388,9 +1381,7 @@ export const MentoradoRoteirosView = ({
           }
         }
       } catch (err: any) {
-        if (err.name !== "AbortError") {
-          console.error("Webhook tipo detection error:", err);
-        }
+        console.error("Webhook tipo detection error:", err);
       } finally {
         setDetectingTipoKeys(prev => {
           const next = new Set(prev);
@@ -1401,7 +1392,7 @@ export const MentoradoRoteirosView = ({
     }, 2000);
     
     tipoDetectDebounceRef.current.set(key, timer);
-  }, [tiposRoteiro, roteirosLocais, saveRoteiro]);
+  }, [tiposRoteiro, saveRoteiro]);
 
   // useEffect to trigger auto-detection when headlines change
   const prevHeadlinesRef = useRef<Map<string, string>>(new Map());
@@ -1469,15 +1460,17 @@ export const MentoradoRoteirosView = ({
     const tipoRoteiroId = roteiro?.tipo_roteiro_id;
     const tipo = tiposRoteiro.find(t => t.id === tipoRoteiroId);
     
-    if (!tipo?.template_estrutura) {
+    const promptText = tipo?.instrucoes_deteccao || tipo?.prompt || tipo?.template_estrutura;
+    
+    if (!promptText) {
       toast({
-        title: "Tipo não selecionado",
-        description: "Selecione um tipo de estrutura ao lado da headline.",
+        title: "Tipo não selecionado ou sem prompt",
+        description: "Selecione um tipo com instruções configuradas.",
       });
       return;
     }
 
-    const plainText = `headline: ${roteiro?.headline || ''}\n\nEstrutura:\n${tipo.template_estrutura}`;
+    const plainText = `headline: ${roteiro?.headline || ''}\n\n${promptText}`;
 
     try {
       await navigator.clipboard.writeText(plainText);

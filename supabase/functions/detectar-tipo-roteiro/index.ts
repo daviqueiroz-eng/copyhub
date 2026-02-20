@@ -11,8 +11,46 @@ serve(async (req) => {
   }
 
   try {
-    const { headline, tipos } = await req.json();
+    const body = await req.json();
+    const { headline, webhookUrl, tipos } = body;
 
+    // MODE 1: Webhook proxy (no CORS issues since it runs server-side)
+    if (webhookUrl) {
+      if (!headline) {
+        return new Response(
+          JSON.stringify({ tipo: null }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      try {
+        const webhookResponse = await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ headline }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        const data = await webhookResponse.json();
+        return new Response(
+          JSON.stringify(data),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (err) {
+        clearTimeout(timeoutId);
+        const isAbort = err instanceof Error && err.name === "AbortError";
+        return new Response(
+          JSON.stringify({ tipo: null, error: isAbort ? "Webhook timeout" : "Webhook error" }),
+          { status: isAbort ? 504 : 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // MODE 2: AI-based detection (existing logic)
     if (!headline || !tipos || tipos.length === 0) {
       return new Response(
         JSON.stringify({ tipo_id: null }),
@@ -25,7 +63,6 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Build the types description for the prompt
     const tiposDescricao = tipos.map((t: any) => {
       let desc = `- ID: "${t.id}" | Nome: "${t.nome}"`;
       if (t.palavras_chave) desc += ` | Palavras-chave: ${t.palavras_chave}`;
@@ -98,14 +135,12 @@ ${tiposDescricao}`;
 
     const data = await response.json();
     
-    // Extract from tool call
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
       try {
         const args = JSON.parse(toolCall.function.arguments);
         const tipoId = args.tipo_id === "null" || !args.tipo_id ? null : args.tipo_id;
         
-        // Validate that the tipo_id exists in the provided tipos
         if (tipoId && tipos.some((t: any) => t.id === tipoId)) {
           return new Response(
             JSON.stringify({ tipo_id: tipoId }),
