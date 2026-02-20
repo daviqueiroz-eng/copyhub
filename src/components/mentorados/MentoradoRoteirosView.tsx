@@ -1361,6 +1361,15 @@ export const MentoradoRoteirosView = ({
           body: { headline, tipos: tiposParaDeteccao },
         });
         
+        // 402/429 errors from AI gateway - silently skip
+        if (error) {
+          const errorMsg = typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error);
+          if (errorMsg.includes("402") || errorMsg.includes("Payment required") || errorMsg.includes("429") || errorMsg.includes("Rate limit")) {
+            console.warn("AI detection skipped (quota/rate limit)");
+            return;
+          }
+        }
+        
         if (!error && data?.tipo_id) {
           const [guiaStr, ordemStr] = key.split("-");
           const guiaNum = parseInt(guiaStr);
