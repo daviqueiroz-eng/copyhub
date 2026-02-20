@@ -1,33 +1,69 @@
 
 
-## Plano: Bloco de Notas Flutuante no Roteiro (estilo Docs)
+## Plano: Auto-deteccao de Tipo por IA + Configuracao na Engrenagem + Fix de Scroll
 
 ### Resumo
 
-Adicionar um botao redondo flutuante com icone de livro dentro da tela de Roteiros. Ao clicar, abre um painel flutuante estilo Apple Notes/Google Docs que:
-- E arrastavel (posicao livre na tela)
-- E redimensionavel
-- Mostra as notas do mentorado atual
-- Permite trocar entre mentorados sem sair do roteiro
-- Permite copiar conteudo das notas para o roteiro
-- Minimiza ao clicar no X (nao fecha/destroi)
+Tres mudancas:
+1. **Auto-deteccao de tipo**: Quando o usuario digita/cola uma headline, a IA analisa o texto e muda automaticamente o dropdown "Tipo..." para o tipo correto
+2. **Configuracao na engrenagem**: Adicionar uma nova aba/secao no dialog que abre ao clicar na engrenagem do "Revisar" para configurar as regras de deteccao automatica de tipo (com campo de instrucoes para ensinar a IA)
+3. **Fix de scroll**: Corrigir o scroll do `CheckRoteiroViralDialog` para permitir rolar o conteudo
 
 ---
 
-### Nova Tabela no Banco de Dados
+### Detalhes Tecnicos
 
-**`mentorado_notas`** - notas por mentorado, vinculadas ao usuario
+#### 1. Nova coluna na tabela `tipos_roteiro`
 
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | uuid (PK) | ID unico |
-| user_id | uuid | Dono da nota |
-| mentorado_id | uuid (FK mentorados) | Mentorado associado |
-| conteudo | text | Conteudo livre da nota |
-| created_at | timestamptz | Criacao |
-| updated_at | timestamptz | Ultima atualizacao |
+Adicionar `palavras_chave` (text, nullable) e `instrucoes_deteccao` (text, nullable) para cada tipo de roteiro. O campo `palavras_chave` armazena palavras/frases separadas por virgula que ajudam na deteccao rapida. O campo `instrucoes_deteccao` guarda instrucoes para a IA aprender a identificar o tipo.
 
-RLS: usuarios autenticados fazem CRUD nas suas proprias linhas (`user_id = auth.uid()`). Um registro por mentorado por usuario (upsert por `user_id + mentorado_id`).
+**Migracao SQL:**
+```sql
+ALTER TABLE tipos_roteiro 
+  ADD COLUMN palavras_chave text,
+  ADD COLUMN instrucoes_deteccao text;
+```
+
+#### 2. Edge Function `detectar-tipo-roteiro`
+
+Nova edge function que recebe a headline e a lista de tipos (com nomes, palavras-chave e instrucoes) e retorna o ID do tipo detectado:
+
+- Usa Lovable AI (google/gemini-3-flash-preview)
+- Prompt do sistema: "Voce e um classificador de headlines de video. Com base na headline fornecida e nas descricoes dos tipos disponiveis, retorne o tipo mais adequado."
+- Retorna `{ tipo_id: string | null }` usando tool calling para output estruturado
+- Se nenhum tipo for identificado, retorna null
+
+#### 3. Logica de auto-deteccao no `MentoradoRoteirosView.tsx`
+
+- Apos o usuario terminar de digitar a headline (debounce 2s apos parar de digitar OU no blur do campo headline):
+  - Se a headline tiver conteudo significativo (> 10 caracteres)
+  - Se o tipo ainda nao foi definido manualmente (tipo_roteiro_id == null)
+  - Chamar a edge function com a headline e os tipos disponiveis
+  - Se retornar um tipo, atualizar automaticamente o dropdown
+- O usuario pode sempre mudar manualmente depois (a auto-deteccao so roda quando nao tem tipo selecionado)
+- Mostrar um indicador sutil (Loader2 pequeno ao lado do select) enquanto detecta
+
+#### 4. Configuracao na engrenagem do "Revisar"
+
+Modificar o `CheckRoteiroViralDialog` para ter 2 abas:
+- **Aba 1: "Checks Virais"** (conteudo atual - regras de validacao)
+- **Aba 2: "Deteccao de Tipo"** (nova - configurar como a IA detecta tipos)
+
+Na aba "Deteccao de Tipo":
+- Lista dos tipos de roteiro existentes (da tabela `tipos_roteiro`)
+- Para cada tipo, campos editaveis:
+  - Nome (readonly, vem do tipo)
+  - Palavras-chave (input - separadas por virgula)
+  - Instrucoes para IA (textarea - descrever como identificar este tipo)
+- Botao "Salvar" que atualiza os campos na tabela `tipos_roteiro`
+- Botao "Testar" que pega a headline atual e roda a deteccao para validar
+
+#### 5. Fix de scroll no `CheckRoteiroViralDialog`
+
+O dialog atual usa `max-h-[85vh]` mas o `ScrollArea` pode nao estar respeitando o limite. Correcao:
+- Adicionar `overflow-hidden` no `DialogContent`
+- Garantir que o `ScrollArea` tenha altura calculada corretamente com `max-h` explicito
+- Usar `flex flex-col` e `min-h-0` para garantir que o flex child permita scroll
 
 ---
 
@@ -35,57 +71,28 @@ RLS: usuarios autenticados fazem CRUD nas suas proprias linhas (`user_id = auth.
 
 | Arquivo | Descricao |
 |---------|-----------|
-| `src/hooks/useMentoradoNotas.ts` | Hook CRUD para `mentorado_notas` (fetch, upsert, delete) |
-| `src/components/mentorados/FloatingNotesPanel.tsx` | Painel flutuante arrastavel e redimensionavel com editor de notas |
+| `supabase/functions/detectar-tipo-roteiro/index.ts` | Edge function que classifica headline em tipo usando IA |
 
 ### Arquivos a Modificar
 
 | Arquivo | Descricao |
 |---------|-----------|
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Adicionar botao flutuante e renderizar o FloatingNotesPanel |
-
----
-
-### Detalhes de Implementacao
-
-**1. FloatingNotesPanel.tsx - Painel flutuante**
-
-- **Botao flutuante**: Circulo com icone `BookOpen` (lucide), posicao fixa no canto inferior direito, z-index alto
-- **Painel aberto**: Container com position fixed, arrastavel via barra de titulo (mousedown/mousemove), redimensionavel via handle no canto inferior direito
-- **Layout interno**:
-  - Barra de titulo com nome do mentorado atual, seletor de mentorados (dropdown), botao copiar e botao X (minimiza)
-  - Area de texto (textarea) com auto-save (debounce 1.5s), estilo limpo como Apple Notes
-  - Sidebar lateral esquerda com lista de mentorados (pastas), similar a imagem de referencia
-- **Sidebar de mentorados**: Lista vertical com nome e preview do conteudo, ao clicar troca para as notas daquele mentorado
-- **Botao copiar**: Copia todo o conteudo da nota para o clipboard
-- **X**: Apenas minimiza (seta `isOpen = false`), nao destroi o componente
-- **Redimensionamento**: Handle no canto inferior direito com cursor `nwse-resize`, min-width 400px, min-height 300px
-
-**2. useMentoradoNotas.ts - Hook**
-
-- `useMentoradoNota(mentoradoId)` - busca nota do mentorado
-- `useUpsertMentoradoNota()` - cria ou atualiza nota (upsert por user_id + mentorado_id)
-- Auto-save com debounce no componente
-
-**3. MentoradoRoteirosView.tsx - Integracao**
-
-- Importar e renderizar `FloatingNotesPanel` passando:
-  - `mentoradoId` atual
-  - `mentoradoNome` atual
-  - Lista de `mentorados` (ja disponivel via `useMentorados`)
-- O painel fica flutuando sobre o conteudo do roteiro
+| `src/hooks/useTiposRoteiro.ts` | Adicionar campos `palavras_chave` e `instrucoes_deteccao` no tipo |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Adicionar logica de auto-deteccao com debounce |
+| `src/components/mentorados/CheckRoteiroViralDialog.tsx` | Adicionar aba "Deteccao de Tipo" + fix de scroll |
+| `src/components/mentorados/RoteiroChecklist.tsx` | Nenhuma mudanca necessaria (engrenagem ja abre o dialog) |
 
 ---
 
 ### Fluxo do Usuario
 
-1. Usuario esta editando roteiros de um mentorado
-2. Ve um botao redondo com icone de livro no canto inferior direito
-3. Clica no botao -> painel de notas abre flutuando
-4. Escreve anotacoes livremente (auto-save)
-5. Pode arrastar o painel para qualquer posicao
-6. Pode redimensionar o painel
-7. Na sidebar esquerda do painel, ve outros mentorados e pode clicar para ver/editar notas deles
-8. Pode copiar texto das notas e colar no roteiro
-9. Clica X -> painel minimiza, botao redondo volta a aparecer
+1. Usuario abre roteiros de um mentorado
+2. Digita uma headline: "faca essas 3 coisas se quiser ser mais produtivo em 2026!!"
+3. Apos 2 segundos sem digitar, um loader aparece ao lado do dropdown "Tipo..."
+4. A IA identifica que e um tipo "Lista" e automaticamente muda o dropdown
+5. Para configurar a deteccao, clica na engrenagem do "Revisar" no checklist
+6. No dialog, vai para a aba "Deteccao de Tipo"
+7. Para o tipo "Lista", adiciona palavras-chave: "3 coisas, 5 dicas, X maneiras"
+8. Adiciona instrucoes: "Headlines que prometem uma quantidade especifica de itens, dicas ou passos"
+9. Salva e testa com uma headline para validar
 
