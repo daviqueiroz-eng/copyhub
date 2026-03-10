@@ -267,7 +267,7 @@ export const MentoradoRoteirosView = ({
   const [overdeliveryBlocosLocal, setOverdeliveryBlocosLocal] = useState<Map<number, OverdeliveryBloco[]>>(new Map());
   const [overdeliverySaving, setOverdeliverySaving] = useState(false);
   const [overdeliverySaved, setOverdeliverySaved] = useState(false);
-  const overdeliverySaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const overdeliverySaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [highlightedMatch, setHighlightedMatch] = useState<{
     guiaNumero: number;
     ordem: number;
