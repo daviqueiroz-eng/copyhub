@@ -2677,22 +2677,6 @@ export const MentoradoRoteirosView = ({
                               }
                             }
                           }}
-                          onPaste={(e) => {
-                            const clipboardText = e.clipboardData.getData("text/plain");
-                            if (clipboardText) {
-                              e.preventDefault();
-                              // Normalize: add blank line between paragraphs (period/!/? followed by space+uppercase)
-                              let normalized = clipboardText
-                                .replace(/([.!?])\s+([A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ])/g, "$1\n\n$2")
-                                .replace(/\n{3,}/g, "\n\n");
-                              const textarea = e.currentTarget;
-                              const start = textarea.selectionStart;
-                              const end = textarea.selectionEnd;
-                              const current = roteiro.estrutura || "";
-                              const newValue = current.substring(0, start) + normalized + current.substring(end);
-                              handleInputChange2(guiaAtiva, ordem, "estrutura", newValue, start + normalized.length);
-                            }
-                          }}
                           placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                           className="text-[14px] min-h-[60px] mt-1"
                           errors={getErrorsForField(guiaAtiva, ordem, "estrutura")}
