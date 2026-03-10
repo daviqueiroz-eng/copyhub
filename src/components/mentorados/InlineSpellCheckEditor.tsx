@@ -21,6 +21,7 @@ interface InlineSpellCheckEditorProps {
   onSelect?: (e: React.SyntheticEvent<HTMLTextAreaElement>) => void;
   onBlur?: () => void;
   onMouseUp?: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
+  onPaste?: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   className?: string;
   errors?: SpellError[];
