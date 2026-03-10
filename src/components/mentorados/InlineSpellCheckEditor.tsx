@@ -249,6 +249,7 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
         onSelect={onSelect}
         onBlur={onBlur}
         onMouseUp={onMouseUp}
+        onPaste={onPaste}
         onScroll={syncScroll}
         placeholder={placeholder}
         className={cn(

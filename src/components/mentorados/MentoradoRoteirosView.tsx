@@ -2642,7 +2642,7 @@ export const MentoradoRoteirosView = ({
                       </div>
 
                       {/* Estrutura */}
-                      <div className="mb-4">
+                      <div className={cn("mb-4 rounded-md transition-colors", (roteiro.estrutura?.length || 0) > 2100 && "bg-red-100 dark:bg-red-950/40 p-2")}>
                         <span className="font-poppins font-bold text-[#B8860B] text-base">
                           ESTRUTURA {String(ordem).padStart(2, "0")}:
                         </span>
@@ -2676,6 +2676,22 @@ export const MentoradoRoteirosView = ({
                               }
                             }
                           }}
+                          onPaste={(e) => {
+                            const clipboardText = e.clipboardData.getData("text/plain");
+                            if (clipboardText) {
+                              e.preventDefault();
+                              // Normalize: add blank line between paragraphs (period/!/? followed by space+uppercase)
+                              let normalized = clipboardText
+                                .replace(/([.!?])\s+([A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ])/g, "$1\n\n$2")
+                                .replace(/\n{3,}/g, "\n\n");
+                              const textarea = e.currentTarget;
+                              const start = textarea.selectionStart;
+                              const end = textarea.selectionEnd;
+                              const current = roteiro.estrutura || "";
+                              const newValue = current.substring(0, start) + normalized + current.substring(end);
+                              handleInputChange2(guiaAtiva, ordem, "estrutura", newValue, start + normalized.length);
+                            }
+                          }}
                           placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                           className="text-[14px] min-h-[60px] mt-1"
                           errors={getErrorsForField(guiaAtiva, ordem, "estrutura")}
@@ -2683,7 +2699,7 @@ export const MentoradoRoteirosView = ({
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
                           onIgnoreError={handleIgnoreError}
                         />
-                        <div className="text-right text-xs text-muted-foreground mt-1">
+                        <div className={cn("text-right text-xs mt-1", (roteiro.estrutura?.length || 0) > 2100 ? "text-destructive font-semibold" : "text-muted-foreground")}>
                           {roteiro.estrutura?.length || 0} caracteres
                         </div>
                         
