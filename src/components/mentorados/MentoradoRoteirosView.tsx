@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -266,7 +267,7 @@ export const MentoradoRoteirosView = ({
   const [overdeliveryBlocosLocal, setOverdeliveryBlocosLocal] = useState<Map<number, OverdeliveryBloco[]>>(new Map());
   const [overdeliverySaving, setOverdeliverySaving] = useState(false);
   const [overdeliverySaved, setOverdeliverySaved] = useState(false);
-  const overdeliverySaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const overdeliverySaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [highlightedMatch, setHighlightedMatch] = useState<{
     guiaNumero: number;
     ordem: number;
@@ -332,7 +333,7 @@ export const MentoradoRoteirosView = ({
   const speakingKeyRef = useRef<string | null>(null);
 
   // Refs para debounce
-  const debounceTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const debounceTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pendingChangesRef = useRef<Map<string, RoteiroLocal>>(new Map());
   const inputRefs = useRef<Map<string, HTMLInputElement | HTMLTextAreaElement>>(new Map());
 
@@ -340,7 +341,7 @@ export const MentoradoRoteirosView = ({
   const [history, setHistory] = useState<Map<string, RoteiroLocal>[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const isUndoRedoRef = useRef(false);
-  const historyDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const historyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
   const { data: mentorados = [] } = useMentorados();
@@ -407,11 +408,11 @@ export const MentoradoRoteirosView = ({
   // Estado para resultados de verificação IA por roteiro
   // Chave: "roteiroKey:checkId", valor: { passa, motivo, loading }
   const [iaCheckResults, setIaCheckResults] = useState<Map<string, { passa: boolean; motivo?: string; loading?: boolean }>>(new Map());
-  const iaCheckDebounceRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const iaCheckDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   
   // Auto-detecção de tipo por IA
   const [detectingTipoKeys, setDetectingTipoKeys] = useState<Set<string>>(new Set());
-  const tipoDetectDebounceRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const tipoDetectDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const manualTipoChangeRef = useRef<Set<string>>(new Set());
   const [configTipoDialogOpen, setConfigTipoDialogOpen] = useState(false);
   const [configTipoSelected, setConfigTipoSelected] = useState<typeof tiposRoteiro[0] | null>(null);
@@ -2642,7 +2643,7 @@ export const MentoradoRoteirosView = ({
                       </div>
 
                       {/* Estrutura */}
-                      <div className="mb-4">
+                      <div className={cn("mb-4 rounded-md transition-colors", (roteiro.estrutura?.length || 0) > 2100 && "bg-red-100 dark:bg-red-950/40 p-2")}>
                         <span className="font-poppins font-bold text-[#B8860B] text-base">
                           ESTRUTURA {String(ordem).padStart(2, "0")}:
                         </span>
@@ -2676,6 +2677,22 @@ export const MentoradoRoteirosView = ({
                               }
                             }
                           }}
+                          onPaste={(e) => {
+                            const clipboardText = e.clipboardData.getData("text/plain");
+                            if (clipboardText) {
+                              e.preventDefault();
+                              // Normalize: add blank line between paragraphs (period/!/? followed by space+uppercase)
+                              let normalized = clipboardText
+                                .replace(/([.!?])\s+([A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ])/g, "$1\n\n$2")
+                                .replace(/\n{3,}/g, "\n\n");
+                              const textarea = e.currentTarget;
+                              const start = textarea.selectionStart;
+                              const end = textarea.selectionEnd;
+                              const current = roteiro.estrutura || "";
+                              const newValue = current.substring(0, start) + normalized + current.substring(end);
+                              handleInputChange2(guiaAtiva, ordem, "estrutura", newValue, start + normalized.length);
+                            }
+                          }}
                           placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                           className="text-[14px] min-h-[60px] mt-1"
                           errors={getErrorsForField(guiaAtiva, ordem, "estrutura")}
@@ -2683,7 +2700,7 @@ export const MentoradoRoteirosView = ({
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
                           onIgnoreError={handleIgnoreError}
                         />
-                        <div className="text-right text-xs text-muted-foreground mt-1">
+                        <div className={cn("text-right text-xs mt-1", (roteiro.estrutura?.length || 0) > 2100 ? "text-destructive font-semibold" : "text-muted-foreground")}>
                           {roteiro.estrutura?.length || 0} caracteres
                         </div>
                         

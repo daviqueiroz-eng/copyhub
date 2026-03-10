@@ -1,20 +1,36 @@
 
 
-## Plano: Espaçamento no Colar + Fundo Vermelho acima de 2100 caracteres
+## Plano: Disparo de Webhook no Blur + Opcao "Configurar" no Dropdown
 
-### Mudanca 1: Normalizar texto colado (paragrafos com espacamento)
+### Problema Atual
+- O webhook de deteccao de tipo dispara via debounce (2s apos digitar), mas o usuario quer que dispare **ao sair do campo headline** (blur)
+- Nao existe opcao "configurar" no dropdown de tipos, conforme mostrado na imagem 1
+- O dialog de configuracao ja existe (`TipoRoteiroConfigDialog`) e ja tem o layout correto (prompt + template)
 
-Quando o usuario cola texto no campo de estrutura, o texto vem sem quebras de linha adequadas. Adicionar um handler `onPaste` no `InlineSpellCheckEditor` que:
-- Intercepta o paste
-- Pega o texto do clipboard
-- Adiciona uma linha em branco entre paragrafos (detecta pontos finais seguidos de letra maiuscula como quebra de paragrafo)
-- Insere o texto processado na posicao do cursor
+---
 
-**Logica**: Regex para detectar padrao `. [A-Z]` ou `.\n[A-Z]` e substituir por `.\n\n` para criar paragrafos visuais.
+### Mudancas
 
-### Mudanca 2: Fundo vermelho quando estrutura > 2100 caracteres
+#### 1. Disparar webhook no blur do headline (MentoradoRoteirosView.tsx)
 
-No render do campo "ESTRUTURA" em `MentoradoRoteirosView.tsx`, adicionar uma classe condicional no container `<div>` que envolve a estrutura. Quando `roteiro.estrutura?.length > 2100`, aplicar fundo vermelho claro (similar a segunda imagem: `bg-red-100` / rosa claro).
+- Modificar `handleFieldBlur`: quando `field === "headline"` e a headline tem conteudo (>10 chars), chamar imediatamente a deteccao via webhook (sem debounce)
+- Remover o `useEffect` que monitora mudancas de headline para trigger automatico (linhas 1397-1414) — nao faz mais sentido com blur
+- Remover o debounce de 2s no `triggerTipoDetection` — a chamada sera direta, sem `setTimeout`
+- Manter o `manualTipoChangeRef` como bloqueio: se o usuario escolheu manualmente, nao sobrescrever
+
+#### 2. Adicionar "configurar" no dropdown de tipo (MentoradoRoteirosView.tsx)
+
+- Adicionar um item "configurar" no final do `SelectContent` do dropdown de tipos (linhas 2583-2589)
+- Quando clicado, abrir o `TipoRoteiroConfigDialog` com o tipo atualmente selecionado
+- Se nenhum tipo estiver selecionado, a opcao "configurar" abrira o primeiro tipo disponivel (ou nao aparecera)
+- Importar `TipoRoteiroConfigDialog` e adicionar state para controlar sua abertura
+
+#### 3. Nenhuma mudanca no dialog de configuracao
+
+O `TipoRoteiroConfigDialog` ja tem o layout correto conforme a segunda imagem:
+- Campo "Prompt / Instrucoes para IA" (textarea grande)
+- Campo "Template de Estrutura (opcional)" (textarea menor)
+- Botoes Cancelar e Salvar
 
 ---
 
@@ -22,6 +38,14 @@ No render do campo "ESTRUTURA" em `MentoradoRoteirosView.tsx`, adicionar uma cla
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/components/mentorados/InlineSpellCheckEditor.tsx` | Adicionar prop `onPaste` e handler no textarea |
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Passar `onPaste` no editor de estrutura para normalizar texto, adicionar classe de fundo vermelho condicional no container da estrutura quando > 2100 chars |
+| `src/components/mentorados/MentoradoRoteirosView.tsx` | Mover trigger para `handleFieldBlur`, remover useEffect de auto-detect, adicionar opcao "configurar" no Select, importar TipoRoteiroConfigDialog |
 
+### Fluxo do Usuario
+
+1. Digita a headline "3 livros para ler"
+2. Clica fora do campo (blur)
+3. Bolinha de loading aparece ao lado do dropdown "Tipo..."
+4. Webhook n8n retorna `{ tipo: "Lista util" }`
+5. Sistema encontra match com tipo cadastrado e preenche automaticamente
+6. Para configurar o prompt de um tipo, abre o dropdown e clica em "configurar"
+7. Dialog abre com campos de Prompt e Template para editar

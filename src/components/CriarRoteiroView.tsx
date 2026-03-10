@@ -27,7 +27,7 @@ export function CriarRoteiroView({ onBack }: CriarRoteiroViewProps) {
   const [history, setHistory] = useState<RoteiroItem[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const isUndoRedoRef = useRef(false);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSelectQuantidade = (qtd: number) => {
     const initialRoteiros = Array.from({ length: qtd }, () => ({ headline: "", estrutura: "" }));

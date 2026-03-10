@@ -59,7 +59,7 @@ export const RoteiroChecklist = ({
   
   const [items, setItems] = useState<ChecklistItem[]>(DEFAULT_ITEMS);
   const [checklistLoaded, setChecklistLoaded] = useState(false);
-  const intervalsRef = useRef<Record<string, NodeJS.Timeout | null>>({});
+  const intervalsRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
   const prevGuiaRef = useRef<number | null>(null);
   
   // Estado para dialog de checks viral (apenas admin)

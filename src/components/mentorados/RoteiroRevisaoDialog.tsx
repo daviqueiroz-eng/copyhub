@@ -95,7 +95,7 @@ export const RoteiroRevisaoDialog = ({
   }>>(new Map());
   
   // Debounce para salvar alterações diretas
-  const directEditTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const directEditTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Ref para evitar salvar histórico durante undo/redo
   const isUndoRedoRef = useRef(false);
   // Ref para rastrear se houve edição desde o último save no histórico
