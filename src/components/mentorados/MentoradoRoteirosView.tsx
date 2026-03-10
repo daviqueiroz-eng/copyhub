@@ -333,7 +333,7 @@ export const MentoradoRoteirosView = ({
   const speakingKeyRef = useRef<string | null>(null);
 
   // Refs para debounce
-  const debounceTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const debounceTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const pendingChangesRef = useRef<Map<string, RoteiroLocal>>(new Map());
   const inputRefs = useRef<Map<string, HTMLInputElement | HTMLTextAreaElement>>(new Map());
 
