@@ -341,7 +341,7 @@ export const MentoradoRoteirosView = ({
   const [history, setHistory] = useState<Map<string, RoteiroLocal>[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const isUndoRedoRef = useRef(false);
-  const historyDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const historyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
   const { data: mentorados = [] } = useMentorados();
