@@ -408,11 +408,11 @@ export const MentoradoRoteirosView = ({
   // Estado para resultados de verificação IA por roteiro
   // Chave: "roteiroKey:checkId", valor: { passa, motivo, loading }
   const [iaCheckResults, setIaCheckResults] = useState<Map<string, { passa: boolean; motivo?: string; loading?: boolean }>>(new Map());
-  const iaCheckDebounceRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const iaCheckDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   
   // Auto-detecção de tipo por IA
   const [detectingTipoKeys, setDetectingTipoKeys] = useState<Set<string>>(new Set());
-  const tipoDetectDebounceRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const tipoDetectDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const manualTipoChangeRef = useRef<Set<string>>(new Set());
   const [configTipoDialogOpen, setConfigTipoDialogOpen] = useState(false);
   const [configTipoSelected, setConfigTipoSelected] = useState<typeof tiposRoteiro[0] | null>(null);

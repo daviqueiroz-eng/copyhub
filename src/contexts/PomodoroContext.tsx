@@ -56,7 +56,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   });
   const playerRef = useRef<any>(null);
   
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inicioSessaoRef = useRef<Date | null>(null);
   const tempoInicialRef = useRef<number>(PRESETS.trabalho);
   const sessaoCompletadaRef = useRef<boolean>(false);
