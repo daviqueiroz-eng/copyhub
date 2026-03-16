@@ -2653,8 +2653,10 @@ export const MentoradoRoteirosView = ({
                             if (start !== end && end - start > 0) {
                               const selectedText = target.value.substring(start, end);
                               if (selectedText.trim().length > 0) {
-                                setSelectionEdit({
-                                  open: true,
+                                const rect = target.getBoundingClientRect();
+                                setFloatingAdjust({
+                                  x: e.clientX,
+                                  y: rect.top - 40,
                                   text: selectedText,
                                   campo: "headline",
                                   roteiroKey: key,
