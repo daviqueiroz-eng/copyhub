@@ -374,6 +374,9 @@ export const MentoradoRoteirosView = ({
   // Estado para checklist mobile
   const [showChecklistMobile, setShowChecklistMobile] = useState(false);
   
+  // Estado para minimizar painel lateral do checklist (desktop)
+  const [checklistMinimized, setChecklistMinimized] = useState(false);
+  
   // Estado para teleprompter
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [teleprompterText, setTeleprompterText] = useState("");
@@ -2764,24 +2767,37 @@ export const MentoradoRoteirosView = ({
           </div>
         </ScrollArea>
         
-        {/* Checklist fixo à direita - escondido em telas pequenas */}
-        <div className="shrink-0 border-l bg-muted/30 overflow-y-auto py-4 pl-4 pr-6 hidden lg:block w-80 mr-4">
-          <RoteiroChecklist 
-            mentoradoId={mentoradoId} 
-            guiaNumero={guiaAtiva}
-            timers={timers}
-            onTimersChange={setTimers}
-            activeTimerId={activeTimerId}
-            onActiveTimerChange={setActiveTimerId}
-            timersLoaded={timersLoaded}
-            onComplete={(t) => {
-              setFeedbackTimers(t);
-              setShowFeedbackDialog(true);
-            }}
-          />
-          
-          {/* Ideias de Headlines - sugestões salvas via /m */}
-          <MentoradoHeadlinesList mentoradoId={mentoradoId} />
+        {/* Botão para expandir/minimizar checklist lateral (desktop) */}
+        <div className="hidden lg:flex shrink-0 border-l bg-muted/30 flex-col">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="m-2 h-8 w-8 p-0"
+            onClick={() => setChecklistMinimized(!checklistMinimized)}
+            title={checklistMinimized ? "Expandir checklist" : "Minimizar checklist"}
+          >
+            {checklistMinimized ? <CheckSquare className="h-4 w-4" /> : <X className="h-4 w-4" />}
+          </Button>
+          {!checklistMinimized && (
+            <div className="overflow-y-auto py-2 pl-4 pr-6 w-80 mr-4">
+              <RoteiroChecklist 
+                mentoradoId={mentoradoId} 
+                guiaNumero={guiaAtiva}
+                timers={timers}
+                onTimersChange={setTimers}
+                activeTimerId={activeTimerId}
+                onActiveTimerChange={setActiveTimerId}
+                timersLoaded={timersLoaded}
+                onComplete={(t) => {
+                  setFeedbackTimers(t);
+                  setShowFeedbackDialog(true);
+                }}
+              />
+              
+              {/* Ideias de Headlines - sugestões salvas via /m */}
+              <MentoradoHeadlinesList mentoradoId={mentoradoId} />
+            </div>
+          )}
         </div>
       </div>
       
