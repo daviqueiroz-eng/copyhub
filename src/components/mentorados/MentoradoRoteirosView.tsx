@@ -415,8 +415,19 @@ export const MentoradoRoteirosView = ({
     headline: string;
     estrutura: string;
   } | null>(null);
-  
-  // Hook para inteligência global
+
+  // Dismiss floating adjust button on click outside or scroll
+  useEffect(() => {
+    if (!floatingAdjust) return;
+    const dismiss = () => setFloatingAdjust(null);
+    document.addEventListener("mousedown", dismiss);
+    document.addEventListener("scroll", dismiss, true);
+    return () => {
+      document.removeEventListener("mousedown", dismiss);
+      document.removeEventListener("scroll", dismiss, true);
+    };
+  }, [floatingAdjust]);
+
   const { data: inteligenciaGlobal } = useInteligenciaGlobal();
   
   // Hook para checks do roteiro viral
