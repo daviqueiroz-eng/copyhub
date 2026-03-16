@@ -377,6 +377,9 @@ export const MentoradoRoteirosView = ({
   // Estado para minimizar painel lateral do checklist (desktop)
   const [checklistMinimized, setChecklistMinimized] = useState(false);
   
+  // Estado para minimizar painel lateral esquerdo (guias) no desktop
+  const [leftSidebarMinimized, setLeftSidebarMinimized] = useState(false);
+  
   // Estado para teleprompter
   const [showTeleprompter, setShowTeleprompter] = useState(false);
   const [teleprompterText, setTeleprompterText] = useState("");
