@@ -2348,7 +2348,8 @@ export const MentoradoRoteirosView = ({
               <Plus className="h-4 w-4" />
               <span className="hidden lg:inline">Nova Guia</span>
             </Button>
-          </div>
+           </div>
+          </>)}
         </div>
 
         {/* Main - Documento estilo Google Docs */}
