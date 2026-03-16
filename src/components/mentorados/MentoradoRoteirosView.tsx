@@ -395,6 +395,17 @@ export const MentoradoRoteirosView = ({
   const [bulkProgress, setBulkProgress] = useState<BulkProgressState | null>(null);
   const [bulkHeadlines, setBulkHeadlines] = useState<Array<{ key: string; headline: string }>>([]);
   
+  // Estado para botão flutuante de ajuste
+  const [floatingAdjust, setFloatingAdjust] = useState<{
+    x: number;
+    y: number;
+    text: string;
+    campo: "headline" | "estrutura";
+    roteiroKey: string;
+    headline: string;
+    estrutura: string;
+  } | null>(null);
+  
   // Estado para edição por seleção de texto
   const [selectionEdit, setSelectionEdit] = useState<{
     open: boolean;
@@ -404,8 +415,19 @@ export const MentoradoRoteirosView = ({
     headline: string;
     estrutura: string;
   } | null>(null);
-  
-  // Hook para inteligência global
+
+  // Dismiss floating adjust button on click outside or scroll
+  useEffect(() => {
+    if (!floatingAdjust) return;
+    const dismiss = () => setFloatingAdjust(null);
+    document.addEventListener("mousedown", dismiss);
+    document.addEventListener("scroll", dismiss, true);
+    return () => {
+      document.removeEventListener("mousedown", dismiss);
+      document.removeEventListener("scroll", dismiss, true);
+    };
+  }, [floatingAdjust]);
+
   const { data: inteligenciaGlobal } = useInteligenciaGlobal();
   
   // Hook para checks do roteiro viral
@@ -2642,8 +2664,10 @@ export const MentoradoRoteirosView = ({
                             if (start !== end && end - start > 0) {
                               const selectedText = target.value.substring(start, end);
                               if (selectedText.trim().length > 0) {
-                                setSelectionEdit({
-                                  open: true,
+                                const rect = target.getBoundingClientRect();
+                                setFloatingAdjust({
+                                  x: e.clientX,
+                                  y: rect.top - 40,
                                   text: selectedText,
                                   campo: "headline",
                                   roteiroKey: key,
@@ -2686,8 +2710,10 @@ export const MentoradoRoteirosView = ({
                             if (start !== end && end - start > 0) {
                               const selectedText = target.value.substring(start, end);
                               if (selectedText.trim().length > 0) {
-                                setSelectionEdit({
-                                  open: true,
+                                const rect = target.getBoundingClientRect();
+                                setFloatingAdjust({
+                                  x: e.clientX,
+                                  y: rect.top - 40,
                                   text: selectedText,
                                   campo: "estrutura",
                                   roteiroKey: key,
@@ -3233,6 +3259,34 @@ export const MentoradoRoteirosView = ({
             setBulkHeadlines([]);
           }}
         />
+      )}
+
+      {/* Botão flutuante de Ajustar */}
+      {floatingAdjust && (
+        <div
+          className="fixed z-[100]"
+          style={{ left: floatingAdjust.x - 40, top: floatingAdjust.y }}
+        >
+          <Button
+            size="sm"
+            className="shadow-lg border bg-background text-foreground hover:bg-accent font-semibold px-4 py-1 rounded-lg text-sm"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelectionEdit({
+                open: true,
+                text: floatingAdjust.text,
+                campo: floatingAdjust.campo,
+                roteiroKey: floatingAdjust.roteiroKey,
+                headline: floatingAdjust.headline,
+                estrutura: floatingAdjust.estrutura,
+              });
+              setFloatingAdjust(null);
+            }}
+          >
+            Ajustar
+          </Button>
+        </div>
       )}
 
       {/* Dialog de edição por seleção de texto */}
