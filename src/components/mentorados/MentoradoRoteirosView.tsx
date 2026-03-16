@@ -2713,7 +2713,7 @@ export const MentoradoRoteirosView = ({
                                 const rect = target.getBoundingClientRect();
                                 setFloatingAdjust({
                                   x: e.clientX,
-                                  y: rect.top - 40,
+                                  y: e.clientY - 40,
                                   text: selectedText,
                                   campo: "estrutura",
                                   roteiroKey: key,
