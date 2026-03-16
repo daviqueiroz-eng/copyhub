@@ -3250,6 +3250,34 @@ export const MentoradoRoteirosView = ({
         />
       )}
 
+      {/* Botão flutuante de Ajustar */}
+      {floatingAdjust && (
+        <div
+          className="fixed z-[100]"
+          style={{ left: floatingAdjust.x - 40, top: floatingAdjust.y }}
+        >
+          <Button
+            size="sm"
+            className="shadow-lg border bg-background text-foreground hover:bg-accent font-semibold px-4 py-1 rounded-lg text-sm"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelectionEdit({
+                open: true,
+                text: floatingAdjust.text,
+                campo: floatingAdjust.campo,
+                roteiroKey: floatingAdjust.roteiroKey,
+                headline: floatingAdjust.headline,
+                estrutura: floatingAdjust.estrutura,
+              });
+              setFloatingAdjust(null);
+            }}
+          >
+            Ajustar
+          </Button>
+        </div>
+      )}
+
       {/* Dialog de edição por seleção de texto */}
       {selectionEdit && (
         <SelectionEditDialog
