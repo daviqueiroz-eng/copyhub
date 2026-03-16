@@ -2183,7 +2183,7 @@ export const MentoradoRoteirosView = ({
               {leftSidebarMinimized ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </Button>
           </div>
-          {!leftSidebarMinimized && (
+          {!leftSidebarMinimized && (<>
           <ScrollArea className="flex-1">
             <div className="p-2 lg:p-3 space-y-1">
               <DndContext
