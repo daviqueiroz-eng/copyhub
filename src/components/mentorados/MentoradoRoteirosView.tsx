@@ -2170,7 +2170,20 @@ export const MentoradoRoteirosView = ({
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Guias */}
-        <div className="w-14 lg:w-48 border-r bg-muted/30 flex flex-col shrink-0">
+        <div className={cn("border-r bg-muted/30 flex flex-col shrink-0 transition-all duration-200", leftSidebarMinimized ? "w-10" : "w-14 lg:w-48")}>
+          {/* Toggle para minimizar sidebar esquerda */}
+          <div className="hidden lg:flex justify-center pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => setLeftSidebarMinimized(!leftSidebarMinimized)}
+              title={leftSidebarMinimized ? "Expandir painel" : "Minimizar painel"}
+            >
+              {leftSidebarMinimized ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </Button>
+          </div>
+          {!leftSidebarMinimized && (
           <ScrollArea className="flex-1">
             <div className="p-2 lg:p-3 space-y-1">
               <DndContext
