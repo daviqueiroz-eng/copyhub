@@ -395,6 +395,17 @@ export const MentoradoRoteirosView = ({
   const [bulkProgress, setBulkProgress] = useState<BulkProgressState | null>(null);
   const [bulkHeadlines, setBulkHeadlines] = useState<Array<{ key: string; headline: string }>>([]);
   
+  // Estado para botão flutuante de ajuste
+  const [floatingAdjust, setFloatingAdjust] = useState<{
+    x: number;
+    y: number;
+    text: string;
+    campo: "headline" | "estrutura";
+    roteiroKey: string;
+    headline: string;
+    estrutura: string;
+  } | null>(null);
+  
   // Estado para edição por seleção de texto
   const [selectionEdit, setSelectionEdit] = useState<{
     open: boolean;
