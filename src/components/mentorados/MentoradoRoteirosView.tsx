@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
@@ -376,6 +376,9 @@ export const MentoradoRoteirosView = ({
   
   // Estado para minimizar painel lateral do checklist (desktop)
   const [checklistMinimized, setChecklistMinimized] = useState(false);
+  
+  // Estado para minimizar painel lateral esquerdo (guias) no desktop
+  const [leftSidebarMinimized, setLeftSidebarMinimized] = useState(false);
   
   // Estado para teleprompter
   const [showTeleprompter, setShowTeleprompter] = useState(false);
@@ -2167,7 +2170,20 @@ export const MentoradoRoteirosView = ({
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Guias */}
-        <div className="w-14 lg:w-48 border-r bg-muted/30 flex flex-col shrink-0">
+        <div className={cn("border-r bg-muted/30 flex flex-col shrink-0 transition-all duration-200", leftSidebarMinimized ? "w-10" : "w-14 lg:w-48")}>
+          {/* Toggle para minimizar sidebar esquerda */}
+          <div className="hidden lg:flex justify-center pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => setLeftSidebarMinimized(!leftSidebarMinimized)}
+              title={leftSidebarMinimized ? "Expandir painel" : "Minimizar painel"}
+            >
+              {leftSidebarMinimized ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </Button>
+          </div>
+          {!leftSidebarMinimized && (<>
           <ScrollArea className="flex-1">
             <div className="p-2 lg:p-3 space-y-1">
               <DndContext
@@ -2332,7 +2348,8 @@ export const MentoradoRoteirosView = ({
               <Plus className="h-4 w-4" />
               <span className="hidden lg:inline">Nova Guia</span>
             </Button>
-          </div>
+           </div>
+          </>)}
         </div>
 
         {/* Main - Documento estilo Google Docs */}
