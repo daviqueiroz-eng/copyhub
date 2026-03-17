@@ -23,8 +23,7 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Variante {
-  headline: string;
-  estrutura: string;
+  trecho_substituto: string;
   resumo: string;
 }
 
@@ -157,20 +156,23 @@ export const SelectionEditDialog = ({
   const handleUsar = () => {
     if (selectedVariante === null) return;
     const v = variantes[selectedVariante];
-    onUpdate(v.headline, v.estrutura);
+    
+    // Replace only the selected text within the original
+    let newHeadline = headline;
+    let newEstrutura = estrutura;
+    
+    if (campo === "headline") {
+      newHeadline = headline.replace(selectedText, v.trecho_substituto);
+    } else {
+      newEstrutura = estrutura.replace(selectedText, v.trecho_substituto);
+    }
+    
+    onUpdate(newHeadline, newEstrutura);
     toast({
       title: "Alteração aplicada!",
       description: v.resumo || "O trecho foi modificado com sucesso.",
     });
     onOpenChange(false);
-  };
-
-  // Extract only the changed part for display
-  const getChangedText = (v: Variante) => {
-    if (campo === "headline") {
-      return v.headline !== headline ? v.headline : v.estrutura;
-    }
-    return v.estrutura !== estrutura ? v.estrutura : v.headline;
   };
 
   return (
@@ -237,7 +239,7 @@ export const SelectionEditDialog = ({
                             V{i + 1} — {v.resumo}
                           </p>
                           <p className="text-sm whitespace-pre-wrap break-words line-clamp-4">
-                            {campo === "headline" ? v.headline : v.estrutura}
+                            {v.trecho_substituto}
                           </p>
                         </div>
                       </div>

@@ -23,13 +23,14 @@ IMPORTANTE:
 const DEFAULT_VARIANTES_PROMPT = `Você é um assistente de revisão de roteiros de vídeos curtos.
 
 Você vai receber um roteiro e uma instrução de alteração sobre um trecho selecionado.
-Gere EXATAMENTE 3 variações diferentes do texto completo, cada uma aplicando a instrução de formas distintas.
+Gere EXATAMENTE 3 variações diferentes APENAS do trecho selecionado, cada uma aplicando a instrução de formas distintas.
 
 REGRAS:
 1. Aplique SOMENTE a alteração solicitada, de 3 formas criativas diferentes
-2. Mantenha TODA a formatação original: quebras de linha, espaços, pontuação
+2. Mantenha a formatação original: quebras de linha, espaços, pontuação
 3. Cada variação deve ser diferente das outras, mas todas devem atender à instrução
-4. Retorne o texto COMPLETO em cada variação, não apenas o trecho alterado`;
+4. Retorne APENAS o trecho que substitui a seleção, NÃO o texto completo
+5. O trecho retornado vai substituir EXATAMENTE a parte selecionada no texto original`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -105,16 +106,15 @@ Altere SOMENTE esta parte, mantendo todo o resto do texto IDÊNTICO.`;
                 parameters: {
                   type: "object",
                   properties: {
-                    variantes: {
+                     variantes: {
                       type: "array",
                       items: {
                         type: "object",
                         properties: {
-                          headline: { type: "string", description: "Headline completa desta variação" },
-                          estrutura: { type: "string", description: "Estrutura completa desta variação" },
+                          trecho_substituto: { type: "string", description: "O trecho que vai substituir a seleção do usuário. Retorne APENAS o trecho, não o texto completo." },
                           resumo: { type: "string", description: "Resumo curto (max 15 palavras) do que foi alterado nesta variação" },
                         },
-                        required: ["headline", "estrutura", "resumo"],
+                        required: ["trecho_substituto", "resumo"],
                         additionalProperties: false,
                       },
                       minItems: 3,
