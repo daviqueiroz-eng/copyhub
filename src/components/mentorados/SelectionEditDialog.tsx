@@ -23,8 +23,7 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Variante {
-  headline: string;
-  estrutura: string;
+  trecho_substituto: string;
   resumo: string;
 }
 
