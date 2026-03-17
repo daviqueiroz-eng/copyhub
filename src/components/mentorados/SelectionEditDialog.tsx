@@ -56,7 +56,18 @@ export const SelectionEditDialog = ({
   
   const { data: tiposAjuste = [] } = useTiposAjuste();
   const { data: tiposChat = [] } = useTiposChatRevisao();
-  const [selectedTipoChatId, setSelectedTipoChatId] = useState<string | null>(null);
+  const [selectedTipoChatId, setSelectedTipoChatIdState] = useState<string | null>(() => {
+    return localStorage.getItem("selection-edit-chat-profile") || null;
+  });
+
+  const setSelectedTipoChatId = (id: string | null) => {
+    setSelectedTipoChatIdState(id);
+    if (id) {
+      localStorage.setItem("selection-edit-chat-profile", id);
+    } else {
+      localStorage.removeItem("selection-edit-chat-profile");
+    }
+  };
   
   const selectedTipoChat = tiposChat.find(t => t.id === selectedTipoChatId);
 
