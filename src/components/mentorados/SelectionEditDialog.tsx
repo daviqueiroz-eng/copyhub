@@ -311,7 +311,11 @@ export const SelectionEditDialog = ({
                     >
                       Padrão
                     </Button>
-                    {tiposChat.map((tipo) => (
+                    {[...tiposChat].sort((a, b) => {
+                      if (a.id === selectedTipoChatId) return -1;
+                      if (b.id === selectedTipoChatId) return 1;
+                      return 0;
+                    }).map((tipo) => (
                       <Button
                         key={tipo.id}
                         variant={selectedTipoChatId === tipo.id ? "secondary" : "ghost"}
