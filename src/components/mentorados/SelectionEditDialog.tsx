@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Plus, ChevronDown, Settings } from "lucide-react";
+import { Loader2, Plus, ChevronDown, Settings, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -19,6 +19,14 @@ import { useTiposAjuste, TipoAjuste } from "@/hooks/useTiposAjuste";
 import { useTiposChatRevisao, TipoChatRevisao } from "@/hooks/useTiposChatRevisao";
 import { TiposAjusteDialog } from "./TiposAjusteDialog";
 import { TiposChatDialog } from "./TiposChatDialog";
+import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
+
+interface Variante {
+  headline: string;
+  estrutura: string;
+  resumo: string;
+}
 
 interface SelectionEditDialogProps {
   open: boolean;
@@ -43,6 +51,8 @@ export const SelectionEditDialog = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showTiposAjuste, setShowTiposAjuste] = useState(false);
   const [showTiposChat, setShowTiposChat] = useState(false);
+  const [variantes, setVariantes] = useState<Variante[]>([]);
+  const [selectedVariante, setSelectedVariante] = useState<number | null>(null);
   
   const { data: tiposAjuste = [] } = useTiposAjuste();
   const { data: tiposChat = [] } = useTiposChatRevisao();
@@ -50,15 +60,16 @@ export const SelectionEditDialog = ({
   
   const selectedTipoChat = tiposChat.find(t => t.id === selectedTipoChatId);
 
-  // Limpar input quando dialog abre
+  // Limpar state quando dialog abre
   useEffect(() => {
     if (open) {
       setInputValue("");
+      setVariantes([]);
+      setSelectedVariante(null);
     }
   }, [open]);
 
   const handleSelectTipoAjuste = (tipo: TipoAjuste) => {
-    // Adicionar instruções do tipo de ajuste ao input
     if (tipo.instrucoes) {
       setInputValue(prev => prev ? `${prev}\n\n${tipo.instrucoes}` : tipo.instrucoes);
     } else {
@@ -71,6 +82,8 @@ export const SelectionEditDialog = ({
     if (!inputValue.trim() || isProcessing) return;
     
     setIsProcessing(true);
+    setVariantes([]);
+    setSelectedVariante(null);
     
     try {
       const payload = {
@@ -83,6 +96,7 @@ export const SelectionEditDialog = ({
           campo: campo,
         },
         promptSistema: selectedTipoChat?.prompt_sistema || null,
+        variantes: true,
       };
       
       const { data, error } = await supabase.functions.invoke("revisar-roteiro", {
@@ -108,18 +122,13 @@ export const SelectionEditDialog = ({
         return;
       }
       
-      // Aplicar alterações
-      if (data.changed) {
-        onUpdate(data.headline, data.estrutura);
-        toast({
-          title: "Alteração aplicada!",
-          description: data.explanation || "O trecho foi modificado com sucesso.",
-        });
-        onOpenChange(false);
+      if (data.variantes && data.variantes.length > 0) {
+        setVariantes(data.variantes);
       } else {
         toast({
-          title: "Sem alterações",
-          description: data.explanation || "Nenhuma alteração foi feita.",
+          title: "Erro",
+          description: "Não foi possível gerar variações. Tente novamente.",
+          variant: "destructive",
         });
       }
     } catch (err) {
@@ -134,10 +143,29 @@ export const SelectionEditDialog = ({
     }
   };
 
+  const handleUsar = () => {
+    if (selectedVariante === null) return;
+    const v = variantes[selectedVariante];
+    onUpdate(v.headline, v.estrutura);
+    toast({
+      title: "Alteração aplicada!",
+      description: v.resumo || "O trecho foi modificado com sucesso.",
+    });
+    onOpenChange(false);
+  };
+
+  // Extract only the changed part for display
+  const getChangedText = (v: Variante) => {
+    if (campo === "headline") {
+      return v.headline !== headline ? v.headline : v.estrutura;
+    }
+    return v.estrutura !== estrutura ? v.estrutura : v.headline;
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-sm font-medium">
               Editar seleção
@@ -164,6 +192,50 @@ export const SelectionEditDialog = ({
               }
             }}
           />
+          
+          {/* Variantes results */}
+          {(variantes.length > 0 || isProcessing) && (
+            <div className="space-y-2 overflow-y-auto flex-1 min-h-0">
+              {isProcessing ? (
+                <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Gerando 3 variações...</span>
+                </div>
+              ) : (
+                variantes.map((v, i) => {
+                  const isSelected = selectedVariante === i;
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "border rounded-lg p-3 cursor-pointer transition-all",
+                        isSelected
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "border-border hover:border-primary/50"
+                      )}
+                      onClick={() => setSelectedVariante(isSelected ? null : i)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => setSelectedVariante(isSelected ? null : i)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">
+                            V{i + 1} — {v.resumo}
+                          </p>
+                          <p className="text-sm whitespace-pre-wrap break-words line-clamp-4">
+                            {campo === "headline" ? v.headline : v.estrutura}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
           
           {/* Linha de ações */}
           <div className="flex items-center justify-between">
@@ -203,7 +275,6 @@ export const SelectionEditDialog = ({
                         className="w-full justify-start text-xs h-7 text-muted-foreground"
                         onClick={() => {
                           setShowTiposAjuste(false);
-                          // Abre dialog de gerenciamento
                           setTimeout(() => {
                             const btn = document.querySelector('[data-manage-tipos-ajuste]') as HTMLButtonElement;
                             btn?.click();
@@ -266,18 +337,28 @@ export const SelectionEditDialog = ({
                 </PopoverContent>
               </Popover>
               
-              <Button 
-                onClick={handleSend} 
-                disabled={isProcessing || !inputValue.trim()}
-                size="sm"
-                className="h-8"
-              >
-                {isProcessing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Enviar"
-                )}
-              </Button>
+              {variantes.length > 0 && selectedVariante !== null ? (
+                <Button 
+                  onClick={handleUsar}
+                  size="sm"
+                  className="h-8"
+                >
+                  Usar
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSend} 
+                  disabled={isProcessing || !inputValue.trim()}
+                  size="sm"
+                  className="h-8"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Enviar"
+                  )}
+                </Button>
+              )}
             </div>
           </div>
           
