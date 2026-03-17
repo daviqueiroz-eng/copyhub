@@ -239,7 +239,7 @@ export const SelectionEditDialog = ({
                             V{i + 1} — {v.resumo}
                           </p>
                           <p className="text-sm whitespace-pre-wrap break-words line-clamp-4">
-                            {campo === "headline" ? v.headline : v.estrutura}
+                            {v.trecho_substituto}
                           </p>
                         </div>
                       </div>
