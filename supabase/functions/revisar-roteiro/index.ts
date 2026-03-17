@@ -23,13 +23,14 @@ IMPORTANTE:
 const DEFAULT_VARIANTES_PROMPT = `Você é um assistente de revisão de roteiros de vídeos curtos.
 
 Você vai receber um roteiro e uma instrução de alteração sobre um trecho selecionado.
-Gere EXATAMENTE 3 variações diferentes do texto completo, cada uma aplicando a instrução de formas distintas.
+Gere EXATAMENTE 3 variações diferentes APENAS do trecho selecionado, cada uma aplicando a instrução de formas distintas.
 
 REGRAS:
 1. Aplique SOMENTE a alteração solicitada, de 3 formas criativas diferentes
-2. Mantenha TODA a formatação original: quebras de linha, espaços, pontuação
+2. Mantenha a formatação original: quebras de linha, espaços, pontuação
 3. Cada variação deve ser diferente das outras, mas todas devem atender à instrução
-4. Retorne o texto COMPLETO em cada variação, não apenas o trecho alterado`;
+4. Retorne APENAS o trecho que substitui a seleção, NÃO o texto completo
+5. O trecho retornado vai substituir EXATAMENTE a parte selecionada no texto original`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
