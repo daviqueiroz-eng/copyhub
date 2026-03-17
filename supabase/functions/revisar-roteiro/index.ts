@@ -106,16 +106,15 @@ Altere SOMENTE esta parte, mantendo todo o resto do texto IDÊNTICO.`;
                 parameters: {
                   type: "object",
                   properties: {
-                    variantes: {
+                     variantes: {
                       type: "array",
                       items: {
                         type: "object",
                         properties: {
-                          headline: { type: "string", description: "Headline completa desta variação" },
-                          estrutura: { type: "string", description: "Estrutura completa desta variação" },
+                          trecho_substituto: { type: "string", description: "O trecho que vai substituir a seleção do usuário. Retorne APENAS o trecho, não o texto completo." },
                           resumo: { type: "string", description: "Resumo curto (max 15 palavras) do que foi alterado nesta variação" },
                         },
-                        required: ["headline", "estrutura", "resumo"],
+                        required: ["trecho_substituto", "resumo"],
                         additionalProperties: false,
                       },
                       minItems: 3,
