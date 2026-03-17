@@ -20,6 +20,17 @@ IMPORTANTE:
 - Se o usuário pedir para remover algo, remova APENAS o que foi pedido
 - Nunca "melhore" ou "ajuste" nada além do solicitado`;
 
+const DEFAULT_VARIANTES_PROMPT = `Você é um assistente de revisão de roteiros de vídeos curtos.
+
+Você vai receber um roteiro e uma instrução de alteração sobre um trecho selecionado.
+Gere EXATAMENTE 3 variações diferentes do texto completo, cada uma aplicando a instrução de formas distintas.
+
+REGRAS:
+1. Aplique SOMENTE a alteração solicitada, de 3 formas criativas diferentes
+2. Mantenha TODA a formatação original: quebras de linha, espaços, pontuação
+3. Cada variação deve ser diferente das outras, mas todas devem atender à instrução
+4. Retorne o texto COMPLETO em cada variação, não apenas o trecho alterado`;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
