@@ -20,13 +20,24 @@ IMPORTANTE:
 - Se o usuário pedir para remover algo, remova APENAS o que foi pedido
 - Nunca "melhore" ou "ajuste" nada além do solicitado`;
 
+const DEFAULT_VARIANTES_PROMPT = `Você é um assistente de revisão de roteiros de vídeos curtos.
+
+Você vai receber um roteiro e uma instrução de alteração sobre um trecho selecionado.
+Gere EXATAMENTE 3 variações diferentes do texto completo, cada uma aplicando a instrução de formas distintas.
+
+REGRAS:
+1. Aplique SOMENTE a alteração solicitada, de 3 formas criativas diferentes
+2. Mantenha TODA a formatação original: quebras de linha, espaços, pontuação
+3. Cada variação deve ser diferente das outras, mas todas devem atender à instrução
+4. Retorne o texto COMPLETO em cada variação, não apenas o trecho alterado`;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { headline, estrutura, mensagem, historico = [], selecao, promptSistema } = await req.json();
+    const { headline, estrutura, mensagem, historico = [], selecao, promptSistema, variantes = false } = await req.json();
 
     if (!mensagem) {
       return new Response(
@@ -62,10 +73,105 @@ A instrução do usuário se refere APENAS a este trecho selecionado.
 Altere SOMENTE esta parte, mantendo todo o resto do texto IDÊNTICO.`;
     }
 
-    // Usar prompt customizado ou padrão
+    // --- MODE: 3 Variantes ---
+    if (variantes) {
+      const systemPrompt = promptSistema || DEFAULT_VARIANTES_PROMPT;
+
+      const messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: roteiroContext },
+        ...historico.map((msg: { role: string; content: string }) => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+        { role: "user", content: mensagem },
+      ];
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages,
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "return_variantes",
+                description: "Retorna 3 variações do roteiro com a alteração solicitada",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    variantes: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          headline: { type: "string", description: "Headline completa desta variação" },
+                          estrutura: { type: "string", description: "Estrutura completa desta variação" },
+                          resumo: { type: "string", description: "Resumo curto (max 15 palavras) do que foi alterado nesta variação" },
+                        },
+                        required: ["headline", "estrutura", "resumo"],
+                        additionalProperties: false,
+                      },
+                      minItems: 3,
+                      maxItems: 3,
+                    },
+                  },
+                  required: ["variantes"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          ],
+          tool_choice: { type: "function", function: { name: "return_variantes" } },
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (response.status === 402) {
+          return new Response(
+            JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const errorText = await response.text();
+        console.error("AI gateway error:", response.status, errorText);
+        return new Response(
+          JSON.stringify({ error: "Erro no gateway de IA" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const data = await response.json();
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+
+      if (!toolCall || toolCall.function.name !== "return_variantes") {
+        return new Response(
+          JSON.stringify({ error: "Não foi possível gerar as variações. Tente novamente." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const result = JSON.parse(toolCall.function.arguments);
+      return new Response(
+        JSON.stringify({ variantes: result.variantes }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // --- MODE: Single edit (original behavior) ---
     const systemPrompt = promptSistema || DEFAULT_SYSTEM_PROMPT;
 
-    // Montar mensagens do chat
     const messages = [
       { role: "system", content: systemPrompt },
       { role: "user", content: roteiroContext },
