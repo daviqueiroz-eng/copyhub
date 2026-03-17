@@ -156,20 +156,23 @@ export const SelectionEditDialog = ({
   const handleUsar = () => {
     if (selectedVariante === null) return;
     const v = variantes[selectedVariante];
-    onUpdate(v.headline, v.estrutura);
+    
+    // Replace only the selected text within the original
+    let newHeadline = headline;
+    let newEstrutura = estrutura;
+    
+    if (campo === "headline") {
+      newHeadline = headline.replace(selectedText, v.trecho_substituto);
+    } else {
+      newEstrutura = estrutura.replace(selectedText, v.trecho_substituto);
+    }
+    
+    onUpdate(newHeadline, newEstrutura);
     toast({
       title: "Alteração aplicada!",
       description: v.resumo || "O trecho foi modificado com sucesso.",
     });
     onOpenChange(false);
-  };
-
-  // Extract only the changed part for display
-  const getChangedText = (v: Variante) => {
-    if (campo === "headline") {
-      return v.headline !== headline ? v.headline : v.estrutura;
-    }
-    return v.estrutura !== estrutura ? v.estrutura : v.headline;
   };
 
   return (
