@@ -873,6 +873,27 @@ export type Database = {
           },
         ]
       }
+      gestao_entregas_status: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       grupos: {
         Row: {
           created_at: string | null

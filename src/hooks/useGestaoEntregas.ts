@@ -15,6 +15,9 @@ export type GestaoEntrega = {
   status: string;
   observacao: string | null;
   created_at: string;
+  mentor: string | null;
+  roteiros_por_leva: number | null;
+  levas_totais: number | null;
   mentorado?: {
     id: string;
     nome: string;

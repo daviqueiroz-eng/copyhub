@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { Check, Plus, X } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -11,10 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { GestaoEntregaConfig } from "@/hooks/useGestaoEntregasConfig";
-
-const DEFAULT_STATUS_OPTIONS = ["Em andamento", "Finalizado", "Atrasado", "Pausado", "Bateu 1M"];
+import { useGestaoEntregasStatus, useCreateGestaoEntregaStatus } from "@/hooks/useGestaoEntregasStatus";
+import { useProfile } from "@/hooks/useAuth";
 
 interface Props {
   open: boolean;
@@ -36,6 +34,10 @@ interface Props {
 export const FirstEntregaConfigDialog = ({
   open, onOpenChange, mentoradoNome, existingConfig, prazoDate, onConfirm,
 }: Props) => {
+  const { data: profile } = useProfile();
+  const { data: statusOptions = [] } = useGestaoEntregasStatus();
+  const createStatus = useCreateGestaoEntregaStatus();
+
   const [mentor, setMentor] = useState("");
   const [levaAtual, setLevaAtual] = useState("1");
   const [diasUteis, setDiasUteis] = useState("10");
@@ -43,7 +45,6 @@ export const FirstEntregaConfigDialog = ({
   const [levasTotais, setLevasTotais] = useState("6");
   const [status, setStatus] = useState("Em andamento");
   const [observacao, setObservacao] = useState("");
-  const [statusOptions, setStatusOptions] = useState(DEFAULT_STATUS_OPTIONS);
   const [newStatus, setNewStatus] = useState("");
   const [showNewStatus, setShowNewStatus] = useState(false);
 
@@ -67,9 +68,10 @@ export const FirstEntregaConfigDialog = ({
   }, [existingConfig, open]);
 
   const handleAddStatus = () => {
-    if (newStatus.trim() && !statusOptions.includes(newStatus.trim())) {
-      setStatusOptions((prev) => [...prev, newStatus.trim()]);
-      setStatus(newStatus.trim());
+    const trimmed = newStatus.trim();
+    if (trimmed && !statusOptions.includes(trimmed)) {
+      createStatus.mutate(trimmed);
+      setStatus(trimmed);
       setNewStatus("");
       setShowNewStatus(false);
     }
@@ -87,6 +89,8 @@ export const FirstEntregaConfigDialog = ({
     });
   };
 
+  const copyName = profile?.nome || "—";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -95,11 +99,11 @@ export const FirstEntregaConfigDialog = ({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Copy (user) + Mentor */}
+          {/* Copy (logged-in user) + Mentor */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Copy</Label>
-              <Input value={mentoradoNome} disabled className="bg-muted" />
+              <Input value={copyName} disabled className="bg-muted" />
             </div>
             <div className="space-y-2">
               <Label>Mentor</Label>
