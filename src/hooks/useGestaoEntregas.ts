@@ -64,6 +64,9 @@ export const useCreateGestaoEntrega = () => {
       dias_uteis?: number;
       status?: string;
       observacao?: string | null;
+      roteiros_por_leva?: number | null;
+      levas_totais?: number | null;
+      mentor?: string | null;
     }) => {
       const { data, error } = await supabase
         .from("gestao_entregas")
