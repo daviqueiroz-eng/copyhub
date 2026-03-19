@@ -374,6 +374,14 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
           border-left: none;
           border-right: none;
         }
+        @keyframes conflict-pulse {
+          0%, 100% { box-shadow: inset 0 0 0 3px hsl(var(--destructive)); }
+          50% { box-shadow: inset 0 0 20px 3px hsl(var(--destructive) / 0.4); }
+        }
+        .gestao-calendar .conflict-flash {
+          animation: conflict-pulse 0.6s ease-in-out 3;
+          border-radius: 8px;
+        }
       `}</style>
     </div>
   );
