@@ -757,6 +757,63 @@ export type Database = {
         }
         Relationships: []
       }
+      gestao_entregas: {
+        Row: {
+          created_at: string | null
+          data_entrega: string | null
+          dias_uteis: number | null
+          id: string
+          leva: number | null
+          mentorado_id: string
+          observacao: string | null
+          prazo: string
+          responsavel_id: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data_entrega?: string | null
+          dias_uteis?: number | null
+          id?: string
+          leva?: number | null
+          mentorado_id: string
+          observacao?: string | null
+          prazo: string
+          responsavel_id?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data_entrega?: string | null
+          dias_uteis?: number | null
+          id?: string
+          leva?: number | null
+          mentorado_id?: string
+          observacao?: string | null
+          prazo?: string
+          responsavel_id?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gestao_entregas_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gestao_entregas_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       grupos: {
         Row: {
           created_at: string | null
@@ -1293,8 +1350,10 @@ export type Database = {
         Row: {
           apresentacao: string | null
           avatar: string | null
+          cor: string | null
           created_at: string
           crencas: string | null
+          curso: string | null
           desejos: string | null
           dores: string | null
           estilo_comum: string | null
@@ -1306,9 +1365,11 @@ export type Database = {
           link_drive: string | null
           link_trello: string | null
           links_chats: string | null
+          mentor: string | null
           nome: string
           objecoes: string | null
           observacoes: string | null
+          pausado: boolean | null
           plano: string | null
           referencias: string | null
           roteiros: string | null
@@ -1319,8 +1380,10 @@ export type Database = {
         Insert: {
           apresentacao?: string | null
           avatar?: string | null
+          cor?: string | null
           created_at?: string
           crencas?: string | null
+          curso?: string | null
           desejos?: string | null
           dores?: string | null
           estilo_comum?: string | null
@@ -1332,9 +1395,11 @@ export type Database = {
           link_drive?: string | null
           link_trello?: string | null
           links_chats?: string | null
+          mentor?: string | null
           nome: string
           objecoes?: string | null
           observacoes?: string | null
+          pausado?: boolean | null
           plano?: string | null
           referencias?: string | null
           roteiros?: string | null
@@ -1345,8 +1410,10 @@ export type Database = {
         Update: {
           apresentacao?: string | null
           avatar?: string | null
+          cor?: string | null
           created_at?: string
           crencas?: string | null
+          curso?: string | null
           desejos?: string | null
           dores?: string | null
           estilo_comum?: string | null
@@ -1358,9 +1425,11 @@ export type Database = {
           link_drive?: string | null
           link_trello?: string | null
           links_chats?: string | null
+          mentor?: string | null
           nome?: string
           objecoes?: string | null
           observacoes?: string | null
+          pausado?: boolean | null
           plano?: string | null
           referencias?: string | null
           roteiros?: string | null
