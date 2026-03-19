@@ -88,6 +88,11 @@ const Mentorados = () => {
   const createMentorado = useCreateMentorado();
   const updateMentorado = useUpdateMentorado();
   const deleteMentorado = useDeleteMentorado();
+  const { data: gestaoEntregas = [] } = useGestaoEntregas();
+  
+  const mentoradoIdsComEntrega = useMemo(() => {
+    return new Set(gestaoEntregas.map(e => e.mentorado_id));
+  }, [gestaoEntregas]);
 
   const getIniciais = (nome: string) => {
     const parts = nome.trim().split(" ");
