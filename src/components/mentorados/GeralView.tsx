@@ -15,6 +15,7 @@ interface GeralViewProps {
   mentorados: Mentorado[];
   searchTerm: string;
   onMentoradoClick: (mentorado: Mentorado) => void;
+  mentoradoIdsComEntrega?: Set<string>;
 }
 
 export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralViewProps) {
