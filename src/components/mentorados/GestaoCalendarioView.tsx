@@ -113,6 +113,28 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     }
   }, []);
 
+  const navigateToConflict = useCallback((index: number) => {
+    if (conflictDates.length === 0) return;
+    const safeIndex = ((index % conflictDates.length) + conflictDates.length) % conflictDates.length;
+    setConflictIndex(safeIndex);
+    const dateStr = conflictDates[safeIndex];
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.gotoDate(dateStr);
+      updateTitle();
+      setTimeout(() => {
+        const cells = document.querySelectorAll<HTMLElement>(".gestao-calendar .fc-daygrid-day");
+        cells.forEach((cell) => {
+          const cellDate = cell.getAttribute("data-date");
+          if (cellDate === dateStr) {
+            cell.classList.add("conflict-flash");
+            setTimeout(() => cell.classList.remove("conflict-flash"), 2000);
+          }
+        });
+      }, 100);
+    }
+  }, [conflictDates, updateTitle]);
+
   useEffect(() => {
     updateTitle();
   }, [updateTitle]);
