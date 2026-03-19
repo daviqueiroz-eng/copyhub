@@ -2,13 +2,14 @@ import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { format, isBefore, startOfDay, parse } from "date-fns";
+import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { GestaoEntrega, useUpdateGestaoEntrega } from "@/hooks/useGestaoEntregas";
+import { GestaoEntrega, useUpdateGestaoEntrega, useCreateGestaoEntrega } from "@/hooks/useGestaoEntregas";
 import { GestaoEntregaDialog } from "./GestaoEntregaDialog";
 import { ChevronLeft, ChevronRight, AlertTriangle, AlertOctagon, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   entregas: GestaoEntrega[];
@@ -21,10 +22,11 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
   const [currentView, setCurrentView] = useState<"dayGridMonth" | "dayGridWeek">("dayGridMonth");
   const calendarRef = useRef<any>(null);
   const updateEntrega = useUpdateGestaoEntrega();
+  const createEntrega = useCreateGestaoEntrega();
+  const { user } = useAuth();
 
   const today = startOfDay(new Date());
 
-  // Conflict detection map
   const conflictMap = useMemo(() => {
     const map: Record<string, number> = {};
     entregas.forEach((e) => {
@@ -35,7 +37,6 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     return map;
   }, [entregas]);
 
-  // Count overdue
   const overdueCount = useMemo(() => {
     return entregas.filter((e) => {
       const prazoDate = new Date(e.prazo + "T12:00:00");
@@ -43,7 +44,6 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     }).length;
   }, [entregas, today]);
 
-  // Count attention days (days with 3+ entregas)
   const attentionDays = useMemo(() => {
     return Object.values(conflictMap).filter((c) => c >= 3).length;
   }, [conflictMap]);
@@ -85,6 +85,26 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     updateEntrega.mutate({ id: entregaId, prazo: newDate });
   };
 
+  // Handle external drop from mentorado cards
+  const handleReceive = (info: any) => {
+    if (!user) return;
+    const mentoradoId = info.event.extendedProps?.mentoradoId;
+    const date = format(info.event.start, "yyyy-MM-dd");
+
+    if (mentoradoId) {
+      // Remove the temporary event created by FullCalendar
+      info.event.remove();
+
+      createEntrega.mutate({
+        mentorado_id: mentoradoId,
+        user_id: user.id,
+        prazo: date,
+        dias_uteis: 10,
+        status: "Em andamento",
+      });
+    }
+  };
+
   const updateTitle = useCallback(() => {
     const api = calendarRef.current?.getApi();
     if (api) {
@@ -97,31 +117,16 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     updateTitle();
   }, [updateTitle]);
 
-  const handlePrev = () => {
-    calendarRef.current?.getApi()?.prev();
-    updateTitle();
-  };
-  const handleNext = () => {
-    calendarRef.current?.getApi()?.next();
-    updateTitle();
-  };
-  const handleToday = () => {
-    calendarRef.current?.getApi()?.today();
-    updateTitle();
-  };
+  const handlePrev = () => { calendarRef.current?.getApi()?.prev(); updateTitle(); };
+  const handleNext = () => { calendarRef.current?.getApi()?.next(); updateTitle(); };
+  const handleToday = () => { calendarRef.current?.getApi()?.today(); updateTitle(); };
   const handlePrevDay = () => {
     const api = calendarRef.current?.getApi();
-    if (api) {
-      api.incrementDate({ days: -1 });
-      updateTitle();
-    }
+    if (api) { api.incrementDate({ days: -1 }); updateTitle(); }
   };
   const handleNextDay = () => {
     const api = calendarRef.current?.getApi();
-    if (api) {
-      api.incrementDate({ days: 1 });
-      updateTitle();
-    }
+    if (api) { api.incrementDate({ days: 1 }); updateTitle(); }
   };
 
   const switchView = (view: "dayGridMonth" | "dayGridWeek") => {
@@ -203,6 +208,7 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
           droppable={true}
           eventClick={handleEventClick}
           eventDrop={handleEventDrop}
+          eventReceive={handleReceive}
           height="100%"
           dayMaxEvents={4}
           fixedWeekCount={false}

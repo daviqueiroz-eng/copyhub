@@ -15,9 +15,10 @@ interface GeralViewProps {
   mentorados: Mentorado[];
   searchTerm: string;
   onMentoradoClick: (mentorado: Mentorado) => void;
+  mentoradoIdsComEntrega?: Set<string>;
 }
 
-export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralViewProps) {
+export function GeralView({ mentorados, searchTerm, onMentoradoClick, mentoradoIdsComEntrega }: GeralViewProps) {
   const { toast } = useToast();
 
   const filteredMentorados = mentorados.filter((m) =>
@@ -131,6 +132,7 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralVie
             key={mentorado.id}
             mentorado={mentorado}
             onClick={() => onMentoradoClick(mentorado)}
+            hasEntrega={mentoradoIdsComEntrega?.has(mentorado.id)}
           />
         ))}
       </div>
