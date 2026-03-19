@@ -88,12 +88,6 @@ const Mentorados = () => {
   const updateMentorado = useUpdateMentorado();
   const deleteMentorado = useDeleteMentorado();
 
-  // Import entregas to know which mentorados have entries
-  const { useGestaoEntregasHook } = (() => {
-    // We need the data here - import at top level
-    return { useGestaoEntregasHook: null };
-  })();
-
   const getIniciais = (nome: string) => {
     const parts = nome.trim().split(" ");
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
