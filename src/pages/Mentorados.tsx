@@ -305,6 +305,7 @@ const Mentorados = () => {
                 mentorados={mentorados}
                 searchTerm={searchTerm}
                 onMentoradoClick={handleOpenDetail}
+                mentoradoIdsComEntrega={mentoradoIdsComEntrega}
               />
             </TabsContent>
 
