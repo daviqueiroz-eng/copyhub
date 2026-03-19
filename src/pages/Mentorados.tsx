@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { Plus, Search, ExternalLink, Instagram, Trash2, FileText, LayoutGrid } from "lucide-react";
 import { GestaoEntregasView } from "@/components/mentorados/GestaoEntregasView";
 import { Button } from "@/components/ui/button";
