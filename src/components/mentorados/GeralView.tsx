@@ -18,7 +18,7 @@ interface GeralViewProps {
   mentoradoIdsComEntrega?: Set<string>;
 }
 
-export function GeralView({ mentorados, searchTerm, onMentoradoClick }: GeralViewProps) {
+export function GeralView({ mentorados, searchTerm, onMentoradoClick, mentoradoIdsComEntrega }: GeralViewProps) {
   const { toast } = useToast();
 
   const filteredMentorados = mentorados.filter((m) =>
