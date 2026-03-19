@@ -764,10 +764,13 @@ export type Database = {
           dias_uteis: number | null
           id: string
           leva: number | null
+          levas_totais: number | null
+          mentor: string | null
           mentorado_id: string
           observacao: string | null
           prazo: string
           responsavel_id: string | null
+          roteiros_por_leva: number | null
           status: string | null
           user_id: string
         }
@@ -777,10 +780,13 @@ export type Database = {
           dias_uteis?: number | null
           id?: string
           leva?: number | null
+          levas_totais?: number | null
+          mentor?: string | null
           mentorado_id: string
           observacao?: string | null
           prazo: string
           responsavel_id?: string | null
+          roteiros_por_leva?: number | null
           status?: string | null
           user_id: string
         }
@@ -790,10 +796,13 @@ export type Database = {
           dias_uteis?: number | null
           id?: string
           leva?: number | null
+          levas_totais?: number | null
+          mentor?: string | null
           mentorado_id?: string
           observacao?: string | null
           prazo?: string
           responsavel_id?: string | null
+          roteiros_por_leva?: number | null
           status?: string | null
           user_id?: string
         }
@@ -811,6 +820,56 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      gestao_entregas_config: {
+        Row: {
+          created_at: string | null
+          dias_uteis: number | null
+          id: string
+          leva_atual: number | null
+          levas_totais: number | null
+          mentor: string | null
+          mentorado_id: string
+          roteiros_por_leva: number | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dias_uteis?: number | null
+          id?: string
+          leva_atual?: number | null
+          levas_totais?: number | null
+          mentor?: string | null
+          mentorado_id: string
+          roteiros_por_leva?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dias_uteis?: number | null
+          id?: string
+          leva_atual?: number | null
+          levas_totais?: number | null
+          mentor?: string | null
+          mentorado_id?: string
+          roteiros_por_leva?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gestao_entregas_config_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
           },
         ]
       }
