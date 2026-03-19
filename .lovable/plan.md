@@ -1,51 +1,95 @@
 
 
-## Plano: Disparo de Webhook no Blur + Opcao "Configurar" no Dropdown
+# Plan: Sistema Nativo de Gestão de Entregas (Calendário + Tabela)
 
-### Problema Atual
-- O webhook de deteccao de tipo dispara via debounce (2s apos digitar), mas o usuario quer que dispare **ao sair do campo headline** (blur)
-- Nao existe opcao "configurar" no dropdown de tipos, conforme mostrado na imagem 1
-- O dialog de configuracao ja existe (`TipoRoteiroConfigDialog`) e ja tem o layout correto (prompt + template)
+Substituir o iframe externo por um sistema completo e nativo de gestão de entregas com duas visualizações sincronizadas.
 
 ---
 
-### Mudancas
+## Etapa 1 — Banco de Dados (Migration)
 
-#### 1. Disparar webhook no blur do headline (MentoradoRoteirosView.tsx)
+Criar duas novas tabelas (a tabela `mentorados` já existe no projeto, mas o user quer um sistema separado para entregas com campos adicionais como `mentor`, `curso`, `cor`, `pausado`). Vou adicionar os campos que faltam à tabela `mentorados` existente e criar a tabela de entregas:
 
-- Modificar `handleFieldBlur`: quando `field === "headline"` e a headline tem conteudo (>10 chars), chamar imediatamente a deteccao via webhook (sem debounce)
-- Remover o `useEffect` que monitora mudancas de headline para trigger automatico (linhas 1397-1414) — nao faz mais sentido com blur
-- Remover o debounce de 2s no `triggerTipoDetection` — a chamada sera direta, sem `setTimeout`
-- Manter o `manualTipoChangeRef` como bloqueio: se o usuario escolheu manualmente, nao sobrescrever
+**Alterações na tabela `mentorados`** (adicionar colunas):
+- `mentor` text
+- `curso` text  
+- `cor` text default '#3B82F6'
+- `pausado` boolean default false
 
-#### 2. Adicionar "configurar" no dropdown de tipo (MentoradoRoteirosView.tsx)
+**Nova tabela `gestao_entregas`**:
+- `id` uuid PK
+- `mentorado_id` uuid FK → mentorados.id ON DELETE CASCADE
+- `responsavel_id` uuid FK → profiles (user_id do responsável)
+- `user_id` uuid NOT NULL (dono do registro, para RLS)
+- `leva` integer
+- `prazo` date NOT NULL
+- `data_entrega` date
+- `dias_uteis` integer default 10
+- `status` text default 'Em andamento'
+- `observacao` text
+- `created_at` timestamptz
 
-- Adicionar um item "configurar" no final do `SelectContent` do dropdown de tipos (linhas 2583-2589)
-- Quando clicado, abrir o `TipoRoteiroConfigDialog` com o tipo atualmente selecionado
-- Se nenhum tipo estiver selecionado, a opcao "configurar" abrira o primeiro tipo disponivel (ou nao aparecera)
-- Importar `TipoRoteiroConfigDialog` e adicionar state para controlar sua abertura
-
-#### 3. Nenhuma mudanca no dialog de configuracao
-
-O `TipoRoteiroConfigDialog` ja tem o layout correto conforme a segunda imagem:
-- Campo "Prompt / Instrucoes para IA" (textarea grande)
-- Campo "Template de Estrutura (opcional)" (textarea menor)
-- Botoes Cancelar e Salvar
+**RLS**: Usuário só vê/edita seus próprios dados (`user_id = auth.uid()`).
 
 ---
 
-### Arquivos a Modificar
+## Etapa 2 — Hooks de Dados
 
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/components/mentorados/MentoradoRoteirosView.tsx` | Mover trigger para `handleFieldBlur`, remover useEffect de auto-detect, adicionar opcao "configurar" no Select, importar TipoRoteiroConfigDialog |
+**`src/hooks/useGestaoEntregas.ts`**: Hook com queries e mutations para CRUD de entregas, incluindo joins com `mentorados` e `profiles`.
 
-### Fluxo do Usuario
+---
 
-1. Digita a headline "3 livros para ler"
-2. Clica fora do campo (blur)
-3. Bolinha de loading aparece ao lado do dropdown "Tipo..."
-4. Webhook n8n retorna `{ tipo: "Lista util" }`
-5. Sistema encontra match com tipo cadastrado e preenche automaticamente
-6. Para configurar o prompt de um tipo, abre o dropdown e clica em "configurar"
-7. Dialog abre com campos de Prompt e Template para editar
+## Etapa 3 — Componente Calendário
+
+**`src/components/mentorados/GestaoCalendarioView.tsx`**:
+- FullCalendar com visão semana/mês
+- Cards coloridos por mentorado (usando `cor` do mentorado)
+- Drag and drop para mover entregas entre datas
+- Detecção de conflitos (2 no mesmo dia = alerta leve, 3+ = alerta crítico)
+- Overdue: destaque vermelho quando prazo < hoje e status != "Finalizado"
+- Click no card: dialog para marcar como finalizado, definir data de entrega, gerar próxima entrega automaticamente
+
+---
+
+## Etapa 4 — Componente Tabela (Estilo Excel)
+
+**`src/components/mentorados/GestaoTabelaView.tsx`**:
+- Tabela com colunas: Copy, Mentorado, Mentor, Curso, Leva, Prazo, Data Entrega, Dias Úteis, Status, Pausado, Observação
+- Edição inline: status (dropdown), prazo (date picker), observação
+- Ordenação por prazo
+- Busca por nome
+- Filtros: por copy, status, mentor, período
+- Regras automáticas visuais: atrasado = vermelho, próximo do prazo = amarelo, finalizado = opacidade reduzida
+- Header fixo, hover leve, estilo Notion/Airtable
+
+---
+
+## Etapa 5 — Componente Principal com Toggle
+
+**`src/components/mentorados/GestaoEntregasView.tsx`**:
+- Toggle `[Calendário | Tabela]` no topo
+- Botão "Exportar Planilha" (CSV/XLSX dos dados filtrados)
+- Ambas as views compartilham o mesmo hook/dados
+- Sincronização automática via React Query
+
+---
+
+## Etapa 6 — Integração na Página
+
+**`src/pages/Mentorados.tsx`**:
+- Substituir os dois iframes (mobile e desktop) pelo componente `GestaoEntregasView`
+
+---
+
+## Arquivos Criados/Modificados
+
+| Arquivo | Ação |
+|---------|------|
+| Migration SQL | Criar (alter mentorados + nova tabela gestao_entregas) |
+| `src/hooks/useGestaoEntregas.ts` | Criar |
+| `src/components/mentorados/GestaoCalendarioView.tsx` | Criar |
+| `src/components/mentorados/GestaoTabelaView.tsx` | Criar |
+| `src/components/mentorados/GestaoEntregasView.tsx` | Criar |
+| `src/components/mentorados/GestaoEntregaDialog.tsx` | Criar |
+| `src/pages/Mentorados.tsx` | Modificar (remover iframes) |
+
