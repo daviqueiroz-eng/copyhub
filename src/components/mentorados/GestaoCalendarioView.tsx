@@ -37,16 +37,15 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     return map;
   }, [entregas]);
 
-  const overdueCount = useMemo(() => {
-    return entregas.filter((e) => {
-      const prazoDate = new Date(e.prazo + "T12:00:00");
-      return isBefore(prazoDate, today) && e.status !== "Finalizado";
-    }).length;
-  }, [entregas, today]);
-
-  const attentionDays = useMemo(() => {
-    return Object.values(conflictMap).filter((c) => c >= 3).length;
+  // Days with 2+ non-finished cards
+  const conflictDates = useMemo(() => {
+    return Object.entries(conflictMap)
+      .filter(([, count]) => count >= 2)
+      .map(([date]) => date)
+      .sort();
   }, [conflictMap]);
+
+  const [conflictIndex, setConflictIndex] = useState(0);
 
   const events = useMemo(() => {
     return entregas.map((e) => {
