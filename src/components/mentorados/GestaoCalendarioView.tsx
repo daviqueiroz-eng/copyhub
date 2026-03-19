@@ -37,16 +37,16 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     return map;
   }, [entregas]);
 
-  const overdueCount = useMemo(() => {
-    return entregas.filter((e) => {
-      const prazoDate = new Date(e.prazo + "T12:00:00");
-      return isBefore(prazoDate, today) && e.status !== "Finalizado";
-    }).length;
-  }, [entregas, today]);
-
-  const attentionDays = useMemo(() => {
-    return Object.values(conflictMap).filter((c) => c >= 3).length;
+  // Days with 2+ non-finished cards
+  const conflictDates = useMemo(() => {
+    return Object.entries(conflictMap)
+      .filter(([, count]) => count >= 2)
+      .map(([date]) => date)
+      .sort();
   }, [conflictMap]);
+
+  const [conflictIndex, setConflictIndex] = useState(0);
+
 
   const events = useMemo(() => {
     return entregas.map((e) => {
@@ -113,6 +113,28 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     }
   }, []);
 
+  const navigateToConflict = useCallback((index: number) => {
+    if (conflictDates.length === 0) return;
+    const safeIndex = ((index % conflictDates.length) + conflictDates.length) % conflictDates.length;
+    setConflictIndex(safeIndex);
+    const dateStr = conflictDates[safeIndex];
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.gotoDate(dateStr);
+      updateTitle();
+      setTimeout(() => {
+        const cells = document.querySelectorAll<HTMLElement>(".gestao-calendar .fc-daygrid-day");
+        cells.forEach((cell) => {
+          const cellDate = cell.getAttribute("data-date");
+          if (cellDate === dateStr) {
+            cell.classList.add("conflict-flash");
+            setTimeout(() => cell.classList.remove("conflict-flash"), 2000);
+          }
+        });
+      }, 100);
+    }
+  }, [conflictDates, updateTitle]);
+
   useEffect(() => {
     updateTitle();
   }, [updateTitle]);
@@ -149,11 +171,18 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          {(attentionDays > 0 || overdueCount > 0) && (
-            <Badge variant="destructive" className="gap-1.5 text-xs px-3 py-1">
-              <AlertOctagon className="h-3.5 w-3.5" />
-              Atenção ({overdueCount}/{entregas.filter(e => e.status !== "Finalizado").length})
-            </Badge>
+          {conflictDates.length > 0 && (
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToConflict(conflictIndex - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Badge variant="destructive" className="gap-1.5 text-xs px-3 py-1 cursor-pointer" onClick={() => navigateToConflict(conflictIndex)}>
+                🚨 Atenção ({conflictIndex + 1}/{conflictDates.length})
+              </Badge>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToConflict(conflictIndex + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
 
@@ -344,6 +373,14 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
         .gestao-calendar .fc th {
           border-left: none;
           border-right: none;
+        }
+        @keyframes conflict-pulse {
+          0%, 100% { box-shadow: inset 0 0 0 3px hsl(var(--destructive)); }
+          50% { box-shadow: inset 0 0 20px 3px hsl(var(--destructive) / 0.4); }
+        }
+        .gestao-calendar .conflict-flash {
+          animation: conflict-pulse 0.6s ease-in-out 3;
+          border-radius: 8px;
         }
       `}</style>
     </div>
