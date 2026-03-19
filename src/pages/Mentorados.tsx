@@ -260,15 +260,8 @@ const Mentorados = () => {
             </Tabs>
           </TabsContent>
 
-          {/* Tab: Prioridade */}
           <TabsContent value="prioridade" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
-            <iframe
-              src="https://controledementorado.lovable.app/"
-              className="w-full h-full border-0 min-h-[70vh]"
-              title="Controle de Mentorado"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              loading="lazy"
-            />
+            <GestaoEntregasView />
           </TabsContent>
         </Tabs>
       </div>
