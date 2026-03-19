@@ -171,11 +171,18 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          {(attentionDays > 0 || overdueCount > 0) && (
-            <Badge variant="destructive" className="gap-1.5 text-xs px-3 py-1">
-              <AlertOctagon className="h-3.5 w-3.5" />
-              Atenção ({overdueCount}/{entregas.filter(e => e.status !== "Finalizado").length})
-            </Badge>
+          {conflictDates.length > 0 && (
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToConflict(conflictIndex - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Badge variant="destructive" className="gap-1.5 text-xs px-3 py-1 cursor-pointer" onClick={() => navigateToConflict(conflictIndex)}>
+                🚨 Atenção ({conflictIndex + 1}/{conflictDates.length})
+              </Badge>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToConflict(conflictIndex + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
 
