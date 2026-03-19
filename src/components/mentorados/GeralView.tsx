@@ -132,6 +132,7 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick, mentoradoI
             key={mentorado.id}
             mentorado={mentorado}
             onClick={() => onMentoradoClick(mentorado)}
+            hasEntrega={mentoradoIdsComEntrega?.has(mentorado.id)}
           />
         ))}
       </div>
