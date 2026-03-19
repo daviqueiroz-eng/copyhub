@@ -5,11 +5,14 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { GestaoEntrega, useUpdateGestaoEntrega, useCreateGestaoEntrega } from "@/hooks/useGestaoEntregas";
+import { useGestaoEntregasConfig, useUpsertGestaoEntregaConfig } from "@/hooks/useGestaoEntregasConfig";
 import { GestaoEntregaDialog } from "./GestaoEntregaDialog";
+import { FirstEntregaConfigDialog } from "./FirstEntregaConfigDialog";
 import { ChevronLeft, ChevronRight, AlertTriangle, AlertOctagon, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMentorados } from "@/hooks/useMentorados";
 
 interface Props {
   entregas: GestaoEntrega[];
@@ -23,7 +26,14 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
   const calendarRef = useRef<any>(null);
   const updateEntrega = useUpdateGestaoEntrega();
   const createEntrega = useCreateGestaoEntrega();
+  const upsertConfig = useUpsertGestaoEntregaConfig();
   const { user } = useAuth();
+  const { data: mentorados = [] } = useMentorados();
+  const { data: configs = [] } = useGestaoEntregasConfig();
+
+  // First-drag config dialog state
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [pendingDrop, setPendingDrop] = useState<{ mentoradoId: string; date: string } | null>(null);
 
   const today = startOfDay(new Date());
 
@@ -37,7 +47,6 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     return map;
   }, [entregas]);
 
-  // Days with 2+ non-finished cards
   const conflictDates = useMemo(() => {
     return Object.entries(conflictMap)
       .filter(([, count]) => count >= 2)
@@ -46,7 +55,6 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
   }, [conflictMap]);
 
   const [conflictIndex, setConflictIndex] = useState(0);
-
 
   const events = useMemo(() => {
     return entregas.map((e) => {
@@ -85,26 +93,62 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     updateEntrega.mutate({ id: entregaId, prazo: newDate });
   };
 
-  // Handle external drop from mentorado cards
+  // Handle external drop from mentorado cards — show config dialog
   const handleReceive = (info: any) => {
     if (!user) return;
     const mentoradoId = info.event.extendedProps?.mentoradoId;
     const date = format(info.event.start, "yyyy-MM-dd");
 
     if (mentoradoId) {
-      // Remove the temporary event created by FullCalendar
       info.event.remove();
-
-      createEntrega.mutate({
-        mentorado_id: mentoradoId,
-        user_id: user.id,
-        prazo: date,
-        dias_uteis: 10,
-        status: "Em andamento",
-      });
+      setPendingDrop({ mentoradoId, date });
+      setConfigDialogOpen(true);
     }
   };
 
+  const pendingMentorado = mentorados.find((m) => m.id === pendingDrop?.mentoradoId);
+  const pendingConfig = configs.find((c) => c.mentorado_id === pendingDrop?.mentoradoId) || null;
+
+  const handleConfigConfirm = (configData: {
+    mentor: string;
+    leva_atual: number;
+    dias_uteis: number;
+    roteiros_por_leva: number;
+    levas_totais: number;
+    status: string;
+    observacao: string;
+  }) => {
+    if (!user || !pendingDrop) return;
+
+    // Save config for future drags
+    upsertConfig.mutate({
+      user_id: user.id,
+      mentorado_id: pendingDrop.mentoradoId,
+      mentor: configData.mentor,
+      dias_uteis: configData.dias_uteis,
+      roteiros_por_leva: configData.roteiros_por_leva,
+      levas_totais: configData.levas_totais,
+      status: configData.status,
+      leva_atual: configData.leva_atual,
+    });
+
+    // Create the entrega
+    createEntrega.mutate({
+      mentorado_id: pendingDrop.mentoradoId,
+      user_id: user.id,
+      prazo: pendingDrop.date,
+      leva: configData.leva_atual,
+      dias_uteis: configData.dias_uteis,
+      status: configData.status,
+      observacao: configData.observacao || null,
+      roteiros_por_leva: configData.roteiros_por_leva,
+      levas_totais: configData.levas_totais,
+      mentor: configData.mentor || null,
+    } as any);
+
+    setConfigDialogOpen(false);
+    setPendingDrop(null);
+  };
   const updateTitle = useCallback(() => {
     const api = calendarRef.current?.getApi();
     if (api) {
@@ -299,6 +343,20 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
         onOpenChange={setDialogOpen}
         entrega={selectedEntrega}
       />
+
+      {pendingDrop && pendingMentorado && (
+        <FirstEntregaConfigDialog
+          open={configDialogOpen}
+          onOpenChange={(open) => {
+            setConfigDialogOpen(open);
+            if (!open) setPendingDrop(null);
+          }}
+          mentoradoNome={pendingMentorado.nome}
+          existingConfig={pendingConfig}
+          prazoDate={pendingDrop.date}
+          onConfirm={handleConfigConfirm}
+        />
+      )}
 
       <style>{`
         .gestao-calendar .fc {
