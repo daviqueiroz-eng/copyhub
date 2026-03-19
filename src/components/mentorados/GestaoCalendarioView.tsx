@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { format, isBefore, startOfDay, addDays } from "date-fns";
+import { format, isBefore, startOfDay, parse } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { GestaoEntrega, useUpdateGestaoEntrega } from "@/hooks/useGestaoEntregas";
 import { GestaoEntregaDialog } from "./GestaoEntregaDialog";
+import { ChevronLeft, ChevronRight, AlertTriangle, AlertOctagon, GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface Props {
@@ -15,37 +17,61 @@ interface Props {
 export const GestaoCalendarioView = ({ entregas }: Props) => {
   const [selectedEntrega, setSelectedEntrega] = useState<GestaoEntrega | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [currentTitle, setCurrentTitle] = useState("");
+  const [currentView, setCurrentView] = useState<"dayGridMonth" | "dayGridWeek">("dayGridMonth");
+  const calendarRef = useRef<any>(null);
   const updateEntrega = useUpdateGestaoEntrega();
 
   const today = startOfDay(new Date());
+
+  // Conflict detection map
+  const conflictMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    entregas.forEach((e) => {
+      if (e.status !== "Finalizado") {
+        map[e.prazo] = (map[e.prazo] || 0) + 1;
+      }
+    });
+    return map;
+  }, [entregas]);
+
+  // Count overdue
+  const overdueCount = useMemo(() => {
+    return entregas.filter((e) => {
+      const prazoDate = new Date(e.prazo + "T12:00:00");
+      return isBefore(prazoDate, today) && e.status !== "Finalizado";
+    }).length;
+  }, [entregas, today]);
+
+  // Count attention days (days with 3+ entregas)
+  const attentionDays = useMemo(() => {
+    return Object.values(conflictMap).filter((c) => c >= 3).length;
+  }, [conflictMap]);
 
   const events = useMemo(() => {
     return entregas.map((e) => {
       const prazoDate = new Date(e.prazo + "T12:00:00");
       const isOverdue = isBefore(prazoDate, today) && e.status !== "Finalizado";
+      const isFinished = e.status === "Finalizado";
       const cor = e.mentorado?.cor || "#3B82F6";
 
       return {
         id: e.id,
-        title: `${e.mentorado?.nome || "?"} - L${e.leva || "?"}`,
+        title: e.mentorado?.nome || "?",
         start: e.prazo,
         allDay: true,
-        backgroundColor: isOverdue ? "#EF4444" : e.status === "Finalizado" ? "#9CA3AF" : cor,
-        borderColor: isOverdue ? "#DC2626" : e.status === "Finalizado" ? "#6B7280" : cor,
-        textColor: "#FFFFFF",
-        extendedProps: { entrega: e, isOverdue },
+        backgroundColor: "transparent",
+        borderColor: "transparent",
+        extendedProps: {
+          entrega: e,
+          isOverdue,
+          isFinished,
+          cor,
+          prazoFormatted: format(prazoDate, "dd/MM"),
+        },
       };
     });
   }, [entregas, today]);
-
-  // Conflict detection
-  const conflictMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    entregas.forEach((e) => {
-      map[e.prazo] = (map[e.prazo] || 0) + 1;
-    });
-    return map;
-  }, [entregas]);
 
   const handleEventClick = (info: any) => {
     const entrega = info.event.extendedProps.entrega as GestaoEntrega;
@@ -59,47 +85,261 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
     updateEntrega.mutate({ id: entregaId, prazo: newDate });
   };
 
-  const handleDateClick = (info: any) => {
-    setSelectedEntrega(null);
-    setDialogOpen(true);
+  const updateTitle = useCallback(() => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      const date = api.getDate();
+      setCurrentTitle(format(date, "MMMM yyyy", { locale: ptBR }));
+    }
+  }, []);
+
+  useEffect(() => {
+    updateTitle();
+  }, [updateTitle]);
+
+  const handlePrev = () => {
+    calendarRef.current?.getApi()?.prev();
+    updateTitle();
+  };
+  const handleNext = () => {
+    calendarRef.current?.getApi()?.next();
+    updateTitle();
+  };
+  const handleToday = () => {
+    calendarRef.current?.getApi()?.today();
+    updateTitle();
+  };
+  const handlePrevDay = () => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.incrementDate({ days: -1 });
+      updateTitle();
+    }
+  };
+  const handleNextDay = () => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.incrementDate({ days: 1 });
+      updateTitle();
+    }
+  };
+
+  const switchView = (view: "dayGridMonth" | "dayGridWeek") => {
+    setCurrentView(view);
+    calendarRef.current?.getApi()?.changeView(view);
+    updateTitle();
   };
 
   return (
-    <div className="h-full">
-      <FullCalendar
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
-        headerToolbar={{
-          left: "prev,next today",
-          center: "title",
-          right: "dayGridMonth,dayGridWeek",
-        }}
-        locale="pt-br"
-        events={events}
-        editable={true}
-        droppable={true}
-        eventClick={handleEventClick}
-        eventDrop={handleEventDrop}
-        dateClick={handleDateClick}
-        height="100%"
-        dayMaxEvents={3}
-        eventContent={(arg) => {
-          const count = conflictMap[arg.event.startStr] || 0;
-          return (
-            <div className="px-1 py-0.5 text-xs truncate flex items-center gap-1">
-              <span className="truncate">{arg.event.title}</span>
-              {count >= 3 && <span className="bg-red-700 text-white rounded px-1 text-[10px]">!</span>}
-              {count === 2 && <span className="bg-yellow-600 text-white rounded px-1 text-[10px]">⚠</span>}
-            </div>
-          );
-        }}
-      />
+    <div className="h-full flex flex-col gestao-calendar">
+      {/* Custom Header */}
+      <div className="flex items-center justify-between mb-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold capitalize text-foreground">{currentTitle}</h2>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          {(attentionDays > 0 || overdueCount > 0) && (
+            <Badge variant="destructive" className="gap-1.5 text-xs px-3 py-1">
+              <AlertOctagon className="h-3.5 w-3.5" />
+              Atenção ({overdueCount}/{entregas.filter(e => e.status !== "Finalizado").length})
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-muted rounded-lg p-0.5">
+            <button
+              onClick={() => switchView("dayGridWeek")}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                currentView === "dayGridWeek"
+                  ? "bg-background text-foreground shadow-sm font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Semana
+            </button>
+            <button
+              onClick={() => switchView("dayGridMonth")}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                currentView === "dayGridMonth"
+                  ? "bg-background text-foreground shadow-sm font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Mês
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevDay}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleToday} className="h-8 px-3 text-sm">
+              Hoje
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNextDay}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Calendar */}
+      <div className="flex-1 min-h-0">
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[dayGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          headerToolbar={false}
+          locale="pt-br"
+          events={events}
+          editable={true}
+          droppable={true}
+          eventClick={handleEventClick}
+          eventDrop={handleEventDrop}
+          height="100%"
+          dayMaxEvents={4}
+          fixedWeekCount={false}
+          dayCellDidMount={(arg) => {
+            const dateStr = format(arg.date, "yyyy-MM-dd");
+            const count = conflictMap[dateStr] || 0;
+            if (count >= 3) {
+              arg.el.style.outline = "2px solid hsl(0 72% 51%)";
+              arg.el.style.outlineOffset = "-2px";
+              arg.el.style.borderRadius = "8px";
+            } else if (count === 2) {
+              arg.el.style.outline = "2px solid hsl(0 72% 51% / 0.4)";
+              arg.el.style.outlineOffset = "-2px";
+              arg.el.style.borderRadius = "8px";
+            }
+          }}
+          dayCellContent={(arg) => {
+            const dateStr = format(arg.date, "yyyy-MM-dd");
+            const count = conflictMap[dateStr] || 0;
+            return (
+              <div className="flex items-center gap-1 w-full">
+                <span className="font-semibold text-sm text-foreground">{arg.dayNumberText.replace("日", "")}</span>
+                {count >= 3 && <AlertOctagon className="h-3.5 w-3.5 text-destructive" />}
+                {count === 2 && <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />}
+              </div>
+            );
+          }}
+          eventContent={(arg) => {
+            const { isOverdue, isFinished, cor, prazoFormatted } = arg.event.extendedProps;
+            const opacity = isFinished ? "opacity-50" : "";
+
+            return (
+              <div
+                className={`flex items-start gap-1.5 px-1.5 py-1 rounded-md bg-card border border-border/50 shadow-sm cursor-pointer hover:shadow-md transition-shadow w-full overflow-hidden ${opacity}`}
+                style={{ borderLeft: `3px solid ${isOverdue ? "hsl(0 72% 51%)" : cor}` }}
+              >
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 mt-0.5 cursor-grab" />
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-xs font-semibold text-foreground truncate">
+                    {arg.event.title}
+                  </span>
+                  {isFinished ? (
+                    <span className="text-[10px] text-muted-foreground">Entregue</span>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground">
+                      Entrega: {prazoFormatted}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          }}
+          datesSet={() => updateTitle()}
+        />
+      </div>
 
       <GestaoEntregaDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         entrega={selectedEntrega}
       />
+
+      <style>{`
+        .gestao-calendar .fc {
+          --fc-border-color: hsl(var(--border));
+          --fc-today-bg-color: hsl(var(--accent) / 0.3);
+          --fc-neutral-bg-color: transparent;
+          --fc-page-bg-color: transparent;
+          font-family: inherit;
+        }
+        .gestao-calendar .fc .fc-scrollgrid {
+          border: none;
+        }
+        .gestao-calendar .fc .fc-scrollgrid td,
+        .gestao-calendar .fc .fc-scrollgrid th {
+          border-color: hsl(var(--border) / 0.5);
+        }
+        .gestao-calendar .fc .fc-col-header-cell {
+          background: hsl(var(--muted));
+          padding: 8px 0;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: hsl(var(--muted-foreground));
+          text-transform: uppercase;
+          border: none;
+        }
+        .gestao-calendar .fc .fc-daygrid-day {
+          min-height: 100px;
+          transition: background-color 0.15s;
+        }
+        .gestao-calendar .fc .fc-daygrid-day:hover {
+          background-color: hsl(var(--accent) / 0.15);
+        }
+        .gestao-calendar .fc .fc-daygrid-day-top {
+          padding: 4px 6px 2px;
+        }
+        .gestao-calendar .fc .fc-daygrid-day-events {
+          padding: 0 4px 4px;
+        }
+        .gestao-calendar .fc .fc-event {
+          margin-bottom: 2px;
+          border: none;
+          background: transparent;
+        }
+        .gestao-calendar .fc .fc-daygrid-event-harness {
+          margin-bottom: 2px;
+        }
+        .gestao-calendar .fc .fc-day-today {
+          background-color: transparent !important;
+        }
+        .gestao-calendar .fc .fc-day-today .fc-daygrid-day-top span:first-child {
+          background: hsl(var(--primary));
+          color: hsl(var(--primary-foreground));
+          border-radius: 50%;
+          width: 28px;
+          height: 28px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .gestao-calendar .fc .fc-more-link {
+          font-size: 0.7rem;
+          color: hsl(var(--primary));
+          font-weight: 600;
+          padding: 2px 4px;
+        }
+        .gestao-calendar .fc .fc-daygrid-day-frame {
+          min-height: 100%;
+        }
+        .gestao-calendar .fc .fc-scrollgrid-section > td {
+          border: none;
+        }
+        .gestao-calendar .fc th {
+          border-left: none;
+          border-right: none;
+        }
+      `}</style>
     </div>
   );
 };
