@@ -307,15 +307,8 @@ const Mentorados = () => {
           </Tabs>
         </div>
 
-        {/* Lado direito: Controle de Mentorado */}
-        <div className="flex-1 min-w-0 border-l flex flex-col min-h-0">
-          <iframe
-            src="https://controledementorado.lovable.app/"
-            className="w-full h-full border-0"
-            title="Controle de Mentorado"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            loading="lazy"
-          />
+        <div className="flex-1 min-w-0 border-l flex flex-col min-h-0 pl-6">
+          <GestaoEntregasView />
         </div>
       </div>
 
