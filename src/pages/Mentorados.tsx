@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { Plus, Search, ExternalLink, Instagram, Trash2, FileText, LayoutGrid } from "lucide-react";
+import { GestaoEntregasView } from "@/components/mentorados/GestaoEntregasView";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -259,15 +260,8 @@ const Mentorados = () => {
             </Tabs>
           </TabsContent>
 
-          {/* Tab: Prioridade */}
           <TabsContent value="prioridade" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
-            <iframe
-              src="https://controledementorado.lovable.app/"
-              className="w-full h-full border-0 min-h-[70vh]"
-              title="Controle de Mentorado"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              loading="lazy"
-            />
+            <GestaoEntregasView />
           </TabsContent>
         </Tabs>
       </div>
@@ -313,15 +307,8 @@ const Mentorados = () => {
           </Tabs>
         </div>
 
-        {/* Lado direito: Controle de Mentorado */}
-        <div className="flex-1 min-w-0 border-l flex flex-col min-h-0">
-          <iframe
-            src="https://controledementorado.lovable.app/"
-            className="w-full h-full border-0"
-            title="Controle de Mentorado"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            loading="lazy"
-          />
+        <div className="flex-1 min-w-0 border-l flex flex-col min-h-0 pl-6">
+          <GestaoEntregasView />
         </div>
       </div>
 
