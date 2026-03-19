@@ -344,6 +344,20 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
         entrega={selectedEntrega}
       />
 
+      {pendingDrop && pendingMentorado && (
+        <FirstEntregaConfigDialog
+          open={configDialogOpen}
+          onOpenChange={(open) => {
+            setConfigDialogOpen(open);
+            if (!open) setPendingDrop(null);
+          }}
+          mentoradoNome={pendingMentorado.nome}
+          existingConfig={pendingConfig}
+          prazoDate={pendingDrop.date}
+          onConfirm={handleConfigConfirm}
+        />
+      )}
+
       <style>{`
         .gestao-calendar .fc {
           --fc-border-color: hsl(var(--border));
