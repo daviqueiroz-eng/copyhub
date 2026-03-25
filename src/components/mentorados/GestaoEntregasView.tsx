@@ -107,14 +107,14 @@ export const GestaoEntregasView = () => {
               <div
                 key={cat.key}
                 data-category={cat.key}
-                className="transition-all"
+                className="transition-all cursor-pointer"
                 onDragOver={handleCategoryDragOver}
                 onDrop={(e) => handleCategoryDrop(e, cat.key)}
+                onClick={() => setKanbanOpen(true)}
               >
                 <Badge
                   variant="outline"
-                  className={`cursor-pointer px-3 py-1 text-xs font-medium border-2 ${cat.color} hover:opacity-80 transition-opacity pointer-events-none`}
-                  onClick={() => setKanbanOpen(true)}
+                  className={`px-3 py-1 text-xs font-medium border-2 ${cat.color} hover:opacity-80 transition-opacity pointer-events-none`}
                 >
                   {cat.key}
                   {categoryCounts[cat.key] > 0 && (
