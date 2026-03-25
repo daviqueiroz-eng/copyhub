@@ -26,7 +26,7 @@ export const GestaoEntregasView = () => {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [kanbanOpen, setKanbanOpen] = useState(false);
-  const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [kanbanOpen, setKanbanOpen] = useState(false);
 
   // Count mentorados per category
   const categoryCounts = useMemo(() => {
