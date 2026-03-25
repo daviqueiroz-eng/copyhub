@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { CalendarDays, Table2, Plus, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +26,6 @@ export const GestaoEntregasView = () => {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [kanbanOpen, setKanbanOpen] = useState(false);
-  const [dragOverCat, setDragOverCat] = useState<string | null>(null);
-  const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Count mentorados per category
   const categoryCounts = useMemo(() => {
@@ -41,48 +39,46 @@ export const GestaoEntregasView = () => {
     return counts;
   }, [mentorados]);
 
-  // Handle native drag-drop on category badges
-  const handleCategoryDragOver = (e: React.DragEvent, cat: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverCat(cat);
-  };
+  // Global mouseup listener for FullCalendar drag to category badges
+  useEffect(() => {
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      const mentoradoId = (window as any).__draggedMentoradoId;
+      (window as any).__draggedMentoradoId = null;
+      if (!mentoradoId) return;
 
-  const handleCategoryDragLeave = () => {
-    setDragOverCat(null);
-  };
-
-  const handleCategoryDrop = (e: React.DragEvent, cat: string) => {
-    e.preventDefault();
-    setDragOverCat(null);
-
-    // Try to get mentorado ID from native drag data
-    const mentoradoId = e.dataTransfer.getData("mentorado-id");
-    if (mentoradoId) {
-      updateMentorado.mutate(
-        { id: mentoradoId, categoria: cat } as any,
-        {
-          onSuccess: () => {
-            toast({ title: `Mentorado movido para ${cat}` });
-          },
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const badge = el?.closest("[data-category]") as HTMLElement | null;
+      if (badge) {
+        const cat = badge.dataset.category;
+        if (cat) {
+          updateMentorado.mutate(
+            { id: mentoradoId, categoria: cat } as any,
+            {
+              onSuccess: () => {
+                toast({ title: `Mentorado movido para ${cat}` });
+              },
+            }
+          );
         }
-      );
-    }
-  };
+      }
+    };
+    document.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => document.removeEventListener("mouseup", handleGlobalMouseUp);
+  }, [updateMentorado, toast]);
 
   const handleExport = () => {
     const rows = entregas.map((e) => ({
-      Mentorado: e.mentorado?.nome || "",
-      Mentor: e.mentorado?.mentor || "",
-      Curso: e.mentorado?.curso || "",
-      Leva: e.leva || "",
-      Prazo: e.prazo || "",
-      "Data Entrega": e.data_entrega || "",
-      "Dias Úteis": e.dias_uteis,
-      Status: e.status,
-      Pausado: e.mentorado?.pausado ? "Sim" : "Não",
-      Observação: e.observacao || "",
       Copy: e.responsavel?.nome || "",
+      Cliente: e.mentorado?.nome || "",
+      Mentor: e.mentor || e.mentorado?.mentor || "",
+      Plano: e.mentorado?.curso || "",
+      "Leva Atual": e.leva || "",
+      "Prazo Atual": e.prazo || "",
+      "Levas no Total": e.levas_totais || "",
+      "Roteiros por Leva": e.roteiros_por_leva || "",
+      Status: e.status,
+      Entregas: e.data_entrega || "",
+      Observação: e.observacao || "",
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -117,11 +113,8 @@ export const GestaoEntregasView = () => {
             {CATEGORIAS.map((cat) => (
               <div
                 key={cat.key}
-                ref={(el) => { categoryRefs.current[cat.key] = el; }}
-                onDragOver={(e) => handleCategoryDragOver(e, cat.key)}
-                onDragLeave={handleCategoryDragLeave}
-                onDrop={(e) => handleCategoryDrop(e, cat.key)}
-                className={`transition-all ${dragOverCat === cat.key ? "scale-110 ring-2 ring-primary" : ""}`}
+                data-category={cat.key}
+                className="transition-all"
               >
                 <Badge
                   variant="outline"

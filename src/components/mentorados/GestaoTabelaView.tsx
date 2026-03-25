@@ -1,13 +1,10 @@
 import { useState, useMemo } from "react";
 import { format, isBefore, startOfDay, addDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Search, ArrowUpDown, CalendarIcon } from "lucide-react";
+import { Search, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -35,14 +32,15 @@ export const GestaoTabelaView = ({ entregas }: Props) => {
   const today = startOfDay(new Date());
   const nearDeadline = addDays(today, 3);
 
-  // Unique mentors for filter
   const mentors = useMemo(() => {
     const set = new Set<string>();
-    entregas.forEach((e) => { if (e.mentorado?.mentor) set.add(e.mentorado.mentor); });
+    entregas.forEach((e) => {
+      const m = e.mentor || e.mentorado?.mentor;
+      if (m) set.add(m);
+    });
     return Array.from(set);
   }, [entregas]);
 
-  // Auto-mark overdue
   const processedEntregas = useMemo(() => {
     return entregas.map((e) => {
       const prazoDate = new Date(e.prazo + "T12:00:00");
@@ -66,7 +64,8 @@ export const GestaoTabelaView = ({ entregas }: Props) => {
       result = result.filter((e) => e.status === statusFilter);
     }
     if (mentorFilter !== "Todos") {
-      result = result.filter((e) => e.mentorado?.mentor === mentorFilter);
+      const m = mentorFilter;
+      result = result.filter((e) => (e.mentor || e.mentorado?.mentor) === m);
     }
     result.sort((a, b) => {
       const cmp = a.prazo.localeCompare(b.prazo);
@@ -77,11 +76,6 @@ export const GestaoTabelaView = ({ entregas }: Props) => {
 
   const handleInlineStatusChange = (id: string, newStatus: string) => {
     updateEntrega.mutate({ id, status: newStatus });
-  };
-
-  const handleInlinePrazoChange = (id: string, date: Date | undefined) => {
-    if (!date) return;
-    updateEntrega.mutate({ id, prazo: format(date, "yyyy-MM-dd") });
   };
 
   const getRowClass = (e: GestaoEntrega) => {
@@ -97,13 +91,12 @@ export const GestaoTabelaView = ({ entregas }: Props) => {
       case "Finalizado": return <Badge variant="secondary" className="bg-muted text-muted-foreground">Finalizado</Badge>;
       case "Atrasado": return <Badge variant="destructive">Atrasado</Badge>;
       case "Pausado": return <Badge variant="outline">Pausado</Badge>;
-      default: return <Badge className="bg-primary/20 text-primary border-primary/30">Em andamento</Badge>;
+      default: return <Badge className="bg-primary/20 text-primary border-primary/30">{status}</Badge>;
     }
   };
 
   return (
     <div className="flex flex-col h-full gap-3">
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 shrink-0">
         <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -127,22 +120,21 @@ export const GestaoTabelaView = ({ entregas }: Props) => {
         </Button>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-auto border rounded-lg">
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
-              <TableHead className="w-[140px]">Mentorado</TableHead>
-              <TableHead className="w-[100px]">Mentor</TableHead>
-              <TableHead className="w-[100px]">Curso</TableHead>
-              <TableHead className="w-[60px] text-center">Leva</TableHead>
-              <TableHead className="w-[110px]">Prazo</TableHead>
-              <TableHead className="w-[100px]">Entrega</TableHead>
-              <TableHead className="w-[60px] text-center">DU</TableHead>
-              <TableHead className="w-[120px]">Status</TableHead>
-              <TableHead className="w-[60px] text-center">Pausado</TableHead>
-              <TableHead>Observação</TableHead>
               <TableHead className="w-[100px]">Copy</TableHead>
+              <TableHead className="w-[160px]">Cliente</TableHead>
+              <TableHead className="w-[120px]">Mentor</TableHead>
+              <TableHead className="w-[140px]">Plano</TableHead>
+              <TableHead className="w-[80px] text-center">Leva Atual</TableHead>
+              <TableHead className="w-[110px]">Prazo Atual</TableHead>
+              <TableHead className="w-[80px] text-center">Levas no Total</TableHead>
+              <TableHead className="w-[80px] text-center">Roteiros por Leva</TableHead>
+              <TableHead className="w-[120px]">Status</TableHead>
+              <TableHead className="w-[110px]">Entregas</TableHead>
+              <TableHead>Observação</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -152,6 +144,7 @@ export const GestaoTabelaView = ({ entregas }: Props) => {
                 className={cn("cursor-pointer hover:bg-accent/50 transition-colors", getRowClass(e))}
                 onClick={() => { setSelectedEntrega(e); setDialogOpen(true); }}
               >
+                <TableCell className="text-sm">{e.responsavel?.nome || "—"}</TableCell>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
                     <div
@@ -161,16 +154,14 @@ export const GestaoTabelaView = ({ entregas }: Props) => {
                     <span className="truncate">{e.mentorado?.nome}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{e.mentorado?.mentor || "—"}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{e.mentor || e.mentorado?.mentor || "—"}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{e.mentorado?.curso || "—"}</TableCell>
                 <TableCell className="text-center">{e.leva || "—"}</TableCell>
                 <TableCell className="text-sm">
                   {e.prazo ? format(new Date(e.prazo + "T12:00:00"), "dd/MM/yyyy") : "—"}
                 </TableCell>
-                <TableCell className="text-sm">
-                  {e.data_entrega ? format(new Date(e.data_entrega + "T12:00:00"), "dd/MM/yyyy") : "—"}
-                </TableCell>
-                <TableCell className="text-center">{e.dias_uteis}</TableCell>
+                <TableCell className="text-center">{e.levas_totais || "—"}</TableCell>
+                <TableCell className="text-center">{e.roteiros_por_leva || "—"}</TableCell>
                 <TableCell onClick={(ev) => ev.stopPropagation()}>
                   <Select value={e.status} onValueChange={(v) => handleInlineStatusChange(e.id, v)}>
                     <SelectTrigger className="h-7 text-xs border-0 p-0 focus:ring-0">
@@ -183,9 +174,10 @@ export const GestaoTabelaView = ({ entregas }: Props) => {
                     </SelectContent>
                   </Select>
                 </TableCell>
-                <TableCell className="text-center">{e.mentorado?.pausado ? "⏸" : "—"}</TableCell>
+                <TableCell className="text-sm">
+                  {e.data_entrega ? format(new Date(e.data_entrega + "T12:00:00"), "dd/MM/yyyy") : "—"}
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground truncate max-w-[200px]">{e.observacao || "—"}</TableCell>
-                <TableCell className="text-sm">{e.responsavel?.nome || "—"}</TableCell>
               </TableRow>
             ))}
             {filtered.length === 0 && (
