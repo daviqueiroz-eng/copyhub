@@ -53,9 +53,56 @@ export function MentoradoCard({ mentorado, onClick, hasEntrega }: MentoradoCardP
     (window as any).__draggedMentoradoId = mentorado.id;
   };
 
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    if (e.button !== 0 || target?.closest("button")) return;
+
+    const dragState = {
+      id: mentorado.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+      handled: false,
+    };
+
+    (window as any).__mentoradoCategoryDrag = dragState;
+    (window as any).__draggedMentoradoId = mentorado.id;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if ((window as any).__mentoradoCategoryDrag !== dragState) return;
+
+      const distance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY);
+      if (distance > 8) {
+        dragState.moved = true;
+      }
+    };
+
+    const cleanup = () => {
+      document.removeEventListener("pointermove", handlePointerMove, true);
+      document.removeEventListener("pointerup", handlePointerUp, true);
+      document.removeEventListener("pointercancel", handlePointerUp, true);
+    };
+
+    const handlePointerUp = () => {
+      window.setTimeout(() => {
+        if ((window as any).__mentoradoCategoryDrag === dragState && !dragState.handled) {
+          (window as any).__mentoradoCategoryDrag = null;
+          (window as any).__draggedMentoradoId = null;
+        }
+        cleanup();
+      }, 0);
+    };
+
+    document.addEventListener("pointermove", handlePointerMove, true);
+    document.addEventListener("pointerup", handlePointerUp, true);
+    document.addEventListener("pointercancel", handlePointerUp, true);
+  };
+
   return (
     <Card
       ref={cardRef}
+      draggable
+      onPointerDown={handlePointerDown}
       onDragStart={handleDragStart}
       className={`p-2 flex items-center gap-2 cursor-grab active:cursor-grabbing hover:bg-accent/50 transition-colors ${
         hasEntrega ? "border-green-500 border-2" : ""

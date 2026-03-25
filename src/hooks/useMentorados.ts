@@ -7,6 +7,7 @@ export type Mentorado = {
   nome: string;
   iniciais: string;
   avatar: string | null;
+  categoria?: string | null;
   dores: string | null;
   desejos: string | null;
   objecoes: string | null;

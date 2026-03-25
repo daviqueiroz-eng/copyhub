@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { CalendarDays, Table2, Plus, Download, X } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { CalendarDays, Table2, Plus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,6 +26,7 @@ export const GestaoEntregasView = () => {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [kanbanOpen, setKanbanOpen] = useState(false);
+  const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Count mentorados per category
   const categoryCounts = useMemo(() => {
@@ -39,25 +40,44 @@ export const GestaoEntregasView = () => {
     return counts;
   }, [mentorados]);
 
-  const handleCategoryDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
+  useEffect(() => {
+    const handleGlobalPointerUp = (event: PointerEvent) => {
+      const dragState = (window as any).__mentoradoCategoryDrag;
+      if (!dragState?.id || !dragState.moved || dragState.handled) return;
 
-  const handleCategoryDrop = (e: React.DragEvent, category: string) => {
-    e.preventDefault();
-    const mentoradoId = (window as any).__draggedMentoradoId;
-    (window as any).__draggedMentoradoId = null;
-    if (!mentoradoId) return;
-    updateMentorado.mutate(
-      { id: mentoradoId, categoria: category } as any,
-      {
-        onSuccess: () => {
-          toast({ title: `Mentorado movido para ${category}` });
-        },
-      }
-    );
-  };
+      const droppedCategory = CATEGORIAS.find((cat) => {
+        const element = categoryRefs.current[cat.key];
+        if (!element) return false;
+
+        const rect = element.getBoundingClientRect();
+        return (
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom
+        );
+      })?.key;
+
+      if (!droppedCategory) return;
+
+      dragState.handled = true;
+      (window as any).__mentoradoCategoryDrag = null;
+      (window as any).__draggedMentoradoId = null;
+
+      updateMentorado.mutate(
+        { id: dragState.id, categoria: droppedCategory } as any,
+        {
+          onSuccess: () => {
+            toast({ title: `Mentorado movido para ${droppedCategory}` });
+            setKanbanOpen(true);
+          },
+        }
+      );
+    };
+
+    document.addEventListener("pointerup", handleGlobalPointerUp, true);
+    return () => document.removeEventListener("pointerup", handleGlobalPointerUp, true);
+  }, [toast, updateMentorado]);
 
   const handleExport = () => {
     const rows = entregas.map((e) => ({
@@ -107,9 +127,10 @@ export const GestaoEntregasView = () => {
               <div
                 key={cat.key}
                 data-category={cat.key}
+                ref={(element) => {
+                  categoryRefs.current[cat.key] = element;
+                }}
                 className="transition-all cursor-pointer"
-                onDragOver={handleCategoryDragOver}
-                onDrop={(e) => handleCategoryDrop(e, cat.key)}
                 onClick={() => setKanbanOpen(true)}
               >
                 <Badge
