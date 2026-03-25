@@ -49,14 +49,14 @@ export function MentoradoCard({ mentorado, onClick, hasEntrega }: MentoradoCardP
     }
   };
 
-  const handlePointerDown = () => {
+  const handleDragStart = () => {
     (window as any).__draggedMentoradoId = mentorado.id;
   };
 
   return (
     <Card
       ref={cardRef}
-      onPointerDown={handlePointerDown}
+      onDragStart={handleDragStart}
       className={`p-2 flex items-center gap-2 cursor-grab active:cursor-grabbing hover:bg-accent/50 transition-colors ${
         hasEntrega ? "border-green-500 border-2" : ""
       }`}
