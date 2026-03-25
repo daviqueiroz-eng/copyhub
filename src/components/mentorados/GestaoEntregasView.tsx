@@ -39,32 +39,25 @@ export const GestaoEntregasView = () => {
     return counts;
   }, [mentorados]);
 
-  // Global mouseup listener for FullCalendar drag to category badges
-  useEffect(() => {
-    const handleGlobalMouseUp = (e: MouseEvent) => {
-      const mentoradoId = (window as any).__draggedMentoradoId;
-      (window as any).__draggedMentoradoId = null;
-      if (!mentoradoId) return;
+  const handleCategoryDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
 
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const badge = el?.closest("[data-category]") as HTMLElement | null;
-      if (badge) {
-        const cat = badge.dataset.category;
-        if (cat) {
-          updateMentorado.mutate(
-            { id: mentoradoId, categoria: cat } as any,
-            {
-              onSuccess: () => {
-                toast({ title: `Mentorado movido para ${cat}` });
-              },
-            }
-          );
-        }
+  const handleCategoryDrop = (e: React.DragEvent, category: string) => {
+    e.preventDefault();
+    const mentoradoId = (window as any).__draggedMentoradoId;
+    (window as any).__draggedMentoradoId = null;
+    if (!mentoradoId) return;
+    updateMentorado.mutate(
+      { id: mentoradoId, categoria: category } as any,
+      {
+        onSuccess: () => {
+          toast({ title: `Mentorado movido para ${category}` });
+        },
       }
-    };
-    document.addEventListener("mouseup", handleGlobalMouseUp);
-    return () => document.removeEventListener("mouseup", handleGlobalMouseUp);
-  }, [updateMentorado, toast]);
+    );
+  };
 
   const handleExport = () => {
     const rows = entregas.map((e) => ({
@@ -115,10 +108,12 @@ export const GestaoEntregasView = () => {
                 key={cat.key}
                 data-category={cat.key}
                 className="transition-all"
+                onDragOver={handleCategoryDragOver}
+                onDrop={(e) => handleCategoryDrop(e, cat.key)}
               >
                 <Badge
                   variant="outline"
-                  className={`cursor-pointer px-3 py-1 text-xs font-medium border-2 ${cat.color} hover:opacity-80 transition-opacity`}
+                  className={`cursor-pointer px-3 py-1 text-xs font-medium border-2 ${cat.color} hover:opacity-80 transition-opacity pointer-events-none`}
                   onClick={() => setKanbanOpen(true)}
                 >
                   {cat.key}
