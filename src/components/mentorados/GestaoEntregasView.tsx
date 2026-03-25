@@ -70,17 +70,17 @@ export const GestaoEntregasView = () => {
 
   const handleExport = () => {
     const rows = entregas.map((e) => ({
-      Mentorado: e.mentorado?.nome || "",
-      Mentor: e.mentorado?.mentor || "",
-      Curso: e.mentorado?.curso || "",
-      Leva: e.leva || "",
-      Prazo: e.prazo || "",
-      "Data Entrega": e.data_entrega || "",
-      "Dias Úteis": e.dias_uteis,
-      Status: e.status,
-      Pausado: e.mentorado?.pausado ? "Sim" : "Não",
-      Observação: e.observacao || "",
       Copy: e.responsavel?.nome || "",
+      Cliente: e.mentorado?.nome || "",
+      Mentor: e.mentor || e.mentorado?.mentor || "",
+      Plano: e.mentorado?.curso || "",
+      "Leva Atual": e.leva || "",
+      "Prazo Atual": e.prazo || "",
+      "Levas no Total": e.levas_totais || "",
+      "Roteiros por Leva": e.roteiros_por_leva || "",
+      Status: e.status,
+      Entregas: e.data_entrega || "",
+      Observação: e.observacao || "",
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -115,11 +115,8 @@ export const GestaoEntregasView = () => {
             {CATEGORIAS.map((cat) => (
               <div
                 key={cat.key}
-                ref={(el) => { categoryRefs.current[cat.key] = el; }}
-                onDragOver={(e) => handleCategoryDragOver(e, cat.key)}
-                onDragLeave={handleCategoryDragLeave}
-                onDrop={(e) => handleCategoryDrop(e, cat.key)}
-                className={`transition-all ${dragOverCat === cat.key ? "scale-110 ring-2 ring-primary" : ""}`}
+                data-category={cat.key}
+                className="transition-all"
               >
                 <Badge
                   variant="outline"
