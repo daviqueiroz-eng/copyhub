@@ -22,7 +22,7 @@ export function GeralView({ mentorados, searchTerm, onMentoradoClick, mentoradoI
   const { toast } = useToast();
 
   const filteredMentorados = mentorados.filter((m) =>
-    m.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    !m.categoria && m.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const mentoradosWithInstagram = filteredMentorados.filter(m => m.instagram);
