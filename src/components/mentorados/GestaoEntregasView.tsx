@@ -41,34 +41,32 @@ export const GestaoEntregasView = () => {
     return counts;
   }, [mentorados]);
 
-  // Handle native drag-drop on category badges
-  const handleCategoryDragOver = (e: React.DragEvent, cat: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverCat(cat);
-  };
+  // Global mouseup listener for FullCalendar drag to category badges
+  useEffect(() => {
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      const mentoradoId = (window as any).__draggedMentoradoId;
+      (window as any).__draggedMentoradoId = null;
+      if (!mentoradoId) return;
 
-  const handleCategoryDragLeave = () => {
-    setDragOverCat(null);
-  };
-
-  const handleCategoryDrop = (e: React.DragEvent, cat: string) => {
-    e.preventDefault();
-    setDragOverCat(null);
-
-    // Try to get mentorado ID from native drag data
-    const mentoradoId = e.dataTransfer.getData("mentorado-id");
-    if (mentoradoId) {
-      updateMentorado.mutate(
-        { id: mentoradoId, categoria: cat } as any,
-        {
-          onSuccess: () => {
-            toast({ title: `Mentorado movido para ${cat}` });
-          },
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const badge = el?.closest("[data-category]") as HTMLElement | null;
+      if (badge) {
+        const cat = badge.dataset.category;
+        if (cat) {
+          updateMentorado.mutate(
+            { id: mentoradoId, categoria: cat } as any,
+            {
+              onSuccess: () => {
+                toast({ title: `Mentorado movido para ${cat}` });
+              },
+            }
+          );
         }
-      );
-    }
-  };
+      }
+    };
+    document.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => document.removeEventListener("mouseup", handleGlobalMouseUp);
+  }, [updateMentorado, toast]);
 
   const handleExport = () => {
     const rows = entregas.map((e) => ({
