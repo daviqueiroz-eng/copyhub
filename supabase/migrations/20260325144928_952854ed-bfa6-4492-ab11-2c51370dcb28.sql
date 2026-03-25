@@ -1,0 +1,1 @@
+ALTER TABLE public.mentorados ADD COLUMN IF NOT EXISTS categoria text DEFAULT null;
