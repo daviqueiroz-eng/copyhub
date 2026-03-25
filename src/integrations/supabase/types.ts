@@ -1430,6 +1430,7 @@ export type Database = {
         Row: {
           apresentacao: string | null
           avatar: string | null
+          categoria: string | null
           cor: string | null
           created_at: string
           crencas: string | null
@@ -1460,6 +1461,7 @@ export type Database = {
         Insert: {
           apresentacao?: string | null
           avatar?: string | null
+          categoria?: string | null
           cor?: string | null
           created_at?: string
           crencas?: string | null
@@ -1490,6 +1492,7 @@ export type Database = {
         Update: {
           apresentacao?: string | null
           avatar?: string | null
+          categoria?: string | null
           cor?: string | null
           created_at?: string
           crencas?: string | null
