@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { CalendarDays, Table2, Plus, Download } from "lucide-react";
+import { CalendarDays, Table2, Plus, Download, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,7 @@ import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { GestaoCalendarioView } from "./GestaoCalendarioView";
 import { GestaoTabelaView } from "./GestaoTabelaView";
 import { GestaoEntregaDialog } from "./GestaoEntregaDialog";
+import { BussolaCopyView } from "./BussolaCopyView";
 import { CategoriaKanbanDialog } from "./CategoriaKanbanDialog";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
@@ -120,6 +121,9 @@ export const GestaoEntregasView = () => {
               <TabsTrigger value="tabela" className="gap-1.5">
                 <Table2 className="h-4 w-4" /> Tabela
               </TabsTrigger>
+              <TabsTrigger value="bussola" className="gap-1.5">
+                <Compass className="h-4 w-4" /> Bússola dos Copy
+              </TabsTrigger>
             </TabsList>
 
             {/* Category badges - droppable + clickable for Kanban */}
@@ -162,6 +166,10 @@ export const GestaoEntregasView = () => {
 
         <TabsContent value="tabela" className="flex-1 min-h-0 mt-0">
           <GestaoTabelaView entregas={entregas} />
+        </TabsContent>
+
+        <TabsContent value="bussola" className="flex-1 min-h-0 mt-0">
+          <BussolaCopyView />
         </TabsContent>
       </Tabs>
 
