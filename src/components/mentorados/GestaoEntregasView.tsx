@@ -8,6 +8,7 @@ import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { GestaoCalendarioView } from "./GestaoCalendarioView";
 import { GestaoTabelaView } from "./GestaoTabelaView";
 import { GestaoEntregaDialog } from "./GestaoEntregaDialog";
+import { BussolaCopyView } from "./BussolaCopyView";
 import { CategoriaKanbanDialog } from "./CategoriaKanbanDialog";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
