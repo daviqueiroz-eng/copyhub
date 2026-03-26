@@ -167,6 +167,10 @@ export const GestaoEntregasView = () => {
         <TabsContent value="tabela" className="flex-1 min-h-0 mt-0">
           <GestaoTabelaView entregas={entregas} />
         </TabsContent>
+
+        <TabsContent value="bussola" className="flex-1 min-h-0 mt-0">
+          <BussolaCopyView />
+        </TabsContent>
       </Tabs>
 
       <GestaoEntregaDialog open={dialogOpen} onOpenChange={setDialogOpen} />
