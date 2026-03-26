@@ -2,13 +2,14 @@ import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { format, isBefore, startOfDay, parse } from "date-fns";
+import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBussolaCopy, BussolaEntry } from "@/hooks/useBussolaCopy";
-import { ChevronLeft, ChevronRight, Star, Search, RefreshCw, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, Search, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -21,88 +22,108 @@ const COLORS = [
   "#EC4899", "#06B6D4", "#84CC16", "#F97316", "#6366F1",
 ];
 
-function getColorForCopy(copy: string, index: number): string {
-  return COLORS[index % COLORS.length];
-}
-
 function parseDate(dateStr: string): string | null {
   if (!dateStr) return null;
-  // Try DD/MM/YYYY
   const parts = dateStr.split("/");
   if (parts.length === 3) {
     const [day, month, year] = parts;
     const y = year.length === 2 ? `20${year}` : year;
     return `${y}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   }
-  // Try YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
   return null;
 }
 
+const STORAGE_KEY_FAV = "bussola-favorites";
+const STORAGE_KEY_SELECTED = "bussola-selected-copy";
+
 export const BussolaCopyView = () => {
-  const { data: entries = [], isLoading, refetch, isFetching } = useBussolaCopy();
+  const { data: entries = [], isLoading } = useBussolaCopy();
   const [currentTitle, setCurrentTitle] = useState("");
   const [currentView, setCurrentView] = useState<"dayGridMonth" | "dayGridWeek">("dayGridMonth");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCopy, setSelectedCopy] = useState<string | null>(() => {
+    try { return localStorage.getItem(STORAGE_KEY_SELECTED) || null; } catch { return null; }
+  });
   const [favorites, setFavorites] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("bussola-favorites") || "[]");
-    } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY_FAV) || "[]"); } catch { return []; }
   });
   const [selectedEntry, setSelectedEntry] = useState<BussolaEntry | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const calendarRef = useRef<any>(null);
   const today = startOfDay(new Date());
 
-  // Unique copy names for filter
+  // Unique copy names
   const copyNames = useMemo(() => {
     const names = new Set<string>();
     entries.forEach(e => { if (e.copy) names.add(e.copy.trim()); });
-    return Array.from(names).sort();
+    return Array.from(names);
   }, [entries]);
 
-  // Copy color map
+  // Sorted: favorites first, then alphabetical
+  const sortedCopyNames = useMemo(() => {
+    return [...copyNames].sort((a, b) => {
+      const aFav = favorites.includes(a) ? 0 : 1;
+      const bFav = favorites.includes(b) ? 0 : 1;
+      if (aFav !== bFav) return aFav - bFav;
+      return a.localeCompare(b);
+    });
+  }, [copyNames, favorites]);
+
+  // Auto-select: if no selection, pick first favorite or null
+  useEffect(() => {
+    if (selectedCopy && copyNames.includes(selectedCopy)) return;
+    if (favorites.length > 0) {
+      const firstFav = favorites.find(f => copyNames.includes(f));
+      if (firstFav) {
+        setSelectedCopy(firstFav);
+        localStorage.setItem(STORAGE_KEY_SELECTED, firstFav);
+      }
+    }
+  }, [copyNames, favorites, selectedCopy]);
+
   const copyColorMap = useMemo(() => {
     const map: Record<string, string> = {};
-    copyNames.forEach((name, i) => { map[name] = getColorForCopy(name, i); });
+    copyNames.forEach((name, i) => { map[name] = COLORS[i % COLORS.length]; });
     return map;
   }, [copyNames]);
 
-  const toggleFavorite = (name: string) => {
+  const toggleFavorite = (name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setFavorites(prev => {
       const next = prev.includes(name)
         ? prev.filter(n => n !== name)
         : [...prev, name];
-      localStorage.setItem("bussola-favorites", JSON.stringify(next));
+      localStorage.setItem(STORAGE_KEY_FAV, JSON.stringify(next));
       return next;
     });
   };
 
-  // Filter entries
-  const filtered = useMemo(() => {
-    let result = entries.filter(e => {
-      const date = parseDate(e.prazo_atual);
-      return date !== null;
-    });
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(e =>
-        e.cliente.toLowerCase().includes(term) ||
-        e.copy.toLowerCase().includes(term) ||
-        e.mentor.toLowerCase().includes(term)
-      );
+  const selectCopy = (name: string) => {
+    const newVal = selectedCopy === name ? null : name;
+    setSelectedCopy(newVal);
+    if (newVal) {
+      localStorage.setItem(STORAGE_KEY_SELECTED, newVal);
+    } else {
+      localStorage.removeItem(STORAGE_KEY_SELECTED);
     }
+  };
 
-    // Sort: favorites first
-    result.sort((a, b) => {
-      const aFav = favorites.includes(a.copy.trim()) ? 0 : 1;
-      const bFav = favorites.includes(b.copy.trim()) ? 0 : 1;
-      return aFav - bFav;
-    });
-
+  // Filter entries by selected copy
+  const filtered = useMemo(() => {
+    let result = entries.filter(e => parseDate(e.prazo_atual) !== null);
+    if (selectedCopy) {
+      result = result.filter(e => e.copy.trim() === selectedCopy);
+    }
     return result;
-  }, [entries, searchTerm, favorites]);
+  }, [entries, selectedCopy]);
+
+  // Filter sidebar list by search
+  const filteredNames = useMemo(() => {
+    if (!searchTerm) return sortedCopyNames;
+    const term = searchTerm.toLowerCase();
+    return sortedCopyNames.filter(n => n.toLowerCase().includes(term));
+  }, [sortedCopyNames, searchTerm]);
 
   const events = useMemo(() => {
     return filtered.map((e, i) => {
@@ -118,21 +139,14 @@ export const BussolaCopyView = () => {
         allDay: true,
         backgroundColor: "transparent",
         borderColor: "transparent",
-        extendedProps: {
-          entry: e,
-          isOverdue,
-          cor,
-          prazoFormatted: format(prazoDate, "dd/MM"),
-        },
+        extendedProps: { entry: e, isOverdue, cor, prazoFormatted: format(prazoDate, "dd/MM") },
       };
     });
   }, [filtered, today, copyColorMap]);
 
   const updateTitle = useCallback(() => {
     const api = calendarRef.current?.getApi();
-    if (api) {
-      setCurrentTitle(format(api.getDate(), "MMMM yyyy", { locale: ptBR }));
-    }
+    if (api) setCurrentTitle(format(api.getDate(), "MMMM yyyy", { locale: ptBR }));
   }, []);
 
   useEffect(() => { updateTitle(); }, [updateTitle]);
@@ -140,8 +154,6 @@ export const BussolaCopyView = () => {
   const handlePrev = () => { calendarRef.current?.getApi()?.prev(); updateTitle(); };
   const handleNext = () => { calendarRef.current?.getApi()?.next(); updateTitle(); };
   const handleToday = () => { calendarRef.current?.getApi()?.today(); updateTitle(); };
-  const handlePrevDay = () => { calendarRef.current?.getApi()?.incrementDate({ days: -1 }); updateTitle(); };
-  const handleNextDay = () => { calendarRef.current?.getApi()?.incrementDate({ days: 1 }); updateTitle(); };
 
   const switchView = (view: "dayGridMonth" | "dayGridWeek") => {
     setCurrentView(view);
@@ -159,150 +171,146 @@ export const BussolaCopyView = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bussola-calendar">
-      {/* Filters */}
-      <div className="flex items-center gap-3 mb-3 shrink-0 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <div className="h-full flex bussola-calendar">
+      {/* Sidebar */}
+      <div className="w-[240px] shrink-0 border-r border-border flex flex-col mr-4">
+        <div className="relative px-2 py-2">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Filtrar por nome..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-8 text-sm"
+            className="pl-8 h-8 text-sm"
           />
         </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {copyNames.map((name) => (
-            <button
-              key={name}
-              onClick={() => toggleFavorite(name)}
-              className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border transition-all hover:opacity-80"
-              style={{
-                borderColor: copyColorMap[name],
-                backgroundColor: favorites.includes(name) ? copyColorMap[name] + "20" : "transparent",
-                color: copyColorMap[name],
-              }}
-            >
-              <Star className={`h-3 w-3 ${favorites.includes(name) ? "fill-current" : ""}`} />
-              {name}
-            </button>
-          ))}
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="gap-1.5 h-8"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
-          Atualizar
-        </Button>
+        <ScrollArea className="flex-1">
+          <div className="flex flex-col">
+            {filteredNames.map((name) => {
+              const isSelected = selectedCopy === name;
+              const isFav = favorites.includes(name);
+              return (
+                <button
+                  key={name}
+                  onClick={() => selectCopy(name)}
+                  className={`flex items-center gap-2 px-3 py-2.5 text-sm transition-colors text-left w-full ${
+                    isSelected
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-foreground hover:bg-muted/60"
+                  }`}
+                >
+                  <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
+                    isSelected ? "bg-primary border-primary" : "border-border"
+                  }`}>
+                    {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                  </div>
+                  <span className="flex-1 truncate">{name}</span>
+                  {isFav && <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                  <button
+                    onClick={(e) => toggleFavorite(name, e)}
+                    className="shrink-0 p-0.5 rounded hover:bg-muted"
+                  >
+                    <Star className={`h-3.5 w-3.5 ${isFav ? "text-amber-500 fill-amber-500" : "text-muted-foreground/40 hover:text-muted-foreground"}`} />
+                  </button>
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
       </div>
 
-      {/* Calendar Header */}
-      <div className="flex items-center justify-between mb-4 shrink-0">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold capitalize text-foreground">{currentTitle}</h2>
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <Badge variant="secondary" className="text-xs">
-            {filtered.length} entregas
-          </Badge>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-muted rounded-lg p-0.5">
-            <button
-              onClick={() => switchView("dayGridWeek")}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                currentView === "dayGridWeek"
-                  ? "bg-background text-foreground shadow-sm font-medium"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Semana
-            </button>
-            <button
-              onClick={() => switchView("dayGridMonth")}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                currentView === "dayGridMonth"
-                  ? "bg-background text-foreground shadow-sm font-medium"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Mês
-            </button>
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2 shrink-0">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold capitalize text-foreground">{currentTitle}</h2>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" className="h-7 w-7" onClick={handlePrev}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleNext}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              {filtered.length} entregas
+            </Badge>
           </div>
 
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevDay}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleToday} className="h-8 px-3 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-muted rounded-lg p-0.5">
+              <button
+                onClick={() => switchView("dayGridWeek")}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  currentView === "dayGridWeek"
+                    ? "bg-background text-foreground shadow-sm font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Semana
+              </button>
+              <button
+                onClick={() => switchView("dayGridMonth")}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  currentView === "dayGridMonth"
+                    ? "bg-background text-foreground shadow-sm font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Mês
+              </button>
+            </div>
+
+            <Button variant="outline" size="sm" onClick={handleToday} className="h-7 px-3 text-xs">
               Hoje
             </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNextDay}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
         </div>
-      </div>
 
-      {/* Calendar */}
-      <div className="flex-1 min-h-0">
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          headerToolbar={false}
-          locale="pt-br"
-          events={events}
-          editable={false}
-          height="100%"
-          dayMaxEvents={4}
-          fixedWeekCount={false}
-          eventClick={(info) => {
-            const entry = info.event.extendedProps.entry as BussolaEntry;
-            setSelectedEntry(entry);
-            setDetailOpen(true);
-          }}
-          dayCellContent={(arg) => (
-            <div className="flex items-center gap-1 w-full">
+        {/* Calendar */}
+        <div className="flex-1 min-h-0">
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[dayGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            headerToolbar={false}
+            locale="pt-br"
+            events={events}
+            editable={false}
+            height="100%"
+            dayMaxEvents={4}
+            fixedWeekCount={false}
+            eventClick={(info) => {
+              const entry = info.event.extendedProps.entry as BussolaEntry;
+              setSelectedEntry(entry);
+              setDetailOpen(true);
+            }}
+            dayCellContent={(arg) => (
               <span className="font-semibold text-sm text-foreground">
                 {arg.dayNumberText.replace("日", "")}
               </span>
-            </div>
-          )}
-          eventContent={(arg) => {
-            const { isOverdue, cor, prazoFormatted } = arg.event.extendedProps;
-
-            return (
-              <div
-                className="flex items-start gap-1.5 px-1.5 py-1 rounded-md bg-card border border-border/50 shadow-sm cursor-pointer hover:shadow-md transition-shadow w-full overflow-hidden"
-                style={{ borderLeft: `3px solid ${isOverdue ? "hsl(0 72% 51%)" : cor}` }}
-              >
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-xs font-semibold text-foreground truncate">
-                    {arg.event.title}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Entrega: {prazoFormatted}
-                  </span>
+            )}
+            eventContent={(arg) => {
+              const { isOverdue, cor, prazoFormatted } = arg.event.extendedProps;
+              return (
+                <div
+                  className="flex items-start gap-1.5 px-1.5 py-1 rounded-md bg-card border border-border/50 shadow-sm cursor-pointer hover:shadow-md transition-shadow w-full overflow-hidden"
+                  style={{ borderLeft: `3px solid ${isOverdue ? "hsl(0 72% 51%)" : cor}` }}
+                >
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-xs font-semibold text-foreground truncate">
+                      {arg.event.title}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Entrega: {prazoFormatted}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          }}
-          datesSet={() => updateTitle()}
-        />
+              );
+            }}
+            datesSet={() => updateTitle()}
+          />
+        </div>
       </div>
 
       {/* Detail Dialog */}
@@ -373,35 +381,35 @@ export const BussolaCopyView = () => {
         }
         .bussola-calendar .fc .fc-col-header-cell {
           background: hsl(var(--muted));
-          padding: 8px 0;
-          font-size: 0.8rem;
+          padding: 6px 0;
+          font-size: 0.75rem;
           font-weight: 600;
           color: hsl(var(--muted-foreground));
           text-transform: uppercase;
           border: none;
         }
         .bussola-calendar .fc .fc-daygrid-day {
-          min-height: 100px;
+          min-height: 90px;
           transition: background-color 0.15s;
         }
         .bussola-calendar .fc .fc-daygrid-day:hover {
           background-color: hsl(var(--accent) / 0.15);
         }
-        .bussola-calendar .fc .fc-daygrid-day-top { padding: 4px 6px 2px; }
-        .bussola-calendar .fc .fc-daygrid-day-events { padding: 0 4px 4px; }
+        .bussola-calendar .fc .fc-daygrid-day-top { padding: 2px 4px 1px; }
+        .bussola-calendar .fc .fc-daygrid-day-events { padding: 0 3px 3px; }
         .bussola-calendar .fc .fc-event {
-          margin-bottom: 2px;
+          margin-bottom: 1px;
           border: none;
           background: transparent;
         }
-        .bussola-calendar .fc .fc-daygrid-event-harness { margin-bottom: 2px; }
+        .bussola-calendar .fc .fc-daygrid-event-harness { margin-bottom: 1px; }
         .bussola-calendar .fc .fc-day-today { background-color: transparent !important; }
         .bussola-calendar .fc .fc-day-today .fc-daygrid-day-top span:first-child {
           background: hsl(var(--primary));
           color: hsl(var(--primary-foreground));
           border-radius: 50%;
-          width: 28px;
-          height: 28px;
+          width: 26px;
+          height: 26px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -410,7 +418,7 @@ export const BussolaCopyView = () => {
           font-size: 0.7rem;
           color: hsl(var(--primary));
           font-weight: 600;
-          padding: 2px 4px;
+          padding: 1px 3px;
         }
         .bussola-calendar .fc .fc-daygrid-day-frame { min-height: 100%; }
         .bussola-calendar .fc .fc-scrollgrid-section > td { border: none; }
