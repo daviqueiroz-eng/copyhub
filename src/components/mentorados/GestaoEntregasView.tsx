@@ -121,6 +121,9 @@ export const GestaoEntregasView = () => {
               <TabsTrigger value="tabela" className="gap-1.5">
                 <Table2 className="h-4 w-4" /> Tabela
               </TabsTrigger>
+              <TabsTrigger value="bussola" className="gap-1.5">
+                <Compass className="h-4 w-4" /> Bússola dos Copy
+              </TabsTrigger>
             </TabsList>
 
             {/* Category badges - droppable + clickable for Kanban */}
