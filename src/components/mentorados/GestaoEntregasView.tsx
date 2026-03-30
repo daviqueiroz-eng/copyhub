@@ -113,7 +113,7 @@ export const GestaoEntregasView = () => {
   return (
     <div className="flex flex-col h-full">
       <Tabs defaultValue="calendario" className="flex flex-col flex-1 min-h-0" onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between shrink-0 mb-1 flex-wrap gap-1">
+        <div className="flex items-center justify-between shrink-0 mb-0 flex-wrap gap-1">
           <div className="flex items-center gap-2 flex-wrap">
             <TabsList>
               <TabsTrigger value="calendario" className="gap-1.5">
@@ -127,8 +127,8 @@ export const GestaoEntregasView = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* Category badges - droppable + clickable for Kanban */}
-            {CATEGORIAS.map((cat) => (
+            {/* Category badges - hidden on bussola tab */}
+            {activeTab !== "bussola" && CATEGORIAS.map((cat) => (
               <div
                 key={cat.key}
                 data-category={cat.key}

@@ -51,25 +51,45 @@ function normalizeHeader(h: string): string {
 }
 
 async function discoverSheetGids(): Promise<number[]> {
-  try {
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
-    const res = await fetch(url, { redirect: 'follow' });
-    if (!res.ok) return [];
-    const html = await res.text();
-    
-    // Extract GIDs from the HTML - Google Sheets embeds sheet info in the page
-    const gidMatches = html.matchAll(/gid=(\d+)/g);
-    const gids = new Set<number>();
-    for (const match of gidMatches) {
-      gids.add(parseInt(match[1], 10));
+  const gids = new Set<number>();
+  
+  // Always include gid=0
+  gids.add(0);
+  
+  const urls = [
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pubhtml`,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { redirect: 'follow' });
+      if (!res.ok) continue;
+      const text = await res.text();
+      
+      // Extract GIDs from multiple patterns
+      // Pattern 1: gid=123456
+      for (const match of text.matchAll(/gid[=:](\d+)/g)) {
+        gids.add(parseInt(match[1], 10));
+      }
+      // Pattern 2: "sheetId":123456 or "sheetId": 123456
+      for (const match of text.matchAll(/"sheetId"\s*:\s*(\d+)/g)) {
+        gids.add(parseInt(match[1], 10));
+      }
+      // Pattern 3: sheet-button-(\d+) or #gid=(\d+)
+      for (const match of text.matchAll(/sheet-button-(\d+)/g)) {
+        gids.add(parseInt(match[1], 10));
+      }
+      
+      // If we found a good number of GIDs, stop trying more URLs
+      if (gids.size > 5) break;
+    } catch (e) {
+      console.error(`Failed to fetch ${url}:`, e);
     }
-    // Remove gid=0 (overview tab) if it has different format
-    // Actually keep all GIDs and filter by content
-    return Array.from(gids);
-  } catch (e) {
-    console.error('Failed to discover GIDs:', e);
-    return [];
   }
+
+  return Array.from(gids);
 }
 
 Deno.serve(async (req) => {
@@ -78,26 +98,25 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Dynamically discover all sheet tabs
     let tabGids = await discoverSheetGids();
     
-    // Fallback to known GIDs if discovery fails
-    if (tabGids.length === 0) {
+    // Expanded fallback with all known GIDs
+    if (tabGids.length <= 1) {
       tabGids = [
-        1037992, 1138619598, 1145442945, 124469389, 1326452590, 1360991519,
+        0, 1037992, 1138619598, 1145442945, 124469389, 1326452590, 1360991519,
         138315171, 1388286700, 1525942462, 1622349896, 166782956, 1702646058,
         172830072, 1762908962, 1985883801, 2139262870, 262901597, 35095334,
         376140511, 456954641, 591865508, 739982764, 873306198, 90298443, 948812281,
       ];
     }
     
-    console.log(`Fetching ${tabGids.length} tabs`);
+    console.log(`Fetching ${tabGids.length} tabs (GIDs: ${tabGids.slice(0, 5).join(', ')}...)`);
     
     const allRows: Record<string, string>[] = [];
 
-    // Fetch all tabs in parallel (batches of 5)
-    for (let i = 0; i < tabGids.length; i += 5) {
-      const batch = tabGids.slice(i, i + 5);
+    // Fetch all tabs in parallel (batches of 10)
+    for (let i = 0; i < tabGids.length; i += 10) {
+      const batch = tabGids.slice(i, i + 10);
       const results = await Promise.all(
         batch.map(async (gid) => {
           try {
@@ -110,8 +129,10 @@ Deno.serve(async (req) => {
 
             const headers = parsed[0].map(normalizeHeader);
             
-            // Only process tabs that have a 'cliente' column
-            if (!headers.includes('cliente')) return [];
+            // Accept tabs that have either 'cliente' or 'copy' column
+            const hasCliente = headers.includes('cliente');
+            const hasCopy = headers.includes('copy');
+            if (!hasCliente && !hasCopy) return [];
             
             const dataRows = parsed.slice(1);
 
@@ -121,7 +142,11 @@ Deno.serve(async (req) => {
                 obj[h] = row[idx] || '';
               });
               return obj;
-            }).filter(r => r.cliente && r.cliente.trim() !== '');
+            }).filter(r => {
+              // Filter rows that have at least a cliente name
+              const cliente = r.cliente || '';
+              return cliente.trim() !== '';
+            });
           } catch {
             return [];
           }
@@ -130,7 +155,16 @@ Deno.serve(async (req) => {
       results.forEach(rows => allRows.push(...rows));
     }
 
-    return new Response(JSON.stringify({ success: true, data: allRows }), {
+    // Deduplicate by cliente + prazo_atual combo
+    const seen = new Set<string>();
+    const deduped = allRows.filter(r => {
+      const key = `${(r.cliente || '').trim()}|${(r.prazo_atual || '').trim()}|${(r.copy || '').trim()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return new Response(JSON.stringify({ success: true, data: deduped }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

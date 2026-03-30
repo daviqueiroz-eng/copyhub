@@ -56,8 +56,19 @@ export const BussolaCopyView = () => {
   });
   const [selectedEntry, setSelectedEntry] = useState<BussolaEntry | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  // Local overrides for dragged events (visual only, reset on refetch)
+  const [localOverrides, setLocalOverrides] = useState<Record<string, string>>({});
   const calendarRef = useRef<any>(null);
   const today = startOfDay(new Date());
+
+  // Clear overrides when source data changes (refetch from spreadsheet)
+  const entriesRef = useRef(entries);
+  useEffect(() => {
+    if (entries !== entriesRef.current) {
+      entriesRef.current = entries;
+      setLocalOverrides({});
+    }
+  }, [entries]);
 
   // Unique copy names - always dynamic from data
   const copyNames = useMemo(() => {
@@ -129,21 +140,31 @@ export const BussolaCopyView = () => {
 
   const events = useMemo(() => {
     return filtered.map((e, i) => {
-      const date = parseDate(e.prazo_atual)!;
-      const prazoDate = new Date(date + "T12:00:00");
-      const isOverdue = isBefore(prazoDate, today);
+      const originalDate = parseDate(e.prazo_atual)!;
+      const eventId = `bussola-${i}`;
+      const displayDate = localOverrides[eventId] || originalDate;
+      const isMoved = !!localOverrides[eventId];
+      const prazoDate = new Date(originalDate + "T12:00:00");
+      const isOverdue = !isMoved && isBefore(prazoDate, today);
       const cor = copyColorMap[e.copy.trim()] || "#3B82F6";
       return {
-        id: `bussola-${i}`,
+        id: eventId,
         title: e.cliente,
-        start: date,
+        start: displayDate,
         allDay: true,
         backgroundColor: "transparent",
         borderColor: "transparent",
-        extendedProps: { entry: e, isOverdue, cor, prazoFormatted: format(prazoDate, "dd/MM") },
+        extendedProps: {
+          entry: e,
+          isOverdue,
+          cor,
+          isMoved,
+          prazoFormatted: format(prazoDate, "dd/MM"),
+          originalDate,
+        },
       };
     });
-  }, [filtered, today, copyColorMap]);
+  }, [filtered, today, copyColorMap, localOverrides]);
 
   const updateTitle = useCallback(() => {
     const api = calendarRef.current?.getApi();
@@ -162,6 +183,12 @@ export const BussolaCopyView = () => {
     updateTitle();
   };
 
+  const handleEventDrop = (info: any) => {
+    const eventId = info.event.id;
+    const newDate = format(info.event.start, "yyyy-MM-dd");
+    setLocalOverrides(prev => ({ ...prev, [eventId]: newDate }));
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground gap-2">
@@ -172,9 +199,9 @@ export const BussolaCopyView = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bussola-calendar -mt-1">
+    <div className="h-full flex flex-col bussola-calendar mt-0">
       {/* Header */}
-      <div className="flex items-center justify-between mb-1 shrink-0">
+      <div className="flex items-center justify-between mb-0.5 shrink-0">
         <div className="flex items-center gap-3">
           {/* Filter dropdown */}
           <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
@@ -297,10 +324,11 @@ export const BussolaCopyView = () => {
           headerToolbar={false}
           locale="pt-br"
           events={events}
-          editable={false}
-          eventStartEditable={false}
+          editable={true}
+          eventStartEditable={true}
           eventDurationEditable={false}
           droppable={false}
+          eventDrop={handleEventDrop}
           height="100%"
           dayMaxEvents={4}
           fixedWeekCount={false}
@@ -315,11 +343,12 @@ export const BussolaCopyView = () => {
             </span>
           )}
           eventContent={(arg) => {
-            const { isOverdue, cor, prazoFormatted } = arg.event.extendedProps;
+            const { isOverdue, cor, prazoFormatted, isMoved } = arg.event.extendedProps;
+            const borderColor = isMoved ? "#22c55e" : (isOverdue ? "hsl(0 72% 51%)" : cor);
             return (
               <div
                 className="flex items-start gap-1.5 px-1.5 py-1 rounded-md bg-card border border-border/50 shadow-sm cursor-pointer hover:shadow-md transition-shadow w-full overflow-hidden"
-                style={{ borderLeft: `3px solid ${isOverdue ? "hsl(0 72% 51%)" : cor}` }}
+                style={{ borderLeft: `3px solid ${borderColor}` }}
               >
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="text-xs font-semibold text-foreground truncate">
