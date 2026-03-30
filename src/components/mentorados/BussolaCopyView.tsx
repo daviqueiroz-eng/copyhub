@@ -60,7 +60,20 @@ export const BussolaCopyView = () => {
 
   // Local overrides for dragged events, persisted in localStorage
   const [localOverrides, setLocalOverrides] = useState<Record<string, { date: string; originalDate: string }>>(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY_OVERRIDES) || "{}"); } catch { return {}; }
+    try {
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY_OVERRIDES) || "{}");
+      // Clear old index-based keys (bussola-0, bussola-1, etc.)
+      const cleaned: Record<string, { date: string; originalDate: string }> = {};
+      Object.entries(stored).forEach(([key, val]) => {
+        if (!key.startsWith("bussola-")) {
+          cleaned[key] = val as { date: string; originalDate: string };
+        }
+      });
+      if (Object.keys(cleaned).length !== Object.keys(stored).length) {
+        localStorage.setItem(STORAGE_KEY_OVERRIDES, JSON.stringify(cleaned));
+      }
+      return cleaned;
+    } catch { return {}; }
   });
   const calendarRef = useRef<any>(null);
   const today = startOfDay(new Date());
@@ -70,20 +83,26 @@ export const BussolaCopyView = () => {
   useEffect(() => {
     const entriesKey = entries.map(e => `${e.cliente}|${e.prazo_atual}`).join(";;");
     if (prevEntriesRef.current && entriesKey !== prevEntriesRef.current) {
-      // Data changed — clean overrides where the original date no longer matches
       setLocalOverrides(prev => {
         const next: Record<string, { date: string; originalDate: string }> = {};
+        // Build lookup: stableKey -> current prazo
+        const currentLookup = new Map<string, string>();
+        entries.forEach(e => {
+          const key = `${e.cliente.trim()}|${e.copy.trim()}|${e.prazo_atual.trim()}`;
+          const parsed = parseDate(e.prazo_atual);
+          if (parsed) currentLookup.set(key, parsed);
+        });
+
         Object.entries(prev).forEach(([id, val]) => {
-          // Extract index from id
-          const idx = parseInt(id.replace("bussola-", ""), 10);
-          const filtered = entries.filter(e => parseDate(e.prazo_atual) !== null);
-          const entry = filtered[idx];
-          if (entry) {
-            const currentOriginal = parseDate(entry.prazo_atual);
-            if (currentOriginal === val.originalDate) {
-              next[id] = val; // keep override, original unchanged
+          // Keep override only if the original date still matches
+          if (currentLookup.has(id) || val.originalDate) {
+            // Check if an entry with this key still exists with the same original date
+            const stillValid = Array.from(currentLookup.entries()).some(
+              ([, date]) => date === val.originalDate
+            );
+            if (stillValid) {
+              next[id] = val;
             }
-            // else: original changed, discard override
           }
         });
         localStorage.setItem(STORAGE_KEY_OVERRIDES, JSON.stringify(next));
@@ -162,17 +181,18 @@ export const BussolaCopyView = () => {
   }, [sortedCopyNames, searchTerm]);
 
   const events = useMemo(() => {
-    return filtered.map((e, i) => {
+    return filtered.map((e) => {
       const originalDate = parseDate(e.prazo_atual)!;
-      const eventId = `bussola-${i}`;
-      const override = localOverrides[eventId];
+      // Stable key based on content, not index
+      const stableKey = `${e.cliente.trim()}|${e.copy.trim()}|${e.prazo_atual.trim()}`;
+      const override = localOverrides[stableKey];
       const displayDate = override?.date || originalDate;
       const isMoved = !!override;
       const prazoDate = new Date(originalDate + "T12:00:00");
       const isOverdue = !isMoved && isBefore(prazoDate, today);
       const cor = copyColorMap[e.copy.trim()] || "#3B82F6";
       return {
-        id: eventId,
+        id: stableKey,
         title: e.cliente,
         start: displayDate,
         allDay: true,
