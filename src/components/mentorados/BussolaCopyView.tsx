@@ -5,7 +5,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBussolaCopy, BussolaEntry } from "@/hooks/useBussolaCopy";
-import { ChevronLeft, ChevronRight, Star, Search, Loader2, Check, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, Search, Loader2, Check, ChevronDown, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -252,6 +252,14 @@ export const BussolaCopyView = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <a
+            href="https://docs.google.com/spreadsheets/d/1NFx4lDqYh5dxejV-uZEFqjuVHGXHe7z3zfh5FV1h1n8/edit"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-primary hover:text-primary/80 italic flex items-center gap-1 transition-colors"
+          >
+            Acessar planilha <ExternalLink className="h-3.5 w-3.5" />
+          </a>
           <div className="flex items-center bg-muted rounded-lg p-0.5">
             <button
               onClick={() => switchView("dayGridWeek")}

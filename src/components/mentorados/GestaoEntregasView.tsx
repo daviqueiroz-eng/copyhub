@@ -25,6 +25,7 @@ export const GestaoEntregasView = () => {
   const { data: mentorados = [] } = useMentorados();
   const updateMentorado = useUpdateMentorado();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("calendario");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [kanbanOpen, setKanbanOpen] = useState(false);
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -111,7 +112,7 @@ export const GestaoEntregasView = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <Tabs defaultValue="calendario" className="flex flex-col flex-1 min-h-0">
+      <Tabs defaultValue="calendario" className="flex flex-col flex-1 min-h-0" onValueChange={setActiveTab}>
         <div className="flex items-center justify-between shrink-0 mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <TabsList>
@@ -150,14 +151,16 @@ export const GestaoEntregasView = () => {
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
-              <Download className="h-4 w-4" /> Exportar
-            </Button>
-            <Button size="sm" onClick={() => setDialogOpen(true)} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Nova Entrega
-            </Button>
-          </div>
+          {activeTab !== "bussola" && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+                <Download className="h-4 w-4" /> Exportar
+              </Button>
+              <Button size="sm" onClick={() => setDialogOpen(true)} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Nova Entrega
+              </Button>
+            </div>
+          )}
         </div>
 
         <TabsContent value="calendario" className="flex-1 min-h-0 mt-0">
