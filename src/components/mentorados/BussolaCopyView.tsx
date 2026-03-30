@@ -60,7 +60,20 @@ export const BussolaCopyView = () => {
 
   // Local overrides for dragged events, persisted in localStorage
   const [localOverrides, setLocalOverrides] = useState<Record<string, { date: string; originalDate: string }>>(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY_OVERRIDES) || "{}"); } catch { return {}; }
+    try {
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY_OVERRIDES) || "{}");
+      // Clear old index-based keys (bussola-0, bussola-1, etc.)
+      const cleaned: Record<string, { date: string; originalDate: string }> = {};
+      Object.entries(stored).forEach(([key, val]) => {
+        if (!key.startsWith("bussola-")) {
+          cleaned[key] = val as { date: string; originalDate: string };
+        }
+      });
+      if (Object.keys(cleaned).length !== Object.keys(stored).length) {
+        localStorage.setItem(STORAGE_KEY_OVERRIDES, JSON.stringify(cleaned));
+      }
+      return cleaned;
+    } catch { return {}; }
   });
   const calendarRef = useRef<any>(null);
   const today = startOfDay(new Date());
