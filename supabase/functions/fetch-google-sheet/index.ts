@@ -163,6 +163,7 @@ Deno.serve(async (req) => {
             if (parsed.length < 2) return [];
 
             const headers = parsed[0].map(normalizeHeader);
+            console.log(`GID ${gid}: headers=${JSON.stringify(headers.slice(0,5))}, rows=${parsed.length - 1}`);
 
             // Accept tabs that have ANY column resembling client/copy/name data
             const hasRelevantHeader = headers.some(h =>
@@ -170,7 +171,10 @@ Deno.serve(async (req) => {
               h.includes('cliente') || h.includes('mentorado') || h.includes('copy') ||
               h.includes('prazo') || h.includes('leva')
             );
-            if (!hasRelevantHeader) return [];
+            if (!hasRelevantHeader) {
+              console.log(`GID ${gid}: skipped - no relevant header`);
+              return [];
+            }
 
             const dataRows = parsed.slice(1);
 
