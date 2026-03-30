@@ -37,6 +37,7 @@ export const useBussolaCopy = () => {
         observacao: row.observacao || row.observaçao || row.observacao_ || "",
       }));
     },
-    staleTime: 1000 * 60 * 5, // 5 min cache
+    staleTime: 1000 * 30, // 30s cache - always fresh on page load
+    refetchOnWindowFocus: true,
   });
 };
