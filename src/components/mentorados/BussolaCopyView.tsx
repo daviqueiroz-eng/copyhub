@@ -172,9 +172,9 @@ export const BussolaCopyView = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bussola-calendar">
+    <div className="h-full flex flex-col bussola-calendar -mt-1">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2 shrink-0">
+      <div className="flex items-center justify-between mb-1 shrink-0">
         <div className="flex items-center gap-3">
           {/* Filter dropdown */}
           <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
@@ -208,10 +208,10 @@ export const BussolaCopyView = () => {
                     const isSelected = selectedCopy === name;
                     const isFav = favorites.includes(name);
                     return (
-                      <button
+                      <div
                         key={name}
                         onClick={() => selectCopy(name)}
-                        className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left w-full ${
+                        className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left w-full cursor-pointer ${
                           isSelected
                             ? "bg-primary/10 text-primary font-medium"
                             : "text-foreground hover:bg-muted/60"
@@ -223,13 +223,13 @@ export const BussolaCopyView = () => {
                           {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                         </div>
                         <span className="flex-1 truncate">{name}</span>
-                        <button
+                        <span
                           onClick={(e) => toggleFavorite(name, e)}
-                          className="shrink-0 p-0.5 rounded hover:bg-muted"
+                          className="shrink-0 p-0.5 rounded hover:bg-muted cursor-pointer"
                         >
                           <Star className={`h-3.5 w-3.5 ${isFav ? "text-amber-500 fill-amber-500" : "text-muted-foreground/40 hover:text-muted-foreground"}`} />
-                        </button>
-                      </button>
+                        </span>
+                      </div>
                     );
                   })}
                 </div>
@@ -298,6 +298,9 @@ export const BussolaCopyView = () => {
           locale="pt-br"
           events={events}
           editable={false}
+          eventStartEditable={false}
+          eventDurationEditable={false}
+          droppable={false}
           height="100%"
           dayMaxEvents={4}
           fixedWeekCount={false}
