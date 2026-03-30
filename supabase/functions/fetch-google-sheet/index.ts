@@ -54,12 +54,11 @@ async function discoverSheetGids(): Promise<number[]> {
   const gids = new Set<number>();
   gids.add(0);
 
-  // Try multiple endpoints to discover GIDs
+  // htmlview is the most reliable for GID discovery
   const urls = [
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pubhtml`,
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?usp=sharing`,
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`,
     `https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview`,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pubhtml`,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`,
   ];
 
   for (const url of urls) {
@@ -68,23 +67,11 @@ async function discoverSheetGids(): Promise<number[]> {
       if (!res.ok) continue;
       const text = await res.text();
 
-      // Extract GIDs with many patterns
-      const patterns = [
-        /gid[=:](\d+)/g,
-        /"sheetId"\s*:\s*(\d+)/g,
-        /sheet-button-(\d+)/g,
-        /switchToSheet\s*\(\s*['"]?(\d+)['"]?\s*\)/g,
-        /sheet-tab-(\d+)/g,
-        /#gid=(\d+)/g,
-        /sheet_id['":\s]+(\d+)/g,
-        /tab-id-(\d+)/g,
-        /\\?"gid\\?"\s*:\s*\\?"?(\d+)/g,
-      ];
-
-      for (const pattern of patterns) {
-        for (const match of text.matchAll(pattern)) {
-          gids.add(parseInt(match[1], 10));
-        }
+      for (const match of text.matchAll(/gid[=:](\d+)/g)) {
+        gids.add(parseInt(match[1], 10));
+      }
+      for (const match of text.matchAll(/"sheetId"\s*:\s*(\d+)/g)) {
+        gids.add(parseInt(match[1], 10));
       }
 
       if (gids.size > 10) break;
@@ -143,7 +130,7 @@ Deno.serve(async (req) => {
       138315171, 1388286700, 1525942462, 1622349896, 166782956, 1702646058,
       172830072, 1762908962, 1985883801, 2139262870, 262901597, 35095334,
       376140511, 456954641, 591865508, 739982764, 873306198, 90298443, 948812281,
-      278638133, 1456789012, 987654321, 1234567890, 2098765432, 543210987,
+      278638133, 114287148, 778773390,
     ];
 
     // Merge discovered + known
