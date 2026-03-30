@@ -1,95 +1,51 @@
 
 
-# Plan: Sistema Nativo de Gestão de Entregas (Calendário + Tabela)
+## Plano de Ajustes — Bússola dos Copy
 
-Substituir o iframe externo por um sistema completo e nativo de gestão de entregas com duas visualizações sincronizadas.
+### Problema 1: Arrastar cards no calendário (cor verde + data original)
 
----
+Permitir arrastar eventos no calendário. Quando arrastado:
+- O card muda a borda para verde (indicando que foi movido manualmente)
+- O texto interno continua mostrando a data original da planilha
+- A posição local é armazenada em estado (não persiste — é visual)
+- Quando os dados da planilha forem recarregados (refetch), todos os cards voltam à posição correta automaticamente
 
-## Etapa 1 — Banco de Dados (Migration)
+**Alterações em `BussolaCopyView.tsx`:**
+- Habilitar `editable={true}` e `eventStartEditable={true}`
+- Criar estado `localOverrides: Record<string, string>` para armazenar posições arrastadas
+- No `eventDrop`, salvar o override e marcar o evento como "movido"
+- No `eventContent`, se o evento foi movido, usar borda verde (`border-left: 3px solid green`)
+- Limpar `localOverrides` quando `entries` mudar (novo fetch = reset)
 
-Criar duas novas tabelas (a tabela `mentorados` já existe no projeto, mas o user quer um sistema separado para entregas com campos adicionais como `mentor`, `curso`, `cor`, `pausado`). Vou adicionar os campos que faltam à tabela `mentorados` existente e criar a tabela de entregas:
+### Problema 2: Subir o calendário ao topo
 
-**Alterações na tabela `mentorados`** (adicionar colunas):
-- `mentor` text
-- `curso` text  
-- `cor` text default '#3B82F6'
-- `pausado` boolean default false
+O calendário está muito abaixo. Precisa alinhar com o nível do título "Meus Mentorados".
 
-**Nova tabela `gestao_entregas`**:
-- `id` uuid PK
-- `mentorado_id` uuid FK → mentorados.id ON DELETE CASCADE
-- `responsavel_id` uuid FK → profiles (user_id do responsável)
-- `user_id` uuid NOT NULL (dono do registro, para RLS)
-- `leva` integer
-- `prazo` date NOT NULL
-- `data_entrega` date
-- `dias_uteis` integer default 10
-- `status` text default 'Em andamento'
-- `observacao` text
-- `created_at` timestamptz
+**Alterações em `GestaoEntregasView.tsx`:**
+- Remover margens e paddings superiores desnecessários
+- Reduzir `mb-1` e qualquer espaçamento entre TabsList e conteúdo
+- Esconder badges de categorias (Pausado, Churn, etc.) quando a aba ativa é "bussola"
 
-**RLS**: Usuário só vê/edita seus próprios dados (`user_id = auth.uid()`).
+**Alterações em `BussolaCopyView.tsx`:**
+- Remover `-mt-1` e qualquer espaçamento superior, usar `mt-0` ou negativo se necessário
+- Compactar header do calendário (reduzir gaps, paddings)
 
----
+### Problema 3: Nomes faltando (Rafael Nunes, Deidara, etc.)
 
-## Etapa 2 — Hooks de Dados
+O edge function `fetch-google-sheet` não está descobrindo todos os GIDs das abas corretamente. O método `discoverSheetGids()` que faz scraping de HTML é frágil.
 
-**`src/hooks/useGestaoEntregas.ts`**: Hook com queries e mutations para CRUD de entregas, incluindo joins com `mentorados` e `profiles`.
+**Alterações em `supabase/functions/fetch-google-sheet/index.ts`:**
+- Substituir `discoverSheetGids()` por uma abordagem mais robusta:
+  1. Buscar a URL `pubhtml` do spreadsheet (`/pubhtml`) que é pública e lista todas as abas como links com `gid=`
+  2. Extrair GIDs de múltiplos padrões: `gid=N`, `"gid":"N"`, `sheetId":N`
+  3. Sempre incluir `gid=0` no set
+  4. Manter o fallback hardcoded mas expandi-lo com os GIDs que faltam
+- Aumentar o batch size de 5 para 10 para processar mais rápido
+- Também aceitar abas que tenham coluna `copy` (não apenas `cliente`), pois algumas abas podem ter headers ligeiramente diferentes
 
----
+### Arquivos a modificar
 
-## Etapa 3 — Componente Calendário
-
-**`src/components/mentorados/GestaoCalendarioView.tsx`**:
-- FullCalendar com visão semana/mês
-- Cards coloridos por mentorado (usando `cor` do mentorado)
-- Drag and drop para mover entregas entre datas
-- Detecção de conflitos (2 no mesmo dia = alerta leve, 3+ = alerta crítico)
-- Overdue: destaque vermelho quando prazo < hoje e status != "Finalizado"
-- Click no card: dialog para marcar como finalizado, definir data de entrega, gerar próxima entrega automaticamente
-
----
-
-## Etapa 4 — Componente Tabela (Estilo Excel)
-
-**`src/components/mentorados/GestaoTabelaView.tsx`**:
-- Tabela com colunas: Copy, Mentorado, Mentor, Curso, Leva, Prazo, Data Entrega, Dias Úteis, Status, Pausado, Observação
-- Edição inline: status (dropdown), prazo (date picker), observação
-- Ordenação por prazo
-- Busca por nome
-- Filtros: por copy, status, mentor, período
-- Regras automáticas visuais: atrasado = vermelho, próximo do prazo = amarelo, finalizado = opacidade reduzida
-- Header fixo, hover leve, estilo Notion/Airtable
-
----
-
-## Etapa 5 — Componente Principal com Toggle
-
-**`src/components/mentorados/GestaoEntregasView.tsx`**:
-- Toggle `[Calendário | Tabela]` no topo
-- Botão "Exportar Planilha" (CSV/XLSX dos dados filtrados)
-- Ambas as views compartilham o mesmo hook/dados
-- Sincronização automática via React Query
-
----
-
-## Etapa 6 — Integração na Página
-
-**`src/pages/Mentorados.tsx`**:
-- Substituir os dois iframes (mobile e desktop) pelo componente `GestaoEntregasView`
-
----
-
-## Arquivos Criados/Modificados
-
-| Arquivo | Ação |
-|---------|------|
-| Migration SQL | Criar (alter mentorados + nova tabela gestao_entregas) |
-| `src/hooks/useGestaoEntregas.ts` | Criar |
-| `src/components/mentorados/GestaoCalendarioView.tsx` | Criar |
-| `src/components/mentorados/GestaoTabelaView.tsx` | Criar |
-| `src/components/mentorados/GestaoEntregasView.tsx` | Criar |
-| `src/components/mentorados/GestaoEntregaDialog.tsx` | Criar |
-| `src/pages/Mentorados.tsx` | Modificar (remover iframes) |
+1. `src/components/mentorados/BussolaCopyView.tsx` — drag com cor verde, subir layout
+2. `src/components/mentorados/GestaoEntregasView.tsx` — esconder categorias na aba bussola, reduzir espaçamento
+3. `supabase/functions/fetch-google-sheet/index.ts` — fix GID discovery para pegar todas as abas
 
