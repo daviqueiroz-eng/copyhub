@@ -43,7 +43,7 @@ const STORAGE_KEY_FAV = "bussola-favorites";
 const STORAGE_KEY_SELECTED = "bussola-selected-copy";
 
 export const BussolaCopyView = () => {
-  const { data: entries = [], isLoading } = useBussolaCopy();
+  const { data: entries = [], isLoading, refetch, isFetching } = useBussolaCopy();
   const [currentTitle, setCurrentTitle] = useState("");
   const [currentView, setCurrentView] = useState<"dayGridMonth" | "dayGridWeek">("dayGridMonth");
   const [searchTerm, setSearchTerm] = useState("");
@@ -308,6 +308,16 @@ export const BussolaCopyView = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            disabled={isFetching}
+            onClick={() => refetch()}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            {isFetching ? "Atualizando..." : "Reprocessar"}
+          </Button>
           <a
             href="https://docs.google.com/spreadsheets/d/1NFx4lDqYh5dxejV-uZEFqjuVHGXHe7z3zfh5FV1h1n8/edit"
             target="_blank"
