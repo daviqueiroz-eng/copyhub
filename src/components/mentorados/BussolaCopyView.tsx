@@ -5,7 +5,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBussolaCopy, BussolaEntry } from "@/hooks/useBussolaCopy";
-import { ChevronLeft, ChevronRight, Star, Search, Loader2, Check, ChevronDown, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, Search, Loader2, Check, ChevronDown, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

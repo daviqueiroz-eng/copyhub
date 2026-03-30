@@ -16,7 +16,7 @@ export interface BussolaEntry {
 }
 
 export const useBussolaCopy = () => {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["bussola-copy"],
     queryFn: async (): Promise<BussolaEntry[]> => {
       const { data, error } = await supabase.functions.invoke("fetch-google-sheet");
@@ -37,9 +37,15 @@ export const useBussolaCopy = () => {
         observacao: row.observacao || row.observaçao || row.observacao_ || "",
       }));
     },
-    staleTime: 0, // Always fresh - no cache
-    gcTime: 1000 * 60, // Keep in memory for 1 min
+    staleTime: 0,
+    gcTime: 1000 * 60,
     refetchOnWindowFocus: true,
     refetchOnMount: "always",
   });
+
+  return {
+    ...query,
+    refetch: query.refetch,
+    isFetching: query.isFetching,
+  };
 };
