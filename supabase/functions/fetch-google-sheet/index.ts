@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
 
     tabGids = Array.from(allGidSet);
 
-    console.log(`Fetching ${tabGids.length} tabs: ${JSON.stringify(tabGids)}`);
+    console.log(`Fetching ${tabGids.length} tabs`);
 
     const allRows: Record<string, string>[] = [];
 
@@ -154,16 +154,12 @@ Deno.serve(async (req) => {
           try {
             const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
             const res = await fetch(url, { redirect: 'follow' });
-            if (!res.ok) {
-              console.log(`GID ${gid} failed: ${res.status}`);
-              return [];
-            }
+            if (!res.ok) return [];
             const text = await res.text();
             const parsed = parseCSV(text);
             if (parsed.length < 2) return [];
 
             const headers = parsed[0].map(normalizeHeader);
-            console.log(`GID ${gid}: headers=${JSON.stringify(headers.slice(0,5))}, rows=${parsed.length - 1}`);
 
             // Accept tabs that have ANY column resembling client/copy/name data
             const hasRelevantHeader = headers.some(h =>
@@ -171,10 +167,7 @@ Deno.serve(async (req) => {
               h.includes('cliente') || h.includes('mentorado') || h.includes('copy') ||
               h.includes('prazo') || h.includes('leva')
             );
-            if (!hasRelevantHeader) {
-              console.log(`GID ${gid}: skipped - no relevant header`);
-              return [];
-            }
+            if (!hasRelevantHeader) return [];
 
             const dataRows = parsed.slice(1);
 
