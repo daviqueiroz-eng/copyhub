@@ -172,9 +172,9 @@ export const BussolaCopyView = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bussola-calendar">
+    <div className="h-full flex flex-col bussola-calendar -mt-1">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2 shrink-0">
+      <div className="flex items-center justify-between mb-1 shrink-0">
         <div className="flex items-center gap-3">
           {/* Filter dropdown */}
           <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
@@ -298,6 +298,9 @@ export const BussolaCopyView = () => {
           locale="pt-br"
           events={events}
           editable={false}
+          eventStartEditable={false}
+          eventDurationEditable={false}
+          droppable={false}
           height="100%"
           dayMaxEvents={4}
           fixedWeekCount={false}
