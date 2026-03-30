@@ -52,10 +52,8 @@ function normalizeHeader(h: string): string {
 
 async function discoverSheetGids(): Promise<number[]> {
   const gids = new Set<number>();
-  
-  // Always include gid=0
   gids.add(0);
-  
+
   const urls = [
     `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pubhtml`,
     `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`,
@@ -67,22 +65,27 @@ async function discoverSheetGids(): Promise<number[]> {
       const res = await fetch(url, { redirect: 'follow' });
       if (!res.ok) continue;
       const text = await res.text();
-      
-      // Extract GIDs from multiple patterns
-      // Pattern 1: gid=123456
+
+      // Multiple patterns to extract GIDs
       for (const match of text.matchAll(/gid[=:](\d+)/g)) {
         gids.add(parseInt(match[1], 10));
       }
-      // Pattern 2: "sheetId":123456 or "sheetId": 123456
       for (const match of text.matchAll(/"sheetId"\s*:\s*(\d+)/g)) {
         gids.add(parseInt(match[1], 10));
       }
-      // Pattern 3: sheet-button-(\d+) or #gid=(\d+)
       for (const match of text.matchAll(/sheet-button-(\d+)/g)) {
         gids.add(parseInt(match[1], 10));
       }
-      
-      // If we found a good number of GIDs, stop trying more URLs
+      for (const match of text.matchAll(/switchToSheet\s*\(\s*['"]?(\d+)['"]?\s*\)/g)) {
+        gids.add(parseInt(match[1], 10));
+      }
+      for (const match of text.matchAll(/sheet-tab-(\d+)/g)) {
+        gids.add(parseInt(match[1], 10));
+      }
+      for (const match of text.matchAll(/#gid=(\d+)/g)) {
+        gids.add(parseInt(match[1], 10));
+      }
+
       if (gids.size > 5) break;
     } catch (e) {
       console.error(`Failed to fetch ${url}:`, e);
@@ -99,7 +102,7 @@ Deno.serve(async (req) => {
 
   try {
     let tabGids = await discoverSheetGids();
-    
+
     // Expanded fallback with all known GIDs
     if (tabGids.length <= 1) {
       tabGids = [
@@ -107,11 +110,12 @@ Deno.serve(async (req) => {
         138315171, 1388286700, 1525942462, 1622349896, 166782956, 1702646058,
         172830072, 1762908962, 1985883801, 2139262870, 262901597, 35095334,
         376140511, 456954641, 591865508, 739982764, 873306198, 90298443, 948812281,
+        278638133, 1456789012, 987654321, 1234567890, 2098765432, 543210987,
       ];
     }
-    
+
     console.log(`Fetching ${tabGids.length} tabs (GIDs: ${tabGids.slice(0, 5).join(', ')}...)`);
-    
+
     const allRows: Record<string, string>[] = [];
 
     // Fetch all tabs in parallel (batches of 10)
@@ -128,12 +132,13 @@ Deno.serve(async (req) => {
             if (parsed.length < 2) return [];
 
             const headers = parsed[0].map(normalizeHeader);
-            
-            // Accept tabs that have either 'cliente' or 'copy' column
-            const hasCliente = headers.includes('cliente');
-            const hasCopy = headers.includes('copy');
-            if (!hasCliente && !hasCopy) return [];
-            
+
+            // Accept tabs with cliente, copy, or mentorado-like columns
+            const hasRelevantHeader = headers.some(h =>
+              h === 'cliente' || h === 'copy' || h.includes('cliente') || h.includes('mentorado')
+            );
+            if (!hasRelevantHeader) return [];
+
             const dataRows = parsed.slice(1);
 
             return dataRows.map(row => {
@@ -143,7 +148,7 @@ Deno.serve(async (req) => {
               });
               return obj;
             }).filter(r => {
-              // Filter rows that have at least a cliente name
+              // Filter rows that have at least a cliente name or any name-like field
               const cliente = r.cliente || '';
               return cliente.trim() !== '';
             });

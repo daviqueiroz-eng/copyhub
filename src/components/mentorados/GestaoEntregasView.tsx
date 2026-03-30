@@ -25,7 +25,7 @@ export const GestaoEntregasView = () => {
   const { data: mentorados = [] } = useMentorados();
   const updateMentorado = useUpdateMentorado();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("calendario");
+  const [activeTab, setActiveTab] = useState("bussola");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [kanbanOpen, setKanbanOpen] = useState(false);
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -112,18 +112,18 @@ export const GestaoEntregasView = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <Tabs defaultValue="calendario" className="flex flex-col flex-1 min-h-0" onValueChange={setActiveTab}>
+      <Tabs defaultValue="bussola" className="flex flex-col flex-1 min-h-0" onValueChange={setActiveTab}>
         <div className="flex items-center justify-between shrink-0 mb-0 flex-wrap gap-1">
           <div className="flex items-center gap-2 flex-wrap">
             <TabsList>
+              <TabsTrigger value="bussola" className="gap-1.5">
+                <Compass className="h-4 w-4" /> Bússola dos Copy
+              </TabsTrigger>
               <TabsTrigger value="calendario" className="gap-1.5">
                 <CalendarDays className="h-4 w-4" /> Calendário
               </TabsTrigger>
               <TabsTrigger value="tabela" className="gap-1.5">
                 <Table2 className="h-4 w-4" /> Tabela
-              </TabsTrigger>
-              <TabsTrigger value="bussola" className="gap-1.5">
-                <Compass className="h-4 w-4" /> Bússola dos Copy
               </TabsTrigger>
             </TabsList>
 
