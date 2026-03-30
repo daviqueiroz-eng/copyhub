@@ -1,51 +1,45 @@
 
 
-## Plano de Ajustes — Bússola dos Copy
+## Plano de Ajustes — Bússola dos Copy (4 itens)
 
-### Problema 1: Arrastar cards no calendário (cor verde + data original)
+### 1. Reordenar abas: Bússola primeiro
 
-Permitir arrastar eventos no calendário. Quando arrastado:
-- O card muda a borda para verde (indicando que foi movido manualmente)
-- O texto interno continua mostrando a data original da planilha
-- A posição local é armazenada em estado (não persiste — é visual)
-- Quando os dados da planilha forem recarregados (refetch), todos os cards voltam à posição correta automaticamente
+Em `GestaoEntregasView.tsx`, mover a tab "Bússola dos Copy" para a primeira posição (antes de Calendário e Tabela) e alterar `defaultValue` para `"bussola"`.
 
-**Alterações em `BussolaCopyView.tsx`:**
-- Habilitar `editable={true}` e `eventStartEditable={true}`
-- Criar estado `localOverrides: Record<string, string>` para armazenar posições arrastadas
-- No `eventDrop`, salvar o override e marcar o evento como "movido"
-- No `eventContent`, se o evento foi movido, usar borda verde (`border-left: 3px solid green`)
-- Limpar `localOverrides` quando `entries` mudar (novo fetch = reset)
+### 2. Subir o calendário ao máximo
 
-### Problema 2: Subir o calendário ao topo
+**`Mentorados.tsx`**: Reduzir `pb-3 md:pb-4` do header para `pb-1`, reduzir `h-[calc(100vh-10rem)]` para `h-[calc(100vh-7rem)]`.
 
-O calendário está muito abaixo. Precisa alinhar com o nível do título "Meus Mentorados".
+**`GestaoEntregasView.tsx`**: Reduzir `mb-0` e `gap-1` no container dos tabs. Remover qualquer `mt` no TabsContent da bússola.
 
-**Alterações em `GestaoEntregasView.tsx`:**
-- Remover margens e paddings superiores desnecessários
-- Reduzir `mb-1` e qualquer espaçamento entre TabsList e conteúdo
-- Esconder badges de categorias (Pausado, Churn, etc.) quando a aba ativa é "bussola"
+**`BussolaCopyView.tsx`**: Reduzir `mb-0.5` do header para `mb-0`. Aumentar `min-height` das células do calendário.
 
-**Alterações em `BussolaCopyView.tsx`:**
-- Remover `-mt-1` e qualquer espaçamento superior, usar `mt-0` ou negativo se necessário
-- Compactar header do calendário (reduzir gaps, paddings)
+### 3. Nomes faltando (Rafael Nunes, Deidara, etc.)
 
-### Problema 3: Nomes faltando (Rafael Nunes, Deidara, etc.)
+O problema está no `discoverSheetGids()` do edge function — ele não encontra todos os GIDs das abas. O `cliente` filter também pode excluir abas onde o header é "CLIENTE" (maiúsculo) ou "Mentorado:".
 
-O edge function `fetch-google-sheet` não está descobrindo todos os GIDs das abas corretamente. O método `discoverSheetGids()` que faz scraping de HTML é frágil.
+**`supabase/functions/fetch-google-sheet/index.ts`:**
+- O `normalizeHeader` já faz lowercase, mas o filtro `r.cliente` está case-sensitive no campo. Verificar se abas como "Deidara" usam header `CLIENTE` vs `cliente` (ambos devem funcionar via `normalizeHeader`).
+- O problema real: o campo na aba "Deidara" usa header `CLIENTE` e `COPY` (maiúsculos) — o `normalizeHeader` já lida com isso, mas o filtro de validação `hasCopy || hasCliente` pode estar filtrando abas com headers como `mentorado:` (com dois pontos).
+- Expandir o filtro para aceitar headers que contenham `cliente` ou `mentorado` (parcial match).
+- Adicionar mais padrões de regex para capturar GIDs: `switchToSheet\((\d+)\)`, `"sheetId":"(\d+)"`, tabs no rodapé como `sheet-tab-(\d+)`.
+- Aumentar o fallback hardcoded com mais GIDs conhecidos (extraídos da planilha na imagem: Deidara = `gid=278638133`, Rafael Nunes tem seu próprio GID).
 
-**Alterações em `supabase/functions/fetch-google-sheet/index.ts`:**
-- Substituir `discoverSheetGids()` por uma abordagem mais robusta:
-  1. Buscar a URL `pubhtml` do spreadsheet (`/pubhtml`) que é pública e lista todas as abas como links com `gid=`
-  2. Extrair GIDs de múltiplos padrões: `gid=N`, `"gid":"N"`, `sheetId":N`
-  3. Sempre incluir `gid=0` no set
-  4. Manter o fallback hardcoded mas expandi-lo com os GIDs que faltam
-- Aumentar o batch size de 5 para 10 para processar mais rápido
-- Também aceitar abas que tenham coluna `copy` (não apenas `cliente`), pois algumas abas podem ter headers ligeiramente diferentes
+### 4. Arrastar cards com persistência via localStorage
+
+Atualmente o arraste funciona mas `localOverrides` é resetado ao recarregar a página (é estado em memória).
+
+**`BussolaCopyView.tsx`:**
+- Persistir `localOverrides` em `localStorage` (key: `bussola-overrides`).
+- No init, carregar do localStorage.
+- Ao salvar um novo override, gravar no localStorage.
+- Ao receber dados novos (entries muda), comparar: para cada override, se a data original da planilha mudou, remover o override (a planilha foi atualizada). Caso contrário, manter o override.
+- Isso garante que: (a) arrastar persiste entre recargas, (b) se a planilha atualiza a data, o override é descartado.
 
 ### Arquivos a modificar
 
-1. `src/components/mentorados/BussolaCopyView.tsx` — drag com cor verde, subir layout
-2. `src/components/mentorados/GestaoEntregasView.tsx` — esconder categorias na aba bussola, reduzir espaçamento
-3. `supabase/functions/fetch-google-sheet/index.ts` — fix GID discovery para pegar todas as abas
+1. `src/pages/Mentorados.tsx` — reduzir espaçamento do header
+2. `src/components/mentorados/GestaoEntregasView.tsx` — reordenar tabs, bússola primeiro
+3. `src/components/mentorados/BussolaCopyView.tsx` — persistir overrides em localStorage, subir layout
+4. `supabase/functions/fetch-google-sheet/index.ts` — melhorar descoberta de GIDs e filtros de headers
 
