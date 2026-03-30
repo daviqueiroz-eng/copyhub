@@ -209,13 +209,10 @@ const Mentorados = () => {
   }, [selectedMentorado, updateMentorado]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] w-full">
+    <div className="flex flex-col h-[calc(100vh-7rem)] w-full">
       {/* Header - Título principal */}
-      <div className="shrink-0 pb-3 md:pb-4">
+      <div className="shrink-0 pb-1">
         <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">Meus Mentorados</h2>
-        <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
-          Repositório de perfis e diagnósticos
-        </p>
       </div>
 
       {/* ===== LAYOUT MOBILE (< xl) - Tabs principais ===== */}

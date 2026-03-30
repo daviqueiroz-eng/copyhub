@@ -56,18 +56,41 @@ export const BussolaCopyView = () => {
   });
   const [selectedEntry, setSelectedEntry] = useState<BussolaEntry | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  // Local overrides for dragged events (visual only, reset on refetch)
-  const [localOverrides, setLocalOverrides] = useState<Record<string, string>>({});
+  const STORAGE_KEY_OVERRIDES = "bussola-overrides";
+
+  // Local overrides for dragged events, persisted in localStorage
+  const [localOverrides, setLocalOverrides] = useState<Record<string, { date: string; originalDate: string }>>(() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY_OVERRIDES) || "{}"); } catch { return {}; }
+  });
   const calendarRef = useRef<any>(null);
   const today = startOfDay(new Date());
 
-  // Clear overrides when source data changes (refetch from spreadsheet)
-  const entriesRef = useRef(entries);
+  // When source data changes, clear overrides whose original date changed (spreadsheet updated)
+  const prevEntriesRef = useRef<string>("");
   useEffect(() => {
-    if (entries !== entriesRef.current) {
-      entriesRef.current = entries;
-      setLocalOverrides({});
+    const entriesKey = entries.map(e => `${e.cliente}|${e.prazo_atual}`).join(";;");
+    if (prevEntriesRef.current && entriesKey !== prevEntriesRef.current) {
+      // Data changed — clean overrides where the original date no longer matches
+      setLocalOverrides(prev => {
+        const next: Record<string, { date: string; originalDate: string }> = {};
+        Object.entries(prev).forEach(([id, val]) => {
+          // Extract index from id
+          const idx = parseInt(id.replace("bussola-", ""), 10);
+          const filtered = entries.filter(e => parseDate(e.prazo_atual) !== null);
+          const entry = filtered[idx];
+          if (entry) {
+            const currentOriginal = parseDate(entry.prazo_atual);
+            if (currentOriginal === val.originalDate) {
+              next[id] = val; // keep override, original unchanged
+            }
+            // else: original changed, discard override
+          }
+        });
+        localStorage.setItem(STORAGE_KEY_OVERRIDES, JSON.stringify(next));
+        return next;
+      });
     }
+    prevEntriesRef.current = entriesKey;
   }, [entries]);
 
   // Unique copy names - always dynamic from data
@@ -142,8 +165,9 @@ export const BussolaCopyView = () => {
     return filtered.map((e, i) => {
       const originalDate = parseDate(e.prazo_atual)!;
       const eventId = `bussola-${i}`;
-      const displayDate = localOverrides[eventId] || originalDate;
-      const isMoved = !!localOverrides[eventId];
+      const override = localOverrides[eventId];
+      const displayDate = override?.date || originalDate;
+      const isMoved = !!override;
       const prazoDate = new Date(originalDate + "T12:00:00");
       const isOverdue = !isMoved && isBefore(prazoDate, today);
       const cor = copyColorMap[e.copy.trim()] || "#3B82F6";
@@ -186,7 +210,12 @@ export const BussolaCopyView = () => {
   const handleEventDrop = (info: any) => {
     const eventId = info.event.id;
     const newDate = format(info.event.start, "yyyy-MM-dd");
-    setLocalOverrides(prev => ({ ...prev, [eventId]: newDate }));
+    const originalDate = info.event.extendedProps.originalDate;
+    setLocalOverrides(prev => {
+      const next = { ...prev, [eventId]: { date: newDate, originalDate } };
+      localStorage.setItem(STORAGE_KEY_OVERRIDES, JSON.stringify(next));
+      return next;
+    });
   };
 
   if (isLoading) {
@@ -201,7 +230,7 @@ export const BussolaCopyView = () => {
   return (
     <div className="h-full flex flex-col bussola-calendar mt-0">
       {/* Header */}
-      <div className="flex items-center justify-between mb-0.5 shrink-0">
+      <div className="flex items-center justify-between mb-0 shrink-0">
         <div className="flex items-center gap-3">
           {/* Filter dropdown */}
           <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
