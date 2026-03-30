@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
 
     tabGids = Array.from(allGidSet);
 
-    console.log(`Fetching ${tabGids.length} tabs`);
+    console.log(`Fetching ${tabGids.length} tabs: ${JSON.stringify(tabGids)}`);
 
     const allRows: Record<string, string>[] = [];
 
@@ -154,7 +154,10 @@ Deno.serve(async (req) => {
           try {
             const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
             const res = await fetch(url, { redirect: 'follow' });
-            if (!res.ok) return [];
+            if (!res.ok) {
+              console.log(`GID ${gid} failed: ${res.status}`);
+              return [];
+            }
             const text = await res.text();
             const parsed = parseCSV(text);
             if (parsed.length < 2) return [];
