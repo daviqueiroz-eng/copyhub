@@ -25,6 +25,7 @@ export const GestaoEntregasView = () => {
   const { data: mentorados = [] } = useMentorados();
   const updateMentorado = useUpdateMentorado();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("calendario");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [kanbanOpen, setKanbanOpen] = useState(false);
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
