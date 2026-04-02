@@ -1157,7 +1157,12 @@ export const MentoradoRoteirosView = ({
   }, [slashCommand, roteirosLocais, handleChange]);
 
   // Função para verificar se o timer está ativo e mostrar alerta
+  const isMobile = useIsMobile();
+  
   const checkTimerAndAlert = useCallback((field: "headline" | "estrutura") => {
+    // No mobile, nunca mostrar alerta de timer
+    if (isMobile) return;
+    
     // Se cronômetro está desabilitado, não alertar
     if (!cronometroEnabled) return;
     
