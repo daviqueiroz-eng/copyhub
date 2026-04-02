@@ -47,6 +47,7 @@ import {
   useDeleteGuia,
   useDeletedGuias,
   useRestoreGuia,
+  markLocalWrite,
 } from "@/hooks/useMentoradosRoteiros";
 import {
   AlertDialog,
@@ -1079,6 +1080,7 @@ export const MentoradoRoteirosView = ({
     const timer = setTimeout(() => {
       const pending = pendingChangesRef.current.get(key);
       if (pending) {
+        markLocalWrite();
         saveRoteiro(guiaNumero, ordem, pending.headline, pending.estrutura);
         pendingChangesRef.current.delete(key);
       }
