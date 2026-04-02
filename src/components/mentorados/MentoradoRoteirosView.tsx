@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
@@ -373,6 +374,7 @@ export const MentoradoRoteirosView = ({
   
   // Estado para checklist mobile
   const [showChecklistMobile, setShowChecklistMobile] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   // Estado para minimizar painel lateral do checklist (desktop)
   const [checklistMinimized, setChecklistMinimized] = useState(false);
@@ -1073,14 +1075,14 @@ export const MentoradoRoteirosView = ({
       clearTimeout(existingTimer);
     }
 
-    // Novo timer para auto-save (1500ms - mais tempo para evitar conflitos)
+    // Novo timer para auto-save (800ms - rápido para sync entre dispositivos)
     const timer = setTimeout(() => {
       const pending = pendingChangesRef.current.get(key);
       if (pending) {
         saveRoteiro(guiaNumero, ordem, pending.headline, pending.estrutura);
         pendingChangesRef.current.delete(key);
       }
-    }, 1500);
+    }, 800);
     
     debounceTimersRef.current.set(key, timer);
   }, [saveRoteiro, saveToHistory, registerActivity]);
@@ -1156,7 +1158,12 @@ export const MentoradoRoteirosView = ({
   }, [slashCommand, roteirosLocais, handleChange]);
 
   // Função para verificar se o timer está ativo e mostrar alerta
+  const isMobile = useIsMobile();
+  
   const checkTimerAndAlert = useCallback((field: "headline" | "estrutura") => {
+    // No mobile, nunca mostrar alerta de timer
+    if (isMobile) return;
+    
     // Se cronômetro está desabilitado, não alertar
     if (!cronometroEnabled) return;
     
@@ -1180,7 +1187,7 @@ export const MentoradoRoteirosView = ({
         setTimeout(() => setShowTimerAlert(false), 5000);
       }
     }
-  }, [timers, cronometroEnabled]);
+  }, [timers, cronometroEnabled, isMobile]);
 
   // Detectar /1 ou /2 para abrir diretamente o modo correto
   const handleInputChange2 = useCallback((
@@ -2099,39 +2106,7 @@ export const MentoradoRoteirosView = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Mini-timer para mobile - visível apenas em telas < lg */}
-            <div className="lg:hidden flex items-center gap-1 border-r pr-2 mr-1">
-              <Button
-                variant={Object.values(timers).some(t => t.isRunning) ? "default" : "outline"}
-                size="sm"
-                className="gap-1.5 h-8 px-2"
-                onClick={() => setShowChecklistMobile(true)}
-                title="Abrir cronômetro"
-              >
-                {Object.values(timers).some(t => t.isRunning) ? (
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                  </span>
-                ) : (
-                  <span className="h-2 w-2 rounded-full bg-muted-foreground/50"></span>
-                )}
-                <span className="font-mono text-xs">
-                  {(() => {
-                    const total = Object.values(timers).reduce((acc, t) => acc + t.segundos, 0);
-                    const hrs = Math.floor(total / 3600);
-                    const mins = Math.floor((total % 3600) / 60);
-                    const secs = total % 60;
-                    if (hrs > 0) {
-                      return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-                    }
-                    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-                  })()}
-                </span>
-              </Button>
-            </div>
-            
+          <div className="hidden lg:flex items-center gap-2">
             {/* Botões Undo/Redo */}
             <div className="flex items-center gap-1 border-r pr-2 mr-1">
               <Button
@@ -2179,8 +2154,8 @@ export const MentoradoRoteirosView = ({
           </div>
         </div>
         
-        {/* Progress Bar */}
-        <div className="px-6 pb-3">
+        {/* Progress Bar - desktop only */}
+        <div className="px-6 pb-3 hidden lg:block">
           <RoteiroProgressBar
             headlinesPreenchidas={progresso.headlinesPreenchidas}
             roteirosPreenchidos={progresso.roteirosPreenchidos}
@@ -2192,7 +2167,7 @@ export const MentoradoRoteirosView = ({
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Guias */}
-        <div className={cn("border-r bg-muted/30 flex flex-col shrink-0 transition-all duration-200", leftSidebarMinimized ? "w-10" : "w-14 lg:w-48")}>
+        <div className={cn("border-r bg-muted/30 flex-col shrink-0 transition-all duration-200 hidden lg:flex", leftSidebarMinimized ? "w-10" : "lg:w-48")}>
           {/* Toggle para minimizar sidebar esquerda */}
           <div className="hidden lg:flex justify-center pt-2">
             <Button
@@ -2485,7 +2460,7 @@ export const MentoradoRoteirosView = ({
                       className="group relative mb-8 flex gap-4"
                     >
                       {/* Floating toolbar - mobile: always visible, horizontal; desktop: hover, vertical */}
-                      <div className="absolute -right-2 sm:-right-14 top-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex flex-row sm:flex-col gap-1 bg-background/90 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none rounded-lg sm:rounded-none p-1 sm:p-0 shadow-md sm:shadow-none border sm:border-0">
+                      <div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex flex-col gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -2844,13 +2819,130 @@ export const MentoradoRoteirosView = ({
         </div>
       </div>
       
-      {/* Botão flutuante para abrir checklist em telas pequenas */}
+      {/* Botão flutuante com menu expandido para mobile */}
       <Button
         className="lg:hidden fixed bottom-4 right-4 z-40 h-14 w-14 rounded-full shadow-lg"
-        onClick={() => setShowChecklistMobile(true)}
+        onClick={() => setShowMobileMenu(true)}
       >
-        <CheckSquare className="h-6 w-6" />
+        <Menu className="h-6 w-6" />
       </Button>
+      
+      {/* Sheet do menu mobile com todas as opções */}
+      <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+        <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>Opções - Guia {guiaAtiva}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-2">
+            {/* Trocar guia */}
+            <div className="pb-3 border-b">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Guias</p>
+              <div className="flex flex-wrap gap-2">
+                {guias.map((guia) => (
+                  <Button
+                    key={guia.numero}
+                    variant={guiaAtiva === guia.numero ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      handleGuiaChange(guia.numero);
+                      setShowMobileMenu(false);
+                    }}
+                  >
+                    {guia.isOverdelivery ? (
+                      <><Package className="h-3 w-3 mr-1" />{guia.nome_customizado || "OD"}</>
+                    ) : (
+                      guia.nome_customizado || `Guia ${guia.numero}`
+                    )}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowNewGuiaDialog(true);
+                    setShowMobileMenu(false);
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Nova
+                </Button>
+              </div>
+            </div>
+            
+            {/* Ações */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  setShowChecklistMobile(true);
+                  setShowMobileMenu(false);
+                }}
+              >
+                <CheckSquare className="h-4 w-4" />
+                Cronômetro
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  handleCopyAllRoteiros();
+                  setShowMobileMenu(false);
+                }}
+              >
+                <ClipboardCopy className="h-4 w-4" />
+                Copiar todos
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  setShowFindReplace(true);
+                  setShowMobileMenu(false);
+                }}
+              >
+                <Search className="h-4 w-4" />
+                Buscar
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  setShowSpellChecker(true);
+                  setShowMobileMenu(false);
+                }}
+              >
+                <FileEdit className="h-4 w-4" />
+                Corretor
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  handleUndo();
+                  setShowMobileMenu(false);
+                }}
+                disabled={historyIndex <= 0}
+              >
+                <Undo2 className="h-4 w-4" />
+                Desfazer
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  handleRedo();
+                  setShowMobileMenu(false);
+                }}
+                disabled={historyIndex >= history.length - 1}
+              >
+                <Redo2 className="h-4 w-4" />
+                Refazer
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
       
       {/* Sheet do Checklist para mobile */}
       <Sheet open={showChecklistMobile} onOpenChange={setShowChecklistMobile}>
