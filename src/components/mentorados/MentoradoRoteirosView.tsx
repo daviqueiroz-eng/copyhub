@@ -1186,7 +1186,7 @@ export const MentoradoRoteirosView = ({
         setTimeout(() => setShowTimerAlert(false), 5000);
       }
     }
-  }, [timers, cronometroEnabled]);
+  }, [timers, cronometroEnabled, isMobile]);
 
   // Detectar /1 ou /2 para abrir diretamente o modo correto
   const handleInputChange2 = useCallback((
