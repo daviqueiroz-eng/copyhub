@@ -17,6 +17,15 @@ export type MentoradoRoteiro = {
   deleted_at: string | null;
 };
 
+// Shared ref to track when the current session last wrote, so realtime
+// events triggered by our own saves don't cause a refetch/flicker.
+let lastLocalWriteTs = 0;
+const REALTIME_SKIP_WINDOW_MS = 4000; // ignore realtime for 4s after a local save
+
+export const markLocalWrite = () => {
+  lastLocalWriteTs = Date.now();
+};
+
 export const useMentoradosRoteiros = (mentoradoId: string | undefined) => {
   const queryClient = useQueryClient();
 
@@ -35,6 +44,11 @@ export const useMentoradosRoteiros = (mentoradoId: string | undefined) => {
           filter: `mentorado_id=eq.${mentoradoId}`,
         },
         () => {
+          // Skip invalidation if we recently saved locally — avoids
+          // refetch overwriting what the user is currently typing.
+          if (Date.now() - lastLocalWriteTs < REALTIME_SKIP_WINDOW_MS) {
+            return;
+          }
           queryClient.invalidateQueries({
             queryKey: ["mentorados_roteiros", mentoradoId],
           });
