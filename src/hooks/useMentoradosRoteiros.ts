@@ -18,6 +18,35 @@ export type MentoradoRoteiro = {
 };
 
 export const useMentoradosRoteiros = (mentoradoId: string | undefined) => {
+  const queryClient = useQueryClient();
+
+  // Realtime subscription to sync across devices
+  useEffect(() => {
+    if (!mentoradoId) return;
+
+    const channel = supabase
+      .channel(`mentorados_roteiros_${mentoradoId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mentorados_roteiros',
+          filter: `mentorado_id=eq.${mentoradoId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: ["mentorados_roteiros", mentoradoId],
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [mentoradoId, queryClient]);
+
   return useQuery({
     queryKey: ["mentorados_roteiros", mentoradoId],
     queryFn: async () => {
@@ -27,7 +56,7 @@ export const useMentoradosRoteiros = (mentoradoId: string | undefined) => {
         .from("mentorados_roteiros")
         .select("*")
         .eq("mentorado_id", mentoradoId)
-        .is("deleted_at", null) // Filtrar apenas não deletados
+        .is("deleted_at", null)
         .order("guia_numero", { ascending: true })
         .order("ordem", { ascending: true });
 
