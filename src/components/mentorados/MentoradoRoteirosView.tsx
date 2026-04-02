@@ -2460,7 +2460,7 @@ export const MentoradoRoteirosView = ({
                       className="group relative mb-8 flex gap-4"
                     >
                       {/* Floating toolbar - mobile: always visible, horizontal; desktop: hover, vertical */}
-                      <div className="absolute -right-2 sm:-right-14 top-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex flex-row sm:flex-col gap-1 bg-background/90 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none rounded-lg sm:rounded-none p-1 sm:p-0 shadow-md sm:shadow-none border sm:border-0">
+                      <div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex flex-col gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
