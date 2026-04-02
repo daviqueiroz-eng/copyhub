@@ -2819,13 +2819,130 @@ export const MentoradoRoteirosView = ({
         </div>
       </div>
       
-      {/* Botão flutuante para abrir checklist em telas pequenas */}
+      {/* Botão flutuante com menu expandido para mobile */}
       <Button
         className="lg:hidden fixed bottom-4 right-4 z-40 h-14 w-14 rounded-full shadow-lg"
-        onClick={() => setShowChecklistMobile(true)}
+        onClick={() => setShowMobileMenu(true)}
       >
-        <CheckSquare className="h-6 w-6" />
+        <Menu className="h-6 w-6" />
       </Button>
+      
+      {/* Sheet do menu mobile com todas as opções */}
+      <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+        <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>Opções - Guia {guiaAtiva}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-2">
+            {/* Trocar guia */}
+            <div className="pb-3 border-b">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Guias</p>
+              <div className="flex flex-wrap gap-2">
+                {guias.map((guia) => (
+                  <Button
+                    key={guia.numero}
+                    variant={guiaAtiva === guia.numero ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      handleGuiaChange(guia.numero);
+                      setShowMobileMenu(false);
+                    }}
+                  >
+                    {guia.isOverdelivery ? (
+                      <><Package className="h-3 w-3 mr-1" />{guia.nome_customizado || "OD"}</>
+                    ) : (
+                      guia.nome_customizado || `Guia ${guia.numero}`
+                    )}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowNewGuiaDialog(true);
+                    setShowMobileMenu(false);
+                  }}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Nova
+                </Button>
+              </div>
+            </div>
+            
+            {/* Ações */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  setShowChecklistMobile(true);
+                  setShowMobileMenu(false);
+                }}
+              >
+                <CheckSquare className="h-4 w-4" />
+                Cronômetro
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  handleCopyAllRoteiros();
+                  setShowMobileMenu(false);
+                }}
+              >
+                <ClipboardCopy className="h-4 w-4" />
+                Copiar todos
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  setShowFindReplace(true);
+                  setShowMobileMenu(false);
+                }}
+              >
+                <Search className="h-4 w-4" />
+                Buscar
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  setShowSpellChecker(true);
+                  setShowMobileMenu(false);
+                }}
+              >
+                <FileEdit className="h-4 w-4" />
+                Corretor
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  handleUndo();
+                  setShowMobileMenu(false);
+                }}
+                disabled={historyIndex <= 0}
+              >
+                <Undo2 className="h-4 w-4" />
+                Desfazer
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  handleRedo();
+                  setShowMobileMenu(false);
+                }}
+                disabled={historyIndex >= history.length - 1}
+              >
+                <Redo2 className="h-4 w-4" />
+                Refazer
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
       
       {/* Sheet do Checklist para mobile */}
       <Sheet open={showChecklistMobile} onOpenChange={setShowChecklistMobile}>
