@@ -374,6 +374,7 @@ export const MentoradoRoteirosView = ({
   
   // Estado para checklist mobile
   const [showChecklistMobile, setShowChecklistMobile] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   // Estado para minimizar painel lateral do checklist (desktop)
   const [checklistMinimized, setChecklistMinimized] = useState(false);
