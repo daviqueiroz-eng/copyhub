@@ -5,11 +5,13 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { format, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBussolaCopy, BussolaEntry } from "@/hooks/useBussolaCopy";
-import { ChevronLeft, ChevronRight, Star, Search, Loader2, Check, ChevronDown, ExternalLink, RefreshCw } from "lucide-react";
+import { useBussolaOverrides, useBussolaComentarios } from "@/hooks/useBussolaOverrides";
+import { ChevronLeft, ChevronRight, Star, Search, Loader2, Check, ChevronDown, ExternalLink, RefreshCw, Send, Trash2, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Popover,
   PopoverContent,
@@ -21,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 const COLORS = [
   "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6",
@@ -44,6 +47,8 @@ const STORAGE_KEY_SELECTED = "bussola-selected-copy";
 
 export const BussolaCopyView = () => {
   const { data: entries = [], isLoading, refetch, isFetching } = useBussolaCopy();
+  const { overrides, upsertOverride } = useBussolaOverrides();
+  const { user } = useAuth();
   const [currentTitle, setCurrentTitle] = useState("");
   const [currentView, setCurrentView] = useState<"dayGridMonth" | "dayGridWeek">("dayGridMonth");
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,71 +60,18 @@ export const BussolaCopyView = () => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY_FAV) || "[]"); } catch { return []; }
   });
   const [selectedEntry, setSelectedEntry] = useState<BussolaEntry | null>(null);
+  const [selectedStableKey, setSelectedStableKey] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const STORAGE_KEY_OVERRIDES = "bussola-overrides";
-
-  // Local overrides for dragged events, persisted in localStorage
-  const [localOverrides, setLocalOverrides] = useState<Record<string, { date: string; originalDate: string }>>(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY_OVERRIDES) || "{}");
-      // Clear old index-based keys (bussola-0, bussola-1, etc.)
-      const cleaned: Record<string, { date: string; originalDate: string }> = {};
-      Object.entries(stored).forEach(([key, val]) => {
-        if (!key.startsWith("bussola-")) {
-          cleaned[key] = val as { date: string; originalDate: string };
-        }
-      });
-      if (Object.keys(cleaned).length !== Object.keys(stored).length) {
-        localStorage.setItem(STORAGE_KEY_OVERRIDES, JSON.stringify(cleaned));
-      }
-      return cleaned;
-    } catch { return {}; }
-  });
   const calendarRef = useRef<any>(null);
   const today = startOfDay(new Date());
 
-  // When source data changes, clear overrides whose original date changed (spreadsheet updated)
-  const prevEntriesRef = useRef<string>("");
-  useEffect(() => {
-    const entriesKey = entries.map(e => `${e.cliente}|${e.prazo_atual}`).join(";;");
-    if (prevEntriesRef.current && entriesKey !== prevEntriesRef.current) {
-      setLocalOverrides(prev => {
-        const next: Record<string, { date: string; originalDate: string }> = {};
-        // Build lookup: stableKey -> current prazo
-        const currentLookup = new Map<string, string>();
-        entries.forEach(e => {
-          const key = `${e.cliente.trim()}|${e.copy.trim()}|${e.prazo_atual.trim()}`;
-          const parsed = parseDate(e.prazo_atual);
-          if (parsed) currentLookup.set(key, parsed);
-        });
-
-        Object.entries(prev).forEach(([id, val]) => {
-          // Keep override only if the original date still matches
-          if (currentLookup.has(id) || val.originalDate) {
-            // Check if an entry with this key still exists with the same original date
-            const stillValid = Array.from(currentLookup.entries()).some(
-              ([, date]) => date === val.originalDate
-            );
-            if (stillValid) {
-              next[id] = val;
-            }
-          }
-        });
-        localStorage.setItem(STORAGE_KEY_OVERRIDES, JSON.stringify(next));
-        return next;
-      });
-    }
-    prevEntriesRef.current = entriesKey;
-  }, [entries]);
-
-  // Unique copy names - always dynamic from data
+  // Unique copy names
   const copyNames = useMemo(() => {
     const names = new Set<string>();
     entries.forEach(e => { if (e.copy?.trim()) names.add(e.copy.trim()); });
     return Array.from(names);
   }, [entries]);
 
-  // Sorted: favorites first, then alphabetical
   const sortedCopyNames = useMemo(() => {
     return [...copyNames].sort((a, b) => {
       const aFav = favorites.includes(a) ? 0 : 1;
@@ -129,7 +81,6 @@ export const BussolaCopyView = () => {
     });
   }, [copyNames, favorites]);
 
-  // Auto-select on load
   useEffect(() => {
     if (copyNames.length === 0) return;
     if (selectedCopy && copyNames.includes(selectedCopy)) return;
@@ -183,9 +134,8 @@ export const BussolaCopyView = () => {
   const events = useMemo(() => {
     return filtered.map((e) => {
       const originalDate = parseDate(e.prazo_atual)!;
-      // Stable key based on content, not index
       const stableKey = `${e.cliente.trim()}|${e.copy.trim()}|${e.prazo_atual.trim()}`;
-      const override = localOverrides[stableKey];
+      const override = overrides[stableKey];
       const displayDate = override?.date || originalDate;
       const isMoved = !!override;
       const prazoDate = new Date(originalDate + "T12:00:00");
@@ -208,7 +158,7 @@ export const BussolaCopyView = () => {
         },
       };
     });
-  }, [filtered, today, copyColorMap, localOverrides]);
+  }, [filtered, today, copyColorMap, overrides]);
 
   const updateTitle = useCallback(() => {
     const api = calendarRef.current?.getApi();
@@ -231,11 +181,7 @@ export const BussolaCopyView = () => {
     const eventId = info.event.id;
     const newDate = format(info.event.start, "yyyy-MM-dd");
     const originalDate = info.event.extendedProps.originalDate;
-    setLocalOverrides(prev => {
-      const next = { ...prev, [eventId]: { date: newDate, originalDate } };
-      localStorage.setItem(STORAGE_KEY_OVERRIDES, JSON.stringify(next));
-      return next;
-    });
+    upsertOverride({ stableKey: eventId, newDate, originalDate });
   };
 
   if (isLoading) {
@@ -374,7 +320,7 @@ export const BussolaCopyView = () => {
         </div>
       </div>
 
-      {/* Calendar - full width, max height */}
+      {/* Calendar */}
       <div className="flex-1 min-h-0">
         <FullCalendar
           ref={calendarRef}
@@ -393,7 +339,9 @@ export const BussolaCopyView = () => {
           fixedWeekCount={false}
           eventClick={(info) => {
             const entry = info.event.extendedProps.entry as BussolaEntry;
+            const stableKey = info.event.id;
             setSelectedEntry(entry);
+            setSelectedStableKey(stableKey);
             setDetailOpen(true);
           }}
           dayCellContent={(arg) => (
@@ -424,8 +372,11 @@ export const BussolaCopyView = () => {
         />
       </div>
 
-      {/* Detail Dialog */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+      {/* Detail Dialog with Comments */}
+      <Dialog open={detailOpen} onOpenChange={(open) => {
+        setDetailOpen(open);
+        if (!open) setSelectedStableKey(null);
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{selectedEntry?.cliente}</DialogTitle>
@@ -472,6 +423,15 @@ export const BussolaCopyView = () => {
                   <p className="font-medium">{selectedEntry.observacao}</p>
                 </div>
               )}
+
+              {/* Comments Section */}
+              <div className="border-t border-border pt-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground">Comentários</span>
+                </div>
+                <CardComments stableKey={selectedStableKey} userId={user?.id} />
+              </div>
             </div>
           )}
         </DialogContent>
@@ -538,3 +498,68 @@ export const BussolaCopyView = () => {
     </div>
   );
 };
+
+// Separate component for comments to isolate the realtime subscription
+function CardComments({ stableKey, userId }: { stableKey: string | null; userId?: string }) {
+  const { comments, addComment, isAdding, deleteComment } = useBussolaComentarios(stableKey);
+  const [newComment, setNewComment] = useState("");
+
+  const handleSubmit = () => {
+    const text = newComment.trim();
+    if (!text) return;
+    addComment(text);
+    setNewComment("");
+  };
+
+  return (
+    <div className="space-y-2">
+      {comments.length === 0 && (
+        <p className="text-xs text-muted-foreground italic">Nenhum comentário ainda.</p>
+      )}
+      <ScrollArea className="max-h-[200px]">
+        <div className="space-y-2 pr-2">
+          {comments.map((c) => (
+            <div key={c.id} className="flex items-start gap-2 bg-muted/50 rounded-md p-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-foreground whitespace-pre-wrap break-words">{c.comentario}</p>
+                <span className="text-[10px] text-muted-foreground">
+                  {format(new Date(c.created_at), "dd/MM/yy HH:mm")}
+                </span>
+              </div>
+              {c.user_id === userId && (
+                <button
+                  onClick={() => deleteComment(c.id)}
+                  className="shrink-0 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+      <div className="flex items-end gap-2">
+        <Textarea
+          placeholder="Adicionar comentário..."
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          className="min-h-[60px] text-xs resize-none"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+        />
+        <Button
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          disabled={!newComment.trim() || isAdding}
+          onClick={handleSubmit}
+        >
+          <Send className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
