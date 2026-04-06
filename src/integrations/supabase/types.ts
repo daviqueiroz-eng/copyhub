@@ -230,6 +230,60 @@ export type Database = {
           },
         ]
       }
+      bussola_comentarios: {
+        Row: {
+          comentario: string
+          created_at: string
+          id: string
+          stable_key: string
+          user_id: string
+        }
+        Insert: {
+          comentario: string
+          created_at?: string
+          id?: string
+          stable_key: string
+          user_id: string
+        }
+        Update: {
+          comentario?: string
+          created_at?: string
+          id?: string
+          stable_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bussola_overrides: {
+        Row: {
+          created_at: string
+          data_original: string
+          id: string
+          nova_data: string
+          stable_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_original: string
+          id?: string
+          nova_data: string
+          stable_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data_original?: string
+          id?: string
+          nova_data?: string
+          stable_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
