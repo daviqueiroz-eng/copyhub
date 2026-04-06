@@ -25,13 +25,9 @@ import { Badge } from "@/components/ui/badge";
 import { useAtividadesNaoVisualizadas } from "@/hooks/useAtividadesGerais";
 
 const menuItems = [
-  { title: "Acompanhamento", url: "/acompanhamento", icon: BarChart3 },
   { title: "Meus Mentorados", url: "/mentorados", icon: Users },
-  { title: "Core Manager", url: "/core-manager", icon: CheckSquare },
   { title: "Teste de Conhecimento", url: "/testes", icon: ClipboardCheck },
   { title: "Treinamentos", url: "/treinamentos", icon: GraduationCap },
-  { title: "Atividades", url: "/modo-flow", icon: Zap },
-  { title: "Calendário", url: "/calendario", icon: Calendar },
   { title: "Ideias de Melhorias", url: "/ideias-melhorias", icon: Lightbulb },
   { title: "Gerenciar Usuários", url: "/usuarios", icon: UserCog },
 ];
