@@ -546,8 +546,7 @@ export const MentoradoRoteirosView = ({
     localStorage.setItem(`roteiro-cronometro-enabled-${mentoradoId}`, String(cronometroEnabled));
   }, [cronometroEnabled, mentoradoId]);
 
-  // Buscar categorias do avatar do mentorado atual
-  const currentMentorado = mentorados.find(m => m.id === mentoradoId);
+  // Buscar categorias do avatar do mentorado atual (use currentMentorado defined above)
   const avatarCategories: AvatarCategory[] = (() => {
     if (!currentMentorado?.observacoes) return [];
     try {
