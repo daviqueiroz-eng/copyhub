@@ -1,56 +1,55 @@
 
 
-## Plano: Mobile Otimizado para Roteiros
+## Plano: Acesso direto ao Roteiro + Perfil integrado + Checklist por headline
 
-### 1. Sincronização em tempo real entre dispositivos
+### 1. Clicar no mentorado abre direto o Roteiro
 
-Atualmente os roteiros salvam com debounce de 1500ms mas não há subscription realtime — o outro dispositivo só vê mudanças ao recarregar a página.
+Em `Mentorados.tsx`, alterar `handleOpenDetail` para que em vez de abrir o Sheet de detalhes, abra direto a `MentoradoRoteirosView`:
 
-**Alterações:**
-- Habilitar realtime na tabela `mentorados_roteiros` (migration: `ALTER PUBLICATION supabase_realtime ADD TABLE public.mentorados_roteiros`)
-- Em `useMentoradosRoteiros.ts`, adicionar um `useEffect` com subscription realtime que invalida a query ao receber mudanças (`INSERT`, `UPDATE`, `DELETE`)
-- Reduzir debounce de 1500ms para 800ms em `handleChange` no `MentoradoRoteirosView.tsx` para salvar mais rápido
-- No `onSuccess` do `useUpsertMentoradoRoteiro`, **não** invalidar queries (já está assim) para evitar conflitos durante digitação — a subscription realtime cuidará de atualizar o outro dispositivo
+```
+const handleOpenDetail = (mentorado: Mentorado) => {
+  setSelectedMentorado(mentorado);
+  setIsRoteirosViewOpen(true); // Direto para roteiros
+};
+```
 
-### 2. Desativar alerta de cronômetro no mobile
+O Sheet de detalhes continua existindo mas só será acessado de dentro do roteiro.
 
-No mobile, o alerta "ative o cronômetro" não deve aparecer.
+### 2. Mover informações do perfil para dentro do Roteiro
 
-**Alterações em `MentoradoRoteirosView.tsx`:**
-- Na função `checkTimerAndAlert`, adicionar verificação `useIsMobile()` — se `isMobile` for true, retornar imediatamente sem mostrar alerta
-- Importar `useIsMobile` do hook existente
+Em `MentoradoRoteirosView.tsx`, na sidebar esquerda, **acima** da seção "Atalhos", adicionar uma seção colapsável "Perfil" que contém:
+- Plano, Instagram, TikTok, Trello (campos editáveis compactos)
+- Mapa do Avatar (usando `MapaAvatarSection`)
+- Abas Comunicação e Materiais (compactas, em accordions)
 
-### 3. UI mobile focada no texto (como na imagem)
+Para isso, o componente precisa receber ou buscar os dados do mentorado atual (já tem acesso via `useMentorados` e `mentoradoId`). As alterações serão salvas via `useUpdateMentorado`.
 
-No mobile, esconder toda a toolbar do header (undo/redo, buscar, corretor, copiar todos) e o mini-timer, deixando apenas o botão de fechar e o nome do mentorado. As funcionalidades extras ficam acessíveis pelo botão flutuante azul (que já existe como CheckSquare).
+Isso substitui completamente o Sheet de detalhes — o perfil fica acessível dentro do fluxo de roteiro.
 
-**Alterações em `MentoradoRoteirosView.tsx`:**
+### 3. Checklist editável por headline (admin-configurable)
 
-**Header mobile simplificado:**
-- Esconder a barra de botões (undo/redo, buscar, corretor, copiar todos) no mobile com `hidden lg:flex`
-- Esconder o mini-timer no mobile (já tem `lg:hidden` mas vamos removê-lo — não obrigar timer)
-- Esconder a progress bar no mobile com `hidden lg:block`
-- Manter: botão fechar (X) + nome do mentorado + indicador de guia
+**Tabela nova no banco:** `headline_checklist_items`
+- `id` (uuid), `user_id` (uuid, quem criou — o admin), `label` (text), `ordem` (int), `ativo` (bool), `created_at`
+- RLS: todos autenticados podem SELECT; somente admins podem INSERT/UPDATE/DELETE (via `has_role`)
 
-**Floating button com menu expandido:**
-- Transformar o botão flutuante azul (que hoje abre só o checklist) em um menu com múltiplas opções:
-  - Cronômetro/Checklist
-  - Copiar todos
-  - Buscar/Substituir
-  - Corretor
-  - Undo/Redo
-  - Trocar guia
-- Usar um Sheet/Popover que abre ao clicar no botão azul
+**Tabela nova:** `headline_checklist_progress`
+- `id` (uuid), `mentorado_id` (uuid), `guia_numero` (int), `ordem_roteiro` (int), `checklist_item_id` (uuid ref headline_checklist_items), `checked` (bool), `user_id` (uuid), `created_at`
+- Unique constraint: `(mentorado_id, guia_numero, ordem_roteiro, checklist_item_id)`
+- RLS: autenticados podem SELECT/INSERT/UPDATE seus próprios registros
 
-**Toolbar inline por roteiro:**
-- No mobile, esconder a toolbar lateral por roteiro (copiar, deletar, TTS, teleprompter) — mostrar apenas ao tocar e segurar ou via menu contextual dentro do botão flutuante
+**UI — ao lado de cada headline:**
+- Renderizar checkboxes compactos ao lado do "HEADLINE 01:" baseados nos itens de `headline_checklist_items`
+- Incluir um checkbox "Marcar todos" que marca/desmarca todos de uma vez
+- O estado é persistido em `headline_checklist_progress` por mentorado/guia/ordem
 
-**Sidebar de guias:**
-- No mobile, esconder completamente a sidebar de guias (já está estreita com `w-14`) e mover seleção de guia para o menu do botão flutuante
+**UI — configuração (admin):**
+- Botão de configuração visível apenas para admin, abrindo um dialog para CRUD dos itens do checklist (similar ao `CheckRoteiroViralDialog`)
 
-### Arquivos a modificar
+### Arquivos a modificar/criar
 
-1. `src/hooks/useMentoradosRoteiros.ts` — adicionar subscription realtime
-2. `src/components/mentorados/MentoradoRoteirosView.tsx` — mobile UI limpa, desativar timer alert no mobile, reduzir debounce
-3. Migration SQL — habilitar realtime na tabela `mentorados_roteiros`
+1. `src/pages/Mentorados.tsx` — redirecionar clique para roteiro
+2. `src/components/mentorados/MentoradoRoteirosView.tsx` — adicionar perfil na sidebar, adicionar checklist por headline
+3. **Novo:** `src/components/mentorados/HeadlineChecklistConfig.tsx` — dialog admin para configurar itens
+4. **Novo:** `src/hooks/useHeadlineChecklist.ts` — hooks para buscar itens e progresso
+5. **Migration SQL** — criar tabelas `headline_checklist_items` e `headline_checklist_progress`
 
