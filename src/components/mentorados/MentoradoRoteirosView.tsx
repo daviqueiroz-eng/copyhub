@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -89,6 +89,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCheckRoteiroViralAtivos, verificarCheck, verificarCheckComIA, CheckRoteiroViral } from "@/hooks/useCheckRoteiroViral";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useAuth";
+import { MapaAvatarSection } from "./MapaAvatarSection";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Label } from "@/components/ui/label";
+import {
+  useHeadlineChecklistItems,
+  useHeadlineChecklistProgress,
+  useToggleChecklistProgress,
+  useBulkToggleChecklistProgress,
+} from "@/hooks/useHeadlineChecklist";
+import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
 
@@ -354,6 +366,38 @@ export const MentoradoRoteirosView = ({
   const updateMentorado = useUpdateMentorado();
   const { data: deletedGuias = [] } = useDeletedGuias(mentoradoId);
   const restoreGuia = useRestoreGuia();
+
+  // Auth & role for admin checks
+  const { user } = useAuth();
+  const { data: userRole } = useUserRole();
+  const isAdmin = userRole === "admin";
+
+  // Profile section state
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [showChecklistConfig, setShowChecklistConfig] = useState(false);
+
+  // Headline checklist
+  const { data: checklistItems = [] } = useHeadlineChecklistItems();
+  const { data: checklistProgress = [] } = useHeadlineChecklistProgress(mentoradoId, guiaAtiva);
+  const toggleProgress = useToggleChecklistProgress();
+  const bulkToggleProgress = useBulkToggleChecklistProgress();
+
+  // Get current mentorado data
+  const currentMentorado = mentorados.find(m => m.id === mentoradoId);
+
+  // Parse avatar categories from observacoes
+  const parseAvatarCategories = (obs: string | null) => {
+    if (!obs) return [];
+    try {
+      const parsed = JSON.parse(obs);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return [];
+  };
+
+  const handleUpdateMentoradoField = (field: string, value: string) => {
+    updateMentorado.mutate({ id: mentoradoId, [field]: value });
+  };
   
   // Hooks para config de guias (persistência do isOverdelivery)
   const { data: guiasConfigDb = [], isLoading: isLoadingGuiasConfig } = useGuiasConfig(mentoradoId);
@@ -502,8 +546,7 @@ export const MentoradoRoteirosView = ({
     localStorage.setItem(`roteiro-cronometro-enabled-${mentoradoId}`, String(cronometroEnabled));
   }, [cronometroEnabled, mentoradoId]);
 
-  // Buscar categorias do avatar do mentorado atual
-  const currentMentorado = mentorados.find(m => m.id === mentoradoId);
+  // Buscar categorias do avatar do mentorado atual (use currentMentorado defined above)
   const avatarCategories: AvatarCategory[] = (() => {
     if (!currentMentorado?.observacoes) return [];
     try {
@@ -2243,7 +2286,126 @@ export const MentoradoRoteirosView = ({
               </DndContext>
             </div>
           </ScrollArea>
-          <div className="p-2 lg:p-3 border-t space-y-2">
+          <div className="p-2 lg:p-3 border-t space-y-2 overflow-y-auto max-h-[50vh]">
+            {/* Seção do Perfil do Mentorado */}
+            <Collapsible open={profileOpen} onOpenChange={setProfileOpen}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full pb-1">
+                <div className="flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  <p className="text-sm font-semibold text-muted-foreground">Perfil</p>
+                </div>
+                {profileOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Plano</Label>
+                  <Input
+                    value={currentMentorado?.plano || ""}
+                    onChange={(e) => handleUpdateMentoradoField("plano", e.target.value)}
+                    placeholder="Ex: Plano Pro"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Instagram className="h-3 w-3" /> Instagram
+                  </Label>
+                  <Input
+                    value={currentMentorado?.instagram || ""}
+                    onChange={(e) => handleUpdateMentoradoField("instagram", e.target.value)}
+                    placeholder="@usuario"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">TikTok</Label>
+                  <Input
+                    value={currentMentorado?.tiktok || ""}
+                    onChange={(e) => handleUpdateMentoradoField("tiktok", e.target.value)}
+                    placeholder="@usuario"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Trello</Label>
+                  <Input
+                    value={currentMentorado?.link_trello || ""}
+                    onChange={(e) => handleUpdateMentoradoField("link_trello", e.target.value)}
+                    placeholder="https://trello.com/..."
+                    className="h-7 text-xs"
+                  />
+                </div>
+
+                {/* Comunicação */}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-xs text-muted-foreground font-medium">
+                    Comunicação <ChevronDown className="h-3 w-3" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-1">
+                    <Textarea
+                      value={currentMentorado?.informacoes_mentorado || ""}
+                      onChange={(e) => handleUpdateMentoradoField("informacoes_mentorado", e.target.value)}
+                      placeholder="Informações do mentorado..."
+                      rows={2}
+                      className="text-xs"
+                    />
+                    <Textarea
+                      value={currentMentorado?.apresentacao || ""}
+                      onChange={(e) => handleUpdateMentoradoField("apresentacao", e.target.value)}
+                      placeholder="Apresentação..."
+                      rows={2}
+                      className="text-xs"
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Materiais */}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-xs text-muted-foreground font-medium">
+                    Materiais <ChevronDown className="h-3 w-3" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-1">
+                    <Textarea
+                      value={currentMentorado?.links_chats || ""}
+                      onChange={(e) => handleUpdateMentoradoField("links_chats", e.target.value)}
+                      placeholder="Links dos chats..."
+                      rows={2}
+                      className="text-xs"
+                    />
+                    <Input
+                      value={currentMentorado?.link_drive || ""}
+                      onChange={(e) => handleUpdateMentoradoField("link_drive", e.target.value)}
+                      placeholder="Link do Drive..."
+                      className="h-7 text-xs"
+                    />
+                    <Textarea
+                      value={currentMentorado?.referencias || ""}
+                      onChange={(e) => handleUpdateMentoradoField("referencias", e.target.value)}
+                      placeholder="Referências..."
+                      rows={2}
+                      className="text-xs"
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Mapa do Avatar */}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-xs text-muted-foreground font-medium">
+                    Mapa do Avatar <ChevronDown className="h-3 w-3" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-1">
+                    <MapaAvatarSection
+                      categories={avatarCategories}
+                      onUpdateCategories={(cats) => {
+                        updateMentorado.mutate({ id: mentoradoId, observacoes: JSON.stringify(cats) });
+                      }}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              </CollapsibleContent>
+            </Collapsible>
+            <div className="border-b" />
+
             {/* Seção de Atalhos - acima da lixeira */}
             <div className="pb-2 border-b hidden lg:block">
               <p className="text-sm font-semibold mb-2 text-muted-foreground">Atalhos</p>
@@ -2662,6 +2824,81 @@ export const MentoradoRoteirosView = ({
                           onIgnoreError={handleIgnoreError}
                         />
                       </div>
+
+                      {/* Checklist da Headline */}
+                      {checklistItems.length > 0 && (
+                        <div className="mb-2 ml-8 flex flex-wrap items-center gap-x-4 gap-y-1">
+                          {(() => {
+                            const allChecked = checklistItems.every(item =>
+                              checklistProgress.some(p => p.checklist_item_id === item.id && p.ordem_roteiro === ordem && p.checked)
+                            );
+                            return (
+                              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground">
+                                <Checkbox
+                                  checked={allChecked}
+                                  onCheckedChange={(checked) => {
+                                    bulkToggleProgress.mutate({
+                                      mentoradoId,
+                                      guiaNumero: guiaAtiva,
+                                      ordemRoteiro: ordem,
+                                      items: checklistItems,
+                                      checked: !!checked,
+                                    });
+                                  }}
+                                  className="h-3.5 w-3.5"
+                                />
+                                <span className="font-medium">Todos</span>
+                              </label>
+                            );
+                          })()}
+                          {checklistItems.map(item => {
+                            const isChecked = checklistProgress.some(
+                              p => p.checklist_item_id === item.id && p.ordem_roteiro === ordem && p.checked
+                            );
+                            return (
+                              <label key={item.id} className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground">
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={(checked) => {
+                                    toggleProgress.mutate({
+                                      mentoradoId,
+                                      guiaNumero: guiaAtiva,
+                                      ordemRoteiro: ordem,
+                                      checklistItemId: item.id,
+                                      checked: !!checked,
+                                    });
+                                  }}
+                                  className="h-3.5 w-3.5"
+                                />
+                                <span>{item.label}</span>
+                              </label>
+                            );
+                          })}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={() => setShowChecklistConfig(true)}
+                              title="Configurar checklist"
+                            >
+                              <Settings2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      {checklistItems.length === 0 && isAdmin && (
+                        <div className="mb-2 ml-8">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-muted-foreground h-6"
+                            onClick={() => setShowChecklistConfig(true)}
+                          >
+                            <Plus className="h-3 w-3 mr-1" /> Configurar checklist
+                          </Button>
+                        </div>
+                      )}
 
                       {/* Estrutura */}
                       <div className={cn("mb-4 rounded-md transition-colors", (roteiro.estrutura?.length || 0) > 2100 && "bg-red-100 dark:bg-red-950/40 p-2")}>
@@ -3455,6 +3692,12 @@ export const MentoradoRoteirosView = ({
         open={configTipoDialogOpen}
         onOpenChange={setConfigTipoDialogOpen}
         tipo={configTipoSelected}
+      />
+
+      {/* Dialog de configuração do checklist das headlines */}
+      <HeadlineChecklistConfig
+        open={showChecklistConfig}
+        onOpenChange={setShowChecklistConfig}
       />
     </div>
   );

@@ -1211,6 +1211,81 @@ export type Database = {
           },
         ]
       }
+      headline_checklist_items: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          label: string
+          ordem: number
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          label: string
+          ordem?: number
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          label?: string
+          ordem?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      headline_checklist_progress: {
+        Row: {
+          checked: boolean
+          checklist_item_id: string
+          created_at: string
+          guia_numero: number
+          id: string
+          mentorado_id: string
+          ordem_roteiro: number
+          user_id: string
+        }
+        Insert: {
+          checked?: boolean
+          checklist_item_id: string
+          created_at?: string
+          guia_numero: number
+          id?: string
+          mentorado_id: string
+          ordem_roteiro: number
+          user_id: string
+        }
+        Update: {
+          checked?: boolean
+          checklist_item_id?: string
+          created_at?: string
+          guia_numero?: number
+          id?: string
+          mentorado_id?: string
+          ordem_roteiro?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "headline_checklist_progress_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "headline_checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "headline_checklist_progress_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       headlines: {
         Row: {
           category_key: string
