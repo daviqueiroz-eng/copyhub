@@ -366,6 +366,38 @@ export const MentoradoRoteirosView = ({
   const updateMentorado = useUpdateMentorado();
   const { data: deletedGuias = [] } = useDeletedGuias(mentoradoId);
   const restoreGuia = useRestoreGuia();
+
+  // Auth & role for admin checks
+  const { user } = useAuth();
+  const { data: userRole } = useUserRole();
+  const isAdmin = userRole === "admin";
+
+  // Profile section state
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [showChecklistConfig, setShowChecklistConfig] = useState(false);
+
+  // Headline checklist
+  const { data: checklistItems = [] } = useHeadlineChecklistItems();
+  const { data: checklistProgress = [] } = useHeadlineChecklistProgress(mentoradoId, guiaAtiva);
+  const toggleProgress = useToggleChecklistProgress();
+  const bulkToggleProgress = useBulkToggleChecklistProgress();
+
+  // Get current mentorado data
+  const currentMentorado = mentorados.find(m => m.id === mentoradoId);
+
+  // Parse avatar categories from observacoes
+  const parseAvatarCategories = (obs: string | null) => {
+    if (!obs) return [];
+    try {
+      const parsed = JSON.parse(obs);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return [];
+  };
+
+  const handleUpdateMentoradoField = (field: string, value: string) => {
+    updateMentorado.mutate({ id: mentoradoId, [field]: value });
+  };
   
   // Hooks para config de guias (persistência do isOverdelivery)
   const { data: guiasConfigDb = [], isLoading: isLoadingGuiasConfig } = useGuiasConfig(mentoradoId);
