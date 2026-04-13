@@ -2286,7 +2286,126 @@ export const MentoradoRoteirosView = ({
               </DndContext>
             </div>
           </ScrollArea>
-          <div className="p-2 lg:p-3 border-t space-y-2">
+          <div className="p-2 lg:p-3 border-t space-y-2 overflow-y-auto max-h-[50vh]">
+            {/* Seção do Perfil do Mentorado */}
+            <Collapsible open={profileOpen} onOpenChange={setProfileOpen}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full pb-1">
+                <div className="flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  <p className="text-sm font-semibold text-muted-foreground">Perfil</p>
+                </div>
+                {profileOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Plano</Label>
+                  <Input
+                    value={currentMentorado?.plano || ""}
+                    onChange={(e) => handleUpdateMentoradoField("plano", e.target.value)}
+                    placeholder="Ex: Plano Pro"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Instagram className="h-3 w-3" /> Instagram
+                  </Label>
+                  <Input
+                    value={currentMentorado?.instagram || ""}
+                    onChange={(e) => handleUpdateMentoradoField("instagram", e.target.value)}
+                    placeholder="@usuario"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">TikTok</Label>
+                  <Input
+                    value={currentMentorado?.tiktok || ""}
+                    onChange={(e) => handleUpdateMentoradoField("tiktok", e.target.value)}
+                    placeholder="@usuario"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Trello</Label>
+                  <Input
+                    value={currentMentorado?.link_trello || ""}
+                    onChange={(e) => handleUpdateMentoradoField("link_trello", e.target.value)}
+                    placeholder="https://trello.com/..."
+                    className="h-7 text-xs"
+                  />
+                </div>
+
+                {/* Comunicação */}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-xs text-muted-foreground font-medium">
+                    Comunicação <ChevronDown className="h-3 w-3" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-1">
+                    <Textarea
+                      value={currentMentorado?.informacoes_mentorado || ""}
+                      onChange={(e) => handleUpdateMentoradoField("informacoes_mentorado", e.target.value)}
+                      placeholder="Informações do mentorado..."
+                      rows={2}
+                      className="text-xs"
+                    />
+                    <Textarea
+                      value={currentMentorado?.apresentacao || ""}
+                      onChange={(e) => handleUpdateMentoradoField("apresentacao", e.target.value)}
+                      placeholder="Apresentação..."
+                      rows={2}
+                      className="text-xs"
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Materiais */}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-xs text-muted-foreground font-medium">
+                    Materiais <ChevronDown className="h-3 w-3" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-1">
+                    <Textarea
+                      value={currentMentorado?.links_chats || ""}
+                      onChange={(e) => handleUpdateMentoradoField("links_chats", e.target.value)}
+                      placeholder="Links dos chats..."
+                      rows={2}
+                      className="text-xs"
+                    />
+                    <Input
+                      value={currentMentorado?.link_drive || ""}
+                      onChange={(e) => handleUpdateMentoradoField("link_drive", e.target.value)}
+                      placeholder="Link do Drive..."
+                      className="h-7 text-xs"
+                    />
+                    <Textarea
+                      value={currentMentorado?.referencias || ""}
+                      onChange={(e) => handleUpdateMentoradoField("referencias", e.target.value)}
+                      placeholder="Referências..."
+                      rows={2}
+                      className="text-xs"
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Mapa do Avatar */}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-xs text-muted-foreground font-medium">
+                    Mapa do Avatar <ChevronDown className="h-3 w-3" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-1">
+                    <MapaAvatarSection
+                      categories={avatarCategories}
+                      onUpdateCategories={(cats) => {
+                        updateMentorado.mutate({ id: mentoradoId, observacoes: JSON.stringify(cats) });
+                      }}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              </CollapsibleContent>
+            </Collapsible>
+            <div className="border-b" />
+
             {/* Seção de Atalhos - acima da lixeira */}
             <div className="pb-2 border-b hidden lg:block">
               <p className="text-sm font-semibold mb-2 text-muted-foreground">Atalhos</p>
