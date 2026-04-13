@@ -154,7 +154,7 @@ const Mentorados = () => {
 
   const handleOpenDetail = (mentorado: Mentorado) => {
     setSelectedMentorado(mentorado);
-    setIsDetailSheetOpen(true);
+    setIsRoteirosViewOpen(true);
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
