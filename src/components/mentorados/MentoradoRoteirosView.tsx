@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -89,6 +89,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCheckRoteiroViralAtivos, verificarCheck, verificarCheckComIA, CheckRoteiroViral } from "@/hooks/useCheckRoteiroViral";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useAuth";
+import { MapaAvatarSection } from "./MapaAvatarSection";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Label } from "@/components/ui/label";
+import {
+  useHeadlineChecklistItems,
+  useHeadlineChecklistProgress,
+  useToggleChecklistProgress,
+  useBulkToggleChecklistProgress,
+} from "@/hooks/useHeadlineChecklist";
+import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
 
