@@ -3693,6 +3693,12 @@ export const MentoradoRoteirosView = ({
         onOpenChange={setConfigTipoDialogOpen}
         tipo={configTipoSelected}
       />
+
+      {/* Dialog de configuração do checklist das headlines */}
+      <HeadlineChecklistConfig
+        open={showChecklistConfig}
+        onOpenChange={setShowChecklistConfig}
+      />
     </div>
   );
 };
