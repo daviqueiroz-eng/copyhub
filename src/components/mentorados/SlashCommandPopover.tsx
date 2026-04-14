@@ -162,7 +162,7 @@ export const SlashCommandPopover = ({
     }
     
     return { top, left };
-  }, [position]);
+  }, [position, internalMode]);
 
   if (!isOpen) return null;
 
