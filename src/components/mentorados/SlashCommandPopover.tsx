@@ -975,7 +975,11 @@ export const SlashCommandPopover = ({
   return (
     <div
       ref={containerRef}
-      className="fixed z-[100] bg-background border rounded-lg shadow-lg w-[calc(100vw-32px)] sm:w-96 max-w-96 max-h-[80vh] overflow-hidden flex flex-col"
+      className={`fixed z-[100] bg-background border rounded-lg shadow-lg max-h-[80vh] overflow-hidden flex flex-col ${
+        internalMode === "termos_virais" 
+          ? "w-[calc(100vw-32px)] sm:w-[700px] max-w-[700px]" 
+          : "w-[calc(100vw-32px)] sm:w-96 max-w-96"
+      }`}
       style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
     >
       {/* Campo de busca - esconder quando estiver digitando headline */}
@@ -1000,7 +1004,16 @@ export const SlashCommandPopover = ({
         {internalMode === "ctas" && renderItems(ctas, "CTAs")}
         {internalMode === "prompts" && renderPrompts()}
         {internalMode === "mentorados" && renderMentorados()}
-        {internalMode === "termos_virais" && renderTermosVirais()}
+        {internalMode === "termos_virais" && (
+          <div className="flex flex-col sm:flex-row">
+            <div className="flex-1 min-w-0 sm:border-r">
+              {renderTermosVirais()}
+            </div>
+            <div className="flex-1 min-w-0 border-t sm:border-t-0">
+              {renderPerfisReferencia()}
+            </div>
+          </div>
+        )}
         {avatarCategory && renderAvatarItems(avatarCategory)}
       </div>
     </div>
