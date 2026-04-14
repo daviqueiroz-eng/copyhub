@@ -477,15 +477,30 @@ export const MentoradoRoteirosView = ({
   const createNicho = useCreateNicho();
   const createTermoViral = useCreateTermoViral();
   useEffect(() => {
+  const floatingRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
     if (!floatingAdjust) return;
-    const dismiss = () => setFloatingAdjust(null);
+    const dismiss = (e: MouseEvent) => {
+      // Don't dismiss if clicking inside the floating buttons or popover
+      if (floatingRef.current && floatingRef.current.contains(e.target as Node)) return;
+      // Don't dismiss if register popover is open
+      if (registerPopover) return;
+      // Don't dismiss if clicking inside a popover content
+      const popoverContent = document.querySelector('[data-radix-popper-content-wrapper]');
+      if (popoverContent && popoverContent.contains(e.target as Node)) return;
+      setFloatingAdjust(null);
+    };
+    const dismissScroll = () => {
+      if (registerPopover) return;
+      setFloatingAdjust(null);
+    };
     document.addEventListener("mousedown", dismiss);
-    document.addEventListener("scroll", dismiss, true);
+    document.addEventListener("scroll", dismissScroll, true);
     return () => {
       document.removeEventListener("mousedown", dismiss);
-      document.removeEventListener("scroll", dismiss, true);
+      document.removeEventListener("scroll", dismissScroll, true);
     };
-  }, [floatingAdjust]);
+  }, [floatingAdjust, registerPopover]);
 
   const { data: inteligenciaGlobal } = useInteligenciaGlobal();
   
@@ -3620,9 +3635,11 @@ export const MentoradoRoteirosView = ({
       {/* Botão flutuante de Ajustar + Registrar */}
       {floatingAdjust && (
         <div
+          ref={floatingRef}
           className="fixed z-[100] flex gap-1"
           style={{ left: floatingAdjust.x - 40, top: floatingAdjust.y }}
         >
+          {floatingAdjust.campo !== "headline" && (
           <Button
             size="sm"
             className="shadow-lg border bg-background text-foreground hover:bg-accent font-semibold px-4 py-1 rounded-lg text-sm"
@@ -3642,6 +3659,7 @@ export const MentoradoRoteirosView = ({
           >
             Ajustar
           </Button>
+          )}
           <Popover open={registerPopover} onOpenChange={setRegisterPopover}>
             <PopoverTrigger asChild>
               <Button
