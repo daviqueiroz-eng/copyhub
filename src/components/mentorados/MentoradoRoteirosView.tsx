@@ -1510,7 +1510,7 @@ export const MentoradoRoteirosView = ({
             if (current && !manualTipoChangeRef.current.has(key)) {
               const newMap = new Map(prev);
               newMap.set(key, { ...current, tipo_roteiro_id: match.id });
-              saveRoteiro(guiaNum, ordemNum, current.headline, current.estrutura, match.id);
+              saveRoteiro(guiaNum, ordemNum, current.headline, current.estrutura, match.id, current.link_referencia);
               return newMap;
             }
             return prev;
