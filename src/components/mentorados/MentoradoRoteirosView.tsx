@@ -3635,9 +3635,11 @@ export const MentoradoRoteirosView = ({
       {/* Botão flutuante de Ajustar + Registrar */}
       {floatingAdjust && (
         <div
+          ref={floatingRef}
           className="fixed z-[100] flex gap-1"
           style={{ left: floatingAdjust.x - 40, top: floatingAdjust.y }}
         >
+          {floatingAdjust.campo !== "headline" && (
           <Button
             size="sm"
             className="shadow-lg border bg-background text-foreground hover:bg-accent font-semibold px-4 py-1 rounded-lg text-sm"
@@ -3657,6 +3659,7 @@ export const MentoradoRoteirosView = ({
           >
             Ajustar
           </Button>
+          )
           <Popover open={registerPopover} onOpenChange={setRegisterPopover}>
             <PopoverTrigger asChild>
               <Button
