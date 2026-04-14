@@ -101,7 +101,7 @@ import {
   useBulkToggleChecklistProgress,
 } from "@/hooks/useHeadlineChecklist";
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
-import { useNichos, useCreateNicho } from "@/hooks/useNichos";
+import { useNichos, useCreateNicho, useDeleteNicho } from "@/hooks/useNichos";
 import { useCreateTermoViral, useTermosVirais } from "@/hooks/useTermosVirais";
 
 
@@ -476,6 +476,7 @@ export const MentoradoRoteirosView = ({
 
   const { data: nichos = [] } = useNichos();
   const createNicho = useCreateNicho();
+  const deleteNicho = useDeleteNicho();
   const createTermoViral = useCreateTermoViral();
   const { data: allTermosVirais = [] } = useTermosVirais();
   const floatingRef = useRef<HTMLDivElement>(null);
@@ -3756,6 +3757,25 @@ export const MentoradoRoteirosView = ({
                     ))}
                   </SelectContent>
                 </Select>
+                {registerNichoId ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-7 w-full text-destructive hover:text-destructive"
+                    disabled={deleteNicho.isPending}
+                    onClick={async () => {
+                      const termosDoNicho = allTermosVirais.filter(t => t.nicho_id === registerNichoId);
+                      if (termosDoNicho.length > 0) {
+                        toast({ title: "Mova os termos deste nicho antes de apagá-lo", variant: "destructive" });
+                        return;
+                      }
+                      await deleteNicho.mutateAsync(registerNichoId);
+                      setRegisterNichoId("");
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" /> Apagar nicho selecionado
+                  </Button>
+                ) : null}
                 <Button variant="ghost" size="sm" className="text-xs h-7 w-full" onClick={() => setShowNewNichoInput(true)}>
                   <Plus className="h-3 w-3 mr-1" /> Novo nicho
                 </Button>
