@@ -2800,7 +2800,7 @@ export const MentoradoRoteirosView = ({
                       )}
 
                       {/* Headline */}
-                      <div className="mb-2">
+                      <div className="mb-2 group/headline">
                         <div className="flex items-center gap-3 flex-wrap">
                           <Checkbox
                             checked={selectedRoteiroKeys.includes(key)}
