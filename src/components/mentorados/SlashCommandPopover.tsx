@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Search, Plus, Pencil, X, Check, Loader2 } from "lucide-react";
+import { Search, Plus, Pencil, X, Check, Loader2, Trash2, ArrowRightLeft, Settings } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
