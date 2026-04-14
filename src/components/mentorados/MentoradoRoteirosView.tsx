@@ -1324,6 +1324,19 @@ export const MentoradoRoteirosView = ({
         targetField: field,
         position: { top, left },
       });
+    } else if (textBeforeCursor.endsWith("/t")) {
+      // Abrir banco de termos virais
+      const textAfterCursor = value.slice(cursorPos);
+      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
+      handleChange(guiaNumero, ordem, field, cleanValue);
+      cursorPositionRef.current.set(key, cursorPos - 2);
+      setSlashCommand({
+        isOpen: true,
+        mode: "termos_virais",
+        targetKey: key,
+        targetField: field,
+        position: { top, left },
+      });
     } else if (slashCommand.isOpen) {
       // Manter popover aberto se já estiver
       setSlashCommand(prev => ({ ...prev, targetKey: key, targetField: field }));
