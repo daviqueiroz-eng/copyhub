@@ -501,20 +501,20 @@ export const SlashCommandPopover = ({
     return null;
   };
 
-  // Renderizar termos virais agrupados por nicho
-  const renderTermosVirais = () => {
-    const filtered = termosVirais.filter(t =>
-      !search.trim() ||
-      t.termo.toLowerCase().includes(search.toLowerCase()) ||
-      t.nicho_nome?.toLowerCase().includes(search.toLowerCase())
-    );
+  // Estado para filtro de nicho nos termos virais
+  const [selectedNichoFilter, setSelectedNichoFilter] = useState<string>("all");
 
-    // Agrupar por nicho
-    const grouped = new Map<string, TermoViral[]>();
-    filtered.forEach(t => {
-      const nicho = t.nicho_nome || "Sem nicho";
-      if (!grouped.has(nicho)) grouped.set(nicho, []);
-      grouped.get(nicho)!.push(t);
+  // Renderizar termos virais com filtro por nicho
+  const renderTermosVirais = () => {
+    // Extrair nichos únicos
+    const nichosUnicos = Array.from(new Set(termosVirais.map(t => t.nicho_nome || "Sem nicho")));
+
+    const filtered = termosVirais.filter(t => {
+      const nichoMatch = selectedNichoFilter === "all" || (t.nicho_nome || "Sem nicho") === selectedNichoFilter;
+      const searchMatch = !search.trim() ||
+        t.termo.toLowerCase().includes(search.toLowerCase()) ||
+        t.nicho_nome?.toLowerCase().includes(search.toLowerCase());
+      return nichoMatch && searchMatch;
     });
 
     return (
@@ -523,38 +523,51 @@ export const SlashCommandPopover = ({
           <span>Banco de Termos Virais ({filtered.length})</span>
           <button
             className="text-xs text-primary hover:underline"
-            onClick={() => setInternalMode("menu")}
+            onClick={() => { setInternalMode("menu"); setSelectedNichoFilter("all"); }}
           >
             ← Voltar
           </button>
         </p>
+
+        {/* Filtro por nicho */}
+        <div className="px-3 py-2 border-b">
+          <select
+            value={selectedNichoFilter}
+            onChange={(e) => setSelectedNichoFilter(e.target.value)}
+            className="w-full h-8 text-sm rounded-md border bg-background px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="all">Todos os nichos</option>
+            {nichosUnicos.map(n => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
+
         {filtered.length === 0 ? (
           <p className="px-3 py-4 text-sm text-muted-foreground text-center">
             Nenhum termo viral encontrado.
           </p>
         ) : (
-          <ScrollArea className="max-h-[400px]">
-            {Array.from(grouped.entries()).map(([nicho, termos]) => (
-              <div key={nicho} className="mb-2">
-                <p className="px-3 py-1.5 text-xs font-semibold text-primary bg-primary/5 sticky top-0">
-                  {nicho} ({termos.length})
-                </p>
-                {termos.map(t => (
-                  <button
-                    key={t.id}
-                    className="w-full text-left px-4 py-2 hover:bg-primary/10 transition-colors flex items-center justify-between"
-                    onClick={() => {
-                      onSelectItem(t.termo);
-                      onClose();
-                    }}
-                  >
-                    <span className="text-sm">{t.termo}</span>
-                    {t.views && (
-                      <span className="text-xs text-muted-foreground ml-2 shrink-0">{t.views} views</span>
-                    )}
-                  </button>
-                ))}
-              </div>
+          <ScrollArea className="max-h-[350px]">
+            {filtered.map(t => (
+              <button
+                key={t.id}
+                className="w-full text-left px-4 py-2 hover:bg-primary/10 transition-colors flex items-center justify-between"
+                onClick={() => {
+                  onSelectItem(t.termo);
+                  onClose();
+                }}
+              >
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm">{t.termo}</span>
+                  {selectedNichoFilter === "all" && (
+                    <span className="text-xs text-muted-foreground ml-2">• {t.nicho_nome || "Sem nicho"}</span>
+                  )}
+                </div>
+                {t.views && (
+                  <span className="text-xs text-muted-foreground ml-2 shrink-0">{t.views} views</span>
+                )}
+              </button>
             ))}
           </ScrollArea>
         )}
