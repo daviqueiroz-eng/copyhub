@@ -729,13 +729,15 @@ export const SlashCommandPopover = ({
       )}
 
       {/* Conteúdo */}
-      {internalMode === "menu" && renderMenu()}
-      {internalMode === "intensificadores" && renderItems(intensificadores, "Intensificadores")}
-      {internalMode === "ctas" && renderItems(ctas, "CTAs")}
-      {internalMode === "prompts" && renderPrompts()}
-      {internalMode === "mentorados" && renderMentorados()}
-      {internalMode === "termos_virais" && renderTermosVirais()}
-      {avatarCategory && renderAvatarItems(avatarCategory)}
+      <div className="overflow-y-auto flex-1 min-h-0">
+        {internalMode === "menu" && renderMenu()}
+        {internalMode === "intensificadores" && renderItems(intensificadores, "Intensificadores")}
+        {internalMode === "ctas" && renderItems(ctas, "CTAs")}
+        {internalMode === "prompts" && renderPrompts()}
+        {internalMode === "mentorados" && renderMentorados()}
+        {internalMode === "termos_virais" && renderTermosVirais()}
+        {avatarCategory && renderAvatarItems(avatarCategory)}
+      </div>
     </div>
   );
 };
