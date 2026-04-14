@@ -59,6 +59,30 @@ export const useCreateTermoViral = () => {
   });
 };
 
+export const useUpdateTermoViral = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, nicho_id }: { id: string; nicho_id: string | null }) => {
+      const { data, error } = await supabase
+        .from("termos_virais")
+        .update({ nicho_id })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["termos_virais"] });
+      toast({ title: "Termo movido para outro nicho!" });
+    },
+    onError: (error) => {
+      toast({ title: "Erro ao mover termo", description: error.message, variant: "destructive" });
+    },
+  });
+};
+
 export const useDeleteTermoViral = () => {
   const queryClient = useQueryClient();
 

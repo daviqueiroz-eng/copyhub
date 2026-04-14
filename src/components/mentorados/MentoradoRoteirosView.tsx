@@ -102,7 +102,7 @@ import {
 } from "@/hooks/useHeadlineChecklist";
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
 import { useNichos, useCreateNicho } from "@/hooks/useNichos";
-import { useCreateTermoViral } from "@/hooks/useTermosVirais";
+import { useCreateTermoViral, useTermosVirais } from "@/hooks/useTermosVirais";
 
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "termos_virais" | string;
@@ -477,6 +477,7 @@ export const MentoradoRoteirosView = ({
   const { data: nichos = [] } = useNichos();
   const createNicho = useCreateNicho();
   const createTermoViral = useCreateTermoViral();
+  const { data: allTermosVirais = [] } = useTermosVirais();
   const floatingRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!floatingAdjust) return;
@@ -3769,6 +3770,11 @@ export const MentoradoRoteirosView = ({
                   autoFocus
                 />
                 <Button size="sm" className="h-8" disabled={!registerNewNicho.trim() || createNicho.isPending} onClick={async () => {
+                  const nichoExists = nichos.some(n => n.nome.toLowerCase() === registerNewNicho.trim().toLowerCase());
+                  if (nichoExists) {
+                    toast({ title: "Este nicho já existe", variant: "destructive" });
+                    return;
+                  }
                   const result = await createNicho.mutateAsync(registerNewNicho.trim());
                   setRegisterNichoId(result.id);
                   setShowNewNichoInput(false);
@@ -3799,9 +3805,18 @@ export const MentoradoRoteirosView = ({
             disabled={createTermoViral.isPending}
             onClick={async () => {
               if (!user) return;
+              const termoText = floatingAdjust?.text || "";
+              const nichoId = registerNichoId || null;
+              const isDuplicate = allTermosVirais.some(t =>
+                t.termo.toLowerCase() === termoText.toLowerCase() && t.nicho_id === nichoId
+              );
+              if (isDuplicate) {
+                toast({ title: "Este termo já está registrado neste nicho", variant: "destructive" });
+                return;
+              }
               await createTermoViral.mutateAsync({
-                termo: floatingAdjust?.text || "",
-                nicho_id: registerNichoId || null,
+                termo: termoText,
+                nicho_id: nichoId,
                 views: registerViews,
                 user_id: user.id,
               });
