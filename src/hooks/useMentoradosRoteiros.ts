@@ -12,6 +12,7 @@ export type MentoradoRoteiro = {
   headline: string;
   estrutura: string;
   tipo_roteiro_id: string | null;
+  link_referencia: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -135,6 +136,7 @@ export const useUpsertMentoradoRoteiro = () => {
       headline,
       estrutura,
       tipoRoteiroId,
+      linkReferencia,
     }: {
       mentoradoId: string;
       guiaNumero: number;
@@ -142,6 +144,7 @@ export const useUpsertMentoradoRoteiro = () => {
       headline: string;
       estrutura: string;
       tipoRoteiroId?: string | null;
+      linkReferencia?: string | null;
     }) => {
       if (!user) throw new Error("Usuário não autenticado");
 
@@ -157,6 +160,7 @@ export const useUpsertMentoradoRoteiro = () => {
             estrutura,
             deleted_at: null,
             tipo_roteiro_id: tipoRoteiroId ?? null,
+            link_referencia: linkReferencia ?? null,
           },
           {
             onConflict: "mentorado_id,guia_numero,ordem",
