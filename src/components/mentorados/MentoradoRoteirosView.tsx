@@ -1439,12 +1439,12 @@ export const MentoradoRoteirosView = ({
     
     setRoteirosLocais((prev) => {
       const newMap = new Map(prev);
-      newMap.set(key, { headline: "", estrutura: "", tipo_roteiro_id: null });
+      newMap.set(key, { headline: "", estrutura: "", tipo_roteiro_id: null, link_referencia: null });
       return newMap;
     });
 
     // Salvar como vazio
-    saveRoteiro(guiaNumero, ordem, "", "", null);
+    saveRoteiro(guiaNumero, ordem, "", "", null, null);
   };
 
   // Função para alterar o tipo de roteiro
@@ -1468,7 +1468,7 @@ export const MentoradoRoteirosView = ({
     // Salvar imediatamente a mudança de tipo
     const roteiro = roteirosLocais.get(key);
     if (roteiro) {
-      saveRoteiro(guiaNumero, ordem, roteiro.headline, roteiro.estrutura, tipoId);
+      saveRoteiro(guiaNumero, ordem, roteiro.headline, roteiro.estrutura, tipoId, roteiro.link_referencia);
     }
   }, [roteirosLocais, saveRoteiro]);
 
