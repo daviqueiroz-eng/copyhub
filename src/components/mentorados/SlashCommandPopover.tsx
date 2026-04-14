@@ -351,7 +351,7 @@ export const SlashCommandPopover = ({
 
         <div className="border-t mt-2 pt-2 shrink-0">
           <p className="px-3 py-1 text-xs text-muted-foreground">
-            <span className="font-mono">/i</span> Intensificadores, <span className="font-mono">/c</span> CTAs, <span className="font-mono">/3</span> Headlines, <span className="font-mono">/p</span> Prompts, <span className="font-mono">/m</span> Mentorados
+            <span className="font-mono">/i</span> Intensificadores, <span className="font-mono">/c</span> CTAs, <span className="font-mono">/3</span> Headlines, <span className="font-mono">/p</span> Prompts, <span className="font-mono">/m</span> Mentorados, <span className="font-mono">/t</span> Termos Virais
           </p>
         </div>
       </div>
@@ -722,6 +722,7 @@ export const SlashCommandPopover = ({
       {internalMode === "ctas" && renderItems(ctas, "CTAs")}
       {internalMode === "prompts" && renderPrompts()}
       {internalMode === "mentorados" && renderMentorados()}
+      {internalMode === "termos_virais" && renderTermosVirais()}
       {avatarCategory && renderAvatarItems(avatarCategory)}
     </div>
   );
