@@ -2448,13 +2448,36 @@ export const MentoradoRoteirosView = ({
             {/* Seção de Atalhos - acima da lixeira */}
             <div className="pb-2 border-b hidden lg:block">
               <p className="text-sm font-semibold mb-2 text-muted-foreground">Atalhos</p>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p><span className="font-mono bg-muted px-1 rounded">/</span> Mapa do avatar</p>
-                <p><span className="font-mono bg-muted px-1 rounded">/3</span> Headlines</p>
-                <p><span className="font-mono bg-muted px-1 rounded">/c</span> CTAs</p>
-                <p><span className="font-mono bg-muted px-1 rounded">/i</span> Intensificadores</p>
-                <p><span className="font-mono bg-muted px-1 rounded">/p</span> Prompts</p>
-                <p><span className="font-mono bg-muted px-1 rounded">/m</span> Registrar heads</p>
+              <div className="space-y-0.5 text-xs text-muted-foreground">
+                {[
+                  { key: "/", label: "Mapa do avatar", mode: "menu" as SlashCommandMode },
+                  { key: "/3", label: "Headlines", mode: "headlines" as SlashCommandMode },
+                  { key: "/c", label: "CTAs", mode: "ctas" as SlashCommandMode },
+                  { key: "/i", label: "Intensificadores", mode: "intensificadores" as SlashCommandMode },
+                  { key: "/p", label: "Prompts", mode: "prompts" as SlashCommandMode },
+                  { key: "/m", label: "Registrar heads", mode: "mentorados" as SlashCommandMode },
+                  { key: "/t", label: "Termos virais", mode: "termos_virais" as SlashCommandMode },
+                ].map(item => (
+                  <button
+                    key={item.key}
+                    className="w-full text-left flex items-center gap-1.5 py-1 px-1 rounded hover:bg-accent transition-colors"
+                    onClick={() => {
+                      if (item.mode === "headlines") {
+                        setShowHeadlinesModal(true);
+                        return;
+                      }
+                      setSlashCommand({
+                        isOpen: true,
+                        mode: item.mode,
+                        targetKey: "",
+                        targetField: "headline",
+                        position: { top: 300, left: 400 },
+                      });
+                    }}
+                  >
+                    <span className="font-mono bg-muted px-1 rounded">{item.key}</span> {item.label}
+                  </button>
+                ))}
               </div>
             </div>
             
