@@ -62,7 +62,9 @@ export const SlashCommandPopover = ({
   // Estados para modo mentorados
   const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
   const [headlineInput, setHeadlineInput] = useState("");
-  const [selectedNichoFilter, setSelectedNichoFilter] = useState<string>("all");
+  const [selectedNichoFilter, setSelectedNichoFilter] = useState<string>(() => {
+    return localStorage.getItem("termos_virais_nicho_filter") || "all";
+  });
   const [movingTermoId, setMovingTermoId] = useState<string | null>(null);
   const [showNichoManager, setShowNichoManager] = useState(false);
   
@@ -72,7 +74,9 @@ export const SlashCommandPopover = ({
   const [perfilInscritos, setPerfilInscritos] = useState("");
   const [perfilLink, setPerfilLink] = useState("");
   const [perfilNichoId, setPerfilNichoId] = useState<string>("");
-  const [selectedPerfilNichoFilter, setSelectedPerfilNichoFilter] = useState<string>("all");
+  const [selectedPerfilNichoFilter, setSelectedPerfilNichoFilter] = useState<string>(() => {
+    return localStorage.getItem("perfis_ref_nicho_filter") || "all";
+  });
 
   const { data: intensificadores = [] } = useIntensificadores();
   const { data: ctas = [] } = useCTAs();
@@ -145,10 +149,11 @@ export const SlashCommandPopover = ({
     let left = position.left;
     
     if (isMobile) {
-      // Em mobile, centralizar com 16px de margem cada lado
       left = 16;
+    } else if (isWide) {
+      // Centralizar na tela quando é modo termos_virais
+      left = Math.max(16, (window.innerWidth - popoverWidth) / 2);
     } else {
-      // Em desktop, garantir que não ultrapasse a tela
       const maxLeft = window.innerWidth - popoverWidth - 16;
       left = Math.max(16, Math.min(position.left, maxLeft));
     }
@@ -554,7 +559,11 @@ export const SlashCommandPopover = ({
           <div className="px-3 py-2 border-b">
             <select
               value={selectedPerfilNichoFilter}
-              onChange={(e) => setSelectedPerfilNichoFilter(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedPerfilNichoFilter(v);
+                localStorage.setItem("perfis_ref_nicho_filter", v);
+              }}
               className="w-full h-8 text-sm rounded-md border bg-background px-2 focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="all">Todos os nichos</option>
@@ -638,10 +647,16 @@ export const SlashCommandPopover = ({
         ) : (
           <div className="overflow-y-auto flex-1 min-h-0">
             {sorted.map(p => (
-              <div key={p.id} className="group flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors">
+              <a
+                key={p.id}
+                href={p.link.startsWith("http") ? p.link : `https://${p.link}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors cursor-pointer"
+              >
                 <button
                   className="p-0.5 hover:scale-110 transition-transform shrink-0"
-                  onClick={() => updatePerfilReferencia.mutate({ id: p.id, favorito: !p.favorito })}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); updatePerfilReferencia.mutate({ id: p.id, favorito: !p.favorito }); }}
                   title={p.favorito ? "Desfavoritar" : "Favoritar"}
                 >
                   <Star className={`h-3.5 w-3.5 ${p.favorito ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
@@ -650,24 +665,15 @@ export const SlashCommandPopover = ({
                   <p className="text-sm font-medium truncate">{p.nome}</p>
                   <p className="text-xs text-muted-foreground">{p.inscritos || "—"} inscritos</p>
                 </div>
-                <a
-                  href={p.link.startsWith("http") ? p.link : `https://${p.link}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-1 hover:bg-muted rounded transition-colors shrink-0"
-                  title="Abrir perfil"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <ExternalLink className="h-3.5 w-3.5 text-primary" />
-                </a>
+                <ExternalLink className="h-3.5 w-3.5 text-primary shrink-0" />
                 <button
                   className="p-1 hover:bg-destructive/10 rounded transition-colors shrink-0 hidden group-hover:block"
-                  onClick={() => deletePerfilReferencia.mutate(p.id)}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); deletePerfilReferencia.mutate(p.id); }}
                   title="Remover perfil"
                 >
                   <X className="h-3 w-3 text-destructive" />
                 </button>
-              </div>
+              </a>
             ))}
           </div>
         )}
@@ -746,7 +752,7 @@ export const SlashCommandPopover = ({
               </button>
               <button
                 className="text-xs text-primary hover:underline"
-                onClick={() => { setInternalMode("menu"); setSelectedNichoFilter("all"); }}
+                onClick={() => { setInternalMode("menu"); }}
               >
                 ← Voltar
               </button>
@@ -757,7 +763,11 @@ export const SlashCommandPopover = ({
           <div className="px-3 py-2 border-b">
             <select
               value={selectedNichoFilter}
-              onChange={(e) => setSelectedNichoFilter(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedNichoFilter(v);
+                localStorage.setItem("termos_virais_nicho_filter", v);
+              }}
               className="w-full h-8 text-sm rounded-md border bg-background px-2 focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="all">Todos os nichos</option>
@@ -1005,11 +1015,11 @@ export const SlashCommandPopover = ({
         {internalMode === "prompts" && renderPrompts()}
         {internalMode === "mentorados" && renderMentorados()}
         {internalMode === "termos_virais" && (
-          <div className="flex flex-col sm:flex-row">
-            <div className="flex-1 min-w-0 sm:border-r">
+          <div className="flex flex-col sm:flex-row" style={{ height: "420px" }}>
+            <div className="flex-1 min-w-0 sm:border-r flex flex-col overflow-hidden">
               {renderTermosVirais()}
             </div>
-            <div className="flex-1 min-w-0 border-t sm:border-t-0">
+            <div className="flex-1 min-w-0 border-t sm:border-t-0 flex flex-col overflow-hidden">
               {renderPerfisReferencia()}
             </div>
           </div>
