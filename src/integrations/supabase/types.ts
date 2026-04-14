@@ -1929,6 +1929,47 @@ export type Database = {
         }
         Relationships: []
       }
+      perfis_referencia: {
+        Row: {
+          created_at: string | null
+          favorito: boolean
+          id: string
+          inscritos: string
+          link: string
+          nicho_id: string | null
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          favorito?: boolean
+          id?: string
+          inscritos?: string
+          link: string
+          nicho_id?: string | null
+          nome: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          favorito?: boolean
+          id?: string
+          inscritos?: string
+          link?: string
+          nicho_id?: string | null
+          nome?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfis_referencia_nicho_id_fkey"
+            columns: ["nicho_id"]
+            isOneToOne: false
+            referencedRelation: "nichos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planilhas: {
         Row: {
           created_at: string
