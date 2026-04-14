@@ -12,7 +12,9 @@ import { useCreateHeadlinesCriadas } from "@/hooks/useHeadlinesCriadas";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
-type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | "mentorados" | string;
+import { useTermosVirais, TermoViral } from "@/hooks/useTermosVirais";
+
+type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | "mentorados" | "termos_virais" | string;
 
 interface AvatarCategory {
   id: string;
@@ -63,6 +65,7 @@ export const SlashCommandPopover = ({
   const { data: ctas = [] } = useCTAs();
   const { data: prompts = [] } = usePrompts();
   const { data: mentorados = [] } = useMentorados();
+  const { data: termosVirais = [] } = useTermosVirais();
   const createHeadline = useCreateHeadlinesCriadas();
   const { user } = useAuth();
 
@@ -348,7 +351,7 @@ export const SlashCommandPopover = ({
 
         <div className="border-t mt-2 pt-2 shrink-0">
           <p className="px-3 py-1 text-xs text-muted-foreground">
-            <span className="font-mono">/i</span> Intensificadores, <span className="font-mono">/c</span> CTAs, <span className="font-mono">/3</span> Headlines, <span className="font-mono">/p</span> Prompts, <span className="font-mono">/m</span> Mentorados
+            <span className="font-mono">/i</span> Intensificadores, <span className="font-mono">/c</span> CTAs, <span className="font-mono">/3</span> Headlines, <span className="font-mono">/p</span> Prompts, <span className="font-mono">/m</span> Mentorados, <span className="font-mono">/t</span> Termos Virais
           </p>
         </div>
       </div>
@@ -496,6 +499,67 @@ export const SlashCommandPopover = ({
       return avatarCategories.find((cat) => cat.id === catId);
     }
     return null;
+  };
+
+  // Renderizar termos virais agrupados por nicho
+  const renderTermosVirais = () => {
+    const filtered = termosVirais.filter(t =>
+      !search.trim() ||
+      t.termo.toLowerCase().includes(search.toLowerCase()) ||
+      t.nicho_nome?.toLowerCase().includes(search.toLowerCase())
+    );
+
+    // Agrupar por nicho
+    const grouped = new Map<string, TermoViral[]>();
+    filtered.forEach(t => {
+      const nicho = t.nicho_nome || "Sem nicho";
+      if (!grouped.has(nicho)) grouped.set(nicho, []);
+      grouped.get(nicho)!.push(t);
+    });
+
+    return (
+      <div className="py-2">
+        <p className="px-3 py-1 text-xs text-muted-foreground font-semibold flex items-center justify-between">
+          <span>Banco de Termos Virais ({filtered.length})</span>
+          <button
+            className="text-xs text-primary hover:underline"
+            onClick={() => setInternalMode("menu")}
+          >
+            ← Voltar
+          </button>
+        </p>
+        {filtered.length === 0 ? (
+          <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+            Nenhum termo viral encontrado.
+          </p>
+        ) : (
+          <ScrollArea className="max-h-[400px]">
+            {Array.from(grouped.entries()).map(([nicho, termos]) => (
+              <div key={nicho} className="mb-2">
+                <p className="px-3 py-1.5 text-xs font-semibold text-primary bg-primary/5 sticky top-0">
+                  {nicho} ({termos.length})
+                </p>
+                {termos.map(t => (
+                  <button
+                    key={t.id}
+                    className="w-full text-left px-4 py-2 hover:bg-primary/10 transition-colors flex items-center justify-between"
+                    onClick={() => {
+                      onSelectItem(t.termo);
+                      onClose();
+                    }}
+                  >
+                    <span className="text-sm">{t.termo}</span>
+                    {t.views && (
+                      <span className="text-xs text-muted-foreground ml-2 shrink-0">{t.views} views</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </ScrollArea>
+        )}
+      </div>
+    );
   };
 
   // Função para salvar headline para mentorado
@@ -658,6 +722,7 @@ export const SlashCommandPopover = ({
       {internalMode === "ctas" && renderItems(ctas, "CTAs")}
       {internalMode === "prompts" && renderPrompts()}
       {internalMode === "mentorados" && renderMentorados()}
+      {internalMode === "termos_virais" && renderTermosVirais()}
       {avatarCategory && renderAvatarItems(avatarCategory)}
     </div>
   );

@@ -101,8 +101,11 @@ import {
   useBulkToggleChecklistProgress,
 } from "@/hooks/useHeadlineChecklist";
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
+import { useNichos, useCreateNicho } from "@/hooks/useNichos";
+import { useCreateTermoViral } from "@/hooks/useTermosVirais";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-type SlashCommandMode = "menu" | "intensificadores" | "ctas" | string;
+type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "termos_virais" | string;
 
 interface AvatarCategory {
   id: string;
@@ -463,7 +466,16 @@ export const MentoradoRoteirosView = ({
     estrutura: string;
   } | null>(null);
 
-  // Dismiss floating adjust button on click outside or scroll
+  // Estado para registrar termo viral
+  const [registerPopover, setRegisterPopover] = useState(false);
+  const [registerNichoId, setRegisterNichoId] = useState<string>("");
+  const [registerViews, setRegisterViews] = useState("");
+  const [registerNewNicho, setRegisterNewNicho] = useState("");
+  const [showNewNichoInput, setShowNewNichoInput] = useState(false);
+
+  const { data: nichos = [] } = useNichos();
+  const createNicho = useCreateNicho();
+  const createTermoViral = useCreateTermoViral();
   useEffect(() => {
     if (!floatingAdjust) return;
     const dismiss = () => setFloatingAdjust(null);
@@ -1320,6 +1332,19 @@ export const MentoradoRoteirosView = ({
       setSlashCommand({
         isOpen: true,
         mode: "mentorados",
+        targetKey: key,
+        targetField: field,
+        position: { top, left },
+      });
+    } else if (textBeforeCursor.endsWith("/t")) {
+      // Abrir banco de termos virais
+      const textAfterCursor = value.slice(cursorPos);
+      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
+      handleChange(guiaNumero, ordem, field, cleanValue);
+      cursorPositionRef.current.set(key, cursorPos - 2);
+      setSlashCommand({
+        isOpen: true,
+        mode: "termos_virais",
         targetKey: key,
         targetField: field,
         position: { top, left },
@@ -3592,10 +3617,10 @@ export const MentoradoRoteirosView = ({
         />
       )}
 
-      {/* Botão flutuante de Ajustar */}
+      {/* Botão flutuante de Ajustar + Registrar */}
       {floatingAdjust && (
         <div
-          className="fixed z-[100]"
+          className="fixed z-[100] flex gap-1"
           style={{ left: floatingAdjust.x - 40, top: floatingAdjust.y }}
         >
           <Button
@@ -3617,6 +3642,101 @@ export const MentoradoRoteirosView = ({
           >
             Ajustar
           </Button>
+          <Popover open={registerPopover} onOpenChange={setRegisterPopover}>
+            <PopoverTrigger asChild>
+              <Button
+                size="sm"
+                className="shadow-lg border bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-4 py-1 rounded-lg text-sm"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setRegisterNichoId("");
+                  setRegisterViews("");
+                  setShowNewNichoInput(false);
+                  setRegisterNewNicho("");
+                  setRegisterPopover(true);
+                }}
+              >
+                Registrar
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-3 space-y-3" side="bottom" align="start">
+              <p className="text-sm font-semibold">Registrar Termo Viral</p>
+              <p className="text-xs text-muted-foreground truncate">"{floatingAdjust.text}"</p>
+              
+              <div className="space-y-2">
+                <Label className="text-xs">Nicho</Label>
+                {!showNewNichoInput ? (
+                  <div className="space-y-1">
+                    <Select value={registerNichoId} onValueChange={setRegisterNichoId}>
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Selecione um nicho" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {nichos.map(n => (
+                          <SelectItem key={n.id} value={n.id}>{n.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="ghost" size="sm" className="text-xs h-7 w-full" onClick={() => setShowNewNichoInput(true)}>
+                      <Plus className="h-3 w-3 mr-1" /> Novo nicho
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-1">
+                    <Input
+                      value={registerNewNicho}
+                      onChange={e => setRegisterNewNicho(e.target.value)}
+                      placeholder="Nome do nicho"
+                      className="h-8 text-sm flex-1"
+                      autoFocus
+                    />
+                    <Button size="sm" className="h-8" disabled={!registerNewNicho.trim() || createNicho.isPending} onClick={async () => {
+                      const result = await createNicho.mutateAsync(registerNewNicho.trim());
+                      setRegisterNichoId(result.id);
+                      setShowNewNichoInput(false);
+                      setRegisterNewNicho("");
+                    }}>
+                      <Check className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8" onClick={() => { setShowNewNichoInput(false); setRegisterNewNicho(""); }}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">Número de views</Label>
+                <Input
+                  value={registerViews}
+                  onChange={e => setRegisterViews(e.target.value)}
+                  placeholder="Ex: 1.2M"
+                  className="h-8 text-sm"
+                />
+              </div>
+
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={createTermoViral.isPending}
+                onClick={async () => {
+                  if (!user) return;
+                  await createTermoViral.mutateAsync({
+                    termo: floatingAdjust.text,
+                    nicho_id: registerNichoId || null,
+                    views: registerViews,
+                    user_id: user.id,
+                  });
+                  setRegisterPopover(false);
+                  setFloatingAdjust(null);
+                }}
+              >
+                {createTermoViral.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Salvar termo
+              </Button>
+            </PopoverContent>
+          </Popover>
         </div>
       )}
 
