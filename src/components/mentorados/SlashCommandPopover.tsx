@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 
 import { useTermosVirais, useUpdateTermoViral, useDeleteTermoViral, TermoViral } from "@/hooks/useTermosVirais";
 import { useNichos, useDeleteNicho } from "@/hooks/useNichos";
+import { usePerfisReferencia, useCreatePerfilReferencia, useUpdatePerfilReferencia, useDeletePerfilReferencia } from "@/hooks/usePerfisReferencia";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | "mentorados" | "termos_virais" | string;
 
