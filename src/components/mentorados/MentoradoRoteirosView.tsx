@@ -857,7 +857,7 @@ export const MentoradoRoteirosView = ({
 
   // Função para salvar
   const saveRoteiro = useCallback(
-    (guiaNumero: number, ordem: number, headline: string, estrutura: string, tipoRoteiroId?: string | null) => {
+    (guiaNumero: number, ordem: number, headline: string, estrutura: string, tipoRoteiroId?: string | null, linkReferencia?: string | null) => {
       const key = `${guiaNumero}-${ordem}`;
       
       // Não salvar se ambos estiverem vazios
@@ -878,6 +878,7 @@ export const MentoradoRoteirosView = ({
           headline,
           estrutura,
           tipoRoteiroId,
+          linkReferencia,
         },
         {
           onSuccess: () => {
