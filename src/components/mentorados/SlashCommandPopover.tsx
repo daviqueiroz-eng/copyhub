@@ -60,6 +60,7 @@ export const SlashCommandPopover = ({
   // Estados para modo mentorados
   const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
   const [headlineInput, setHeadlineInput] = useState("");
+  const [selectedNichoFilter, setSelectedNichoFilter] = useState<string>("all");
 
   const { data: intensificadores = [] } = useIntensificadores();
   const { data: ctas = [] } = useCTAs();
@@ -501,8 +502,6 @@ export const SlashCommandPopover = ({
     return null;
   };
 
-  // Estado para filtro de nicho nos termos virais
-  const [selectedNichoFilter, setSelectedNichoFilter] = useState<string>("all");
 
   // Renderizar termos virais com filtro por nicho
   const renderTermosVirais = () => {
