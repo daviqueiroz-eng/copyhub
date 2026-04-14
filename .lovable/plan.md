@@ -1,63 +1,47 @@
 
 
-## Plano: Registrar Termos Virais + Banco de Termos (/t)
+## Plano: Melhorias nos Termos Virais e Nichos
 
-### Contexto
+### Problemas identificados
 
-Hoje, ao selecionar texto na headline, aparece apenas o botão "Ajustar" (IA). O pedido é adicionar um botão "Registrar" que salva a palavra selecionada como **termo viral** associado a um nicho e número de views. Além disso, o comando `/t` deve abrir um banco pesquisável de todos os termos virais registrados.
+1. **Scroll não funciona** no popover `/t` — o `ScrollArea` com `max-h-[350px]` não está recebendo altura fixa suficiente para ativar o scroll dentro do container `max-h-[80vh]`.
+2. **Termo duplicado** — nenhuma validação existe ao registrar um termo que já existe no mesmo nicho.
+3. **Nicho duplicado** — nenhuma validação ao criar nicho com nome já existente.
+4. **Mover termo de nicho** — não existe funcionalidade para alterar o `nicho_id` de um termo.
+5. **Apagar nicho** — precisa verificar se há termos vinculados e exigir que sejam movidos antes.
 
-### 1. Nova tabela: `termos_virais`
+---
 
-```sql
-CREATE TABLE public.termos_virais (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  termo text NOT NULL,
-  nicho_id uuid REFERENCES public.nichos(id) ON DELETE SET NULL,
-  views text DEFAULT '',
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.termos_virais ENABLE ROW LEVEL SECURITY;
--- Todos autenticados podem ler e inserir
-CREATE POLICY "select_termos" ON public.termos_virais FOR SELECT TO authenticated USING (true);
-CREATE POLICY "insert_termos" ON public.termos_virais FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "delete_termos" ON public.termos_virais FOR DELETE TO authenticated USING (true);
-```
+### Alterações
 
-### 2. Hook: `useTermosVirais.ts`
+#### 1. Corrigir scroll no `/t` (SlashCommandPopover.tsx)
+- Substituir `<ScrollArea className="max-h-[350px]">` por uma `div` com `overflow-y-auto` e `max-h-[300px]` no `renderTermosVirais`.
+- O `ScrollArea` do Radix às vezes não funciona bem dentro de containers com `overflow-hidden` + `flex`. Uma `div` nativa resolve.
 
-- `useTermosVirais()` — busca todos os termos com join no nicho (nome)
-- `useCreateTermoViral()` — insere termo com nicho_id, views, user_id
-- `useDeleteTermoViral()` — deleta termo por id
+#### 2. Validar termo duplicado no mesmo nicho (MentoradoRoteirosView.tsx)
+- No dialog "Registrar Termo Viral", antes de salvar:
+  - Buscar na lista de `termosVirais` (já carregada via `useTermosVirais`) se existe um termo com mesmo `termo.toLowerCase()` e mesmo `nicho_id`.
+  - Se existir, mostrar toast de erro "Este termo já está registrado neste nicho" e não salvar.
+- Precisa importar `useTermosVirais` no componente (já existe `useCreateTermoViral`, basta adicionar a query).
 
-### 3. Botão "Registrar" no floating adjust
+#### 3. Validar nicho duplicado (MentoradoRoteirosView.tsx)
+- Ao clicar para criar novo nicho dentro do dialog de registro:
+  - Verificar se `nichos` já contém um com `nome.toLowerCase()` igual.
+  - Se sim, toast "Este nicho já existe" e não criar.
 
-No `MentoradoRoteirosView.tsx`, ao lado do botão "Ajustar" que já aparece ao selecionar texto na headline:
-- Adicionar botão **"Registrar"**
-- Ao clicar, abre um mini-dialog/popover pedindo:
-  - **Nicho** (select com os nichos existentes + opção "+ Novo nicho" inline)
-  - **Número de views** (input text)
-- Ao confirmar, salva na tabela `termos_virais` e fecha
+#### 4. Hook para atualizar termo viral (useTermosVirais.ts)
+- Adicionar `useUpdateTermoViral` — mutation que faz `supabase.from("termos_virais").update({ nicho_id }).eq("id", id)`.
+- Exportar o hook.
 
-A seleção de texto precisa funcionar **sem** a flag `iaEnabled` — o botão "Registrar" aparece sempre que há texto selecionado na headline, independente do IA estar ativo.
+#### 5. Mover termo para outro nicho + Apagar nicho (SlashCommandPopover.tsx)
+- Nos itens do `renderTermosVirais`, adicionar ações ao hover:
+  - Botão para **mover** (abre um mini-select de nicho inline) usando `useUpdateTermoViral`.
+  - Botão para **excluir** o termo usando `useDeleteTermoViral`.
+- Adicionar um botão "Gerenciar nichos" no header do banco de termos que abre opções:
+  - **Apagar nicho**: verifica se há termos vinculados. Se houver, mostra toast "Mova os termos deste nicho antes de apagá-lo". Se não houver, executa `useDeleteNicho`.
 
-### 4. Comando `/t` — Banco de Termos Virais
-
-Em `MentoradoRoteirosView.tsx`, no handler de slash commands:
-- Detectar `/t` e abrir o `SlashCommandPopover` no mode `"termos_virais"`
-- Limpar o `/t` do texto
-
-No `SlashCommandPopover.tsx`:
-- Adicionar renderização para mode `"termos_virais"`
-- Listar termos agrupados por nicho (como nas imagens: header com nome do nicho, lista de termos abaixo)
-- Campo de busca para filtrar termos
-- Scroll para navegar
-- Ao clicar num termo, inseri-lo no campo (via `onSelectItem`)
-
-### Arquivos a criar/modificar
-
-1. **Migration SQL** — criar tabela `termos_virais`
-2. **Novo:** `src/hooks/useTermosVirais.ts`
-3. **Editar:** `src/components/mentorados/MentoradoRoteirosView.tsx` — botão Registrar no floating, handler `/t`, passar termos ao SlashCommandPopover
-4. **Editar:** `src/components/mentorados/SlashCommandPopover.tsx` — renderizar mode `termos_virais`
+#### 6. Arquivos modificados
+- `src/hooks/useTermosVirais.ts` — adicionar `useUpdateTermoViral`
+- `src/components/mentorados/SlashCommandPopover.tsx` — corrigir scroll, adicionar ações de mover/excluir termo, gerenciar nichos
+- `src/components/mentorados/MentoradoRoteirosView.tsx` — validação de duplicados (termo e nicho), importar `useTermosVirais` query
 
