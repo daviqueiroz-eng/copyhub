@@ -466,7 +466,16 @@ export const MentoradoRoteirosView = ({
     estrutura: string;
   } | null>(null);
 
-  // Dismiss floating adjust button on click outside or scroll
+  // Estado para registrar termo viral
+  const [registerPopover, setRegisterPopover] = useState(false);
+  const [registerNichoId, setRegisterNichoId] = useState<string>("");
+  const [registerViews, setRegisterViews] = useState("");
+  const [registerNewNicho, setRegisterNewNicho] = useState("");
+  const [showNewNichoInput, setShowNewNichoInput] = useState(false);
+
+  const { data: nichos = [] } = useNichos();
+  const createNicho = useCreateNicho();
+  const createTermoViral = useCreateTermoViral();
   useEffect(() => {
     if (!floatingAdjust) return;
     const dismiss = () => setFloatingAdjust(null);
