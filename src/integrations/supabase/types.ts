@@ -2359,6 +2359,41 @@ export type Database = {
           },
         ]
       }
+      termos_virais: {
+        Row: {
+          created_at: string | null
+          id: string
+          nicho_id: string | null
+          termo: string
+          user_id: string
+          views: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nicho_id?: string | null
+          termo: string
+          user_id: string
+          views?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nicho_id?: string | null
+          termo?: string
+          user_id?: string
+          views?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "termos_virais_nicho_id_fkey"
+            columns: ["nicho_id"]
+            isOneToOne: false
+            referencedRelation: "nichos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tipos_ajuste: {
         Row: {
           created_at: string
