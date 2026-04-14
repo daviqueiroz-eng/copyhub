@@ -62,12 +62,17 @@ export const SlashCommandPopover = ({
   const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
   const [headlineInput, setHeadlineInput] = useState("");
   const [selectedNichoFilter, setSelectedNichoFilter] = useState<string>("all");
-
+  const [movingTermoId, setMovingTermoId] = useState<string | null>(null);
+  const [showNichoManager, setShowNichoManager] = useState(false);
   const { data: intensificadores = [] } = useIntensificadores();
   const { data: ctas = [] } = useCTAs();
   const { data: prompts = [] } = usePrompts();
   const { data: mentorados = [] } = useMentorados();
   const { data: termosVirais = [] } = useTermosVirais();
+  const { data: nichos = [] } = useNichos();
+  const updateTermoViral = useUpdateTermoViral();
+  const deleteTermoViral = useDeleteTermoViral();
+  const deleteNicho = useDeleteNicho();
   const createHeadline = useCreateHeadlinesCriadas();
   const { user } = useAuth();
 
