@@ -1120,6 +1120,19 @@ export const MentoradoRoteirosView = ({
     registerActivity();
     
     const key = `${guiaNumero}-${ordem}`;
+
+    // Detectar URLs na headline e extraí-las automaticamente
+    let processedValue = value;
+    let extractedLink: string | null | undefined = undefined; // undefined = não mudar
+    if (field === "headline") {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const match = value.match(urlRegex);
+      if (match && match.length > 0) {
+        extractedLink = match[0];
+        // Remover a URL do texto da headline
+        processedValue = value.replace(urlRegex, "").replace(/\s{2,}/g, " ").trim();
+      }
+    }
     
     // Atualizar estado local imediatamente
     setRoteirosLocais((prev) => {
@@ -1127,7 +1140,8 @@ export const MentoradoRoteirosView = ({
       const existing = newMap.get(key) || { headline: "", estrutura: "" };
       const updated = {
         ...existing,
-        [field]: value,
+        [field]: processedValue,
+        ...(extractedLink !== undefined ? { link_referencia: extractedLink } : {}),
       };
       newMap.set(key, updated);
       
