@@ -139,7 +139,8 @@ export const SlashCommandPopover = ({
     if (typeof window === "undefined") return position;
     
     const isMobile = window.innerWidth < 640;
-    const popoverWidth = isMobile ? window.innerWidth - 32 : 384; // 384 = w-96
+    const isWide = internalMode === "termos_virais";
+    const popoverWidth = isMobile ? window.innerWidth - 32 : isWide ? 700 : 384;
     
     let left = position.left;
     
