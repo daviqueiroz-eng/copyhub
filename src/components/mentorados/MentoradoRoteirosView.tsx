@@ -103,7 +103,7 @@ import {
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
 import { useNichos, useCreateNicho } from "@/hooks/useNichos";
 import { useCreateTermoViral } from "@/hooks/useTermosVirais";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "termos_virais" | string;
 
