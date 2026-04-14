@@ -663,6 +663,7 @@ export const MentoradoRoteirosView = ({
         headline: r.headline || "",
         estrutura: r.estrutura || "",
         tipo_roteiro_id: r.tipo_roteiro_id || null,
+        link_referencia: (r as any).link_referencia || null,
       });
     });
     
