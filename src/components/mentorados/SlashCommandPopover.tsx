@@ -12,7 +12,9 @@ import { useCreateHeadlinesCriadas } from "@/hooks/useHeadlinesCriadas";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
-type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | "mentorados" | string;
+import { useTermosVirais, TermoViral } from "@/hooks/useTermosVirais";
+
+type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | "mentorados" | "termos_virais" | string;
 
 interface AvatarCategory {
   id: string;
