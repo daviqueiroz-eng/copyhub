@@ -710,7 +710,7 @@ export const SlashCommandPopover = ({
   return (
     <div
       ref={containerRef}
-      className="fixed z-[100] bg-background border rounded-lg shadow-lg w-[calc(100vw-32px)] sm:w-96 max-w-96"
+      className="fixed z-[100] bg-background border rounded-lg shadow-lg w-[calc(100vw-32px)] sm:w-96 max-w-96 max-h-[80vh] overflow-hidden flex flex-col"
       style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
     >
       {/* Campo de busca - esconder quando estiver digitando headline */}
