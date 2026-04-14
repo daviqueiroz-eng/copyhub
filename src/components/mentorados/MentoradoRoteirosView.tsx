@@ -3659,7 +3659,7 @@ export const MentoradoRoteirosView = ({
           >
             Ajustar
           </Button>
-          )
+          )}
           <Popover open={registerPopover} onOpenChange={setRegisterPopover}>
             <PopoverTrigger asChild>
               <Button
