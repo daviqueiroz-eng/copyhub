@@ -126,6 +126,7 @@ type RoteiroLocal = {
   headline: string;
   estrutura: string;
   tipo_roteiro_id?: string | null;
+  link_referencia?: string | null;
 };
 
 type GuiaConfigLocal = {
