@@ -1169,7 +1169,7 @@ export const MentoradoRoteirosView = ({
       const pending = pendingChangesRef.current.get(key);
       if (pending) {
         markLocalWrite();
-        saveRoteiro(guiaNumero, ordem, pending.headline, pending.estrutura);
+        saveRoteiro(guiaNumero, ordem, pending.headline, pending.estrutura, undefined, pending.link_referencia);
         pendingChangesRef.current.delete(key);
       }
     }, 800);
