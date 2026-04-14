@@ -476,7 +476,6 @@ export const MentoradoRoteirosView = ({
   const { data: nichos = [] } = useNichos();
   const createNicho = useCreateNicho();
   const createTermoViral = useCreateTermoViral();
-  useEffect(() => {
   const floatingRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!floatingAdjust) return;
