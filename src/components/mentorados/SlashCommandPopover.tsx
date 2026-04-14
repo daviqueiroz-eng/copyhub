@@ -12,7 +12,8 @@ import { useCreateHeadlinesCriadas } from "@/hooks/useHeadlinesCriadas";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
-import { useTermosVirais, TermoViral } from "@/hooks/useTermosVirais";
+import { useTermosVirais, useUpdateTermoViral, useDeleteTermoViral, TermoViral } from "@/hooks/useTermosVirais";
+import { useNichos, useDeleteNicho } from "@/hooks/useNichos";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | "mentorados" | "termos_virais" | string;
 
