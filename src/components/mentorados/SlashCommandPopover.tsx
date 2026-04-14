@@ -65,6 +65,7 @@ export const SlashCommandPopover = ({
   const { data: ctas = [] } = useCTAs();
   const { data: prompts = [] } = usePrompts();
   const { data: mentorados = [] } = useMentorados();
+  const { data: termosVirais = [] } = useTermosVirais();
   const createHeadline = useCreateHeadlinesCriadas();
   const { user } = useAuth();
 
