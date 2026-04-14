@@ -65,15 +65,28 @@ export const SlashCommandPopover = ({
   const [selectedNichoFilter, setSelectedNichoFilter] = useState<string>("all");
   const [movingTermoId, setMovingTermoId] = useState<string | null>(null);
   const [showNichoManager, setShowNichoManager] = useState(false);
+  
+  // Estados para perfis referência
+  const [addingPerfil, setAddingPerfil] = useState(false);
+  const [perfilNome, setPerfilNome] = useState("");
+  const [perfilInscritos, setPerfilInscritos] = useState("");
+  const [perfilLink, setPerfilLink] = useState("");
+  const [perfilNichoId, setPerfilNichoId] = useState<string>("");
+  const [selectedPerfilNichoFilter, setSelectedPerfilNichoFilter] = useState<string>("all");
+
   const { data: intensificadores = [] } = useIntensificadores();
   const { data: ctas = [] } = useCTAs();
   const { data: prompts = [] } = usePrompts();
   const { data: mentorados = [] } = useMentorados();
   const { data: termosVirais = [] } = useTermosVirais();
   const { data: nichos = [] } = useNichos();
+  const { data: perfisReferencia = [] } = usePerfisReferencia();
   const updateTermoViral = useUpdateTermoViral();
   const deleteTermoViral = useDeleteTermoViral();
   const deleteNicho = useDeleteNicho();
+  const createPerfilReferencia = useCreatePerfilReferencia();
+  const updatePerfilReferencia = useUpdatePerfilReferencia();
+  const deletePerfilReferencia = useDeletePerfilReferencia();
   const createHeadline = useCreateHeadlinesCriadas();
   const { user } = useAuth();
 
