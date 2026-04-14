@@ -511,7 +511,6 @@ export const SlashCommandPopover = ({
 
   // Renderizar termos virais com filtro por nicho
   const renderTermosVirais = () => {
-    // Extrair nichos únicos
     const nichosUnicos = Array.from(new Set(termosVirais.map(t => t.nicho_nome || "Sem nicho")));
 
     const filtered = termosVirais.filter(t => {
@@ -522,30 +521,85 @@ export const SlashCommandPopover = ({
       return nichoMatch && searchMatch;
     });
 
-    return (
-      <div className="py-2">
-        <p className="px-3 py-1 text-xs text-muted-foreground font-semibold flex items-center justify-between">
-          <span>Banco de Termos Virais ({filtered.length})</span>
-          <button
-            className="text-xs text-primary hover:underline"
-            onClick={() => { setInternalMode("menu"); setSelectedNichoFilter("all"); }}
-          >
-            ← Voltar
-          </button>
-        </p>
+    // Niche manager view
+    if (showNichoManager) {
+      return (
+        <div className="py-2">
+          <p className="px-3 py-1 text-xs text-muted-foreground font-semibold flex items-center justify-between">
+            <span>Gerenciar Nichos</span>
+            <button className="text-xs text-primary hover:underline" onClick={() => setShowNichoManager(false)}>
+              ← Voltar
+            </button>
+          </p>
+          <div className="overflow-y-auto max-h-[350px]">
+            {nichos.length === 0 ? (
+              <p className="px-3 py-4 text-sm text-muted-foreground text-center">Nenhum nicho cadastrado.</p>
+            ) : (
+              nichos.map(n => {
+                const termosDoNicho = termosVirais.filter(t => t.nicho_id === n.id);
+                return (
+                  <div key={n.id} className="flex items-center justify-between px-4 py-2 hover:bg-muted/50 transition-colors">
+                    <div>
+                      <span className="text-sm">{n.nome}</span>
+                      <span className="text-xs text-muted-foreground ml-2">({termosDoNicho.length} termos)</span>
+                    </div>
+                    <button
+                      className="p-1 hover:bg-destructive/10 rounded transition-colors"
+                      onClick={() => {
+                        if (termosDoNicho.length > 0) {
+                          toast({ title: "Mova os termos deste nicho antes de apagá-lo", variant: "destructive" });
+                        } else {
+                          deleteNicho.mutate(n.id);
+                        }
+                      }}
+                      title="Apagar nicho"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      );
+    }
 
-        {/* Filtro por nicho */}
-        <div className="px-3 py-2 border-b">
-          <select
-            value={selectedNichoFilter}
-            onChange={(e) => setSelectedNichoFilter(e.target.value)}
-            className="w-full h-8 text-sm rounded-md border bg-background px-2 focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="all">Todos os nichos</option>
-            {nichosUnicos.map(n => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
+    return (
+      <div className="py-2 flex flex-col" style={{ maxHeight: "calc(80vh - 50px)" }}>
+        <div className="shrink-0">
+          <p className="px-3 py-1 text-xs text-muted-foreground font-semibold flex items-center justify-between">
+            <span>Banco de Termos Virais ({filtered.length})</span>
+            <div className="flex items-center gap-2">
+              <button
+                className="text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => setShowNichoManager(true)}
+                title="Gerenciar nichos"
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </button>
+              <button
+                className="text-xs text-primary hover:underline"
+                onClick={() => { setInternalMode("menu"); setSelectedNichoFilter("all"); }}
+              >
+                ← Voltar
+              </button>
+            </div>
+          </p>
+
+          {/* Filtro por nicho */}
+          <div className="px-3 py-2 border-b">
+            <select
+              value={selectedNichoFilter}
+              onChange={(e) => setSelectedNichoFilter(e.target.value)}
+              className="w-full h-8 text-sm rounded-md border bg-background px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="all">Todos os nichos</option>
+              {nichosUnicos.map(n => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {filtered.length === 0 ? (
@@ -553,28 +607,67 @@ export const SlashCommandPopover = ({
             Nenhum termo viral encontrado.
           </p>
         ) : (
-          <ScrollArea className="max-h-[350px]">
+          <div className="overflow-y-auto flex-1 min-h-0">
             {filtered.map(t => (
-              <button
-                key={t.id}
-                className="w-full text-left px-4 py-2 hover:bg-primary/10 transition-colors flex items-center justify-between"
-                onClick={() => {
-                  onSelectItem(t.termo);
-                  onClose();
-                }}
-              >
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm">{t.termo}</span>
-                  {selectedNichoFilter === "all" && (
-                    <span className="text-xs text-muted-foreground ml-2">• {t.nicho_nome || "Sem nicho"}</span>
-                  )}
-                </div>
-                {t.views && (
-                  <span className="text-xs text-muted-foreground ml-2 shrink-0">{t.views} views</span>
+              <div key={t.id} className="group">
+                {movingTermoId === t.id ? (
+                  <div className="px-3 py-2 border-b border-border/50">
+                    <p className="text-xs text-muted-foreground mb-1">Mover "{t.termo}" para:</p>
+                    <select
+                      className="w-full h-8 text-sm rounded-md border bg-background px-2 mb-1"
+                      defaultValue=""
+                      onChange={(e) => {
+                        const newNichoId = e.target.value || null;
+                        updateTermoViral.mutate({ id: t.id, nicho_id: newNichoId });
+                        setMovingTermoId(null);
+                      }}
+                    >
+                      <option value="" disabled>Selecione o nicho</option>
+                      <option value="">Sem nicho</option>
+                      {nichos.filter(n => n.id !== t.nicho_id).map(n => (
+                        <option key={n.id} value={n.id}>{n.nome}</option>
+                      ))}
+                    </select>
+                    <button className="text-xs text-muted-foreground hover:underline" onClick={() => setMovingTermoId(null)}>Cancelar</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between px-4 py-2 hover:bg-primary/10 transition-colors">
+                    <button
+                      className="flex-1 text-left min-w-0"
+                      onClick={() => {
+                        onSelectItem(t.termo);
+                        onClose();
+                      }}
+                    >
+                      <span className="text-sm">{t.termo}</span>
+                      {selectedNichoFilter === "all" && (
+                        <span className="text-xs text-muted-foreground ml-2">• {t.nicho_nome || "Sem nicho"}</span>
+                      )}
+                    </button>
+                    {t.views && (
+                      <span className="text-xs text-muted-foreground ml-2 shrink-0">{t.views} views</span>
+                    )}
+                    <div className="hidden group-hover:flex items-center gap-0.5 ml-2 shrink-0">
+                      <button
+                        className="p-1 hover:bg-muted rounded transition-colors"
+                        onClick={(e) => { e.stopPropagation(); setMovingTermoId(t.id); }}
+                        title="Mover de nicho"
+                      >
+                        <ArrowRightLeft className="h-3 w-3 text-muted-foreground" />
+                      </button>
+                      <button
+                        className="p-1 hover:bg-destructive/10 rounded transition-colors"
+                        onClick={(e) => { e.stopPropagation(); deleteTermoViral.mutate(t.id); }}
+                        title="Excluir termo"
+                      >
+                        <X className="h-3 w-3 text-destructive" />
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
             ))}
-          </ScrollArea>
+          </div>
         )}
       </div>
     );
