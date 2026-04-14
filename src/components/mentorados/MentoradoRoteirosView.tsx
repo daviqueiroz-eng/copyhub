@@ -102,7 +102,7 @@ import {
 } from "@/hooks/useHeadlineChecklist";
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
 import { useNichos, useCreateNicho } from "@/hooks/useNichos";
-import { useCreateTermoViral } from "@/hooks/useTermosVirais";
+import { useCreateTermoViral, useTermosVirais } from "@/hooks/useTermosVirais";
 
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "termos_virais" | string;
@@ -477,6 +477,7 @@ export const MentoradoRoteirosView = ({
   const { data: nichos = [] } = useNichos();
   const createNicho = useCreateNicho();
   const createTermoViral = useCreateTermoViral();
+  const { data: allTermosVirais = [] } = useTermosVirais();
   const floatingRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!floatingAdjust) return;
