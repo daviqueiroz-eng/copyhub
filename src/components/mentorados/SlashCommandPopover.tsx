@@ -710,7 +710,7 @@ export const SlashCommandPopover = ({
   return (
     <div
       ref={containerRef}
-      className="fixed z-[100] bg-background border rounded-lg shadow-lg w-[calc(100vw-32px)] sm:w-96 max-w-96"
+      className="fixed z-[100] bg-background border rounded-lg shadow-lg w-[calc(100vw-32px)] sm:w-96 max-w-96 max-h-[80vh] overflow-hidden flex flex-col"
       style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
     >
       {/* Campo de busca - esconder quando estiver digitando headline */}
@@ -729,13 +729,15 @@ export const SlashCommandPopover = ({
       )}
 
       {/* Conteúdo */}
-      {internalMode === "menu" && renderMenu()}
-      {internalMode === "intensificadores" && renderItems(intensificadores, "Intensificadores")}
-      {internalMode === "ctas" && renderItems(ctas, "CTAs")}
-      {internalMode === "prompts" && renderPrompts()}
-      {internalMode === "mentorados" && renderMentorados()}
-      {internalMode === "termos_virais" && renderTermosVirais()}
-      {avatarCategory && renderAvatarItems(avatarCategory)}
+      <div className="overflow-y-auto flex-1 min-h-0">
+        {internalMode === "menu" && renderMenu()}
+        {internalMode === "intensificadores" && renderItems(intensificadores, "Intensificadores")}
+        {internalMode === "ctas" && renderItems(ctas, "CTAs")}
+        {internalMode === "prompts" && renderPrompts()}
+        {internalMode === "mentorados" && renderMentorados()}
+        {internalMode === "termos_virais" && renderTermosVirais()}
+        {avatarCategory && renderAvatarItems(avatarCategory)}
+      </div>
     </div>
   );
 };
