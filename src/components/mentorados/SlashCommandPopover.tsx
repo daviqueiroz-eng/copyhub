@@ -752,7 +752,7 @@ export const SlashCommandPopover = ({
               </button>
               <button
                 className="text-xs text-primary hover:underline"
-                onClick={() => { setInternalMode("menu"); setSelectedNichoFilter("all"); }}
+                onClick={() => { setInternalMode("menu"); }}
               >
                 ← Voltar
               </button>
