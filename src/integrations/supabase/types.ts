@@ -1733,6 +1733,7 @@ export type Database = {
           guia_numero: number
           headline: string | null
           id: string
+          link_referencia: string | null
           mentorado_id: string
           ordem: number
           tipo_roteiro_id: string | null
@@ -1746,6 +1747,7 @@ export type Database = {
           guia_numero?: number
           headline?: string | null
           id?: string
+          link_referencia?: string | null
           mentorado_id: string
           ordem: number
           tipo_roteiro_id?: string | null
@@ -1759,6 +1761,7 @@ export type Database = {
           guia_numero?: number
           headline?: string | null
           id?: string
+          link_referencia?: string | null
           mentorado_id?: string
           ordem?: number
           tipo_roteiro_id?: string | null

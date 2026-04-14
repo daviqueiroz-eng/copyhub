@@ -1,0 +1,1 @@
+ALTER TABLE public.mentorados_roteiros ADD COLUMN link_referencia TEXT DEFAULT NULL;
