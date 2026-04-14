@@ -2930,7 +2930,7 @@ export const MentoradoRoteirosView = ({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="h-5 w-5 opacity-0 group-hover/headline:opacity-100 transition-opacity"
                               title="Adicionar link de referência"
                               onClick={() => {
                                 const novoLink = prompt("Cole o link de referência:");
