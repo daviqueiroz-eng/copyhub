@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Search, Plus, Pencil, X, Check, Loader2, Trash2, ArrowRightLeft, Settings } from "lucide-react";
+import { Search, Plus, Pencil, X, Check, Loader2, Trash2, ArrowRightLeft, Settings, Star, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 
 import { useTermosVirais, useUpdateTermoViral, useDeleteTermoViral, TermoViral } from "@/hooks/useTermosVirais";
 import { useNichos, useDeleteNicho } from "@/hooks/useNichos";
+import { usePerfisReferencia, useCreatePerfilReferencia, useUpdatePerfilReferencia, useDeletePerfilReferencia } from "@/hooks/usePerfisReferencia";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | "mentorados" | "termos_virais" | string;
 
@@ -64,15 +65,28 @@ export const SlashCommandPopover = ({
   const [selectedNichoFilter, setSelectedNichoFilter] = useState<string>("all");
   const [movingTermoId, setMovingTermoId] = useState<string | null>(null);
   const [showNichoManager, setShowNichoManager] = useState(false);
+  
+  // Estados para perfis referência
+  const [addingPerfil, setAddingPerfil] = useState(false);
+  const [perfilNome, setPerfilNome] = useState("");
+  const [perfilInscritos, setPerfilInscritos] = useState("");
+  const [perfilLink, setPerfilLink] = useState("");
+  const [perfilNichoId, setPerfilNichoId] = useState<string>("");
+  const [selectedPerfilNichoFilter, setSelectedPerfilNichoFilter] = useState<string>("all");
+
   const { data: intensificadores = [] } = useIntensificadores();
   const { data: ctas = [] } = useCTAs();
   const { data: prompts = [] } = usePrompts();
   const { data: mentorados = [] } = useMentorados();
   const { data: termosVirais = [] } = useTermosVirais();
   const { data: nichos = [] } = useNichos();
+  const { data: perfisReferencia = [] } = usePerfisReferencia();
   const updateTermoViral = useUpdateTermoViral();
   const deleteTermoViral = useDeleteTermoViral();
   const deleteNicho = useDeleteNicho();
+  const createPerfilReferencia = useCreatePerfilReferencia();
+  const updatePerfilReferencia = useUpdatePerfilReferencia();
+  const deletePerfilReferencia = useDeletePerfilReferencia();
   const createHeadline = useCreateHeadlinesCriadas();
   const { user } = useAuth();
 
@@ -125,7 +139,8 @@ export const SlashCommandPopover = ({
     if (typeof window === "undefined") return position;
     
     const isMobile = window.innerWidth < 640;
-    const popoverWidth = isMobile ? window.innerWidth - 32 : 384; // 384 = w-96
+    const isWide = internalMode === "termos_virais";
+    const popoverWidth = isMobile ? window.innerWidth - 32 : isWide ? 700 : 384;
     
     let left = position.left;
     
@@ -147,7 +162,7 @@ export const SlashCommandPopover = ({
     }
     
     return { top, left };
-  }, [position]);
+  }, [position, internalMode]);
 
   if (!isOpen) return null;
 
@@ -509,6 +524,157 @@ export const SlashCommandPopover = ({
   };
 
 
+  // Renderizar Perfis Referência
+  const renderPerfisReferencia = () => {
+    const filtered = perfisReferencia.filter(p => {
+      const nichoMatch = selectedPerfilNichoFilter === "all" || (p.nicho_nome || "Sem nicho") === selectedPerfilNichoFilter;
+      const searchMatch = !search.trim() || p.nome.toLowerCase().includes(search.toLowerCase());
+      return nichoMatch && searchMatch;
+    });
+
+    // Favoritos primeiro
+    const sorted = [...filtered].sort((a, b) => (b.favorito ? 1 : 0) - (a.favorito ? 1 : 0));
+    const nichosUnicos = Array.from(new Set(perfisReferencia.map(p => p.nicho_nome || "Sem nicho")));
+
+    return (
+      <div className="py-2 flex flex-col" style={{ maxHeight: "calc(80vh - 50px)" }}>
+        <div className="shrink-0">
+          <p className="px-3 py-1 text-xs text-muted-foreground font-semibold flex items-center justify-between">
+            <span>Perfis Referência ({filtered.length})</span>
+            <button
+              className="p-1 hover:bg-primary/10 rounded transition-colors"
+              onClick={() => setAddingPerfil(true)}
+              title="Adicionar perfil"
+            >
+              <Plus className="h-3.5 w-3.5 text-primary" />
+            </button>
+          </p>
+
+          {/* Filtro por nicho */}
+          <div className="px-3 py-2 border-b">
+            <select
+              value={selectedPerfilNichoFilter}
+              onChange={(e) => setSelectedPerfilNichoFilter(e.target.value)}
+              className="w-full h-8 text-sm rounded-md border bg-background px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="all">Todos os nichos</option>
+              {nichosUnicos.map(n => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Formulário para adicionar */}
+        {addingPerfil && (
+          <div className="px-3 py-2 border-b space-y-2">
+            <Input
+              placeholder="Nome do perfil"
+              value={perfilNome}
+              onChange={(e) => setPerfilNome(e.target.value)}
+              className="h-8 text-sm"
+              autoFocus
+            />
+            <Input
+              placeholder="Nº de inscritos (ex: 1.2M)"
+              value={perfilInscritos}
+              onChange={(e) => setPerfilInscritos(e.target.value)}
+              className="h-8 text-sm"
+            />
+            <Input
+              placeholder="Link do perfil"
+              value={perfilLink}
+              onChange={(e) => setPerfilLink(e.target.value)}
+              className="h-8 text-sm"
+            />
+            <select
+              value={perfilNichoId}
+              onChange={(e) => setPerfilNichoId(e.target.value)}
+              className="w-full h-8 text-sm rounded-md border bg-background px-2"
+            >
+              <option value="">Sem nicho</option>
+              {nichos.map(n => (
+                <option key={n.id} value={n.id}>{n.nome}</option>
+              ))}
+            </select>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                className="h-7 text-xs flex-1"
+                disabled={!perfilNome.trim() || !perfilLink.trim() || createPerfilReferencia.isPending}
+                onClick={() => {
+                  if (!user) return;
+                  createPerfilReferencia.mutate({
+                    nome: perfilNome.trim(),
+                    inscritos: perfilInscritos.trim(),
+                    link: perfilLink.trim(),
+                    nicho_id: perfilNichoId || null,
+                    user_id: user.id,
+                  }, {
+                    onSuccess: () => {
+                      setPerfilNome("");
+                      setPerfilInscritos("");
+                      setPerfilLink("");
+                      setPerfilNichoId("");
+                      setAddingPerfil(false);
+                    }
+                  });
+                }}
+              >
+                {createPerfilReferencia.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+                Salvar
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingPerfil(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {sorted.length === 0 && !addingPerfil ? (
+          <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+            Nenhum perfil registrado.
+          </p>
+        ) : (
+          <div className="overflow-y-auto flex-1 min-h-0">
+            {sorted.map(p => (
+              <div key={p.id} className="group flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors">
+                <button
+                  className="p-0.5 hover:scale-110 transition-transform shrink-0"
+                  onClick={() => updatePerfilReferencia.mutate({ id: p.id, favorito: !p.favorito })}
+                  title={p.favorito ? "Desfavoritar" : "Favoritar"}
+                >
+                  <Star className={`h-3.5 w-3.5 ${p.favorito ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{p.nome}</p>
+                  <p className="text-xs text-muted-foreground">{p.inscritos || "—"} inscritos</p>
+                </div>
+                <a
+                  href={p.link.startsWith("http") ? p.link : `https://${p.link}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 hover:bg-muted rounded transition-colors shrink-0"
+                  title="Abrir perfil"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="h-3.5 w-3.5 text-primary" />
+                </a>
+                <button
+                  className="p-1 hover:bg-destructive/10 rounded transition-colors shrink-0 hidden group-hover:block"
+                  onClick={() => deletePerfilReferencia.mutate(p.id)}
+                  title="Remover perfil"
+                >
+                  <X className="h-3 w-3 text-destructive" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Renderizar termos virais com filtro por nicho
   const renderTermosVirais = () => {
     const nichosUnicos = Array.from(new Set(termosVirais.map(t => t.nicho_nome || "Sem nicho")));
@@ -809,7 +975,11 @@ export const SlashCommandPopover = ({
   return (
     <div
       ref={containerRef}
-      className="fixed z-[100] bg-background border rounded-lg shadow-lg w-[calc(100vw-32px)] sm:w-96 max-w-96 max-h-[80vh] overflow-hidden flex flex-col"
+      className={`fixed z-[100] bg-background border rounded-lg shadow-lg max-h-[80vh] overflow-hidden flex flex-col ${
+        internalMode === "termos_virais" 
+          ? "w-[calc(100vw-32px)] sm:w-[700px] max-w-[700px]" 
+          : "w-[calc(100vw-32px)] sm:w-96 max-w-96"
+      }`}
       style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
     >
       {/* Campo de busca - esconder quando estiver digitando headline */}
@@ -834,7 +1004,16 @@ export const SlashCommandPopover = ({
         {internalMode === "ctas" && renderItems(ctas, "CTAs")}
         {internalMode === "prompts" && renderPrompts()}
         {internalMode === "mentorados" && renderMentorados()}
-        {internalMode === "termos_virais" && renderTermosVirais()}
+        {internalMode === "termos_virais" && (
+          <div className="flex flex-col sm:flex-row">
+            <div className="flex-1 min-w-0 sm:border-r">
+              {renderTermosVirais()}
+            </div>
+            <div className="flex-1 min-w-0 border-t sm:border-t-0">
+              {renderPerfisReferencia()}
+            </div>
+          </div>
+        )}
         {avatarCategory && renderAvatarItems(avatarCategory)}
       </div>
     </div>
