@@ -1,55 +1,63 @@
 
 
-## Plano: Acesso direto ao Roteiro + Perfil integrado + Checklist por headline
+## Plano: Registrar Termos Virais + Banco de Termos (/t)
 
-### 1. Clicar no mentorado abre direto o Roteiro
+### Contexto
 
-Em `Mentorados.tsx`, alterar `handleOpenDetail` para que em vez de abrir o Sheet de detalhes, abra direto a `MentoradoRoteirosView`:
+Hoje, ao selecionar texto na headline, aparece apenas o botão "Ajustar" (IA). O pedido é adicionar um botão "Registrar" que salva a palavra selecionada como **termo viral** associado a um nicho e número de views. Além disso, o comando `/t` deve abrir um banco pesquisável de todos os termos virais registrados.
 
+### 1. Nova tabela: `termos_virais`
+
+```sql
+CREATE TABLE public.termos_virais (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  termo text NOT NULL,
+  nicho_id uuid REFERENCES public.nichos(id) ON DELETE SET NULL,
+  views text DEFAULT '',
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.termos_virais ENABLE ROW LEVEL SECURITY;
+-- Todos autenticados podem ler e inserir
+CREATE POLICY "select_termos" ON public.termos_virais FOR SELECT TO authenticated USING (true);
+CREATE POLICY "insert_termos" ON public.termos_virais FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "delete_termos" ON public.termos_virais FOR DELETE TO authenticated USING (true);
 ```
-const handleOpenDetail = (mentorado: Mentorado) => {
-  setSelectedMentorado(mentorado);
-  setIsRoteirosViewOpen(true); // Direto para roteiros
-};
-```
 
-O Sheet de detalhes continua existindo mas só será acessado de dentro do roteiro.
+### 2. Hook: `useTermosVirais.ts`
 
-### 2. Mover informações do perfil para dentro do Roteiro
+- `useTermosVirais()` — busca todos os termos com join no nicho (nome)
+- `useCreateTermoViral()` — insere termo com nicho_id, views, user_id
+- `useDeleteTermoViral()` — deleta termo por id
 
-Em `MentoradoRoteirosView.tsx`, na sidebar esquerda, **acima** da seção "Atalhos", adicionar uma seção colapsável "Perfil" que contém:
-- Plano, Instagram, TikTok, Trello (campos editáveis compactos)
-- Mapa do Avatar (usando `MapaAvatarSection`)
-- Abas Comunicação e Materiais (compactas, em accordions)
+### 3. Botão "Registrar" no floating adjust
 
-Para isso, o componente precisa receber ou buscar os dados do mentorado atual (já tem acesso via `useMentorados` e `mentoradoId`). As alterações serão salvas via `useUpdateMentorado`.
+No `MentoradoRoteirosView.tsx`, ao lado do botão "Ajustar" que já aparece ao selecionar texto na headline:
+- Adicionar botão **"Registrar"**
+- Ao clicar, abre um mini-dialog/popover pedindo:
+  - **Nicho** (select com os nichos existentes + opção "+ Novo nicho" inline)
+  - **Número de views** (input text)
+- Ao confirmar, salva na tabela `termos_virais` e fecha
 
-Isso substitui completamente o Sheet de detalhes — o perfil fica acessível dentro do fluxo de roteiro.
+A seleção de texto precisa funcionar **sem** a flag `iaEnabled` — o botão "Registrar" aparece sempre que há texto selecionado na headline, independente do IA estar ativo.
 
-### 3. Checklist editável por headline (admin-configurable)
+### 4. Comando `/t` — Banco de Termos Virais
 
-**Tabela nova no banco:** `headline_checklist_items`
-- `id` (uuid), `user_id` (uuid, quem criou — o admin), `label` (text), `ordem` (int), `ativo` (bool), `created_at`
-- RLS: todos autenticados podem SELECT; somente admins podem INSERT/UPDATE/DELETE (via `has_role`)
+Em `MentoradoRoteirosView.tsx`, no handler de slash commands:
+- Detectar `/t` e abrir o `SlashCommandPopover` no mode `"termos_virais"`
+- Limpar o `/t` do texto
 
-**Tabela nova:** `headline_checklist_progress`
-- `id` (uuid), `mentorado_id` (uuid), `guia_numero` (int), `ordem_roteiro` (int), `checklist_item_id` (uuid ref headline_checklist_items), `checked` (bool), `user_id` (uuid), `created_at`
-- Unique constraint: `(mentorado_id, guia_numero, ordem_roteiro, checklist_item_id)`
-- RLS: autenticados podem SELECT/INSERT/UPDATE seus próprios registros
+No `SlashCommandPopover.tsx`:
+- Adicionar renderização para mode `"termos_virais"`
+- Listar termos agrupados por nicho (como nas imagens: header com nome do nicho, lista de termos abaixo)
+- Campo de busca para filtrar termos
+- Scroll para navegar
+- Ao clicar num termo, inseri-lo no campo (via `onSelectItem`)
 
-**UI — ao lado de cada headline:**
-- Renderizar checkboxes compactos ao lado do "HEADLINE 01:" baseados nos itens de `headline_checklist_items`
-- Incluir um checkbox "Marcar todos" que marca/desmarca todos de uma vez
-- O estado é persistido em `headline_checklist_progress` por mentorado/guia/ordem
+### Arquivos a criar/modificar
 
-**UI — configuração (admin):**
-- Botão de configuração visível apenas para admin, abrindo um dialog para CRUD dos itens do checklist (similar ao `CheckRoteiroViralDialog`)
-
-### Arquivos a modificar/criar
-
-1. `src/pages/Mentorados.tsx` — redirecionar clique para roteiro
-2. `src/components/mentorados/MentoradoRoteirosView.tsx` — adicionar perfil na sidebar, adicionar checklist por headline
-3. **Novo:** `src/components/mentorados/HeadlineChecklistConfig.tsx` — dialog admin para configurar itens
-4. **Novo:** `src/hooks/useHeadlineChecklist.ts` — hooks para buscar itens e progresso
-5. **Migration SQL** — criar tabelas `headline_checklist_items` e `headline_checklist_progress`
+1. **Migration SQL** — criar tabela `termos_virais`
+2. **Novo:** `src/hooks/useTermosVirais.ts`
+3. **Editar:** `src/components/mentorados/MentoradoRoteirosView.tsx` — botão Registrar no floating, handler `/t`, passar termos ao SlashCommandPopover
+4. **Editar:** `src/components/mentorados/SlashCommandPopover.tsx` — renderizar mode `termos_virais`
 
