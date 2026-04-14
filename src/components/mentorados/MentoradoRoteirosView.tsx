@@ -2864,6 +2864,19 @@ export const MentoradoRoteirosView = ({
                               <ClipboardCopy className="h-3.5 w-3.5" />
                             </Button>
                           )}
+                          {/* Badge Referência - link extraído automaticamente */}
+                          {roteiro.link_referencia && (
+                            <a
+                              href={roteiro.link_referencia}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1"
+                              title={roteiro.link_referencia}
+                            >
+                              Referência
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
                         </div>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
