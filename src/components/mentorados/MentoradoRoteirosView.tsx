@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -2870,16 +2870,85 @@ export const MentoradoRoteirosView = ({
                           )}
                           {/* Badge Referência - link extraído automaticamente */}
                           {roteiro.link_referencia && (
-                            <a
-                              href={roteiro.link_referencia}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1"
-                              title={roteiro.link_referencia}
+                            <div className="flex items-center gap-1">
+                              <a
+                                href={roteiro.link_referencia}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1"
+                                title={roteiro.link_referencia}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Referência
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5"
+                                title="Editar link"
+                                onClick={() => {
+                                  const novoLink = prompt("Editar link de referência:", roteiro.link_referencia || "");
+                                  if (novoLink !== null) {
+                                    const key = `${guiaAtiva}-${ordem}`;
+                                    setRoteirosLocais((prev) => {
+                                      const newMap = new Map(prev);
+                                      const existing = newMap.get(key) || { headline: "", estrutura: "" };
+                                      newMap.set(key, { ...existing, link_referencia: novoLink || null });
+                                      return newMap;
+                                    });
+                                    markLocalWrite();
+                                    saveRoteiro(guiaAtiva, ordem, roteiro.headline, roteiro.estrutura, roteiro.tipo_roteiro_id, novoLink || null);
+                                  }
+                                }}
+                              >
+                                <Pencil className="h-2.5 w-2.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 text-destructive"
+                                title="Remover link"
+                                onClick={() => {
+                                  const key = `${guiaAtiva}-${ordem}`;
+                                  setRoteirosLocais((prev) => {
+                                    const newMap = new Map(prev);
+                                    const existing = newMap.get(key) || { headline: "", estrutura: "" };
+                                    newMap.set(key, { ...existing, link_referencia: null });
+                                    return newMap;
+                                  });
+                                  markLocalWrite();
+                                  saveRoteiro(guiaAtiva, ordem, roteiro.headline, roteiro.estrutura, roteiro.tipo_roteiro_id, null);
+                                }}
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </Button>
+                            </div>
+                          )}
+                          {/* Botão para adicionar link manualmente */}
+                          {!roteiro.link_referencia && roteiro.headline.trim() && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Adicionar link de referência"
+                              onClick={() => {
+                                const novoLink = prompt("Cole o link de referência:");
+                                if (novoLink && novoLink.trim()) {
+                                  const key = `${guiaAtiva}-${ordem}`;
+                                  setRoteirosLocais((prev) => {
+                                    const newMap = new Map(prev);
+                                    const existing = newMap.get(key) || { headline: "", estrutura: "" };
+                                    newMap.set(key, { ...existing, link_referencia: novoLink.trim() });
+                                    return newMap;
+                                  });
+                                  markLocalWrite();
+                                  saveRoteiro(guiaAtiva, ordem, roteiro.headline, roteiro.estrutura, roteiro.tipo_roteiro_id, novoLink.trim());
+                                }
+                              }}
                             >
-                              Referência
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
+                              <LinkIcon className="h-3 w-3" />
+                            </Button>
                           )}
                         </div>
                         <InlineSpellCheckEditor
