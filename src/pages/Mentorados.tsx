@@ -155,6 +155,7 @@ const Mentorados = () => {
   const handleOpenDetail = (mentorado: Mentorado) => {
     setSelectedMentorado(mentorado);
     setIsRoteirosViewOpen(true);
+    localStorage.setItem("lastOpenedMentoradoId", mentorado.id);
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

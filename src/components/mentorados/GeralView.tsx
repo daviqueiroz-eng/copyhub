@@ -21,9 +21,15 @@ interface GeralViewProps {
 export function GeralView({ mentorados, searchTerm, onMentoradoClick, mentoradoIdsComEntrega }: GeralViewProps) {
   const { toast } = useToast();
 
-  const filteredMentorados = mentorados.filter((m) =>
-    !m.categoria && m.nome.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const lastOpenedId = localStorage.getItem("lastOpenedMentoradoId");
+
+  const filteredMentorados = mentorados
+    .filter((m) => !m.categoria && m.nome.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      if (a.id === lastOpenedId) return -1;
+      if (b.id === lastOpenedId) return 1;
+      return 0;
+    });
 
   const mentoradosWithInstagram = filteredMentorados.filter(m => m.instagram);
   const mentoradosWithTiktok = filteredMentorados.filter(m => m.tiktok);
