@@ -1,60 +1,35 @@
 
 
-## Plano: Perfis Referência ao lado de Termos Virais
+## Plano: Correções na página Mentorados
 
-### O que muda
+### Problemas a resolver
 
-Quando abrir "Termos Virais" (atalho `/t` ou clique), a view se divide em duas colunas lado a lado:
-- **Esquerda**: Banco de Termos Virais (como está hoje)
-- **Direita**: Nova seção "Perfis Referência"
+1. **Página fica branca** no site publicado — provável crash silencioso no `ProtectedRoute` ou no carregamento de dados. Quando `isActive === false` (erro no check), retorna `null` (tela branca). Precisa tratar esse caso mostrando loading ou redirecionando.
 
-### Perfis Referência — funcionalidades
+2. **Mentorado clicado sobe para o topo da lista** — ao clicar em um mentorado, ele deve ser reordenado visualmente para o primeiro lugar na lista.
 
-Cada perfil mostra um card com:
-- Nome do perfil
-- Número de inscritos
-- Link (clique abre em nova guia)
-- Botão de favoritar (estrela)
-- Filtro por nicho (mesmo sistema de nichos dos termos virais)
+3. **Aba inicial deve ser Mentorados** — a rota `/` atualmente aponta para `Mural`. Precisa mudar para `/mentorados`.
 
-### Alterações técnicas
+---
 
-#### 1. Nova tabela `perfis_referencia`
-```sql
-CREATE TABLE public.perfis_referencia (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nome TEXT NOT NULL,
-  inscritos TEXT NOT NULL DEFAULT '',
-  link TEXT NOT NULL,
-  nicho_id UUID REFERENCES public.nichos(id) ON DELETE SET NULL,
-  favorito BOOLEAN NOT NULL DEFAULT false,
-  user_id UUID NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE public.perfis_referencia ENABLE ROW LEVEL SECURITY;
--- RLS: usuários autenticados podem CRUD seus próprios registros
-CREATE POLICY "Users manage own perfis" ON public.perfis_referencia
-  FOR ALL TO authenticated USING (true) WITH CHECK (true);
-```
+### Alterações
 
-#### 2. Novo hook `src/hooks/usePerfisReferencia.ts`
-- `usePerfisReferencia()` — query com join em nichos para pegar nome do nicho
-- `useCreatePerfilReferencia()` — insert
-- `useUpdatePerfilReferencia()` — update (favoritar, editar)
-- `useDeletePerfilReferencia()` — delete
+#### 1. Corrigir tela branca (ProtectedRoute.tsx)
+- Linha 49: quando ocorre erro ao verificar `ativo`, `setIsActive(false)` faz o componente retornar `null` (linha 66-68), resultando em tela branca.
+- Correção: tratar o caso de erro fazendo `setIsActive(true)` como fallback (ou redirecionando para `/auth`), em vez de deixar a tela em branco.
+- Também garantir que se `isActive === false` por erro, redireciona para `/auth` ao invés de mostrar nada.
 
-#### 3. Ampliar o popover `SlashCommandPopover.tsx`
-- Quando `internalMode === "termos_virais"`, o popover fica mais largo (~600px) com layout `flex` em duas colunas
-- **Coluna esquerda**: `renderTermosVirais()` existente
-- **Coluna direita**: nova `renderPerfisReferencia()` com:
-  - Header "Perfis Referência" + botão "+"
-  - Filtro por nicho (mesmo select)
-  - Lista de cards com nome, inscritos, ícone de estrela (favorito), e ícone de link externo
-  - Clique no card abre `window.open(link, '_blank')`
-  - Dialog inline para adicionar perfil (nome, inscritos, link, nicho)
+#### 2. Mentorado clicado sobe ao topo (Mentorados.tsx + GeralView.tsx)
+- Adicionar um estado `lastOpenedId` em `Mentorados.tsx` que armazena o ID do mentorado clicado.
+- No `GeralView`, receber esse ID via prop e reordenar `filteredMentorados` para colocar o mentorado com esse ID no topo da lista.
+- Persistir no `localStorage` para manter entre sessões.
 
-#### 4. Arquivos modificados
-- **Nova migration** — tabela `perfis_referencia`
-- **Novo arquivo**: `src/hooks/usePerfisReferencia.ts`
-- **Atualizado**: `src/components/mentorados/SlashCommandPopover.tsx` — layout split + renderPerfisReferencia
+#### 3. Aba inicial = Mentorados (App.tsx)
+- Mudar a rota `"/"` de `<Mural />` para `<Mentorados />`, ou redirecionar `"/"` para `/mentorados`.
+
+#### Arquivos modificados
+- `src/components/ProtectedRoute.tsx` — fallback para erro de verificação
+- `src/pages/Mentorados.tsx` — estado `lastOpenedId`
+- `src/components/mentorados/GeralView.tsx` — reordenação da lista
+- `src/App.tsx` — rota padrão para `/mentorados`
 
