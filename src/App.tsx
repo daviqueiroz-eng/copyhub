@@ -37,7 +37,7 @@ const App = () => (
           <Layout>
             <Routes>
               <Route path="/auth" element={<Auth />} />
-              <Route path="/" element={<ProtectedRoute><Mural /></ProtectedRoute>} />
+              <Route path="/" element={<Navigate to="/mentorados" replace />} />
               <Route path="/dash-geral" element={<ProtectedRoute><DashGeral /></ProtectedRoute>} />
               <Route path="/acompanhamento" element={<ProtectedRoute><Acompanhamento /></ProtectedRoute>} />
               <Route path="/perfil" element={<Navigate to="/acompanhamento" replace />} />
