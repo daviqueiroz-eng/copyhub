@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ export default function Auth() {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { signInWithGoogle, signInWithEmail } = useAuth();
+  const { user, loading: authLoading, signInWithGoogle, signInWithEmail } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -67,6 +67,16 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/mentorados", { replace: true });
+    }
+  }, [authLoading, navigate, user]);
+
+  if (authLoading) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
