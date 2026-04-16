@@ -15,7 +15,7 @@ export interface BussolaEntry {
   observacao: string;
 }
 
-export const useBussolaCopy = () => {
+export const useBussolaCopy = (enabled = true) => {
   const query = useQuery({
     queryKey: ["bussola-copy"],
     queryFn: async (): Promise<BussolaEntry[]> => {
@@ -37,10 +37,12 @@ export const useBussolaCopy = () => {
         observacao: row.observacao || row.observaçao || row.observacao_ || "",
       }));
     },
-    staleTime: 0,
-    gcTime: 1000 * 60,
-    refetchOnWindowFocus: true,
-    refetchOnMount: "always",
+    enabled,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 2,
   });
 
   return {

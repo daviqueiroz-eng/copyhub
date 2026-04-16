@@ -8,6 +8,7 @@ type AuthContextType = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  authReady: boolean;
   signInWithGoogle: () => Promise<{ error: any }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: any }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ error: any }>;
@@ -20,24 +21,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // Check for existing session
+    // 1. Restore session from storage FIRST
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      setAuthReady(true);
     });
+
+    // 2. Listen for subsequent changes (sign in/out, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+        if (!authReady) setAuthReady(true);
+      }
+    );
 
     // Verificação periódica do status ativo
     const checkUserStatus = setInterval(async () => {
@@ -51,7 +55,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .eq('user_id', currentUser.id)
           .single();
 
-        // Se usuário foi bloqueado, deslogar
         if (data && !data.ativo) {
           console.log('User blocked, signing out...');
           await supabase.auth.signOut();
@@ -60,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error('Error checking user status:', error);
       }
-    }, 10000); // Verifica a cada 10 segundos
+    }, 10000);
 
     return () => {
       subscription.unsubscribe();
@@ -115,7 +118,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, authReady, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut }}>
       {children}
     </AuthContext.Provider>
   );
