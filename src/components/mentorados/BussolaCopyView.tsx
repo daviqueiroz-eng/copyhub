@@ -46,7 +46,7 @@ const STORAGE_KEY_FAV = "bussola-favorites";
 const STORAGE_KEY_SELECTED = "bussola-selected-copy";
 
 export const BussolaCopyView = () => {
-  const { data: entries = [], isLoading, refetch, isFetching } = useBussolaCopy();
+  const { data: entries = [], isLoading, isError, error, refetch, isFetching } = useBussolaCopy();
   const { overrides, upsertOverride } = useBussolaOverrides();
   const { user } = useAuth();
   const [currentTitle, setCurrentTitle] = useState("");
@@ -189,6 +189,18 @@ export const BussolaCopyView = () => {
       <div className="flex items-center justify-center h-full text-muted-foreground gap-2">
         <Loader2 className="h-5 w-5 animate-spin" />
         Carregando dados da planilha...
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+        <p className="text-sm">Erro ao carregar dados da planilha.</p>
+        <p className="text-xs text-destructive">{(error as Error)?.message || "Erro desconhecido"}</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-1.5">
+          <RefreshCw className="h-3.5 w-3.5" /> Tentar novamente
+        </Button>
       </div>
     );
   }
