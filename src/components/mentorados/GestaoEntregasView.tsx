@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { CalendarDays, Table2, Plus, Download, Compass } from "lucide-react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
+import { CalendarDays, Table2, Plus, Download, Compass, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,10 +8,13 @@ import { useMentorados, useUpdateMentorado } from "@/hooks/useMentorados";
 import { GestaoCalendarioView } from "./GestaoCalendarioView";
 import { GestaoTabelaView } from "./GestaoTabelaView";
 import { GestaoEntregaDialog } from "./GestaoEntregaDialog";
-import { BussolaCopyView } from "./BussolaCopyView";
 import { CategoriaKanbanDialog } from "./CategoriaKanbanDialog";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
+
+const BussolaCopyView = lazy(() =>
+  import("./BussolaCopyView").then((mod) => ({ default: mod.BussolaCopyView }))
+);
 
 const CATEGORIAS = [
   { key: "Pausado", color: "bg-yellow-100 text-yellow-800 border-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700" },
@@ -25,10 +28,18 @@ export const GestaoEntregasView = () => {
   const { data: mentorados = [] } = useMentorados();
   const updateMentorado = useUpdateMentorado();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("bussola");
+  const [activeTab, setActiveTab] = useState("calendario");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [kanbanOpen, setKanbanOpen] = useState(false);
+  const [bussolaEverMounted, setBussolaEverMounted] = useState(false);
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Track if bussola tab was ever selected to keep it mounted after first open
+  useEffect(() => {
+    if (activeTab === "bussola" && !bussolaEverMounted) {
+      setBussolaEverMounted(true);
+    }
+  }, [activeTab, bussolaEverMounted]);
 
   // Count mentorados per category
   const categoryCounts = useMemo(() => {
@@ -112,7 +123,7 @@ export const GestaoEntregasView = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <Tabs defaultValue="bussola" className="flex flex-col flex-1 min-h-0" onValueChange={setActiveTab}>
+      <Tabs value={activeTab} className="flex flex-col flex-1 min-h-0" onValueChange={setActiveTab}>
         <div className="flex items-center justify-between shrink-0 mb-0 flex-wrap gap-1">
           <div className="flex items-center gap-2 flex-wrap">
             <TabsList>
@@ -172,7 +183,16 @@ export const GestaoEntregasView = () => {
         </TabsContent>
 
         <TabsContent value="bussola" className="flex-1 min-h-0 mt-0">
-          <BussolaCopyView />
+          {(activeTab === "bussola" || bussolaEverMounted) && (
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-full text-muted-foreground gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Carregando Bússola...
+              </div>
+            }>
+              <BussolaCopyView />
+            </Suspense>
+          )}
         </TabsContent>
       </Tabs>
 

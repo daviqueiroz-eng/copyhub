@@ -9,17 +9,17 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  const { user, loading, authReady } = useAuth();
   const navigate = useNavigate();
   const [isActive, setIsActive] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (authReady && !user) {
       navigate("/auth", { replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, authReady, navigate]);
 
-  // Verificar se usuário está ativo
+  // Verificar se usuário está ativo — only after authReady
   useEffect(() => {
     const checkActiveStatus = async () => {
       if (!user) {
@@ -51,12 +51,13 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       }
     };
 
-    if (user) {
+    if (authReady && user) {
       checkActiveStatus();
     }
-  }, [user, navigate]);
+  }, [user, authReady, navigate]);
 
-  if (loading || isActive === null) {
+  // Wait for auth to be fully ready before showing anything
+  if (!authReady || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -66,6 +67,15 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // While checking active status, show loader
+  if (isActive === null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   if (!isActive) {
