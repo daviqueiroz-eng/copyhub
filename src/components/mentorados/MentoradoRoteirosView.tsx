@@ -2712,28 +2712,23 @@ export const MentoradoRoteirosView = ({
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
                         );
-                        if (!roteiroDB?.id) return null;
                         const expanded = anotacoesExpandidas.has(key);
                         return (
                           <div
                             className={cn(
                               "hidden lg:block absolute top-0 z-10 transition-all duration-300 ease-out",
-                              expanded ? "w-[300px] -left-[320px]" : "w-[140px] -left-[156px]"
+                              expanded
+                                ? "w-[320px] -left-[calc(64px+340px)]"
+                                : "w-[140px] -left-[calc(64px+160px)]"
                             )}
                           >
                             <RoteiroAnotacoesPanel
-                              roteiroId={roteiroDB.id}
+                              roteiroId={roteiroDB?.id}
                               onExpandedChange={(exp) => {
                                 setAnotacoesExpandidas((prev) => {
                                   const next = new Set(prev);
                                   if (exp) next.add(key);
                                   else next.delete(key);
-                                  // Auto-toggle sidebar
-                                  if (next.size > 0) {
-                                    setTimeout(() => setLeftSidebarMinimized(true), 0);
-                                  } else {
-                                    setTimeout(() => setLeftSidebarMinimized(false), 0);
-                                  }
                                   return next;
                                 });
                               }}
