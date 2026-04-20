@@ -3162,14 +3162,14 @@ export const MentoradoRoteirosView = ({
                       
                       </div> {/* Fim do conteúdo principal flex-1 */}
                       
-                      {/* Painel flutuante de anotações - posicionado à direita, fora do fluxo */}
+                      {/* Painel de anotações - lateral direita do roteiro */}
                       {(() => {
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
                         );
                         if (!roteiroDB?.id) return null;
                         return (
-                          <div className="hidden xl:block absolute top-0 -right-[260px] w-[240px] z-10">
+                          <div className="hidden lg:block w-[220px] shrink-0">
                             <RoteiroAnotacoesPanel roteiroId={roteiroDB.id} />
                           </div>
                         );
@@ -3201,38 +3201,6 @@ export const MentoradoRoteirosView = ({
           </div>
         </ScrollArea>
         
-        {/* Botão para expandir/minimizar checklist lateral (desktop) */}
-        <div className="hidden lg:flex shrink-0 border-l bg-muted/30 flex-col">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="m-2 h-8 w-8 p-0"
-            onClick={() => setChecklistMinimized(!checklistMinimized)}
-            title={checklistMinimized ? "Expandir checklist" : "Minimizar checklist"}
-          >
-            {checklistMinimized ? <CheckSquare className="h-4 w-4" /> : <X className="h-4 w-4" />}
-          </Button>
-          {!checklistMinimized && (
-            <div className="overflow-y-auto py-2 pl-4 pr-6 w-80 mr-4">
-              <RoteiroChecklist 
-                mentoradoId={mentoradoId} 
-                guiaNumero={guiaAtiva}
-                timers={timers}
-                onTimersChange={setTimers}
-                activeTimerId={activeTimerId}
-                onActiveTimerChange={setActiveTimerId}
-                timersLoaded={timersLoaded}
-                onComplete={(t) => {
-                  setFeedbackTimers(t);
-                  setShowFeedbackDialog(true);
-                }}
-              />
-              
-              {/* Ideias de Headlines - sugestões salvas via /m */}
-              <MentoradoHeadlinesList mentoradoId={mentoradoId} />
-            </div>
-          )}
-        </div>
       </div>
       
       {/* Botão flutuante com menu expandido para mobile */}
