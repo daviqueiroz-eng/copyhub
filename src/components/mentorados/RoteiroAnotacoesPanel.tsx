@@ -11,6 +11,7 @@ import {
 interface RoteiroAnotacoesPanelProps {
   roteiroId: string | undefined;
   className?: string;
+  onExpandedChange?: (expanded: boolean) => void;
 }
 
 const SECOES: Array<{ key: AnotacaoCampo; label: string; placeholder: string }> = [
