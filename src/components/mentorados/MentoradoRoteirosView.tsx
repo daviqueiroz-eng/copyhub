@@ -2719,10 +2719,8 @@ export const MentoradoRoteirosView = ({
 
                   return (
                     <React.Fragment key={key}>
-                    <div
-                      className={cn("group relative mb-8", anotacoesExpanded && "lg:mb-[320px]")}
-                    >
-                      {/* Painel de anotações - flutuante à esquerda, fora do quadrante do roteiro */}
+                    <div className="group relative mb-8 lg:flex lg:gap-4 lg:items-start">
+                      {/* Painel de anotações - coluna lateral à esquerda, cresce naturalmente */}
                       {(() => {
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
@@ -2730,10 +2728,8 @@ export const MentoradoRoteirosView = ({
                         return (
                           <div
                             className={cn(
-                              "hidden lg:block absolute top-0 z-10 transition-all duration-300 ease-out",
-                              anotacoesExpanded
-                                ? "lg:w-[220px] lg:-left-[240px] xl:w-[300px] xl:-left-[320px]"
-                                : "w-[140px] -left-[160px]"
+                              "hidden lg:block shrink-0 transition-all duration-300 ease-out",
+                              anotacoesExpanded ? "lg:w-[280px] xl:w-[320px]" : "lg:w-[150px]"
                             )}
                           >
                             <RoteiroAnotacoesPanel
@@ -2750,6 +2746,8 @@ export const MentoradoRoteirosView = ({
                           </div>
                         );
                       })()}
+                      {/* Conteúdo do roteiro - cresce para preencher o restante */}
+                      <div className="flex-1 min-w-0">
                       {/* Floating toolbar - mobile: always visible, horizontal; desktop: hover, vertical */}
                       <div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex flex-col gap-1">
                         <Button
