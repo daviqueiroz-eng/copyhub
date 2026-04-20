@@ -2730,6 +2730,19 @@ export const MentoradoRoteirosView = ({
                                   else next.delete(key);
                                   return next;
                                 });
+                                if (exp) {
+                                  setLeftSidebarMinimized(true);
+                                } else {
+                                  // Se nenhuma anotação estiver aberta, restaurar sidebar
+                                  setAnotacoesExpandidas((prev) => {
+                                    const next = new Set(prev);
+                                    if (!exp) next.delete(key);
+                                    if (next.size === 0) {
+                                      setLeftSidebarMinimized(false);
+                                    }
+                                    return next;
+                                  });
+                                }
                               }}
                             />
                           </div>
