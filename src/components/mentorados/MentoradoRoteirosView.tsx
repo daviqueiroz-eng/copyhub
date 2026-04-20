@@ -290,7 +290,7 @@ export const MentoradoRoteirosView = ({
   });
   const [erroSelecionadoId, setErroSelecionadoId] = useState<string | null>(null);
   const [categoriaAtiva, setCategoriaAtiva] = useState<RevisaoErrorTipo>("ortografico");
-  const [revisaoPanelOpen, setRevisaoPanelOpen] = useState<boolean>(true);
+  const [revisaoPanelOpen, setRevisaoPanelOpen] = useState<boolean>(false);
   const [revisaoIgnoredIds, setRevisaoIgnoredIds] = useState<Set<string>>(new Set());
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackTimers, setFeedbackTimers] = useState<TimersRecord | null>(null);
