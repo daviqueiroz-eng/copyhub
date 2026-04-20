@@ -2704,7 +2704,7 @@ export const MentoradoRoteirosView = ({
                   return (
                     <React.Fragment key={key}>
                     <div
-                      className="group relative mb-8 flex gap-4"
+                      className="group relative mb-8"
                     >
                       {/* Floating toolbar - mobile: always visible, horizontal; desktop: hover, vertical */}
                       <div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex flex-col gap-1">
