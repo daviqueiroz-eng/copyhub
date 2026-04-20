@@ -271,6 +271,7 @@ export const MentoradoRoteirosView = ({
   const [roteirosLocais, setRoteirosLocais] = useState<Map<string, RoteiroLocal>>(new Map());
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
+  const [anotacoesExpandidas, setAnotacoesExpandidas] = useState<Set<string>>(new Set());
   const [showNewGuiaDialog, setShowNewGuiaDialog] = useState(false);
   const [showHeadlinesModal, setShowHeadlinesModal] = useState(false);
   const [headlinesTargetKey, setHeadlinesTargetKey] = useState<string>("");
