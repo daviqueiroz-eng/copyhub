@@ -6,7 +6,15 @@ import { cn } from "@/lib/utils";
 
 export interface SpellError {
   id: string;
-  type: "spacing" | "punctuation" | "spelling" | "duplicate" | "trim" | "grammar";
+  type:
+    | "spacing"
+    | "punctuation"
+    | "spelling"
+    | "duplicate"
+    | "trim"
+    | "grammar"
+    | "nome_cliente"
+    | "mentorado";
   original: string;
   suggestion: string;
   startIndex: number;
@@ -28,6 +36,8 @@ interface InlineSpellCheckEditorProps {
   onFixError?: (error: SpellError) => void;
   onIgnoreError?: (errorId: string) => void;
   showErrors?: boolean;
+  activeErrorId?: string | null;
+  onErrorClick?: (errorId: string) => void;
 }
 
 export interface InlineSpellCheckEditorHandle {
@@ -49,6 +59,8 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
   onFixError,
   onIgnoreError,
   showErrors = false,
+  activeErrorId: activeErrorIdProp,
+  onErrorClick,
 }, ref) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -192,19 +204,30 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
             const prevEnd = idx === 0 ? 0 : sortedErrors[idx - 1].endIndex;
             const beforeText = value.substring(prevEnd, error.startIndex);
             const errorText = value.substring(error.startIndex, error.endIndex);
-            
+            const isActiveExternal = activeErrorIdProp === error.id;
+            const decorationClass =
+              error.type === "spelling"
+                ? "decoration-red-500"
+                : error.type === "grammar"
+                  ? "decoration-blue-500"
+                  : error.type === "nome_cliente"
+                    ? "decoration-orange-500"
+                    : error.type === "mentorado"
+                      ? "decoration-emerald-500"
+                      : error.type === "punctuation"
+                        ? "decoration-orange-500"
+                        : "decoration-yellow-500";
+
             return (
               <span key={`wrapper-${error.id}`}>
                 <span className="invisible">{beforeText}</span>
                 <span
+                  data-error-id={error.id}
                   className={cn(
                     "cursor-pointer relative",
                     "underline decoration-wavy decoration-2",
-                    error.type === "spelling" || error.type === "grammar" 
-                      ? "decoration-red-500" 
-                      : error.type === "punctuation" 
-                        ? "decoration-orange-500" 
-                        : "decoration-yellow-500"
+                    decorationClass,
+                    isActiveExternal && "bg-yellow-200/50 dark:bg-yellow-500/25 rounded-sm"
                   )}
                   style={{ 
                     textDecorationSkipInk: "none",
@@ -212,6 +235,7 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (onErrorClick) onErrorClick(error.id);
                     const rect = e.currentTarget.getBoundingClientRect();
                     const containerRect = containerRef.current?.getBoundingClientRect();
                     if (containerRect) {

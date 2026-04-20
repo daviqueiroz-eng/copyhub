@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Brain } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -82,6 +82,8 @@ import { CheckRoteiroViralPanel } from "./CheckRoteiroViralPanel";
 import { useTiposRoteiro } from "@/hooks/useTiposRoteiro";
 import { FloatingNotesPanel } from "./FloatingNotesPanel";
 import { TipoRoteiroConfigDialog } from "./TipoRoteiroConfigDialog";
+import { RevisaoInteligenrePanel } from "./RevisaoInteligenrePanel";
+import { useRevisaoInteligente, RevisaoErrorTipo, RevisaoError } from "@/hooks/useRevisaoInteligente";
 import {
   Select,
   SelectContent,
@@ -281,6 +283,15 @@ export const MentoradoRoteirosView = ({
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
+  // Modo de Revisão Inteligente
+  const [modoRevisao, setModoRevisao] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("modo-revisao-inteligente") === "1";
+  });
+  const [erroSelecionadoId, setErroSelecionadoId] = useState<string | null>(null);
+  const [categoriaAtiva, setCategoriaAtiva] = useState<RevisaoErrorTipo>("ortografico");
+  const [revisaoPanelOpen, setRevisaoPanelOpen] = useState<boolean>(true);
+  const [revisaoIgnoredIds, setRevisaoIgnoredIds] = useState<Set<string>>(new Set());
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackTimers, setFeedbackTimers] = useState<TimersRecord | null>(null);
   const [quantidadePersonalizada, setQuantidadePersonalizada] = useState<string>("");
@@ -2046,6 +2057,109 @@ export const MentoradoRoteirosView = ({
 
   const guiaAtivaConfig = guias.find(g => g.numero === guiaAtiva) || { numero: 1, quantidade: 10 };
 
+  // ====== Modo Revisão Inteligente ======
+  const { data: termosViraisRevisao = [] } = useTermosVirais();
+  const {
+    errors: revisaoErrorsRaw,
+    isAnalyzing: isAnalyzingRevisao,
+    reanalisar: reanalisarRevisao,
+    removeError: removeRevisaoError,
+  } = useRevisaoInteligente({
+    enabled: modoRevisao,
+    guiaAtiva,
+    guiaQuantidade: guiaAtivaConfig.quantidade,
+    roteirosLocais,
+    mentoradoNome,
+    termosVirais: termosViraisRevisao,
+  });
+  const revisaoErrors = useMemo(
+    () => revisaoErrorsRaw.filter((e) => !revisaoIgnoredIds.has(e.id)),
+    [revisaoErrorsRaw, revisaoIgnoredIds]
+  );
+
+  // Persistir modoRevisao
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("modo-revisao-inteligente", modoRevisao ? "1" : "0");
+    if (!modoRevisao) {
+      setErroSelecionadoId(null);
+    }
+  }, [modoRevisao]);
+
+  // Sincronizar categoria ativa com erro selecionado
+  useEffect(() => {
+    if (!erroSelecionadoId) return;
+    const err = revisaoErrors.find((e) => e.id === erroSelecionadoId);
+    if (err && err.tipo !== categoriaAtiva) {
+      setCategoriaAtiva(err.tipo);
+    }
+  }, [erroSelecionadoId, revisaoErrors, categoriaAtiva]);
+
+  // Mapeia errors do modoRevisao para o formato InlineSpellError, por campo
+  const getRevisaoErrorsForField = useCallback(
+    (guiaNumero: number, ordem: number, field: "headline" | "estrutura"): InlineSpellError[] => {
+      if (!modoRevisao) return [];
+      return revisaoErrors
+        .filter(
+          (e) =>
+            e.posicao.guiaNumero === guiaNumero &&
+            e.posicao.ordem === ordem &&
+            e.posicao.field === field
+        )
+        .map((e) => ({
+          id: e.id,
+          type:
+            e.tipo === "ortografico"
+              ? "spelling"
+              : e.tipo === "gramatical"
+                ? "grammar"
+                : (e.tipo as any),
+          original: e.texto,
+          suggestion: e.sugestoes[0] || e.texto,
+          startIndex: e.posicao.inicio,
+          endIndex: e.posicao.fim,
+          message: e.mensagem,
+        }));
+    },
+    [modoRevisao, revisaoErrors]
+  );
+
+  // Aplicar sugestão (substitui o trecho via handleChange)
+  const aplicarSugestaoRevisao = useCallback(
+    (error: RevisaoError, sugestao: string) => {
+      const key = `${error.posicao.guiaNumero}-${error.posicao.ordem}`;
+      const roteiro = roteirosLocais.get(key);
+      if (!roteiro) return;
+      const currentValue = roteiro[error.posicao.field] || "";
+      const newValue =
+        currentValue.substring(0, error.posicao.inicio) +
+        sugestao +
+        currentValue.substring(error.posicao.fim);
+      handleChange(error.posicao.guiaNumero, error.posicao.ordem, error.posicao.field, newValue);
+      removeRevisaoError(error.id);
+      if (erroSelecionadoId === error.id) setErroSelecionadoId(null);
+      toast({ title: "Corrigido", description: `"${error.texto}" → "${sugestao}"` });
+    },
+    [roteirosLocais, handleChange, removeRevisaoError, erroSelecionadoId]
+  );
+
+  const ignorarErroRevisao = useCallback(
+    (errorId: string) => {
+      setRevisaoIgnoredIds((prev) => new Set(prev).add(errorId));
+      if (erroSelecionadoId === errorId) setErroSelecionadoId(null);
+    },
+    [erroSelecionadoId]
+  );
+
+  // Scroll automático para o erro ativo no DOM
+  useEffect(() => {
+    if (!erroSelecionadoId) return;
+    const el = document.querySelector(`[data-error-id="${erroSelecionadoId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [erroSelecionadoId]);
+
   // Handler de blur para marcar campo como finalizado + disparar detecção de tipo
   const handleFieldBlur = useCallback((
     guiaNumero: number,
@@ -2264,6 +2378,15 @@ export const MentoradoRoteirosView = ({
               title="Corretor Automático"
             >
               <FileEdit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={modoRevisao ? "default" : "outline"}
+              size="icon"
+              onClick={() => setModoRevisao((v) => !v)}
+              title={modoRevisao ? "Sair do Modo Revisão" : "Modo Revisão Inteligente"}
+              className={cn(modoRevisao && "ring-2 ring-primary/40")}
+            >
+              <Brain className="h-4 w-4" />
             </Button>
             <Button variant="outline" className="gap-2" onClick={handleCopyAllRoteiros}>
               <ClipboardCopy className="h-4 w-4" />
@@ -2720,7 +2843,7 @@ export const MentoradoRoteirosView = ({
                     <React.Fragment key={key}>
                     <div className="group relative mb-8 lg:flex lg:gap-4 lg:items-start">
                       {/* Painel de anotações - coluna lateral à esquerda, cresce naturalmente */}
-                      {(() => {
+                      {!modoRevisao && (() => {
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
                         );
@@ -3024,8 +3147,14 @@ export const MentoradoRoteirosView = ({
                           }}
                           placeholder="Digite a headline... (use / para comandos)"
                           className="text-[15px] min-h-[28px] mt-1"
-                          errors={getErrorsForField(guiaAtiva, ordem, "headline")}
-                          showErrors={showInlineErrors}
+                          errors={
+                            modoRevisao
+                              ? getRevisaoErrorsForField(guiaAtiva, ordem, "headline")
+                              : getErrorsForField(guiaAtiva, ordem, "headline")
+                          }
+                          showErrors={modoRevisao || showInlineErrors}
+                          activeErrorId={modoRevisao ? erroSelecionadoId : null}
+                          onErrorClick={modoRevisao ? setErroSelecionadoId : undefined}
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "headline", error)}
                           onIgnoreError={handleIgnoreError}
                         />
@@ -3162,8 +3291,14 @@ export const MentoradoRoteirosView = ({
                           }}
                           placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                           className="text-[14px] min-h-[60px] mt-1"
-                          errors={getErrorsForField(guiaAtiva, ordem, "estrutura")}
-                          showErrors={showInlineErrors}
+                          errors={
+                            modoRevisao
+                              ? getRevisaoErrorsForField(guiaAtiva, ordem, "estrutura")
+                              : getErrorsForField(guiaAtiva, ordem, "estrutura")
+                          }
+                          showErrors={modoRevisao || showInlineErrors}
+                          activeErrorId={modoRevisao ? erroSelecionadoId : null}
+                          onErrorClick={modoRevisao ? setErroSelecionadoId : undefined}
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
                           onIgnoreError={handleIgnoreError}
                         />
@@ -3231,7 +3366,23 @@ export const MentoradoRoteirosView = ({
         </ScrollArea>
         
       </div>
-      
+      {modoRevisao && (
+        <RevisaoInteligenrePanel
+          errors={revisaoErrors}
+          isAnalyzing={isAnalyzingRevisao}
+          activeErrorId={erroSelecionadoId}
+          setActiveErrorId={setErroSelecionadoId}
+          categoriaAtiva={categoriaAtiva}
+          setCategoriaAtiva={setCategoriaAtiva}
+          open={revisaoPanelOpen}
+          onToggleOpen={() => setRevisaoPanelOpen((v) => !v)}
+          onClose={() => setModoRevisao(false)}
+          onApplySuggestion={aplicarSugestaoRevisao}
+          onIgnore={ignorarErroRevisao}
+          onRevalidar={() => reanalisarRevisao()}
+        />
+      )}
+
       {/* Botão flutuante com menu expandido para mobile */}
       <Button
         className="lg:hidden fixed bottom-4 right-4 z-40 h-14 w-14 rounded-full shadow-lg"
