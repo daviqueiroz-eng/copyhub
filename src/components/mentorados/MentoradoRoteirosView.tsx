@@ -2057,6 +2057,109 @@ export const MentoradoRoteirosView = ({
 
   const guiaAtivaConfig = guias.find(g => g.numero === guiaAtiva) || { numero: 1, quantidade: 10 };
 
+  // ====== Modo Revisão Inteligente ======
+  const { data: termosViraisRevisao = [] } = useTermosVirais();
+  const {
+    errors: revisaoErrorsRaw,
+    isAnalyzing: isAnalyzingRevisao,
+    reanalisar: reanalisarRevisao,
+    removeError: removeRevisaoError,
+  } = useRevisaoInteligente({
+    enabled: modoRevisao,
+    guiaAtiva,
+    guiaQuantidade: guiaAtivaConfig.quantidade,
+    roteirosLocais,
+    mentoradoNome,
+    termosVirais: termosViraisRevisao,
+  });
+  const revisaoErrors = useMemo(
+    () => revisaoErrorsRaw.filter((e) => !revisaoIgnoredIds.has(e.id)),
+    [revisaoErrorsRaw, revisaoIgnoredIds]
+  );
+
+  // Persistir modoRevisao
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("modo-revisao-inteligente", modoRevisao ? "1" : "0");
+    if (!modoRevisao) {
+      setErroSelecionadoId(null);
+    }
+  }, [modoRevisao]);
+
+  // Sincronizar categoria ativa com erro selecionado
+  useEffect(() => {
+    if (!erroSelecionadoId) return;
+    const err = revisaoErrors.find((e) => e.id === erroSelecionadoId);
+    if (err && err.tipo !== categoriaAtiva) {
+      setCategoriaAtiva(err.tipo);
+    }
+  }, [erroSelecionadoId, revisaoErrors, categoriaAtiva]);
+
+  // Mapeia errors do modoRevisao para o formato InlineSpellError, por campo
+  const getRevisaoErrorsForField = useCallback(
+    (guiaNumero: number, ordem: number, field: "headline" | "estrutura"): InlineSpellError[] => {
+      if (!modoRevisao) return [];
+      return revisaoErrors
+        .filter(
+          (e) =>
+            e.posicao.guiaNumero === guiaNumero &&
+            e.posicao.ordem === ordem &&
+            e.posicao.field === field
+        )
+        .map((e) => ({
+          id: e.id,
+          type:
+            e.tipo === "ortografico"
+              ? "spelling"
+              : e.tipo === "gramatical"
+                ? "grammar"
+                : (e.tipo as any),
+          original: e.texto,
+          suggestion: e.sugestoes[0] || e.texto,
+          startIndex: e.posicao.inicio,
+          endIndex: e.posicao.fim,
+          message: e.mensagem,
+        }));
+    },
+    [modoRevisao, revisaoErrors]
+  );
+
+  // Aplicar sugestão (substitui o trecho via handleChange)
+  const aplicarSugestaoRevisao = useCallback(
+    (error: RevisaoError, sugestao: string) => {
+      const key = `${error.posicao.guiaNumero}-${error.posicao.ordem}`;
+      const roteiro = roteirosLocais.get(key);
+      if (!roteiro) return;
+      const currentValue = roteiro[error.posicao.field] || "";
+      const newValue =
+        currentValue.substring(0, error.posicao.inicio) +
+        sugestao +
+        currentValue.substring(error.posicao.fim);
+      handleChange(error.posicao.guiaNumero, error.posicao.ordem, error.posicao.field, newValue);
+      removeRevisaoError(error.id);
+      if (erroSelecionadoId === error.id) setErroSelecionadoId(null);
+      toast({ title: "Corrigido", description: `"${error.texto}" → "${sugestao}"` });
+    },
+    [roteirosLocais, handleChange, removeRevisaoError, erroSelecionadoId]
+  );
+
+  const ignorarErroRevisao = useCallback(
+    (errorId: string) => {
+      setRevisaoIgnoredIds((prev) => new Set(prev).add(errorId));
+      if (erroSelecionadoId === errorId) setErroSelecionadoId(null);
+    },
+    [erroSelecionadoId]
+  );
+
+  // Scroll automático para o erro ativo no DOM
+  useEffect(() => {
+    if (!erroSelecionadoId) return;
+    const el = document.querySelector(`[data-error-id="${erroSelecionadoId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [erroSelecionadoId]);
+
   // Handler de blur para marcar campo como finalizado + disparar detecção de tipo
   const handleFieldBlur = useCallback((
     guiaNumero: number,
