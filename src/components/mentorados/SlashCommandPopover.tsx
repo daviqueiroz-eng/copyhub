@@ -1137,7 +1137,7 @@ export const SlashCommandPopover = ({
       ref={containerRef}
       className={`fixed z-[100] bg-background border rounded-lg shadow-lg max-h-[80vh] overflow-hidden flex flex-col ${
         internalMode === "termos_virais" 
-          ? "w-[calc(100vw-32px)] sm:w-[700px] max-w-[700px]" 
+          ? "w-[calc(100vw-32px)] sm:w-[960px] max-w-[960px]" 
           : "w-[calc(100vw-32px)] sm:w-96 max-w-96"
       }`}
       style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
