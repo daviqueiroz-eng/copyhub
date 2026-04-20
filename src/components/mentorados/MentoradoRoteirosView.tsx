@@ -2613,6 +2613,7 @@ export const MentoradoRoteirosView = ({
         {/* Main - Documento estilo Google Docs */}
         <ScrollArea className="flex-1 bg-muted/20">
           <div className="flex py-4 lg:py-8 px-2 lg:px-4 justify-center">
+            <div className="w-full max-w-[1036px] xl:max-w-[1136px] lg:pl-[220px] xl:pl-[320px]">
             {/* Paper container */}
             <div className="w-full max-w-[816px] bg-background shadow-md rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
               {/* Renderizar OverdeliveryView se for guia de overdelivery */}
@@ -2731,7 +2732,7 @@ export const MentoradoRoteirosView = ({
                             className={cn(
                               "hidden lg:block absolute top-0 z-10 transition-all duration-300 ease-out",
                               anotacoesExpanded
-                                ? "w-[300px] -left-[320px]"
+                                ? "lg:w-[220px] lg:-left-[240px] xl:w-[300px] xl:-left-[320px]"
                                 : "w-[140px] -left-[160px]"
                             )}
                           >
@@ -3227,6 +3228,7 @@ export const MentoradoRoteirosView = ({
                 </div>
               </div>
               )}
+            </div>
             </div>
           </div>
         </ScrollArea>
