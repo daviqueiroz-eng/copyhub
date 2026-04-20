@@ -2728,21 +2728,14 @@ export const MentoradoRoteirosView = ({
                                   const next = new Set(prev);
                                   if (exp) next.add(key);
                                   else next.delete(key);
+                                  // Auto-toggle sidebar
+                                  if (next.size > 0) {
+                                    setTimeout(() => setLeftSidebarMinimized(true), 0);
+                                  } else {
+                                    setTimeout(() => setLeftSidebarMinimized(false), 0);
+                                  }
                                   return next;
                                 });
-                                if (exp) {
-                                  setLeftSidebarMinimized(true);
-                                } else {
-                                  // Se nenhuma anotação estiver aberta, restaurar sidebar
-                                  setAnotacoesExpandidas((prev) => {
-                                    const next = new Set(prev);
-                                    if (!exp) next.delete(key);
-                                    if (next.size === 0) {
-                                      setLeftSidebarMinimized(false);
-                                    }
-                                    return next;
-                                  });
-                                }
                               }}
                             />
                           </div>
