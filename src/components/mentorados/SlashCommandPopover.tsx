@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { useTermosVirais, useUpdateTermoViral, useDeleteTermoViral, TermoViral } from "@/hooks/useTermosVirais";
 import { useNichos, useDeleteNicho } from "@/hooks/useNichos";
 import { usePerfisReferencia, useCreatePerfilReferencia, useUpdatePerfilReferencia, useDeletePerfilReferencia } from "@/hooks/usePerfisReferencia";
+import { useAdjetivosPoderosos, useCreateAdjetivoPoderoso, useDeleteAdjetivoPoderoso, AdjetivoTipo } from "@/hooks/useAdjetivosPoderosos";
 
 type SlashCommandMode = "menu" | "intensificadores" | "ctas" | "prompts" | "mentorados" | "termos_virais" | string;
 
@@ -78,6 +79,14 @@ export const SlashCommandPopover = ({
     return localStorage.getItem("perfis_ref_nicho_filter") || "all";
   });
 
+  // Estados para adjetivos poderosos
+  const [addingAdjetivo, setAddingAdjetivo] = useState(false);
+  const [novoAdjetivoTexto, setNovoAdjetivoTexto] = useState("");
+  const [novoAdjetivoTipo, setNovoAdjetivoTipo] = useState<AdjetivoTipo>("positivo");
+  const [adjetivoFiltroTipo, setAdjetivoFiltroTipo] = useState<"todos" | AdjetivoTipo>(() => {
+    return (localStorage.getItem("adjetivos_filtro_tipo") as any) || "todos";
+  });
+
   const { data: intensificadores = [] } = useIntensificadores();
   const { data: ctas = [] } = useCTAs();
   const { data: prompts = [] } = usePrompts();
@@ -91,6 +100,9 @@ export const SlashCommandPopover = ({
   const createPerfilReferencia = useCreatePerfilReferencia();
   const updatePerfilReferencia = useUpdatePerfilReferencia();
   const deletePerfilReferencia = useDeletePerfilReferencia();
+  const { data: adjetivos = [] } = useAdjetivosPoderosos();
+  const createAdjetivo = useCreateAdjetivoPoderoso();
+  const deleteAdjetivo = useDeleteAdjetivoPoderoso();
   const createHeadline = useCreateHeadlinesCriadas();
   const { user } = useAuth();
 
@@ -144,7 +156,7 @@ export const SlashCommandPopover = ({
     
     const isMobile = window.innerWidth < 640;
     const isWide = internalMode === "termos_virais";
-    const popoverWidth = isMobile ? window.innerWidth - 32 : isWide ? 700 : 384;
+    const popoverWidth = isMobile ? window.innerWidth - 32 : isWide ? 960 : 384;
     
     let left = position.left;
     
@@ -681,6 +693,148 @@ export const SlashCommandPopover = ({
     );
   };
 
+  // Renderizar Adjetivos Poderosos
+  const renderAdjetivosPoderosos = () => {
+    const filtered = adjetivos.filter((a) => {
+      const tipoMatch = adjetivoFiltroTipo === "todos" || a.tipo === adjetivoFiltroTipo;
+      const searchMatch = !search.trim() || a.texto.toLowerCase().includes(search.toLowerCase());
+      return tipoMatch && searchMatch;
+    });
+
+    return (
+      <div className="py-2 flex flex-col" style={{ maxHeight: "calc(80vh - 50px)" }}>
+        <div className="shrink-0">
+          <p className="px-3 py-1 text-xs text-muted-foreground font-semibold flex items-center justify-between">
+            <span>Adjetivos Poderosos ({filtered.length})</span>
+            <button
+              className="p-1 hover:bg-primary/10 rounded transition-colors"
+              onClick={() => setAddingAdjetivo(true)}
+              title="Adicionar adjetivo"
+            >
+              <Plus className="h-3.5 w-3.5 text-primary" />
+            </button>
+          </p>
+
+          {/* Filtro tipo */}
+          <div className="px-3 py-2 border-b">
+            <select
+              value={adjetivoFiltroTipo}
+              onChange={(e) => {
+                const v = e.target.value as "todos" | AdjetivoTipo;
+                setAdjetivoFiltroTipo(v);
+                localStorage.setItem("adjetivos_filtro_tipo", v);
+              }}
+              className="w-full h-8 text-sm rounded-md border bg-background px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="todos">Todos</option>
+              <option value="positivo">Positivos</option>
+              <option value="negativo">Negativos</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Form adicionar */}
+        {addingAdjetivo && (
+          <div className="px-3 py-2 border-b space-y-2">
+            <Input
+              placeholder="Adjetivo (ex: incrível)"
+              value={novoAdjetivoTexto}
+              onChange={(e) => setNovoAdjetivoTexto(e.target.value)}
+              className="h-8 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && novoAdjetivoTexto.trim() && user) {
+                  createAdjetivo.mutate(
+                    { texto: novoAdjetivoTexto.trim(), tipo: novoAdjetivoTipo, user_id: user.id },
+                    {
+                      onSuccess: () => {
+                        setNovoAdjetivoTexto("");
+                        setAddingAdjetivo(false);
+                      },
+                    },
+                  );
+                }
+              }}
+            />
+            <select
+              value={novoAdjetivoTipo}
+              onChange={(e) => setNovoAdjetivoTipo(e.target.value as AdjetivoTipo)}
+              className="w-full h-8 text-sm rounded-md border bg-background px-2"
+            >
+              <option value="positivo">Positivo</option>
+              <option value="negativo">Negativo</option>
+            </select>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                className="h-7 text-xs flex-1"
+                disabled={!novoAdjetivoTexto.trim() || createAdjetivo.isPending}
+                onClick={() => {
+                  if (!user) return;
+                  createAdjetivo.mutate(
+                    { texto: novoAdjetivoTexto.trim(), tipo: novoAdjetivoTipo, user_id: user.id },
+                    {
+                      onSuccess: () => {
+                        setNovoAdjetivoTexto("");
+                        setAddingAdjetivo(false);
+                      },
+                    },
+                  );
+                }}
+              >
+                {createAdjetivo.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+                Salvar
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingAdjetivo(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {filtered.length === 0 && !addingAdjetivo ? (
+          <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+            Nenhum adjetivo registrado.
+          </p>
+        ) : (
+          <div className="overflow-y-auto flex-1 min-h-0">
+            {filtered.map((a) => (
+              <div key={a.id} className="group flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors">
+                <button
+                  className="flex-1 text-left min-w-0"
+                  onClick={() => {
+                    onSelectItem(a.texto);
+                    onClose();
+                  }}
+                >
+                  <span className="text-sm">{a.texto}</span>
+                  {adjetivoFiltroTipo === "todos" && (
+                    <span
+                      className={`text-xs ml-2 ${a.tipo === "positivo" ? "text-green-500" : "text-destructive"}`}
+                    >
+                      • {a.tipo}
+                    </span>
+                  )}
+                </button>
+                <button
+                  className="p-1 hover:bg-destructive/10 rounded transition-colors shrink-0 hidden group-hover:block"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteAdjetivo.mutate(a.id);
+                  }}
+                  title="Remover adjetivo"
+                >
+                  <X className="h-3 w-3 text-destructive" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+
   // Renderizar termos virais com filtro por nicho
   const renderTermosVirais = () => {
     const nichosUnicos = Array.from(new Set(termosVirais.map(t => t.nicho_nome || "Sem nicho")));
@@ -987,7 +1141,7 @@ export const SlashCommandPopover = ({
       ref={containerRef}
       className={`fixed z-[100] bg-background border rounded-lg shadow-lg max-h-[80vh] overflow-hidden flex flex-col ${
         internalMode === "termos_virais" 
-          ? "w-[calc(100vw-32px)] sm:w-[700px] max-w-[700px]" 
+          ? "w-[calc(100vw-32px)] sm:w-[960px] max-w-[960px]" 
           : "w-[calc(100vw-32px)] sm:w-96 max-w-96"
       }`}
       style={{ top: adjustedPosition.top, left: adjustedPosition.left }}
@@ -1019,8 +1173,11 @@ export const SlashCommandPopover = ({
             <div className="flex-1 min-w-0 sm:border-r flex flex-col overflow-hidden">
               {renderTermosVirais()}
             </div>
-            <div className="flex-1 min-w-0 border-t sm:border-t-0 flex flex-col overflow-hidden">
+            <div className="flex-1 min-w-0 border-t sm:border-t-0 sm:border-r flex flex-col overflow-hidden">
               {renderPerfisReferencia()}
+            </div>
+            <div className="flex-1 min-w-0 border-t sm:border-t-0 flex flex-col overflow-hidden">
+              {renderAdjetivosPoderosos()}
             </div>
           </div>
         )}
