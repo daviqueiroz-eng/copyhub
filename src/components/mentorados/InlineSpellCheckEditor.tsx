@@ -6,7 +6,15 @@ import { cn } from "@/lib/utils";
 
 export interface SpellError {
   id: string;
-  type: "spacing" | "punctuation" | "spelling" | "duplicate" | "trim" | "grammar";
+  type:
+    | "spacing"
+    | "punctuation"
+    | "spelling"
+    | "duplicate"
+    | "trim"
+    | "grammar"
+    | "nome_cliente"
+    | "mentorado";
   original: string;
   suggestion: string;
   startIndex: number;
@@ -28,6 +36,8 @@ interface InlineSpellCheckEditorProps {
   onFixError?: (error: SpellError) => void;
   onIgnoreError?: (errorId: string) => void;
   showErrors?: boolean;
+  activeErrorId?: string | null;
+  onErrorClick?: (errorId: string) => void;
 }
 
 export interface InlineSpellCheckEditorHandle {
@@ -49,6 +59,8 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
   onFixError,
   onIgnoreError,
   showErrors = false,
+  activeErrorId: activeErrorIdProp,
+  onErrorClick,
 }, ref) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
