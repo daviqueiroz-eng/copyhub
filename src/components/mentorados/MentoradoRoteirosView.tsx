@@ -434,15 +434,14 @@ export const MentoradoRoteirosView = ({
   // Estado para minimizar painel lateral esquerdo (guias) no desktop
   const [leftSidebarMinimized, setLeftSidebarMinimized] = useState(false);
 
-  // Auto-minimiza guias quando algum bloco de anotações expande, e restaura quando todos fecham
+  // Auto-minimiza guias quando algum bloco de anotações expande.
+  // Ao fechar os blocos, mantém o estado atual da guia (não reabre automaticamente).
   const prevAnotacoesOpenRef = useRef(0);
   useEffect(() => {
     const current = anotacoesExpandidas.size;
     const prev = prevAnotacoesOpenRef.current;
     if (prev === 0 && current > 0) {
       setLeftSidebarMinimized(true);
-    } else if (prev > 0 && current === 0) {
-      setLeftSidebarMinimized(false);
     }
     prevAnotacoesOpenRef.current = current;
   }, [anotacoesExpandidas]);
