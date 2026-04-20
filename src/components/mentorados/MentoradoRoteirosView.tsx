@@ -2720,8 +2720,8 @@ export const MentoradoRoteirosView = ({
                         return (
                           <div
                             className={cn(
-                              "hidden xl:block absolute top-0 z-10 transition-[width] duration-300 ease-out",
-                              expanded ? "w-[340px] -left-[360px]" : "w-[140px] -left-[160px]"
+                              "hidden lg:block absolute top-0 z-10 transition-all duration-300 ease-out",
+                              expanded ? "w-[300px] -left-[320px]" : "w-[140px] -left-[156px]"
                             )}
                           >
                             <RoteiroAnotacoesPanel
