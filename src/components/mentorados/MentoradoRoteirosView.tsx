@@ -2734,6 +2734,8 @@ export const MentoradoRoteirosView = ({
                           >
                             <RoteiroAnotacoesPanel
                               roteiroId={roteiroDB?.id}
+                              linkReferencia={roteiro.link_referencia}
+                              headline={roteiro.headline}
                               onExpandedChange={(exp) => {
                                 setAnotacoesExpandidas((prev) => {
                                   const next = new Set(prev);
