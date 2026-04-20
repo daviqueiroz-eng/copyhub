@@ -21,7 +21,7 @@ const SECOES: Array<{ key: AnotacaoCampo; label: string; placeholder: string }> 
   { key: "comentario", label: "Comentário", placeholder: "Comentários ou observações..." },
 ];
 
-export const RoteiroAnotacoesPanel = ({ roteiroId, className }: RoteiroAnotacoesPanelProps) => {
+export const RoteiroAnotacoesPanel = ({ roteiroId, className, onExpandedChange }: RoteiroAnotacoesPanelProps) => {
   const { data: anotacao } = useRoteiroAnotacoes(roteiroId);
   const upsert = useUpsertRoteiroAnotacao();
 
