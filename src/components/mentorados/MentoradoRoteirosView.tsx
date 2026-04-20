@@ -3188,19 +3188,6 @@ export const MentoradoRoteirosView = ({
                       </div>
                       
                       </div> {/* Fim do conteúdo principal flex-1 */}
-                      
-                      {/* Painel de anotações - lateral direita do roteiro */}
-                      {(() => {
-                        const roteiroDB = roteiros.find(
-                          (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
-                        );
-                        if (!roteiroDB?.id) return null;
-                        return (
-                          <div className="hidden lg:block w-[220px] shrink-0">
-                            <RoteiroAnotacoesPanel roteiroId={roteiroDB.id} />
-                          </div>
-                        );
-                      })()}
                     </div>
                     
                     {/* Separator line */}
