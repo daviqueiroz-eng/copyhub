@@ -2599,10 +2599,7 @@ export const MentoradoRoteirosView = ({
 
         {/* Main - Documento estilo Google Docs */}
         <ScrollArea className="flex-1 bg-muted/20">
-          <div className={cn(
-            "flex py-4 lg:py-8 px-2 lg:px-4",
-            anotacoesExpandidas.size > 0 ? "justify-end lg:pr-8" : "justify-center"
-          )}>
+          <div className="flex py-4 lg:py-8 px-2 lg:px-4 justify-center">
             {/* Paper container */}
             <div className="w-full max-w-[816px] bg-background shadow-md rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
               {/* Renderizar OverdeliveryView se for guia de overdelivery */}
