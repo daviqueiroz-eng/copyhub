@@ -2746,8 +2746,6 @@ export const MentoradoRoteirosView = ({
                           </div>
                         );
                       })()}
-                      {/* Conteúdo do roteiro - cresce para preencher o restante */}
-                      <div className="flex-1 min-w-0">
                       {/* Floating toolbar - mobile: always visible, horizontal; desktop: hover, vertical */}
                       <div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex flex-col gap-1">
                         <Button
