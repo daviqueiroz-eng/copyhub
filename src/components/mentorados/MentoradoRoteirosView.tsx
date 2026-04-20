@@ -2704,8 +2704,35 @@ export const MentoradoRoteirosView = ({
                   return (
                     <React.Fragment key={key}>
                     <div
-                      className="group relative mb-8"
+                      className="group relative mb-8 flex gap-4"
                     >
+                      {/* Painel de anotações - lateral esquerda (estreito quando fechado, expande ao abrir) */}
+                      {(() => {
+                        const roteiroDB = roteiros.find(
+                          (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
+                        );
+                        if (!roteiroDB?.id) return <div className="hidden lg:block w-[150px] shrink-0" />;
+                        return (
+                          <div
+                            className={cn(
+                              "hidden lg:block shrink-0 transition-[width] duration-300 ease-out",
+                              anotacoesExpandidas.has(key) ? "w-[360px]" : "w-[150px]"
+                            )}
+                          >
+                            <RoteiroAnotacoesPanel
+                              roteiroId={roteiroDB.id}
+                              onExpandedChange={(expanded) => {
+                                setAnotacoesExpandidas((prev) => {
+                                  const next = new Set(prev);
+                                  if (expanded) next.add(key);
+                                  else next.delete(key);
+                                  return next;
+                                });
+                              }}
+                            />
+                          </div>
+                        );
+                      })()}
                       {/* Floating toolbar - mobile: always visible, horizontal; desktop: hover, vertical */}
                       <div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex flex-col gap-1">
                         <Button
