@@ -1173,8 +1173,11 @@ export const SlashCommandPopover = ({
             <div className="flex-1 min-w-0 sm:border-r flex flex-col overflow-hidden">
               {renderTermosVirais()}
             </div>
-            <div className="flex-1 min-w-0 border-t sm:border-t-0 flex flex-col overflow-hidden">
+            <div className="flex-1 min-w-0 border-t sm:border-t-0 sm:border-r flex flex-col overflow-hidden">
               {renderPerfisReferencia()}
+            </div>
+            <div className="flex-1 min-w-0 border-t sm:border-t-0 flex flex-col overflow-hidden">
+              {renderAdjetivosPoderosos()}
             </div>
           </div>
         )}
