@@ -693,9 +693,147 @@ export const SlashCommandPopover = ({
     );
   };
 
-  // Renderizar termos virais com filtro por nicho
-  const renderTermosVirais = () => {
-    const nichosUnicos = Array.from(new Set(termosVirais.map(t => t.nicho_nome || "Sem nicho")));
+  // Renderizar Adjetivos Poderosos
+  const renderAdjetivosPoderosos = () => {
+    const filtered = adjetivos.filter((a) => {
+      const tipoMatch = adjetivoFiltroTipo === "todos" || a.tipo === adjetivoFiltroTipo;
+      const searchMatch = !search.trim() || a.texto.toLowerCase().includes(search.toLowerCase());
+      return tipoMatch && searchMatch;
+    });
+
+    return (
+      <div className="py-2 flex flex-col" style={{ maxHeight: "calc(80vh - 50px)" }}>
+        <div className="shrink-0">
+          <p className="px-3 py-1 text-xs text-muted-foreground font-semibold flex items-center justify-between">
+            <span>Adjetivos Poderosos ({filtered.length})</span>
+            <button
+              className="p-1 hover:bg-primary/10 rounded transition-colors"
+              onClick={() => setAddingAdjetivo(true)}
+              title="Adicionar adjetivo"
+            >
+              <Plus className="h-3.5 w-3.5 text-primary" />
+            </button>
+          </p>
+
+          {/* Filtro tipo */}
+          <div className="px-3 py-2 border-b">
+            <select
+              value={adjetivoFiltroTipo}
+              onChange={(e) => {
+                const v = e.target.value as "todos" | AdjetivoTipo;
+                setAdjetivoFiltroTipo(v);
+                localStorage.setItem("adjetivos_filtro_tipo", v);
+              }}
+              className="w-full h-8 text-sm rounded-md border bg-background px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="todos">Todos</option>
+              <option value="positivo">Positivos</option>
+              <option value="negativo">Negativos</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Form adicionar */}
+        {addingAdjetivo && (
+          <div className="px-3 py-2 border-b space-y-2">
+            <Input
+              placeholder="Adjetivo (ex: incrível)"
+              value={novoAdjetivoTexto}
+              onChange={(e) => setNovoAdjetivoTexto(e.target.value)}
+              className="h-8 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && novoAdjetivoTexto.trim() && user) {
+                  createAdjetivo.mutate(
+                    { texto: novoAdjetivoTexto.trim(), tipo: novoAdjetivoTipo, user_id: user.id },
+                    {
+                      onSuccess: () => {
+                        setNovoAdjetivoTexto("");
+                        setAddingAdjetivo(false);
+                      },
+                    },
+                  );
+                }
+              }}
+            />
+            <select
+              value={novoAdjetivoTipo}
+              onChange={(e) => setNovoAdjetivoTipo(e.target.value as AdjetivoTipo)}
+              className="w-full h-8 text-sm rounded-md border bg-background px-2"
+            >
+              <option value="positivo">Positivo</option>
+              <option value="negativo">Negativo</option>
+            </select>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                className="h-7 text-xs flex-1"
+                disabled={!novoAdjetivoTexto.trim() || createAdjetivo.isPending}
+                onClick={() => {
+                  if (!user) return;
+                  createAdjetivo.mutate(
+                    { texto: novoAdjetivoTexto.trim(), tipo: novoAdjetivoTipo, user_id: user.id },
+                    {
+                      onSuccess: () => {
+                        setNovoAdjetivoTexto("");
+                        setAddingAdjetivo(false);
+                      },
+                    },
+                  );
+                }}
+              >
+                {createAdjetivo.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+                Salvar
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingAdjetivo(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {filtered.length === 0 && !addingAdjetivo ? (
+          <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+            Nenhum adjetivo registrado.
+          </p>
+        ) : (
+          <div className="overflow-y-auto flex-1 min-h-0">
+            {filtered.map((a) => (
+              <div key={a.id} className="group flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors">
+                <button
+                  className="flex-1 text-left min-w-0"
+                  onClick={() => {
+                    onSelectItem(a.texto);
+                    onClose();
+                  }}
+                >
+                  <span className="text-sm">{a.texto}</span>
+                  {adjetivoFiltroTipo === "todos" && (
+                    <span
+                      className={`text-xs ml-2 ${a.tipo === "positivo" ? "text-green-500" : "text-destructive"}`}
+                    >
+                      • {a.tipo}
+                    </span>
+                  )}
+                </button>
+                <button
+                  className="p-1 hover:bg-destructive/10 rounded transition-colors shrink-0 hidden group-hover:block"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteAdjetivo.mutate(a.id);
+                  }}
+                  title="Remover adjetivo"
+                >
+                  <X className="h-3 w-3 text-destructive" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
 
     const filtered = termosVirais.filter(t => {
       const nichoMatch = selectedNichoFilter === "all" || (t.nicho_nome || "Sem nicho") === selectedNichoFilter;
