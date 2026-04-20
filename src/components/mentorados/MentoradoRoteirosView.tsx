@@ -3161,6 +3161,12 @@ export const MentoradoRoteirosView = ({
                       
                       </div> {/* Fim do conteúdo principal flex-1 */}
                       
+                      {/* Painel lateral de anotações (4 seções colapsáveis - sempre fechadas por padrão) */}
+                      {roteiro.id && (
+                        <div className="hidden lg:block w-72 shrink-0">
+                          <RoteiroAnotacoesPanel roteiroId={roteiro.id} />
+                        </div>
+                      )}
                     </div>
                     
                     {/* Separator line */}
