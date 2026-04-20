@@ -3147,8 +3147,14 @@ export const MentoradoRoteirosView = ({
                           }}
                           placeholder="Digite a headline... (use / para comandos)"
                           className="text-[15px] min-h-[28px] mt-1"
-                          errors={getErrorsForField(guiaAtiva, ordem, "headline")}
-                          showErrors={showInlineErrors}
+                          errors={
+                            modoRevisao
+                              ? getRevisaoErrorsForField(guiaAtiva, ordem, "headline")
+                              : getErrorsForField(guiaAtiva, ordem, "headline")
+                          }
+                          showErrors={modoRevisao || showInlineErrors}
+                          activeErrorId={modoRevisao ? erroSelecionadoId : null}
+                          onErrorClick={modoRevisao ? setErroSelecionadoId : undefined}
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "headline", error)}
                           onIgnoreError={handleIgnoreError}
                         />
@@ -3285,8 +3291,14 @@ export const MentoradoRoteirosView = ({
                           }}
                           placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                           className="text-[14px] min-h-[60px] mt-1"
-                          errors={getErrorsForField(guiaAtiva, ordem, "estrutura")}
-                          showErrors={showInlineErrors}
+                          errors={
+                            modoRevisao
+                              ? getRevisaoErrorsForField(guiaAtiva, ordem, "estrutura")
+                              : getErrorsForField(guiaAtiva, ordem, "estrutura")
+                          }
+                          showErrors={modoRevisao || showInlineErrors}
+                          activeErrorId={modoRevisao ? erroSelecionadoId : null}
+                          onErrorClick={modoRevisao ? setErroSelecionadoId : undefined}
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
                           onIgnoreError={handleIgnoreError}
                         />
