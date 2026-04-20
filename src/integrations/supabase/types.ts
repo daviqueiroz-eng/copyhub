@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      adjetivos_poderosos: {
+        Row: {
+          created_at: string
+          id: string
+          texto: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          texto: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          texto?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       allowed_emails: {
         Row: {
           cadastrado_por: string | null
@@ -1781,6 +1805,50 @@ export type Database = {
             columns: ["tipo_roteiro_id"]
             isOneToOne: false
             referencedRelation: "tipos_roteiro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentorados_roteiros_anotacoes: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          estudos: string | null
+          id: string
+          notas: string | null
+          referencia_texto: string | null
+          roteiro_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          estudos?: string | null
+          id?: string
+          notas?: string | null
+          referencia_texto?: string | null
+          roteiro_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          estudos?: string | null
+          id?: string
+          notas?: string | null
+          referencia_texto?: string | null
+          roteiro_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorados_roteiros_anotacoes_roteiro_id_fkey"
+            columns: ["roteiro_id"]
+            isOneToOne: true
+            referencedRelation: "mentorados_roteiros"
             referencedColumns: ["id"]
           },
         ]
