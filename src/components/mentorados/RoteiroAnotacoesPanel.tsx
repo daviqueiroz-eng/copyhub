@@ -101,14 +101,6 @@ export const RoteiroAnotacoesPanel = ({ roteiroId, className, onExpandedChange }
     onExpandedChange?.(anyOpen);
   }, [anyOpen, onExpandedChange]);
 
-  if (!roteiroId) {
-    return (
-      <div className={cn("text-xs text-muted-foreground italic px-2 py-2", className)}>
-        Salve o roteiro para habilitar anotações.
-      </div>
-    );
-  }
-
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       {SECOES.map((s) => {
@@ -151,7 +143,8 @@ export const RoteiroAnotacoesPanel = ({ roteiroId, className, onExpandedChange }
                 <Textarea
                   value={values[s.key]}
                   onChange={(e) => handleChange(s.key, e.target.value)}
-                  placeholder={s.placeholder}
+                  placeholder={roteiroId ? s.placeholder : "Digite a headline para habilitar..."}
+                  disabled={!roteiroId}
                   className="min-h-[220px] text-sm resize-y"
                 />
               </div>
