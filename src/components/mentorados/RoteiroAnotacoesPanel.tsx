@@ -11,6 +11,7 @@ import {
 interface RoteiroAnotacoesPanelProps {
   roteiroId: string | undefined;
   className?: string;
+  onExpandedChange?: (expanded: boolean) => void;
 }
 
 const SECOES: Array<{ key: AnotacaoCampo; label: string; placeholder: string }> = [
@@ -20,7 +21,7 @@ const SECOES: Array<{ key: AnotacaoCampo; label: string; placeholder: string }> 
   { key: "comentario", label: "Comentário", placeholder: "Comentários ou observações..." },
 ];
 
-export const RoteiroAnotacoesPanel = ({ roteiroId, className }: RoteiroAnotacoesPanelProps) => {
+export const RoteiroAnotacoesPanel = ({ roteiroId, className, onExpandedChange }: RoteiroAnotacoesPanelProps) => {
   const { data: anotacao } = useRoteiroAnotacoes(roteiroId);
   const upsert = useUpsertRoteiroAnotacao();
 
@@ -94,6 +95,11 @@ export const RoteiroAnotacoesPanel = ({ roteiroId, className }: RoteiroAnotacoes
 
   const toggle = (campo: AnotacaoCampo) =>
     setOpenSections((prev) => ({ ...prev, [campo]: !prev[campo] }));
+
+  const anyOpen = Object.values(openSections).some(Boolean);
+  useEffect(() => {
+    onExpandedChange?.(anyOpen);
+  }, [anyOpen, onExpandedChange]);
 
   if (!roteiroId) {
     return (
