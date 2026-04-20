@@ -82,6 +82,10 @@ import { CheckRoteiroViralPanel } from "./CheckRoteiroViralPanel";
 import { useTiposRoteiro } from "@/hooks/useTiposRoteiro";
 import { FloatingNotesPanel } from "./FloatingNotesPanel";
 import { TipoRoteiroConfigDialog } from "./TipoRoteiroConfigDialog";
+import { RevisaoInteligenrePanel } from "./RevisaoInteligenrePanel";
+import { useRevisaoInteligente, RevisaoErrorTipo, RevisaoError } from "@/hooks/useRevisaoInteligente";
+import { useTermosVirais } from "@/hooks/useTermosVirais";
+import { Brain } from "lucide-react";
 import {
   Select,
   SelectContent,
