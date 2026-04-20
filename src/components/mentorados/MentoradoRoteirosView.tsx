@@ -2731,8 +2731,8 @@ export const MentoradoRoteirosView = ({
                             className={cn(
                               "hidden lg:block absolute top-0 z-10 transition-all duration-300 ease-out",
                               anotacoesExpanded
-                                ? "w-[320px] -left-[calc(64px+340px)]"
-                                : "w-[140px] -left-[calc(64px+160px)]"
+                                ? "w-[300px] -left-[320px]"
+                                : "w-[140px] -left-[160px]"
                             )}
                           >
                             <RoteiroAnotacoesPanel
