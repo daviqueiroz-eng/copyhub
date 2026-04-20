@@ -2379,6 +2379,15 @@ export const MentoradoRoteirosView = ({
             >
               <FileEdit className="h-4 w-4" />
             </Button>
+            <Button
+              variant={modoRevisao ? "default" : "outline"}
+              size="icon"
+              onClick={() => setModoRevisao((v) => !v)}
+              title={modoRevisao ? "Sair do Modo Revisão" : "Modo Revisão Inteligente"}
+              className={cn(modoRevisao && "ring-2 ring-primary/40")}
+            >
+              <Brain className="h-4 w-4" />
+            </Button>
             <Button variant="outline" className="gap-2" onClick={handleCopyAllRoteiros}>
               <ClipboardCopy className="h-4 w-4" />
               Copiar todos
@@ -2834,7 +2843,7 @@ export const MentoradoRoteirosView = ({
                     <React.Fragment key={key}>
                     <div className="group relative mb-8 lg:flex lg:gap-4 lg:items-start">
                       {/* Painel de anotações - coluna lateral à esquerda, cresce naturalmente */}
-                      {(() => {
+                      {!modoRevisao && (() => {
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
                         );
