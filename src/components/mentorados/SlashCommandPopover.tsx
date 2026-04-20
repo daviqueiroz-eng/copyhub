@@ -79,6 +79,14 @@ export const SlashCommandPopover = ({
     return localStorage.getItem("perfis_ref_nicho_filter") || "all";
   });
 
+  // Estados para adjetivos poderosos
+  const [addingAdjetivo, setAddingAdjetivo] = useState(false);
+  const [novoAdjetivoTexto, setNovoAdjetivoTexto] = useState("");
+  const [novoAdjetivoTipo, setNovoAdjetivoTipo] = useState<AdjetivoTipo>("positivo");
+  const [adjetivoFiltroTipo, setAdjetivoFiltroTipo] = useState<"todos" | AdjetivoTipo>(() => {
+    return (localStorage.getItem("adjetivos_filtro_tipo") as any) || "todos";
+  });
+
   const { data: intensificadores = [] } = useIntensificadores();
   const { data: ctas = [] } = useCTAs();
   const { data: prompts = [] } = usePrompts();
