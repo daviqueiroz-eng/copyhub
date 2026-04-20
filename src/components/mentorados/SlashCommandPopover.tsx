@@ -835,6 +835,10 @@ export const SlashCommandPopover = ({
   };
 
 
+  // Renderizar termos virais com filtro por nicho
+  const renderTermosVirais = () => {
+    const nichosUnicos = Array.from(new Set(termosVirais.map(t => t.nicho_nome || "Sem nicho")));
+
     const filtered = termosVirais.filter(t => {
       const nichoMatch = selectedNichoFilter === "all" || (t.nicho_nome || "Sem nicho") === selectedNichoFilter;
       const searchMatch = !search.trim() ||
