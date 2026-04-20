@@ -2599,10 +2599,7 @@ export const MentoradoRoteirosView = ({
 
         {/* Main - Documento estilo Google Docs */}
         <ScrollArea className="flex-1 bg-muted/20">
-          <div className={cn(
-            "flex py-4 lg:py-8 px-2 lg:px-4",
-            anotacoesExpandidas.size > 0 ? "justify-end lg:pr-8" : "justify-center"
-          )}>
+          <div className="flex py-4 lg:py-8 px-2 lg:px-4 justify-center">
             {/* Paper container */}
             <div className="w-full max-w-[816px] bg-background shadow-md rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
               {/* Renderizar OverdeliveryView se for guia de overdelivery */}
@@ -2715,28 +2712,23 @@ export const MentoradoRoteirosView = ({
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
                         );
-                        if (!roteiroDB?.id) return null;
                         const expanded = anotacoesExpandidas.has(key);
                         return (
                           <div
                             className={cn(
                               "hidden lg:block absolute top-0 z-10 transition-all duration-300 ease-out",
-                              expanded ? "w-[300px] -left-[320px]" : "w-[140px] -left-[156px]"
+                              expanded
+                                ? "w-[320px] -left-[calc(64px+340px)]"
+                                : "w-[140px] -left-[calc(64px+160px)]"
                             )}
                           >
                             <RoteiroAnotacoesPanel
-                              roteiroId={roteiroDB.id}
+                              roteiroId={roteiroDB?.id}
                               onExpandedChange={(exp) => {
                                 setAnotacoesExpandidas((prev) => {
                                   const next = new Set(prev);
                                   if (exp) next.add(key);
                                   else next.delete(key);
-                                  // Auto-toggle sidebar
-                                  if (next.size > 0) {
-                                    setTimeout(() => setLeftSidebarMinimized(true), 0);
-                                  } else {
-                                    setTimeout(() => setLeftSidebarMinimized(false), 0);
-                                  }
                                   return next;
                                 });
                               }}
