@@ -2704,7 +2704,7 @@ export const MentoradoRoteirosView = ({
                   return (
                     <React.Fragment key={key}>
                     <div
-                      className="group relative mb-8 flex gap-4"
+                      className="group relative mb-8"
                     >
                       {/* Floating toolbar - mobile: always visible, horizontal; desktop: hover, vertical */}
                       <div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex flex-col gap-1">
@@ -3162,14 +3162,14 @@ export const MentoradoRoteirosView = ({
                       
                       </div> {/* Fim do conteúdo principal flex-1 */}
                       
-                      {/* Painel lateral de anotações (4 seções colapsáveis - sempre fechadas por padrão) */}
+                      {/* Painel flutuante de anotações - posicionado à direita, fora do fluxo */}
                       {(() => {
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
                         );
                         if (!roteiroDB?.id) return null;
                         return (
-                          <div className="hidden lg:block w-72 shrink-0">
+                          <div className="hidden xl:block absolute top-0 -right-[260px] w-[240px] z-10">
                             <RoteiroAnotacoesPanel roteiroId={roteiroDB.id} />
                           </div>
                         );
