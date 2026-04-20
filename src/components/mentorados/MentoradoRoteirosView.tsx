@@ -2613,9 +2613,9 @@ export const MentoradoRoteirosView = ({
         {/* Main - Documento estilo Google Docs */}
         <ScrollArea className="flex-1 bg-muted/20">
           <div className="flex py-4 lg:py-8 px-2 lg:px-4 justify-center">
-            <div className="w-full max-w-[1036px] xl:max-w-[1136px] lg:pl-[220px] xl:pl-[320px]">
-            {/* Paper container */}
-            <div className="w-full max-w-[816px] bg-background shadow-md rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
+            <div className="w-full max-w-[1280px]">
+            {/* Paper container - expandido para usar mais espaço horizontal */}
+            <div className="w-full bg-background shadow-md rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
               {/* Renderizar OverdeliveryView se for guia de overdelivery */}
               {guiaAtivaConfig.isOverdelivery ? (
                 <OverdeliveryView
@@ -2719,10 +2719,8 @@ export const MentoradoRoteirosView = ({
 
                   return (
                     <React.Fragment key={key}>
-                    <div
-                      className={cn("group relative mb-8", anotacoesExpanded && "lg:mb-[320px]")}
-                    >
-                      {/* Painel de anotações - flutuante à esquerda, fora do quadrante do roteiro */}
+                    <div className="group relative mb-8 lg:flex lg:gap-4 lg:items-start">
+                      {/* Painel de anotações - coluna lateral à esquerda, cresce naturalmente */}
                       {(() => {
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
@@ -2730,10 +2728,8 @@ export const MentoradoRoteirosView = ({
                         return (
                           <div
                             className={cn(
-                              "hidden lg:block absolute top-0 z-10 transition-all duration-300 ease-out",
-                              anotacoesExpanded
-                                ? "lg:w-[220px] lg:-left-[240px] xl:w-[300px] xl:-left-[320px]"
-                                : "w-[140px] -left-[160px]"
+                              "hidden lg:block shrink-0 transition-all duration-300 ease-out",
+                              anotacoesExpanded ? "lg:w-[280px] xl:w-[320px]" : "lg:w-[150px]"
                             )}
                           >
                             <RoteiroAnotacoesPanel
