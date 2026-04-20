@@ -152,7 +152,7 @@ export const RoteiroAnotacoesPanel = ({ roteiroId, className, onExpandedChange }
                   value={values[s.key]}
                   onChange={(e) => handleChange(s.key, e.target.value)}
                   placeholder={s.placeholder}
-                  className="min-h-[180px] text-sm resize-y"
+                  className="min-h-[220px] text-sm resize-y"
                 />
               </div>
             )}
