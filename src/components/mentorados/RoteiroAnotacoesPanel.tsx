@@ -96,6 +96,11 @@ export const RoteiroAnotacoesPanel = ({ roteiroId, className, onExpandedChange }
   const toggle = (campo: AnotacaoCampo) =>
     setOpenSections((prev) => ({ ...prev, [campo]: !prev[campo] }));
 
+  const anyOpen = Object.values(openSections).some(Boolean);
+  useEffect(() => {
+    onExpandedChange?.(anyOpen);
+  }, [anyOpen, onExpandedChange]);
+
   if (!roteiroId) {
     return (
       <div className={cn("text-xs text-muted-foreground italic px-2 py-2", className)}>
