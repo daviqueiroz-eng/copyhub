@@ -427,7 +427,8 @@ export const MentoradoRoteirosView = ({
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   // Estado para minimizar painel lateral do checklist (desktop)
-  const [checklistMinimized, setChecklistMinimized] = useState(false);
+  // Cronômetro escondido por padrão para liberar espaço — usuário pode abrir pelo botão lateral
+  const [checklistMinimized, setChecklistMinimized] = useState(true);
   
   // Estado para minimizar painel lateral esquerdo (guias) no desktop
   const [leftSidebarMinimized, setLeftSidebarMinimized] = useState(false);
