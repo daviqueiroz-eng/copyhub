@@ -283,6 +283,15 @@ export const MentoradoRoteirosView = ({
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
+  // Modo de Revisão Inteligente
+  const [modoRevisao, setModoRevisao] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("modo-revisao-inteligente") === "1";
+  });
+  const [erroSelecionadoId, setErroSelecionadoId] = useState<string | null>(null);
+  const [categoriaAtiva, setCategoriaAtiva] = useState<RevisaoErrorTipo>("ortografico");
+  const [revisaoPanelOpen, setRevisaoPanelOpen] = useState<boolean>(true);
+  const [revisaoIgnoredIds, setRevisaoIgnoredIds] = useState<Set<string>>(new Set());
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackTimers, setFeedbackTimers] = useState<TimersRecord | null>(null);
   const [quantidadePersonalizada, setQuantidadePersonalizada] = useState<string>("");
