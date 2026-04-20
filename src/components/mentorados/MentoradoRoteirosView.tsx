@@ -2709,6 +2709,7 @@ export const MentoradoRoteirosView = ({
                   const roteiro = roteirosLocais.get(key) || { headline: "", estrutura: "" };
                   const isSaving = savingKeys.has(key);
                   const isSaved = savedKeys.has(key);
+                  const anotacoesExpanded = anotacoesExpandidas.has(key);
                   
                   // Calcular checks que falharam para este roteiro
                   const checksQueFalharam = checksVirais.filter(check => 
@@ -2718,19 +2719,18 @@ export const MentoradoRoteirosView = ({
                   return (
                     <React.Fragment key={key}>
                     <div
-                      className="group relative mb-8"
+                      className={cn("group relative mb-8", anotacoesExpanded && "lg:mb-[320px]")}
                     >
                       {/* Painel de anotações - flutuante à esquerda, fora do quadrante do roteiro */}
                       {(() => {
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
                         );
-                        const expanded = anotacoesExpandidas.has(key);
                         return (
                           <div
                             className={cn(
                               "hidden lg:block absolute top-0 z-10 transition-all duration-300 ease-out",
-                              expanded
+                              anotacoesExpanded
                                 ? "w-[320px] -left-[calc(64px+340px)]"
                                 : "w-[140px] -left-[calc(64px+160px)]"
                             )}
