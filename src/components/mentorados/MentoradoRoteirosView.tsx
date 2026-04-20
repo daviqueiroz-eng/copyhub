@@ -2705,27 +2705,28 @@ export const MentoradoRoteirosView = ({
                   return (
                     <React.Fragment key={key}>
                     <div
-                      className="group relative mb-8 flex gap-4"
+                      className="group relative mb-8"
                     >
-                      {/* Painel de anotações - lateral esquerda (estreito quando fechado, expande ao abrir) */}
+                      {/* Painel de anotações - flutuante à esquerda, fora do quadrante do roteiro */}
                       {(() => {
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
                         );
-                        if (!roteiroDB?.id) return <div className="hidden lg:block w-[150px] shrink-0" />;
+                        if (!roteiroDB?.id) return null;
+                        const expanded = anotacoesExpandidas.has(key);
                         return (
                           <div
                             className={cn(
-                              "hidden lg:block shrink-0 transition-[width] duration-300 ease-out",
-                              anotacoesExpandidas.has(key) ? "w-[360px]" : "w-[150px]"
+                              "hidden xl:block absolute top-0 z-10 transition-[width] duration-300 ease-out",
+                              expanded ? "w-[340px] -left-[360px]" : "w-[140px] -left-[160px]"
                             )}
                           >
                             <RoteiroAnotacoesPanel
                               roteiroId={roteiroDB.id}
-                              onExpandedChange={(expanded) => {
+                              onExpandedChange={(exp) => {
                                 setAnotacoesExpandidas((prev) => {
                                   const next = new Set(prev);
-                                  if (expanded) next.add(key);
+                                  if (exp) next.add(key);
                                   else next.delete(key);
                                   return next;
                                 });
