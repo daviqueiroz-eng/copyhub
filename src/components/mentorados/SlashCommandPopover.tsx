@@ -100,6 +100,9 @@ export const SlashCommandPopover = ({
   const createPerfilReferencia = useCreatePerfilReferencia();
   const updatePerfilReferencia = useUpdatePerfilReferencia();
   const deletePerfilReferencia = useDeletePerfilReferencia();
+  const { data: adjetivos = [] } = useAdjetivosPoderosos();
+  const createAdjetivo = useCreateAdjetivoPoderoso();
+  const deleteAdjetivo = useDeleteAdjetivoPoderoso();
   const createHeadline = useCreateHeadlinesCriadas();
   const { user } = useAuth();
 
