@@ -3357,22 +3357,21 @@ export const MentoradoRoteirosView = ({
           </div>
         </ScrollArea>
         
-        {modoRevisao && (
-          <RevisaoInteligenrePanel
-            errors={revisaoErrors}
-            isAnalyzing={isAnalyzingRevisao}
-            activeErrorId={erroSelecionadoId}
-            setActiveErrorId={setErroSelecionadoId}
-            categoriaAtiva={categoriaAtiva}
-            setCategoriaAtiva={setCategoriaAtiva}
-            open={revisaoPanelOpen}
-            onToggleOpen={() => setRevisaoPanelOpen((v) => !v)}
-            onClose={() => setModoRevisao(false)}
-            onApplySuggestion={aplicarSugestaoRevisao}
-            onIgnore={ignorarErroRevisao}
-            onRevalidar={() => reanalisarRevisao()}
-          />
-        )}
+        <RevisaoInteligenrePanel
+          errors={revisaoErrors}
+          isAnalyzing={isAnalyzingRevisao}
+          activeErrorId={erroSelecionadoId}
+          setActiveErrorId={setErroSelecionadoId}
+          categoriaAtiva={categoriaAtiva}
+          setCategoriaAtiva={setCategoriaAtiva}
+          open={revisaoPanelOpen}
+          onToggleOpen={() => setRevisaoPanelOpen((v) => !v)}
+          onApplySuggestion={aplicarSugestaoRevisao}
+          onIgnore={ignorarErroRevisao}
+          onRevalidar={() => reanalisarRevisao()}
+          mostrarSublinhados={mostrarSublinhados}
+          onToggleSublinhados={() => setMostrarSublinhados((v) => !v)}
+        />
       </div>
 
       {/* Botão flutuante com menu expandido para mobile */}
