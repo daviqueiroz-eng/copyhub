@@ -39,6 +39,9 @@ export const RoteiroAnotacoesPanel = ({
   const { start: startTranscricao, isPending } = useTranscricaoReferencia();
   const transcribing = roteiroId ? isPending(roteiroId) : false;
 
+  // URL detectada dentro do próprio campo de referência
+  const URL_REGEX = /(https?:\/\/[^\s]+)/i;
+
   const [openSections, setOpenSections] = useState<Record<AnotacaoCampo, boolean>>({
     referencia_texto: false,
     notas: false,
