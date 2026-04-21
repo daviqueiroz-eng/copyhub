@@ -97,6 +97,7 @@ import { useUserRole } from "@/hooks/useAuth";
 import { MapaAvatarSection } from "./MapaAvatarSection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
+import { MentoradoSwitcherDialog, type SwitcherShortcut } from "./MentoradoSwitcherDialog";
 import {
   useHeadlineChecklistItems,
   useHeadlineChecklistProgress,
