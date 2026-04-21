@@ -175,7 +175,7 @@ export const RoteiroAnotacoesPanel = ({
             </button>
             {isOpen && (
               <div className="px-2 pb-2 pt-1">
-                {s.key === "referencia_texto" && linkReferencia && (
+                {s.key === "referencia_texto" && linkParaTranscrever && (
                   <div className="mb-2">
                     <Button
                       type="button"
