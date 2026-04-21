@@ -7,10 +7,11 @@ import {
   ChevronRight,
   ChevronUp,
   ChevronDown,
-  X,
   Loader2,
   Check,
   RefreshCw,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import type { RevisaoError, RevisaoErrorTipo } from "@/hooks/useRevisaoInteligente";
 
@@ -35,10 +36,11 @@ interface RevisaoInteligenrePanelProps {
   setCategoriaAtiva: (c: RevisaoErrorTipo) => void;
   open: boolean;
   onToggleOpen: () => void;
-  onClose: () => void;
   onApplySuggestion: (error: RevisaoError, suggestion: string) => void;
   onIgnore: (errorId: string) => void;
   onRevalidar: () => void;
+  mostrarSublinhados: boolean;
+  onToggleSublinhados: () => void;
 }
 
 export const RevisaoInteligenrePanel = ({
@@ -50,10 +52,11 @@ export const RevisaoInteligenrePanel = ({
   setCategoriaAtiva,
   open,
   onToggleOpen,
-  onClose,
   onApplySuggestion,
   onIgnore,
   onRevalidar,
+  mostrarSublinhados,
+  onToggleSublinhados,
 }: RevisaoInteligenrePanelProps) => {
   const counts = useMemo(() => {
     const map: Record<RevisaoErrorTipo, number> = {
@@ -113,7 +116,7 @@ export const RevisaoInteligenrePanel = ({
       <div
         className={cn(
           "pointer-events-auto mx-auto max-w-[1400px] rounded-xl border bg-background/95 backdrop-blur-md shadow-lg overflow-hidden transition-all",
-          open ? "max-h-[60vh]" : "max-h-14"
+          open ? "max-h-[320px]" : "max-h-14"
         )}
       >
         {/* Barra compacta — sempre visível */}
@@ -155,10 +158,14 @@ export const RevisaoInteligenrePanel = ({
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={onRevalidar}
-              title="Reanalisar"
+              onClick={onToggleSublinhados}
+              title={mostrarSublinhados ? "Ocultar marcações no texto" : "Mostrar marcações no texto"}
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              {mostrarSublinhados ? (
+                <Eye className="h-3.5 w-3.5 text-primary" />
+              ) : (
+                <EyeOff className="h-3.5 w-3.5" />
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -173,17 +180,17 @@ export const RevisaoInteligenrePanel = ({
               variant="ghost"
               size="icon"
               className="h-7 w-7"
-              onClick={onClose}
-              title="Sair do modo revisão"
+              onClick={onRevalidar}
+              title="Reanalisar"
             >
-              <X className="h-3.5 w-3.5" />
+              <RefreshCw className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
 
         {/* Painel expandido */}
         {open && (
-          <div className="border-t grid grid-cols-1 md:grid-cols-[280px_1fr] max-h-[calc(60vh-48px)]">
+          <div className="border-t grid grid-cols-1 md:grid-cols-[280px_1fr] max-h-[272px]">
             {/* Lista da categoria */}
             <div className="border-b md:border-b-0 md:border-r flex flex-col min-h-0">
               <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
@@ -218,7 +225,7 @@ export const RevisaoInteligenrePanel = ({
                   )}
                 </div>
               </div>
-              <ScrollArea className="flex-1 max-h-[40vh]">
+              <ScrollArea className="flex-1 max-h-[230px]">
                 <div ref={listRef} className="p-2 space-y-1">
                   {errorsCategoria.map((e) => {
                     const isActive = e.id === activeErrorId;
@@ -252,7 +259,7 @@ export const RevisaoInteligenrePanel = ({
             </div>
 
             {/* Detalhe / contexto / ação */}
-            <div className="flex flex-col min-h-0 max-h-[40vh] overflow-y-auto">
+            <div className="flex flex-col min-h-0 max-h-[230px] overflow-y-auto">
               {activeError ? (
                 <div className="p-4 space-y-3">
                   <div>
