@@ -259,7 +259,7 @@ export const RevisaoInteligenrePanel = ({
             </div>
 
             {/* Detalhe / contexto / ação */}
-            <div className="flex flex-col min-h-0 max-h-[230px] overflow-y-auto">
+            <div className="flex flex-col min-h-0 max-h-[185px] overflow-y-auto">
               {activeError ? (
                 <div className="p-4 space-y-3">
                   <div>
