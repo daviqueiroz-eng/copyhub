@@ -2834,7 +2834,7 @@ export const MentoradoRoteirosView = ({
                     <React.Fragment key={key}>
                     <div className="group relative mb-8 lg:flex lg:gap-4 lg:items-start">
                       {/* Painel de anotações - coluna lateral à esquerda, cresce naturalmente */}
-                      {!modoRevisao && (() => {
+                      {true && (() => {
                         const roteiroDB = roteiros.find(
                           (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
                         );
@@ -3140,7 +3140,7 @@ export const MentoradoRoteirosView = ({
                           placeholder="Digite a headline... (use / para comandos)"
                           className="text-[15px] min-h-[28px] mt-1"
                           errors={
-                            modoRevisao
+                            mostrarSublinhados
                               ? getRevisaoErrorsForField(guiaAtiva, ordem, "headline")
                               : getErrorsForField(guiaAtiva, ordem, "headline")
                           }
@@ -3284,7 +3284,7 @@ export const MentoradoRoteirosView = ({
                           placeholder="Digite a estrutura do roteiro... (use / para comandos)"
                           className="text-[14px] min-h-[60px] mt-1"
                           errors={
-                            modoRevisao
+                            mostrarSublinhados
                               ? getRevisaoErrorsForField(guiaAtiva, ordem, "estrutura")
                               : getErrorsForField(guiaAtiva, ordem, "estrutura")
                           }
