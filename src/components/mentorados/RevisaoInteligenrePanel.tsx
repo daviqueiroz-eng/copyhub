@@ -7,10 +7,11 @@ import {
   ChevronRight,
   ChevronUp,
   ChevronDown,
-  X,
   Loader2,
   Check,
   RefreshCw,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import type { RevisaoError, RevisaoErrorTipo } from "@/hooks/useRevisaoInteligente";
 
@@ -35,10 +36,11 @@ interface RevisaoInteligenrePanelProps {
   setCategoriaAtiva: (c: RevisaoErrorTipo) => void;
   open: boolean;
   onToggleOpen: () => void;
-  onClose: () => void;
   onApplySuggestion: (error: RevisaoError, suggestion: string) => void;
   onIgnore: (errorId: string) => void;
   onRevalidar: () => void;
+  mostrarSublinhados: boolean;
+  onToggleSublinhados: () => void;
 }
 
 export const RevisaoInteligenrePanel = ({
@@ -50,10 +52,11 @@ export const RevisaoInteligenrePanel = ({
   setCategoriaAtiva,
   open,
   onToggleOpen,
-  onClose,
   onApplySuggestion,
   onIgnore,
   onRevalidar,
+  mostrarSublinhados,
+  onToggleSublinhados,
 }: RevisaoInteligenrePanelProps) => {
   const counts = useMemo(() => {
     const map: Record<RevisaoErrorTipo, number> = {
