@@ -4094,47 +4094,37 @@ export const MentoradoRoteirosView = ({
         />
       )}
 
-      {/* Carrossel de mentorados (Tab) */}
-      {showMentoradoCarousel && mentorados && mentorados.length > 0 && (
-        <div 
-          className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center"
-          onClick={() => setShowMentoradoCarousel(false)}
-        >
-          <div 
-            className="flex gap-4 px-8 py-6 overflow-x-auto max-w-[90vw]"
-            onClick={(e) => e.stopPropagation()}
-            style={{ scrollbarWidth: 'none' }}
-          >
-            {mentorados.map((m) => (
-              <button
-                key={m.id}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all shrink-0 ${
-                  m.id === mentoradoId 
-                    ? "ring-2 ring-primary bg-white/10 scale-105" 
-                    : "opacity-70 hover:opacity-100 hover:scale-110 hover:bg-white/10"
-                }`}
-                onClick={() => {
-                  if (m.id !== mentoradoId) {
-                    onSwitchMentorado?.(m);
-                  }
-                  setShowMentoradoCarousel(false);
-                }}
-              >
-                {m.avatar ? (
-                  <img src={m.avatar} alt={m.nome} className="w-16 h-16 rounded-full object-cover" />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-lg font-bold text-primary">
-                    {m.iniciais}
-                  </div>
-                )}
-                <span className="text-white text-xs font-medium max-w-[80px] truncate">
-                  {m.nome.split(" ")[0]}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Modal de troca de mentorado + atalhos (Tab) */}
+      <MentoradoSwitcherDialog
+        open={showMentoradoCarousel}
+        onClose={() => setShowMentoradoCarousel(false)}
+        mentorados={mentorados || []}
+        currentMentoradoId={mentoradoId}
+        onSelectMentorado={(m) => {
+          if (m.id !== mentoradoId) onSwitchMentorado?.(m);
+        }}
+        onSelectShortcut={(s: SwitcherShortcut) => {
+          if (s === "headlines") {
+            setShowHeadlinesModal(true);
+            return;
+          }
+          const modeMap: Record<Exclude<SwitcherShortcut, "headlines">, SlashCommandMode> = {
+            mapa_avatar: "menu",
+            ctas: "ctas",
+            intensificadores: "intensificadores",
+            prompts: "prompts",
+            registrar_heads: "mentorados",
+            termos_virais: "termos_virais",
+          };
+          setSlashCommand({
+            isOpen: true,
+            mode: modeMap[s as Exclude<SwitcherShortcut, "headlines">],
+            targetKey: "",
+            targetField: "headline",
+            position: { top: 300, left: 400 },
+          });
+        }}
+      />
 
       {/* Floating Notes Panel */}
       <FloatingNotesPanel
