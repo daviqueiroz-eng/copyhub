@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { TranscricaoProvider } from "@/contexts/TranscricaoContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import Mural from "./pages/Mural";
@@ -34,7 +35,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Layout>
+          <TranscricaoProvider>
+            <Layout>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<Navigate to="/mentorados" replace />} />
@@ -56,7 +58,8 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
             </Routes>
-          </Layout>
+            </Layout>
+          </TranscricaoProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
