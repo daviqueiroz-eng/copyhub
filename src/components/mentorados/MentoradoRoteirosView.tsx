@@ -283,10 +283,10 @@ export const MentoradoRoteirosView = ({
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
-  // Modo de Revisão Inteligente
-  const [modoRevisao, setModoRevisao] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("modo-revisao-inteligente") === "1";
+  // Revisão Inteligente — análise sempre ativa; o "olho" controla apenas a exibição visual dos sublinhados
+  const [mostrarSublinhados, setMostrarSublinhados] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("revisao-mostrar-sublinhados") !== "0";
   });
   const [erroSelecionadoId, setErroSelecionadoId] = useState<string | null>(null);
   const [categoriaAtiva, setCategoriaAtiva] = useState<RevisaoErrorTipo>("ortografico");
@@ -2065,7 +2065,7 @@ export const MentoradoRoteirosView = ({
     reanalisar: reanalisarRevisao,
     removeError: removeRevisaoError,
   } = useRevisaoInteligente({
-    enabled: modoRevisao,
+    enabled: true,
     guiaAtiva,
     guiaQuantidade: guiaAtivaConfig.quantidade,
     roteirosLocais,
@@ -2077,14 +2077,14 @@ export const MentoradoRoteirosView = ({
     [revisaoErrorsRaw, revisaoIgnoredIds]
   );
 
-  // Persistir modoRevisao
+  // Persistir preferência do "olho" (mostrar/ocultar sublinhados no texto)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    localStorage.setItem("modo-revisao-inteligente", modoRevisao ? "1" : "0");
-    if (!modoRevisao) {
+    localStorage.setItem("revisao-mostrar-sublinhados", mostrarSublinhados ? "1" : "0");
+    if (!mostrarSublinhados) {
       setErroSelecionadoId(null);
     }
-  }, [modoRevisao]);
+  }, [mostrarSublinhados]);
 
   // Sincronizar categoria ativa com erro selecionado
   useEffect(() => {
@@ -2098,7 +2098,7 @@ export const MentoradoRoteirosView = ({
   // Mapeia errors do modoRevisao para o formato InlineSpellError, por campo
   const getRevisaoErrorsForField = useCallback(
     (guiaNumero: number, ordem: number, field: "headline" | "estrutura"): InlineSpellError[] => {
-      if (!modoRevisao) return [];
+      if (!mostrarSublinhados) return [];
       return revisaoErrors
         .filter(
           (e) =>
@@ -2121,7 +2121,7 @@ export const MentoradoRoteirosView = ({
           message: e.mensagem,
         }));
     },
-    [modoRevisao, revisaoErrors]
+    [mostrarSublinhados, revisaoErrors]
   );
 
   // Aplicar sugestão (substitui o trecho via handleChange)
@@ -2378,15 +2378,6 @@ export const MentoradoRoteirosView = ({
               title="Corretor Automático"
             >
               <FileEdit className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={modoRevisao ? "default" : "outline"}
-              size="icon"
-              onClick={() => setModoRevisao((v) => !v)}
-              title={modoRevisao ? "Sair do Modo Revisão" : "Modo Revisão Inteligente"}
-              className={cn(modoRevisao && "ring-2 ring-primary/40")}
-            >
-              <Brain className="h-4 w-4" />
             </Button>
             <Button variant="outline" className="gap-2" onClick={handleCopyAllRoteiros}>
               <ClipboardCopy className="h-4 w-4" />
