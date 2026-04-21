@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronRight, ChevronDown, Loader2, Check, Mic } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
   AnotacaoCampo,
   useRoteiroAnotacoes,
   useUpsertRoteiroAnotacao,
 } from "@/hooks/useRoteiroAnotacoes";
+import { useTranscricaoReferencia } from "@/contexts/TranscricaoContext";
 
 interface RoteiroAnotacoesPanelProps {
   roteiroId: string | undefined;
@@ -16,6 +16,7 @@ interface RoteiroAnotacoesPanelProps {
   onExpandedChange?: (expanded: boolean) => void;
   linkReferencia?: string | null;
   headline?: string;
+  mentoradoNome?: string;
 }
 
 const SECOES: Array<{ key: AnotacaoCampo; label: string; placeholder: string }> = [
@@ -25,72 +26,21 @@ const SECOES: Array<{ key: AnotacaoCampo; label: string; placeholder: string }> 
   { key: "comentario", label: "Comentário", placeholder: "Comentários ou observações..." },
 ];
 
-const TRANSCRIBE_WEBHOOK_URL =
-  "https://eduardocorestudio.app.n8n.cloud/webhook/96d8a870-b483-4863-a854-5ec579bba0d0";
-
 export const RoteiroAnotacoesPanel = ({
   roteiroId,
   className,
   onExpandedChange,
   linkReferencia,
   headline,
+  mentoradoNome,
 }: RoteiroAnotacoesPanelProps) => {
   const { data: anotacao } = useRoteiroAnotacoes(roteiroId);
   const upsert = useUpsertRoteiroAnotacao();
-  const [transcribing, setTranscribing] = useState(false);
+  const { start: startTranscricao, isPending } = useTranscricaoReferencia();
+  const transcribing = roteiroId ? isPending(roteiroId) : false;
 
-  const handleTranscribe = async () => {
-    if (!roteiroId || !linkReferencia || transcribing) return;
-    setTranscribing(true);
-    try {
-      const res = await fetch(TRANSCRIBE_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          roteiro_id: roteiroId,
-          headline: headline ?? "",
-          link_referencia: linkReferencia,
-        }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const raw = await res.text();
-      let texto = "";
-      try {
-        const json = JSON.parse(raw);
-        texto =
-          (typeof json === "string" && json) ||
-          json?.transcricao ||
-          json?.text ||
-          json?.texto ||
-          json?.output ||
-          json?.result ||
-          json?.data ||
-          (Array.isArray(json) && (json[0]?.transcricao || json[0]?.text || json[0]?.output)) ||
-          "";
-        if (typeof texto !== "string") texto = JSON.stringify(texto);
-      } catch {
-        texto = raw;
-      }
-      if (!texto || !texto.trim()) {
-        throw new Error("Resposta vazia do webhook");
-      }
-      const atual = values.referencia_texto?.trim() ?? "";
-      const novoValor = atual ? `${atual}\n\n${texto}` : texto;
-      // Abrir o bloco e preencher o campo
-      setOpenSections((prev) => ({ ...prev, referencia_texto: true }));
-      handleChange("referencia_texto", novoValor);
-      toast({ title: "Transcrição concluída" });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro desconhecido";
-      toast({
-        title: "Falha ao transcrever referência",
-        description: msg,
-        variant: "destructive",
-      });
-    } finally {
-      setTranscribing(false);
-    }
-  };
+  // URL detectada dentro do próprio campo de referência
+  const URL_REGEX = /(https?:\/\/[^\s]+)/i;
 
   const [openSections, setOpenSections] = useState<Record<AnotacaoCampo, boolean>>({
     referencia_texto: false,
@@ -168,6 +118,24 @@ export const RoteiroAnotacoesPanel = ({
     onExpandedChange?.(anyOpen);
   }, [anyOpen, onExpandedChange]);
 
+  // Link a usar para transcrever: prop (extraído da headline) ou URL detectada no campo de referência
+  const linkFromReferencia = (() => {
+    const v = values.referencia_texto || "";
+    const m = v.match(URL_REGEX);
+    return m ? m[0] : null;
+  })();
+  const linkParaTranscrever = linkReferencia || linkFromReferencia;
+
+  const handleTranscribe = () => {
+    if (!roteiroId || !linkParaTranscrever) return;
+    startTranscricao({
+      roteiroId,
+      headline,
+      linkReferencia: linkParaTranscrever,
+      mentoradoNome,
+    });
+  };
+
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       {SECOES.map((s) => {
@@ -207,7 +175,7 @@ export const RoteiroAnotacoesPanel = ({
             </button>
             {isOpen && (
               <div className="px-2 pb-2 pt-1">
-                {s.key === "referencia_texto" && linkReferencia && (
+                {s.key === "referencia_texto" && linkParaTranscrever && (
                   <div className="mb-2">
                     <Button
                       type="button"
