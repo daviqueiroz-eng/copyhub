@@ -3144,9 +3144,9 @@ export const MentoradoRoteirosView = ({
                               ? getRevisaoErrorsForField(guiaAtiva, ordem, "headline")
                               : getErrorsForField(guiaAtiva, ordem, "headline")
                           }
-                          showErrors={modoRevisao || showInlineErrors}
-                          activeErrorId={modoRevisao ? erroSelecionadoId : null}
-                          onErrorClick={modoRevisao ? setErroSelecionadoId : undefined}
+                          showErrors={mostrarSublinhados || showInlineErrors}
+                          activeErrorId={mostrarSublinhados ? erroSelecionadoId : null}
+                          onErrorClick={mostrarSublinhados ? setErroSelecionadoId : undefined}
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "headline", error)}
                           onIgnoreError={handleIgnoreError}
                         />
@@ -3288,9 +3288,9 @@ export const MentoradoRoteirosView = ({
                               ? getRevisaoErrorsForField(guiaAtiva, ordem, "estrutura")
                               : getErrorsForField(guiaAtiva, ordem, "estrutura")
                           }
-                          showErrors={modoRevisao || showInlineErrors}
-                          activeErrorId={modoRevisao ? erroSelecionadoId : null}
-                          onErrorClick={modoRevisao ? setErroSelecionadoId : undefined}
+                          showErrors={mostrarSublinhados || showInlineErrors}
+                          activeErrorId={mostrarSublinhados ? erroSelecionadoId : null}
+                          onErrorClick={mostrarSublinhados ? setErroSelecionadoId : undefined}
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
                           onIgnoreError={handleIgnoreError}
                         />
