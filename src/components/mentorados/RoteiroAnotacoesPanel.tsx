@@ -118,6 +118,24 @@ export const RoteiroAnotacoesPanel = ({
     onExpandedChange?.(anyOpen);
   }, [anyOpen, onExpandedChange]);
 
+  // Link a usar para transcrever: prop (extraído da headline) ou URL detectada no campo de referência
+  const linkFromReferencia = (() => {
+    const v = values.referencia_texto || "";
+    const m = v.match(URL_REGEX);
+    return m ? m[0] : null;
+  })();
+  const linkParaTranscrever = linkReferencia || linkFromReferencia;
+
+  const handleTranscribe = () => {
+    if (!roteiroId || !linkParaTranscrever) return;
+    startTranscricao({
+      roteiroId,
+      headline,
+      linkReferencia: linkParaTranscrever,
+      mentoradoNome,
+    });
+  };
+
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       {SECOES.map((s) => {
