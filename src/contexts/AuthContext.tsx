@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -45,13 +45,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [authReady, setAuthReady] = useState(false);
+  const sessionRef = useRef<Session | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
+    let bootstrappingFromOAuthHash = false;
+    let restoredSessionFromHash = false;
 
     const applySession = (nextSession: Session | null) => {
       if (!mounted) return;
+      sessionRef.current = nextSession;
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       setLoading(false);
@@ -66,6 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const refreshToken = hashParams.get("refresh_token");
 
         if (accessToken && refreshToken) {
+          bootstrappingFromOAuthHash = true;
           console.log("OAuth callback detected, restoring session from URL hash...");
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -74,6 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (error) throw error;
 
+          restoredSessionFromHash = true;
           window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
           applySession(data.session);
           return;
@@ -84,12 +90,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error("Error restoring auth session:", error);
         applySession(null);
+      } finally {
+        bootstrappingFromOAuthHash = false;
       }
     };
 
     // Listen for subsequent changes (sign in/out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        const isEmptyInitialSession = event === "INITIAL_SESSION" && !session;
+
+        if (
+          isEmptyInitialSession &&
+          (bootstrappingFromOAuthHash || restoredSessionFromHash || !!sessionRef.current)
+        ) {
+          return;
+        }
+
         applySession(session);
       }
     );
