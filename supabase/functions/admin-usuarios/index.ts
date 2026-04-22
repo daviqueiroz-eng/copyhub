@@ -219,13 +219,27 @@ Deno.serve(async (req) => {
           throw new Error('Password must have at least 8 characters')
         }
 
+        // Verificar se usuário existe antes de atualizar
+        const { data: existingUser, error: lookupError } = await supabaseAdmin.auth.admin.getUserById(userId)
+        if (lookupError || !existingUser?.user) {
+          throw new Error('Usuário não encontrado. Peça para ele entrar com Google ao menos uma vez antes de definir senha manual.')
+        }
+
         const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
           password,
+          email_confirm: true,
         })
 
-        if (error) throw error
+        if (error) {
+          console.error('Error setting password:', { userId, error: error.message })
+          throw error
+        }
 
-        console.log('User password updated by admin:', { userId, adminId: user.id })
+        console.log('User password updated by admin:', {
+          userId,
+          email: existingUser.user.email,
+          adminId: user.id,
+        })
 
         return new Response(
           JSON.stringify({ success: true }),
