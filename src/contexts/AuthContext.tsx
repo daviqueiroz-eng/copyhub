@@ -96,6 +96,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
+      // Em ambientes embedded (Obsidian, Electron, webviews) o Google bloqueia
+      // OAuth e gera redirect_uri_mismatch. Abrimos a página de auth pública
+      // no navegador externo do sistema e instruímos o usuário.
+      if (isEmbeddedWebView()) {
+        const externalUrl = `${window.location.origin}/auth?external=1`;
+        try {
+          window.open(externalUrl, "_blank", "noopener,noreferrer");
+        } catch {
+          // ignore — UI tratará via estado embedded
+        }
+        return {
+          error: {
+            message:
+              "Abra esta página no seu navegador padrão (Chrome/Safari) para entrar com Google. O login não funciona dentro do Obsidian/webview.",
+          },
+        };
+      }
+
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
         extraParams: {
