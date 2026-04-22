@@ -3,6 +3,7 @@ import { ChevronRight, ChevronDown, Loader2, Check, Mic } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AnotacaoCampo,
   useRoteiroAnotacoes,
@@ -137,10 +138,12 @@ export const RoteiroAnotacoesPanel = ({
   };
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className={cn("flex flex-col gap-1", className)}>
       {SECOES.map((s) => {
         const isOpen = openSections[s.key];
         const hasContent = (values[s.key] ?? "").trim().length > 0;
+        const isReferenciaSection = s.key === "referencia_texto";
         return (
           <div key={s.key} className="border rounded-md bg-muted/20">
             <button
@@ -169,7 +172,41 @@ export const RoteiroAnotacoesPanel = ({
                   <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                 )}
                 {savedField === s.key && (
-                  <Check className="h-3 w-3 text-green-500" />
+                  <Check className="h-3 w-3 text-emerald-500" />
+                )}
+                {isReferenciaSection && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (linkParaTranscrever && !transcribing && roteiroId) {
+                            handleTranscribe();
+                          }
+                        }}
+                        className={cn(
+                          "inline-flex items-center gap-1 h-6 px-2 rounded-md text-[10px] font-medium transition-all border",
+                          linkParaTranscrever && !transcribing && roteiroId
+                            ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90 cursor-pointer"
+                            : "bg-muted text-muted-foreground border-border opacity-60 cursor-not-allowed",
+                        )}
+                      >
+                        {transcribing ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Mic className="h-3 w-3" />
+                        )}
+                        <span>{transcribing ? "Transcrevendo" : "Transcrever"}</span>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      {linkParaTranscrever
+                        ? transcribing
+                          ? "Transcrição em andamento..."
+                          : "Transcrever vídeo da referência"
+                        : "Cole um link na headline ou no campo Referência para habilitar"}
+                    </TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             </button>
@@ -181,7 +218,10 @@ export const RoteiroAnotacoesPanel = ({
                       type="button"
                       size="sm"
                       variant="secondary"
-                      onClick={handleTranscribe}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTranscribe();
+                      }}
                       disabled={transcribing || !roteiroId}
                       className="w-full h-8 text-xs gap-1.5"
                     >
@@ -212,5 +252,6 @@ export const RoteiroAnotacoesPanel = ({
         );
       })}
     </div>
+    </TooltipProvider>
   );
 };

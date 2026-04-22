@@ -4,6 +4,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useNavigate } from "react-router-dom";
 
+export const isEmbeddedWebView = (): boolean => {
+  if (typeof window === "undefined") return false;
+  try {
+    const ua = navigator.userAgent || "";
+    const patterns = [
+      /Obsidian/i,
+      /Electron/i,
+      /\bwv\b/i, // Android WebView
+      /FBAN|FBAV/i, // Facebook
+      /Instagram/i,
+      /Line\//i,
+      /Twitter/i,
+      /MicroMessenger/i, // WeChat
+      /TikTok/i,
+    ];
+    if (patterns.some((re) => re.test(ua))) return true;
+    if (window.top !== window.self) return true;
+  } catch {
+    return true; // cross-origin frame access blocked => likely embedded
+  }
+  return false;
+};
+
 type AuthContextType = {
   user: User | null;
   session: Session | null;
@@ -73,6 +96,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
+      // Em ambientes embedded (Obsidian, Electron, webviews) o Google bloqueia
+      // OAuth e gera redirect_uri_mismatch. Abrimos a página de auth pública
+      // no navegador externo do sistema e instruímos o usuário.
+      if (isEmbeddedWebView()) {
+        const externalUrl = `${window.location.origin}/auth?external=1`;
+        try {
+          window.open(externalUrl, "_blank", "noopener,noreferrer");
+        } catch {
+          // ignore — UI tratará via estado embedded
+        }
+        return {
+          error: {
+            message:
+              "Abra esta página no seu navegador padrão (Chrome/Safari) para entrar com Google. O login não funciona dentro do Obsidian/webview.",
+          },
+        };
+      }
+
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
         extraParams: {

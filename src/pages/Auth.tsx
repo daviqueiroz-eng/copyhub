@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, isEmbeddedWebView } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ExternalLink, Info } from "lucide-react";
 
 export default function Auth() {
   const [loading, setLoading] = useState(false);
@@ -17,6 +19,24 @@ export default function Auth() {
   const { user, loading: authLoading, signInWithGoogle, signInWithEmail } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [embedded, setEmbedded] = useState(false);
+
+  useEffect(() => {
+    setEmbedded(isEmbeddedWebView());
+  }, []);
+
+  const handleOpenExternal = () => {
+    try {
+      window.open(window.location.href, "_blank", "noopener,noreferrer");
+    } catch {
+      // fallback: copia URL
+      navigator.clipboard?.writeText(window.location.href);
+      toast({
+        title: "Link copiado",
+        description: "Cole no seu navegador padrão para entrar.",
+      });
+    }
+  };
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +111,28 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {embedded && !showAdminLogin && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Ambiente embutido detectado</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p className="text-xs">
+                  O login com Google não funciona dentro do Obsidian/webview.
+                  Abra esta página no seu navegador padrão para continuar.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2"
+                  onClick={handleOpenExternal}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Abrir no navegador
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           {showAdminLogin ? (
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div className="space-y-2">
