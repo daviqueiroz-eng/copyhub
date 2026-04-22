@@ -1,69 +1,103 @@
 
+Objetivo: restaurar a autenticação de verdade, sem paliativo, garantindo:
+- Google funcionando no navegador normal
+- email/senha funcionando com senha criada pelo admin
+- sessão persistindo
+- acesso no Obsidian via email/senha (e Google apenas abrindo fora do webview, se necessário)
 
-# Plano: Restaurar autenticação (Google + Email/Senha)
+## Diagnóstico confirmado
 
-## Diagnóstico real (com base nos logs e no código)
+1. O login manual não falha por “senha não salvar”.
+Os logs mostram `POST /token` com `grant_type=password` retornando `422: Email logins are disabled`.
+Isso indica que:
+- a ação de “definir senha” está chegando no backend
+- o problema principal é que o método de login por email/senha está desabilitado no backend
 
-**Causa raiz #1 — Login manual rejeitado pelo backend:**
-Os auth logs mostram `error_code: "email_provider_disabled"` e `"422: Email logins are disabled"` ao tentar `POST /token` com `grant_type=password`. Ou seja: o admin define a senha com sucesso (via `auth.admin.updateUserById`), e a senha **fica salva no banco com hash**, mas o provider Email está **desligado** nas configurações de Auth do Lovable Cloud, então a request de login é rejeitada antes mesmo da validação.
+2. A action de senha manual está sendo executada.
+Há log recente do `admin-usuarios` com `action: "set_password"`, então o clique do admin está chegando à função.
 
-**Causa raiz #2 — Google OAuth dentro do Obsidian:**
-No navegador normal o fluxo via `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin })` funciona — o broker do Lovable (`oauth.lovable.app`) cuida do callback registrado no Google Console. O `redirect_uri_mismatch` aparece **dentro do Obsidian** porque o webview altera a URL final. O `prompt: "consent"` adicionado recentemente também é desnecessário e pode confundir o broker.
+3. O erro do Google (`redirect_uri_mismatch`) acontece antes do app receber a sessão.
+Isso aponta para configuração do método Google no backend/OAuth, não para a persistência local da sessão.
 
----
+## Plano de correção
 
-## Parte 1 — Habilitar provider de Email no Lovable Cloud (ação obrigatória)
+### 1) Corrigir a configuração de autenticação no Lovable Cloud
+Ajuste obrigatório no backend:
+- habilitar **Email & Password**
+- revisar o método **Google**
+- verificar se o projeto está usando credenciais Google próprias ou as gerenciadas pelo Lovable Cloud
 
-Esta é a correção que **destrava o login manual**. Será feita via tool `cloud--configure_auth`:
-- ativar `email_enabled = true`
-- manter `email_double_confirm_changes = false` para não exigir confirmação em troca de email
-- manter `email_autoconfirm = false` (usuário criado pelo admin já vem confirmado via `updateUserById`)
+Se estiver usando credenciais próprias:
+- copiar a URL exata de callback mostrada nas configurações de autenticação
+- cadastrar exatamente essa URL no Google OAuth
+- validar também o domínio publicado `https://copyhub.lovable.app`
 
-Sem essa mudança, **nenhum** ajuste de código resolve o login manual — o backend continuará respondendo 422.
+Se não houver necessidade de credenciais próprias:
+- voltar para o Google gerenciado pelo Lovable Cloud, que evita divergência de callback
 
-## Parte 2 — Limpar `signInWithGoogle` (`AuthContext.tsx`)
+### 2) Ajustar o fluxo de Google no frontend
+Em `src/contexts/AuthContext.tsx`:
+- manter `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin })`
+- não adicionar params extras desnecessários
+- manter a detecção de webview/Obsidian
 
-- Remover o `extraParams: { prompt: "consent" }` — não é necessário e pode atrapalhar o broker.
-- Manter a detecção de `isEmbeddedWebView()` que abre o navegador externo no Obsidian (única forma confiável; Google bloqueia OAuth em webviews por política, não há como contornar).
-- Garantir uso de `redirect_uri: window.location.origin` (já está correto).
+Em `src/pages/Auth.tsx`:
+- navegador normal: botão Google faz login normal
+- Obsidian/webview: botão Google não tenta autenticar dentro do webview; ele abre o login no navegador externo
+- mensagem clara explicando que, no Obsidian, o método recomendado é email/senha
 
-## Parte 3 — Reforçar fluxo manual no `set_password` (`admin-usuarios/index.ts`)
+### 3) Fazer o login manual funcionar de ponta a ponta
+Em `src/pages/Auth.tsx` e `src/contexts/AuthContext.tsx`:
+- manter login por email + senha como fluxo oficial
+- tratar erro de provider desabilitado com mensagem clara
+- manter normalização de email (`trim + lowercase`)
 
-Hoje o handler chama `auth.admin.updateUserById(userId, { password })`. Vamos adicionar:
-- `email_confirm: true` na mesma chamada, garantindo que usuários criados via Google que nunca confirmaram email manual também consigam logar com senha.
-- Validação extra: se `userId` não existir em `auth.users`, retornar erro claro ("Usuário não encontrado — peça para ele acessar com Google ao menos uma vez").
-- Log estruturado do resultado.
+No backend de autenticação:
+- confirmar que email/password está ativo
+- manter criação de sessão normal via `signInWithPassword`
 
-## Parte 4 — UX da tela de login (`Auth.tsx`)
+### 4) Reforçar a definição de senha pelo admin
+Em `supabase/functions/admin-usuarios/index.ts`:
+- manter `set_password`
+- manter verificação de existência do usuário
+- manter `email_confirm: true` ao atualizar senha
+- retornar resposta explícita de sucesso/erro para a UI
 
-- Manter os dois botões visíveis: **Entrar com Google** e **Entrar com email e senha**.
-- Em ambiente embedded (Obsidian): destacar email/senha como método primário com aviso "Use email e senha — Google não funciona dentro do Obsidian".
-- Em navegador normal: Google em destaque, email/senha como alternativa secundária.
-- Mensagem de erro mais clara quando o backend ainda retornar `email_provider_disabled` (caso a configuração demore a propagar).
+Em `src/pages/GerenciarUsuarios.tsx`:
+- exibir confirmação real apenas quando o backend responder sucesso
+- melhorar a mensagem quando o usuário ainda não existe na autenticação
+- opcionalmente informar que a senha só funciona para usuários que já possuem conta criada
 
-## Parte 5 — Validação ponta a ponta
+### 5) Validar o cenário real de uso
+Após a implementação, validar estes fluxos:
 
-Após implementar, testar via logs (`supabase--analytics_query` em `auth_logs`):
-1. Login Google no navegador → deve resultar em `POST /token` com `status: 200`.
-2. Admin define senha para usuário X → checar resposta `success: true`.
-3. Usuário X loga com email/senha → deve aparecer `POST /token` com `grant_type: password` e `status: 200` (não mais 422).
-4. Sessão persiste após refresh (já garantido pelo `localStorage` no `client.ts`).
+1. Google no navegador:
+- clicar em “Entrar com Google”
+- autenticar
+- voltar para o sistema
+- sessão criada e persistida
 
----
+2. Senha manual:
+- admin define senha
+- usuário entra com email/senha
+- sessão criada e persistida
 
-## Arquivos modificados
+3. Obsidian:
+- email/senha funciona dentro do app
+- Google, se usado, abre fora do webview em vez de quebrar com `redirect_uri_mismatch`
 
-- `supabase/functions/admin-usuarios/index.ts` — adicionar `email_confirm: true` no `set_password`.
-- `src/contexts/AuthContext.tsx` — remover `prompt: "consent"` do Google, manter detecção webview.
-- `src/pages/Auth.tsx` — refinar hierarquia visual e mensagens de erro.
+## Arquivos/áreas a ajustar
 
-## Ações no Lovable Cloud (via tool, sem necessidade de painel)
+- `src/contexts/AuthContext.tsx`
+- `src/pages/Auth.tsx`
+- `src/pages/GerenciarUsuarios.tsx`
+- `supabase/functions/admin-usuarios/index.ts`
+- configurações de autenticação do Lovable Cloud (Email + Google)
 
-- `cloud--configure_auth` com `email_enabled: true`.
+## Resultado esperado
 
-## O que NÃO precisa ser feito
-
-- Não há nada para configurar no Google Cloud Console — o broker `oauth.lovable.app` já cuida das `redirect URIs` registradas.
-- Não há mudança de schema, RLS ou tabelas — `auth.users.encrypted_password` já é gerenciado pelo Supabase Auth com hash bcrypt.
-- Não há "refatoração da camada de auth" — a camada está correta; só falta o flag do provider ligado.
-
+Ao final:
+- o erro `redirect_uri_mismatch` deixa de acontecer no navegador normal
+- senha criada pelo admin passa a funcionar de verdade
+- login manual deixa de falhar com `Email logins are disabled`
+- o Obsidian volta a ter um caminho confiável de acesso via email/senha
