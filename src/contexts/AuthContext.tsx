@@ -116,9 +116,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
-        extraParams: {
-          prompt: "consent",
-        },
       });
 
       return { error: result.error ?? null };
