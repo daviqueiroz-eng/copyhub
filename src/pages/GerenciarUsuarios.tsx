@@ -88,7 +88,7 @@ export default function GerenciarUsuarios() {
 
   // Mutation para ações de usuário
   const actionMutation = useMutation({
-    mutationFn: async (params: { action: string; userId?: string; status?: boolean; role?: string; nome?: string }) => {
+    mutationFn: async (params: { action: string; userId?: string; status?: boolean; role?: string; nome?: string; password?: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch(
@@ -250,7 +250,7 @@ export default function GerenciarUsuarios() {
     }
 
     actionMutation.mutate(
-      { action: "set_password", userId: passwordUser.id, password: manualPassword.trim() } as any,
+      { action: "set_password", userId: passwordUser.id, password: manualPassword.trim() },
       {
         onSuccess: () => {
           setPasswordUser(null);
