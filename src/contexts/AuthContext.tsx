@@ -4,6 +4,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useNavigate } from "react-router-dom";
 
+export const isEmbeddedWebView = (): boolean => {
+  if (typeof window === "undefined") return false;
+  try {
+    const ua = navigator.userAgent || "";
+    const patterns = [
+      /Obsidian/i,
+      /Electron/i,
+      /\bwv\b/i, // Android WebView
+      /FBAN|FBAV/i, // Facebook
+      /Instagram/i,
+      /Line\//i,
+      /Twitter/i,
+      /MicroMessenger/i, // WeChat
+      /TikTok/i,
+    ];
+    if (patterns.some((re) => re.test(ua))) return true;
+    if (window.top !== window.self) return true;
+  } catch {
+    return true; // cross-origin frame access blocked => likely embedded
+  }
+  return false;
+};
+
 type AuthContextType = {
   user: User | null;
   session: Session | null;
