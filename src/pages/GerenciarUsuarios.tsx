@@ -30,7 +30,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserCog, Lock, Unlock, Trash2, UserPlus, Pencil } from "lucide-react";
+import { Loader2, UserCog, Lock, Unlock, Trash2, UserPlus, Pencil, KeyRound } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface User {
@@ -56,6 +56,8 @@ export default function GerenciarUsuarios() {
   const [newNome, setNewNome] = useState("");
   const [editingUser, setEditingUser] = useState<{ id: string; nome: string } | null>(null);
   const [editedNome, setEditedNome] = useState("");
+  const [passwordUser, setPasswordUser] = useState<{ id: string; nome: string; email: string } | null>(null);
+  const [manualPassword, setManualPassword] = useState("");
 
   // Buscar usuários
   const { data, isLoading } = useQuery({
@@ -86,7 +88,7 @@ export default function GerenciarUsuarios() {
 
   // Mutation para ações de usuário
   const actionMutation = useMutation({
-    mutationFn: async (params: { action: string; userId?: string; status?: boolean; role?: string; nome?: string }) => {
+    mutationFn: async (params: { action: string; userId?: string; status?: boolean; role?: string; nome?: string; password?: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch(
@@ -230,6 +232,38 @@ export default function GerenciarUsuarios() {
     }
   };
 
+  const handleOpenPasswordDialog = (usuario: User) => {
+    setPasswordUser({ id: usuario.id, nome: usuario.nome, email: usuario.email });
+    setManualPassword("");
+  };
+
+  const handleSetPassword = () => {
+    if (!passwordUser) return;
+
+    if (manualPassword.trim().length < 8) {
+      toast({
+        title: "Senha muito curta",
+        description: "Use pelo menos 8 caracteres para a senha manual.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    actionMutation.mutate(
+      { action: "set_password", userId: passwordUser.id, password: manualPassword.trim() },
+      {
+        onSuccess: () => {
+          setPasswordUser(null);
+          setManualPassword("");
+          toast({
+            title: "Senha definida",
+            description: "O usuário já pode entrar com email e senha, inclusive no Obsidian.",
+          });
+        },
+      }
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -346,6 +380,14 @@ export default function GerenciarUsuarios() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => handleOpenPasswordDialog(usuario)}
+                      disabled={actionMutation.isPending || usuario.id === user?.id}
+                    >
+                      <KeyRound className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleToggleStatus(usuario.id, usuario.ativo)}
                       disabled={actionMutation.isPending || usuario.id === user?.id}
                     >
@@ -390,6 +432,41 @@ export default function GerenciarUsuarios() {
           </div>
         </div>
       )}
+
+      <Dialog open={!!passwordUser} onOpenChange={(open) => !open && setPasswordUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Definir senha manual</DialogTitle>
+            <DialogDescription>
+              {passwordUser
+                ? `Crie uma senha para ${passwordUser.nome} entrar com ${passwordUser.email} no navegador ou no Obsidian.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="manual-password">Nova senha</Label>
+            <Input
+              id="manual-password"
+              type="password"
+              value={manualPassword}
+              onChange={(e) => setManualPassword(e.target.value)}
+              placeholder="Mínimo de 8 caracteres"
+              disabled={actionMutation.isPending}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasswordUser(null)} disabled={actionMutation.isPending}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSetPassword} disabled={actionMutation.isPending || manualPassword.trim().length < 8}>
+              {actionMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Salvar senha
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
