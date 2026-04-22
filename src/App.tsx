@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TranscricaoProvider } from "@/contexts/TranscricaoContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -29,6 +29,18 @@ import CoreStudioTasks from "./pages/CoreStudioTasks";
 
 const queryClient = new QueryClient();
 
+const RootRedirect = () => {
+  const location = useLocation();
+  const hash = location.hash || "";
+  const hasAuthHash = hash.includes("access_token=") || hash.includes("refresh_token=") || hash.includes("error=");
+
+  if (hasAuthHash) {
+    return <Navigate to={{ pathname: "/auth", hash }} replace />;
+  }
+
+  return <Navigate to="/mentorados" replace />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -41,7 +53,7 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/" element={<Navigate to="/mentorados" replace />} />
+              <Route path="/" element={<RootRedirect />} />
               <Route path="/dash-geral" element={<ProtectedRoute><DashGeral /></ProtectedRoute>} />
               <Route path="/acompanhamento" element={<ProtectedRoute><Acompanhamento /></ProtectedRoute>} />
               <Route path="/perfil" element={<Navigate to="/acompanhamento" replace />} />
