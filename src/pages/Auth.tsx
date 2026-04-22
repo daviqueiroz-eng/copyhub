@@ -12,6 +12,24 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ExternalLink, Info, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+const BUILD_TIME = typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : "dev";
+
+const forceAppUpdate = async () => {
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) await reg.unregister();
+    }
+  } catch {
+    // ignore
+  }
+  window.location.href = window.location.origin + "?v=" + Date.now();
+};
+
 export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [showPasswordLogin, setShowPasswordLogin] = useState(false);
@@ -171,6 +189,15 @@ export default function Auth() {
                   <ExternalLink className="h-4 w-4" />
                   Abrir Google no navegador
                 </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full gap-2"
+                  onClick={forceAppUpdate}
+                >
+                  Forçar atualização do app
+                </Button>
               </AlertDescription>
             </Alert>
           )}
@@ -274,6 +301,11 @@ export default function Auth() {
           )}
         </CardContent>
       </Card>
+      {embedded && (
+        <div className="absolute bottom-2 left-0 right-0 text-center text-[10px] text-muted-foreground">
+          build {BUILD_TIME}
+        </div>
+      )}
     </div>
   );
 }
