@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ExternalLink, Info } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Auth() {
   const [loading, setLoading] = useState(false);
@@ -40,9 +41,8 @@ export default function Auth() {
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Apenas coreadm@gmail.com pode fazer login com email/senha
-    if (email.toLowerCase() !== "coreadm@gmail.com") {
+
+    if (!embedded && email.toLowerCase() !== "coreadm@gmail.com") {
       toast({
         title: "Acesso negado",
         description: "Login com email/senha disponível apenas para administradores.",
@@ -72,6 +72,36 @@ export default function Auth() {
       });
       setLoading(false);
     }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      toast({
+        title: "Informe seu email",
+        description: "Digite seu email para receber o link de criação/recuperação de senha.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      toast({
+        title: "Erro ao enviar email",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Email enviado",
+        description: "Abra o link recebido para definir sua senha e depois entre no Obsidian.",
+      });
+    }
+    setLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
@@ -117,8 +147,9 @@ export default function Auth() {
               <AlertTitle>Ambiente embutido detectado</AlertTitle>
               <AlertDescription className="space-y-2">
                 <p className="text-xs">
-                  O login com Google não funciona dentro do Obsidian/webview.
-                  Abra esta página no seu navegador padrão para continuar.
+                  O Google não autentica de forma confiável dentro do Obsidian.
+                  Para entrar aqui mesmo, use email e senha; se ainda não tiver senha,
+                  envie o link de criação abaixo.
                 </p>
                 <Button
                   type="button"
@@ -128,19 +159,19 @@ export default function Auth() {
                   onClick={handleOpenExternal}
                 >
                   <ExternalLink className="h-4 w-4" />
-                  Abrir no navegador
+                  Abrir Google no navegador
                 </Button>
               </AlertDescription>
             </Alert>
           )}
-          {showAdminLogin ? (
+          {showAdminLogin || embedded ? (
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Administrativo</Label>
+                <Label htmlFor="email">{embedded ? "Seu email" : "Email Administrativo"}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="coreadm@gmail.com"
+                  placeholder={embedded ? "voce@empresa.com" : "coreadm@gmail.com"}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
@@ -167,20 +198,34 @@ export default function Auth() {
                 className="w-full h-12 text-base font-semibold"
                 disabled={loading}
               >
-                {loading ? "Carregando..." : "Entrar como Admin"}
+                {loading ? "Carregando..." : embedded ? "Entrar com email" : "Entrar como Admin"}
               </Button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAdminLogin(false);
-                  setEmail("");
-                  setPassword("");
-                }}
-                className="w-full text-sm text-muted-foreground hover:text-foreground"
-              >
-                ← Voltar para login com Google
-              </button>
+              {embedded && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={loading}
+                  onClick={handlePasswordReset}
+                >
+                  Criar / recuperar senha por email
+                </Button>
+              )}
+
+              {!embedded && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAdminLogin(false);
+                    setEmail("");
+                    setPassword("");
+                  }}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground"
+                >
+                  ← Voltar para login com Google
+                </button>
+              )}
             </form>
           ) : (
             <>
