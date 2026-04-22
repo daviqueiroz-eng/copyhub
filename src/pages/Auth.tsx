@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ExternalLink, Info } from "lucide-react";
+import { ExternalLink, Info, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Auth() {
@@ -21,6 +21,7 @@ export default function Auth() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [embedded, setEmbedded] = useState(false);
+  const [providerDisabled, setProviderDisabled] = useState(false);
 
   useEffect(() => {
     setEmbedded(isEmbeddedWebView());
@@ -61,6 +62,9 @@ export default function Auth() {
     const { error } = await signInWithEmail(email, password);
     
     if (error) {
+      if (/provider Email|Email logins are disabled|email_provider_disabled/i.test(error.message || "")) {
+        setProviderDisabled(true);
+      }
       toast({
         title: "Erro ao entrar",
         description: error.message,
@@ -137,6 +141,17 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {providerDisabled && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Login por email desativado</AlertTitle>
+              <AlertDescription className="text-xs">
+                O administrador precisa ativar o provider <strong>Email</strong> em
+                Lovable Cloud → Users → Auth Settings → Sign In Methods → Email.
+                Enquanto isso, somente login com Google funcionará.
+              </AlertDescription>
+            </Alert>
+          )}
           {embedded && !showPasswordLogin && (
             <Alert>
               <Info className="h-4 w-4" />

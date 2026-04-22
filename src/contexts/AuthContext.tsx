@@ -136,6 +136,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email: email.trim().toLowerCase(),
       password,
     });
+
+    if (error) {
+      const code = (error as any)?.code || "";
+      const msg = error.message || "";
+      if (code === "email_provider_disabled" || /Email logins are disabled/i.test(msg)) {
+        return {
+          error: {
+            message:
+              "O login por email/senha está desativado no backend. Peça ao administrador para ativar o provider Email em Lovable Cloud → Users → Auth Settings → Sign In Methods → Email.",
+          },
+        };
+      }
+      if (code === "invalid_credentials" || /Invalid login credentials/i.test(msg)) {
+        return {
+          error: {
+            message:
+              "Email ou senha incorretos. Confirme com o administrador a senha definida para sua conta.",
+          },
+        };
+      }
+    }
+
     return { error };
   };
 
