@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, isEmbeddedWebView } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export default function Auth() {
   const [loading, setLoading] = useState(false);
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { user, loading: authLoading, signInWithGoogle, signInWithEmail } = useAuth();
@@ -25,6 +25,11 @@ export default function Auth() {
   useEffect(() => {
     setEmbedded(isEmbeddedWebView());
   }, []);
+
+  const shouldShowPasswordLogin = useMemo(
+    () => embedded || showPasswordLogin,
+    [embedded, showPasswordLogin]
+  );
 
   const handleOpenExternal = () => {
     try {
@@ -39,17 +44,8 @@ export default function Auth() {
     }
   };
 
-  const handleAdminLogin = async (e: React.FormEvent) => {
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!embedded && email.toLowerCase() !== "coreadm@gmail.com") {
-      toast({
-        title: "Acesso negado",
-        description: "Login com email/senha disponível apenas para administradores.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     if (!password) {
       toast({
@@ -137,19 +133,18 @@ export default function Auth() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Bem-vindo</CardTitle>
           <CardDescription>
-            Entre com sua conta Google para acessar a plataforma
+            Acesse com Google ou com a senha manual criada pelo administrador
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {embedded && !showAdminLogin && (
+          {embedded && !showPasswordLogin && (
             <Alert>
               <Info className="h-4 w-4" />
               <AlertTitle>Ambiente embutido detectado</AlertTitle>
               <AlertDescription className="space-y-2">
                 <p className="text-xs">
                   O Google não autentica de forma confiável dentro do Obsidian.
-                  Para entrar aqui mesmo, use email e senha; se ainda não tiver senha,
-                  envie o link de criação abaixo.
+                  Para entrar aqui mesmo, use email e senha. Se preferir, você ainda pode abrir o Google no navegador.
                 </p>
                 <Button
                   type="button"
@@ -164,14 +159,14 @@ export default function Auth() {
               </AlertDescription>
             </Alert>
           )}
-          {showAdminLogin || embedded ? (
-            <form onSubmit={handleAdminLogin} className="space-y-4">
+          {shouldShowPasswordLogin ? (
+            <form onSubmit={handlePasswordLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">{embedded ? "Seu email" : "Email Administrativo"}</Label>
+                <Label htmlFor="email">Seu email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder={embedded ? "voce@empresa.com" : "coreadm@gmail.com"}
+                  placeholder="voce@empresa.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
@@ -198,32 +193,30 @@ export default function Auth() {
                 className="w-full h-12 text-base font-semibold"
                 disabled={loading}
               >
-                {loading ? "Carregando..." : embedded ? "Entrar com email" : "Entrar como Admin"}
+                {loading ? "Carregando..." : "Entrar com email e senha"}
               </Button>
 
-              {embedded && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  disabled={loading}
-                  onClick={handlePasswordReset}
-                >
-                  Criar / recuperar senha por email
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={loading}
+                onClick={handlePasswordReset}
+              >
+                Esqueci minha senha
+              </Button>
 
               {!embedded && (
                 <button
                   type="button"
                   onClick={() => {
-                    setShowAdminLogin(false);
+                    setShowPasswordLogin(false);
                     setEmail("");
                     setPassword("");
                   }}
                   className="w-full text-sm text-muted-foreground hover:text-foreground"
                 >
-                  ← Voltar para login com Google
+                  ← Voltar para opções de login
                 </button>
               )}
             </form>
@@ -249,18 +242,18 @@ export default function Auth() {
 
               <button
                 type="button"
-                onClick={() => setShowAdminLogin(true)}
+                onClick={() => setShowPasswordLogin(true)}
                 className="w-full text-sm text-muted-foreground hover:text-foreground"
               >
-                {embedded ? "Usar login com email" : "Login administrativo"}
+                Entrar com email e senha
               </button>
 
               <p className="text-xs text-center text-muted-foreground">
                 Apenas emails pré-autorizados podem acessar a plataforma.
                 <br />
                 {embedded
-                  ? "Se seu email já foi liberado, crie uma senha pelo botão de recuperação."
-                  : "Entre em contato com o administrador se não conseguir fazer login."}
+                  ? "Se o administrador já definiu sua senha, você já pode entrar aqui no Obsidian."
+                  : "Se precisar de acesso manual, peça ao administrador para definir uma senha para seu usuário."}
               </p>
             </>
           )}
