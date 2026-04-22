@@ -1,103 +1,91 @@
 
-Objetivo: restaurar a autenticação de verdade, sem paliativo, garantindo:
-- Google funcionando no navegador normal
-- email/senha funcionando com senha criada pelo admin
-- sessão persistindo
-- acesso no Obsidian via email/senha (e Google apenas abrindo fora do webview, se necessário)
 
-## Diagnóstico confirmado
+# Plano revisado: Google OAuth + atualização no Obsidian (SEM apagar dados)
 
-1. O login manual não falha por “senha não salvar”.
-Os logs mostram `POST /token` com `grant_type=password` retornando `422: Email logins are disabled`.
-Isso indica que:
-- a ação de “definir senha” está chegando no backend
-- o problema principal é que o método de login por email/senha está desabilitado no backend
+## Garantia explícita
 
-2. A action de senha manual está sendo executada.
-Há log recente do `admin-usuarios` com `action: "set_password"`, então o clique do admin está chegando à função.
+**Nenhum dado de usuário será apagado.** A correção do Google OAuth envolve apenas reconfigurar credenciais OAuth (Client ID/Secret) — isso NÃO toca em:
+- contas de usuários (`auth.users`)
+- senhas salvas (`encrypted_password`)
+- profiles, roles, allowed_emails
+- nenhuma tabela do banco
+- nenhum arquivo de Storage
 
-3. O erro do Google (`redirect_uri_mismatch`) acontece antes do app receber a sessão.
-Isso aponta para configuração do método Google no backend/OAuth, não para a persistência local da sessão.
+"Apagar Client ID" significa apenas remover uma credencial OAuth de configuração. Os usuários que já logaram com Google continuam existindo e podem continuar logando normalmente após a correção.
 
-## Plano de correção
+---
 
-### 1) Corrigir a configuração de autenticação no Lovable Cloud
-Ajuste obrigatório no backend:
-- habilitar **Email & Password**
-- revisar o método **Google**
-- verificar se o projeto está usando credenciais Google próprias ou as gerenciadas pelo Lovable Cloud
+## Parte 1 — Google OAuth: voltar ao broker gerenciado do Lovable
 
-Se estiver usando credenciais próprias:
-- copiar a URL exata de callback mostrada nas configurações de autenticação
-- cadastrar exatamente essa URL no Google OAuth
-- validar também o domínio publicado `https://copyhub.lovable.app`
+**O que será feito:**
+Remover apenas o **Client ID** e **Secret** customizados do Google em Lovable Cloud → Users → Auth Settings → Google. Sem credenciais próprias, o sistema usa automaticamente o broker `oauth.lovable.app`, que já tem todos os redirect URIs corretos pré-registrados.
 
-Se não houver necessidade de credenciais próprias:
-- voltar para o Google gerenciado pelo Lovable Cloud, que evita divergência de callback
+**O que NÃO será feito:**
+- Não vou rodar nenhum SQL.
+- Não vou mexer em `auth.users`, `profiles`, `user_roles` ou `allowed_emails`.
+- Não vou apagar contas, sessões salvas ou históricos.
 
-### 2) Ajustar o fluxo de Google no frontend
-Em `src/contexts/AuthContext.tsx`:
-- manter `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin })`
-- não adicionar params extras desnecessários
-- manter a detecção de webview/Obsidian
+**Resultado:** o erro `redirect_uri_mismatch` deixa de ocorrer no navegador normal, sem afetar nenhum usuário existente.
 
-Em `src/pages/Auth.tsx`:
-- navegador normal: botão Google faz login normal
-- Obsidian/webview: botão Google não tenta autenticar dentro do webview; ele abre o login no navegador externo
-- mensagem clara explicando que, no Obsidian, o método recomendado é email/senha
+## Parte 2 — Forçar atualização da build no Obsidian
 
-### 3) Fazer o login manual funcionar de ponta a ponta
-Em `src/pages/Auth.tsx` e `src/contexts/AuthContext.tsx`:
-- manter login por email + senha como fluxo oficial
-- tratar erro de provider desabilitado com mensagem clara
-- manter normalização de email (`trim + lowercase`)
+### 2a. Anti-cache no `index.html`
+Adicionar meta tags para que o webview do Obsidian sempre busque HTML fresco:
+```html
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+```
 
-No backend de autenticação:
-- confirmar que email/password está ativo
-- manter criação de sessão normal via `signInWithPassword`
+### 2b. Botão "Forçar atualização do app" no `Auth.tsx`
+Visível apenas no Obsidian/webview. Limpa **somente cache de assets** do navegador (Cache Storage e service workers) — **não toca em localStorage, sessão de login ou dados do usuário**.
 
-### 4) Reforçar a definição de senha pelo admin
-Em `supabase/functions/admin-usuarios/index.ts`:
-- manter `set_password`
-- manter verificação de existência do usuário
-- manter `email_confirm: true` ao atualizar senha
-- retornar resposta explícita de sucesso/erro para a UI
+```typescript
+const forceUpdate = async () => {
+  // Limpa apenas caches de assets (HTML/JS/CSS antigos)
+  const keys = await caches.keys();
+  await Promise.all(keys.map(k => caches.delete(k)));
+  
+  // Desregistra service workers (se existirem)
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+  }
+  
+  // Recarrega com query string para burlar cache
+  window.location.href = window.location.origin + '?v=' + Date.now();
+};
+```
 
-Em `src/pages/GerenciarUsuarios.tsx`:
-- exibir confirmação real apenas quando o backend responder sucesso
-- melhorar a mensagem quando o usuário ainda não existe na autenticação
-- opcionalmente informar que a senha só funciona para usuários que já possuem conta criada
+**Importante:** sessão de login fica preservada (não apagamos `localStorage`).
 
-### 5) Validar o cenário real de uso
-Após a implementação, validar estes fluxos:
+### 2c. Auto-detecção de versão antiga
+No boot do app, comparar build hash atual com o último visto. Se diferente, limpar **só os caches de assets** automaticamente. Sessão do usuário permanece intacta.
 
-1. Google no navegador:
-- clicar em “Entrar com Google”
-- autenticar
-- voltar para o sistema
-- sessão criada e persistida
+## Parte 3 — UX
 
-2. Senha manual:
-- admin define senha
-- usuário entra com email/senha
-- sessão criada e persistida
+- Mostrar versão de build no rodapé do card de login (apenas em embedded).
+- Botão "Forçar atualização do app" no aviso do Obsidian.
+- Manter todo o fluxo de login atual funcionando.
 
-3. Obsidian:
-- email/senha funciona dentro do app
-- Google, se usado, abre fora do webview em vez de quebrar com `redirect_uri_mismatch`
+---
 
-## Arquivos/áreas a ajustar
+## Arquivos modificados
 
-- `src/contexts/AuthContext.tsx`
-- `src/pages/Auth.tsx`
-- `src/pages/GerenciarUsuarios.tsx`
-- `supabase/functions/admin-usuarios/index.ts`
-- configurações de autenticação do Lovable Cloud (Email + Google)
+- `index.html` — meta tags anti-cache.
+- `src/main.tsx` — checagem de versão e limpeza automática de cache de assets.
+- `src/pages/Auth.tsx` — botão de forçar atualização e exibição de versão.
+- `vite.config.ts` — injetar `VITE_BUILD_TIME` para versionamento.
 
-## Resultado esperado
+## Ação manual sua (opcional, mas recomendada)
 
-Ao final:
-- o erro `redirect_uri_mismatch` deixa de acontecer no navegador normal
-- senha criada pelo admin passa a funcionar de verdade
-- login manual deixa de falhar com `Email logins are disabled`
-- o Obsidian volta a ter um caminho confiável de acesso via email/senha
+Em Lovable Cloud → Users → Auth Settings → Google: remover Client ID e Secret personalizados. **Isso só apaga uma configuração OAuth, não apaga usuários.**
+
+## Confirmação final
+
+- ✅ Nenhuma tabela será alterada
+- ✅ Nenhum usuário será apagado
+- ✅ Nenhuma sessão ativa será perdida
+- ✅ Nenhuma senha definida pelo admin será perdida
+- ✅ Apenas cache de arquivos estáticos (JS/CSS) é limpo, e só no Obsidian
+
