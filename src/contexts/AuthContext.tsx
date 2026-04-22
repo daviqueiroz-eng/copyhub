@@ -48,23 +48,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 1. Restore session from storage FIRST
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    let mounted = true;
+
+    const applySession = (nextSession: Session | null) => {
+      if (!mounted) return;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
       setAuthReady(true);
-    });
+    };
 
-    // 2. Listen for subsequent changes (sign in/out, token refresh)
+    const bootstrapAuth = async () => {
+      try {
+        const hash = window.location.hash.replace(/^#/, "");
+        const hashParams = new URLSearchParams(hash);
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+
+        if (accessToken && refreshToken) {
+          console.log("OAuth callback detected, restoring session from URL hash...");
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) throw error;
+
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+          applySession(data.session);
+          return;
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        applySession(session);
+      } catch (error) {
+        console.error("Error restoring auth session:", error);
+        applySession(null);
+      }
+    };
+
+    // Listen for subsequent changes (sign in/out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        if (!authReady) setAuthReady(true);
+        applySession(session);
       }
     );
+
+    void bootstrapAuth();
 
     // Verificação periódica do status ativo
     const checkUserStatus = setInterval(async () => {
@@ -89,6 +119,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, 10000);
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
       clearInterval(checkUserStatus);
     };
@@ -115,7 +146,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: `${window.location.origin}/auth`,
       });
 
       return { error: result.error ?? null };
