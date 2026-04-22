@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json()
-    const { action, userId, status, role, email, nome } = body
+    const { action, userId, status, role, email, nome, password } = body
 
     console.log('Admin action:', { action, userId, status, role, adminId: user.id })
 
@@ -203,6 +203,29 @@ Deno.serve(async (req) => {
         if (error) throw error
 
         console.log('User name updated:', { userId, nome })
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      case 'set_password': {
+        if (userId === user.id) {
+          throw new Error('Cannot modify your own password here')
+        }
+
+        if (!password || typeof password !== 'string' || password.length < 8) {
+          throw new Error('Password must have at least 8 characters')
+        }
+
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+          password,
+        })
+
+        if (error) throw error
+
+        console.log('User password updated by admin:', { userId, adminId: user.id })
 
         return new Response(
           JSON.stringify({ success: true }),
