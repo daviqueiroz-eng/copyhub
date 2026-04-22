@@ -252,13 +252,15 @@ export default function Auth() {
                 onClick={() => setShowAdminLogin(true)}
                 className="w-full text-sm text-muted-foreground hover:text-foreground"
               >
-                Login administrativo
+                {embedded ? "Usar login com email" : "Login administrativo"}
               </button>
 
               <p className="text-xs text-center text-muted-foreground">
                 Apenas emails pré-autorizados podem acessar a plataforma.
                 <br />
-                Entre em contato com o administrador se não conseguir fazer login.
+                {embedded
+                  ? "Se seu email já foi liberado, crie uma senha pelo botão de recuperação."
+                  : "Entre em contato com o administrador se não conseguir fazer login."}
               </p>
             </>
           )}
