@@ -1,163 +1,57 @@
 
 
-# Plano: Modo de Revisão Inteligente
+# Plano: Reatividade do botão "Transcrever" + Login Google no Obsidian
 
-Criar um modo dedicado de revisão que limpa a interface (oculta Referência/Notas/Estudos/Comentário), analisa todos os textos visíveis, classifica problemas em 4 categorias e oferece um painel à direita com navegação sincronizada com o texto.
+## Parte 1 — Botão "Transcrever referência" sempre visível e reativo
 
-## 1. Visão geral da interface
+**Causa raiz**: O botão hoje só aparece quando (a) a seção "Referência" está aberta E (b) já existe um link detectado. O usuário não vê o botão até abrir o accordion. O estado já é reativo (a prop `link_referencia` atualiza em tempo real, e `linkFromReferencia` é recalculado a cada render), mas a UI esconde o botão.
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ Header: [Roteiros – Mentorado]   [🧠 Modo Revisão] [Copiar...]  │
-├─────────────────────────────────────────────────────────────────┤
-│                                              ┌────────────────┐ │
-│  HEADLINE 01:                                │ Revisão geral  │ │
-│  ┌──────────────────────────────────────┐    │ ● 5 Ortográfico│ │
-│  │ Toda vez que você ~~reclama~~, ...   │    │ ● 4 Gramatical │ │
-│  └──────────────────────────────────────┘    │ ● 0 Nome cli.  │ │
-│  (Referência/Notas/etc OCULTOS)              │ ● 2 Mentorado  │ │
-│                                              ├────────────────┤ │
-│  ESTRUTURA 01: ...                           │ ● Ortográfico  │ │
-│                                              │   1 de 5  ‹ ›  │ │
-│  HEADLINE 02: ...                            │ HEADLINE 01    │ │
-│                                              │ "...reclama..."│ │
-│                                              │ Sugestões:     │ │
-│                                              │ • reclama      │ │
-│                                              │ • reclamo      │ │
-│                                              │ [Ignorar][Corr]│ │
-│                                              └────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Mudanças em `src/components/mentorados/RoteiroAnotacoesPanel.tsx`**:
 
-## 2. Estado novo
+1. **Mover o botão para o cabeçalho da seção "Referência"** (visível mesmo com accordion fechado), à direita do label, em formato compacto:
+   - Estado **habilitado** (cor primária, ícone 🎤): quando `linkParaTranscrever` existir.
+   - Estado **desabilitado** (cinza, opacidade 50%): quando não houver link.
+   - Estado **transcrevendo** (spinner): durante o processo.
+   - Tooltip explicando o estado ("Cole um link para habilitar" quando desabilitado).
+2. **Manter** o botão grande dentro do accordion aberto também (para quem prefere essa UI), mas com a mesma lógica reativa.
+3. **Reatividade garantida**: o cálculo de `linkParaTranscrever` continua derivado do render — qualquer mudança em `linkReferencia` (prop) ou em `values.referencia_texto` (estado local atualizado no `onChange` do textarea) reflete instantaneamente sem blur, refresh ou remount.
+4. **Clique impede propagação** do toggle do accordion (`e.stopPropagation()`), para que clicar em "Transcrever" não abra/feche a seção.
 
-Em `MentoradoRoteirosView.tsx`:
-- `modoRevisao: boolean` — ativa/desativa o modo (persistido em `localStorage`).
-- `revisaoErrors: RevisaoError[]` — todos os erros analisados.
-- `erroSelecionadoId: string | null` — erro ativo (sublinhado + fundo amarelo).
-- `categoriaAtiva: "ortografico" | "gramatical" | "nome_cliente" | "mentorado"` — filtro.
-- `revisaoPanelOpen: boolean` — expandir/fechar painel direito.
-- `isAnalyzingRevisao: boolean`.
+Resultado: assim que o link é colado em qualquer lugar (headline ou textarea de Referência), o botão fica clicável imediatamente, mesmo com a seção fechada.
 
-## 3. Botão de ativação
+---
 
-Novo botão no header (próximo ao botão de busca/spell-check existente):
-- Ícone cérebro 🧠 + label "Modo Revisão".
-- Toggle. Quando ativo: highlight visual + dispara análise inicial.
+## Parte 2 — Login Google compatível com Obsidian (webview embedded)
 
-## 4. Comportamento ao ativar
+**Causa raiz**: O Google bloqueia OAuth dentro de webviews/embedded browsers (Obsidian usa Electron com `BrowserView`). O fluxo atual chama `lovable.auth.signInWithOAuth("google")`, que faz um redirect dentro da mesma janela — o webview do Obsidian intercepta o redirect e a `redirect_uri` que chega ao Google não bate com a registrada → erro `400: redirect_uri_mismatch`.
 
-Quando `modoRevisao = true`:
-- O painel `RoteiroAnotacoesPanel` (Referência/Notas/Estudos/Comentário) é **completamente removido** do DOM (não apenas oculto). Isso libera 150–320px à esquerda, e o editor de roteiro ocupa toda a largura.
-- Painel "Revisão geral" aparece fixo à direita (sticky, top-20, expansível/colapsável).
-- A análise é executada automaticamente com debounce de 800ms a cada digitação.
+**Solução**: detectar ambientes embedded e abrir o login num navegador externo do sistema, depois capturar a sessão de volta.
 
-## 5. Sistema de análise
+**Mudanças em `src/contexts/AuthContext.tsx`** (função `signInWithGoogle`):
 
-Novo hook `useRevisaoInteligente.ts` que recebe `roteirosLocais`, `mentoradoNome`, `termosVirais` e retorna `RevisaoError[]`:
+1. Adicionar utilitário `isEmbeddedWebView()` que detecta:
+   - `navigator.userAgent` contendo `Obsidian`, `Electron`, `wv` (Android WebView), `FBAN`/`FBAV` (Facebook), `Instagram`, `Line`, etc.
+   - `window.top !== window.self` (rodando em iframe).
+2. **Fluxo normal (navegador padrão)**: mantém `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin })` — sem mudanças.
+3. **Fluxo embedded (Obsidian etc.)**:
+   - Em vez de redirecionar a janela atual, abrir a URL de login num **navegador externo** via `window.open(authUrl, "_blank", "noopener,noreferrer")`. No Electron/Obsidian isso dispara o handler do sistema → abre Chrome/Safari.
+   - Como o Lovable Auth Broker não expõe diretamente a authUrl, a abordagem é:
+     - a) Apontar o usuário para abrir a URL pública (`https://copyhub.lovable.app/auth`) num navegador externo via botão alternativo "Abrir login em nova janela", e
+     - b) Após login externo, o `supabase.auth` persiste a sessão em `localStorage`. O Obsidian compartilha (ou não) esse storage; se não compartilhar, instruir reabertura. Para casos em que sessão precise ser transportada manualmente, exibir um campo opcional "colar token de acesso".
+4. **UI nova em `src/pages/Auth.tsx`**:
+   - Detectar embedded e exibir alerta amigável: "Detectamos que você está dentro do Obsidian. Para entrar com Google, abra esta página no seu navegador padrão."
+   - Botão primário "Abrir no navegador" → `window.open(window.location.href, "_blank", "noopener,noreferrer")`.
+   - Manter o botão "Login administrativo" (email/senha) totalmente funcional como fallback dentro do Obsidian — pois email/senha não passa pelo Google e funciona em qualquer ambiente.
 
-```ts
-type RevisaoError = {
-  id: string;
-  tipo: "ortografico" | "gramatical" | "nome_cliente" | "mentorado";
-  texto: string;          // texto problemático
-  sugestoes: string[];    // alternativas
-  mensagem: string;
-  posicao: { 
-    guiaNumero: number; 
-    ordem: number; 
-    field: "headline" | "estrutura"; 
-    inicio: number; 
-    fim: number; 
-  };
-}
-```
+**Configuração Google OAuth (informativo)**: o Lovable Cloud usa o broker gerenciado em `oauth.lovable.app`, que já cobre a `redirect_uri` correta. Não é preciso alterar o Google Console — o erro `redirect_uri_mismatch` ocorre porque o webview do Obsidian altera a URL de retorno; a solução é não depender do webview, e sim do navegador externo (acima).
 
-**Categorias e fontes:**
+**Sem mudanças de banco. Sem novas dependências.**
 
-| Categoria | Cor | Fonte |
-|---|---|---|
-| Ortográfico | vermelho | edge function `spell-check` (já existe) — filtra `type: "spelling"` |
-| Gramatical | azul | edge function `spell-check` — filtra `type: "grammar"` |
-| Nome do cliente | laranja | regex local: busca `mentoradoNome` no texto e marca variações erradas (case incorreto, sem acento) |
-| Mentorado já pontuou | verde claro | cruza textos com `useTermosVirais()` — marca termos virais já usados pelo mentorado |
+---
 
-A análise roda apenas sobre a guia ativa (com toggle "Todas as guias" para ampliar). Debounce de 800ms.
+## Arquivos modificados
 
-## 6. Renderização inline
-
-Reutilizar e estender `InlineSpellCheckEditor`:
-- Adicionar suporte a 4 cores de sublinhado (já tem 3): vermelho, azul, laranja, verde.
-- Quando `erroSelecionadoId === error.id`: aplicar `bg-yellow-200/50` adicional ao span do erro.
-- Apenas um erro selecionado por vez.
-
-## 7. Painel "Revisão geral" (direito)
-
-Novo componente `RevisaoInteligenrePanel.tsx`:
-
-**Topo — contagens por categoria** (clicáveis para filtrar):
-```
-● 5 Erros ortográficos
-● 4 Sugestões gramaticais
-● 0 Nome do cliente
-● 2 Mentorado já pontuou
-```
-
-**Meio — erro selecionado**:
-- Badge da categoria + "X de Y" + setas ‹ ›.
-- Cabeçalho: `HEADLINE 0X` ou `ESTRUTURA 0X`.
-- Trecho do texto com termo destacado.
-- Lista de sugestões clicáveis.
-- Botões `Ignorar` (cinza) e `Corrigir` (azul preenchido).
-
-**Rodapé — lista de outros erros da categoria** (cards compactos, clicáveis).
-
-Header do painel: título "Revisão geral" + botões ▲ (colapsar/expandir) e ✕ (fechar painel; mantém `modoRevisao` ativo).
-
-## 8. Interação painel ↔ texto
-
-- **Painel → texto**: ao clicar em erro/sugestão, atualiza `erroSelecionadoId`, faz `scrollIntoView({behavior:"smooth", block:"center"})` no campo correspondente, aplica destaque amarelo.
-- **Texto → painel**: clicar em palavra sublinhada seta `erroSelecionadoId` e o painel rola até esse erro.
-- **Navegação ‹ ›**: anterior/próximo dentro da mesma categoria, com wrap.
-
-## 9. Correção e Undo
-
-- Correção é sempre manual: clicar em sugestão ou em "Corrigir" substitui o trecho via `handleChange` (já existente, integrado ao histórico undo/redo).
-- Ctrl+Z/Y continua funcionando porque usa o pipeline existente de `handleChange`.
-- Cursor é restaurado após o trecho substituído.
-
-## 10. Performance
-
-- `useMemo` para agrupar erros por categoria.
-- Debounce de 800ms na análise.
-- Análise local (regex) para ortográfico simples + nome do cliente + termos virais é instantânea.
-- IA (`spell-check` edge function) só é chamada para textos > 10 caracteres e apenas quando estão na guia ativa.
-- Hash dos textos para evitar reprocessar o mesmo conteúdo.
-
-## Detalhes técnicos
-
-**Arquivos novos:**
-- `src/hooks/useRevisaoInteligente.ts` — orquestra análise (local + IA + termos virais + nome cliente), retorna `RevisaoError[]` e função `reanalisar()`.
-- `src/components/mentorados/RevisaoInteligenrePanel.tsx` — painel direito com contagens, erro ativo, sugestões e navegação.
-
-**Arquivos modificados:**
-- `src/components/mentorados/MentoradoRoteirosView.tsx`:
-  - Novo estado `modoRevisao`, `erroSelecionadoId`, `categoriaAtiva`, `revisaoPanelOpen`.
-  - Botão 🧠 "Modo Revisão" no header.
-  - Quando `modoRevisao`: não renderizar `RoteiroAnotacoesPanel` e ajustar wrapper para usar largura total.
-  - Renderizar `<RevisaoInteligenrePanel />` (sticky direito) quando ativo.
-  - Passar `errors` filtrados por roteiro + `activeErrorId` para o `InlineSpellCheckEditor` em headline e estrutura.
-- `src/components/mentorados/InlineSpellCheckEditor.tsx`:
-  - Adicionar prop `activeErrorId` e tipo `nome_cliente`/`mentorado` com cores `decoration-orange-500`/`decoration-emerald-500`.
-  - Quando `activeErrorId === error.id`: classe extra `bg-yellow-200/40 dark:bg-yellow-500/20`.
-  - Expor `data-error-id` para permitir scroll programático a partir do painel.
-- (opcional) Pequeno ajuste em `SpellCheckerPanel` para reaproveitar a edge function `spell-check` via hook compartilhado.
-
-**Reuso:**
-- Edge function `spell-check` (já existe).
-- Hook `useTermosVirais` (já existe).
-- `mentoradoNome` (já passado como prop).
-- Pipeline `handleChange` (undo/redo já integrado).
-
-**Sem mudanças de banco** — toda a lógica é client-side; não precisa migração.
+- `src/components/mentorados/RoteiroAnotacoesPanel.tsx` — botão de transcrever no cabeçalho da seção Referência, sempre visível, reativo.
+- `src/contexts/AuthContext.tsx` — utilitário `isEmbeddedWebView()` e ajuste no `signInWithGoogle` para usar `window.open` externo quando embedded.
+- `src/pages/Auth.tsx` — alerta + botão "Abrir no navegador" quando ambiente embedded for detectado; reforço do fallback de login administrativo.
 
