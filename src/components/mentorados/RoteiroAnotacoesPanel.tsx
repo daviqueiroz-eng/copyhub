@@ -3,6 +3,7 @@ import { ChevronRight, ChevronDown, Loader2, Check, Mic } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AnotacaoCampo,
   useRoteiroAnotacoes,
