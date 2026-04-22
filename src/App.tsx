@@ -20,6 +20,7 @@ import Treinamentos from "./pages/Treinamentos";
 import Calendario from "./pages/Calendario";
 import IdeasMelhorias from "./pages/IdeasMelhorias";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import GerenciarUsuarios from "./pages/GerenciarUsuarios";
 import Atividades from "./pages/Atividades";
@@ -39,6 +40,7 @@ const App = () => (
             <Layout>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/" element={<Navigate to="/mentorados" replace />} />
               <Route path="/dash-geral" element={<ProtectedRoute><DashGeral /></ProtectedRoute>} />
               <Route path="/acompanhamento" element={<ProtectedRoute><Acompanhamento /></ProtectedRoute>} />
