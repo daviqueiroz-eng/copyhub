@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { user, loading, authReady } = useAuth();
+  const { user, session, loading, authReady } = useAuth();
   const navigate = useNavigate();
   const [isActive, setIsActive] = useState<boolean | null>(null);
 
@@ -22,7 +22,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   // Verificar se usuário está ativo — only after authReady
   useEffect(() => {
     const checkActiveStatus = async () => {
-      if (!user) {
+      if (!user || !session) {
         setIsActive(null);
         return;
       }
@@ -51,10 +51,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       }
     };
 
-    if (authReady && user) {
+    if (authReady && user && session) {
       checkActiveStatus();
     }
-  }, [user, authReady, navigate]);
+  }, [user, session, authReady, navigate]);
 
   // Wait for auth to be fully ready before showing anything
   if (!authReady || loading) {
