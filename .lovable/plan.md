@@ -1,105 +1,85 @@
+# Detecção de Headlines Repetidas/Parecidas
 
-Objetivo: fazer o login com Google voltar a funcionar de forma estável, sem perder nenhum dado, e sair do ciclo de “erro diferente a cada tentativa”.
+Implementar detecção em tempo real de headlines similares dentro do mentorado atual, com indicador visual e popovers de preview/expansão (igual à imagem de referência).
 
-## Problema identificado
+## Onde plugar
 
-O frontend não é o problema principal.
+Editor da headline em `src/components/mentorados/MentoradoRoteirosView.tsx`, no bloco da `HEADLINE` (linhas ~2961-3154), ao lado do `Select` "Tipo..." e antes do `Referência`.
 
-Pelo código atual:
-- o app usa `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin })`
-- não existe `supabase.auth.signInWithOAuth(...)` no projeto
-- portanto, não há mistura de fluxo OAuth direto no código cliente
+Todas as headlines do mentorado já estão disponíveis no estado local `roteirosLocais: Map<string, RoteiroLocal>` — chave `"${guia}-${ordem}"`. Não precisa de query nova.
 
-Pelas telas enviadas:
-- o provider Google continua em **Your own credentials**
-- o erro deixou de ser `redirect_uri_mismatch` e virou `failed to exchange authorization code`
+## Arquivos a criar
 
-Isso mostra que:
-1. o Google já está aceitando o login
-2. o callback já está chegando
-3. a falha agora acontece no **exchange server-side do code por sessão**
+### 1. `src/lib/headlineSimilarity.ts`
+Lógica pura de comparação:
 
-Conclusão: o ponto mais provável é **configuração inconsistente das credenciais customizadas** no backend:
-- `client_id` e `client_secret` não pertencem exatamente ao mesmo OAuth Client
-- ou houve rotação/troca de secret e o valor salvo no backend não corresponde mais ao client atual
-- ou o provider ainda está em modo BYOK quando o fluxo do app está preparado para operar melhor com o broker gerenciado
+- `normalize(text)`: lowercase, remove pontuação, colapsa espaços, remove stopwords PT-BR (`que, o, a, os, as, de, do, da, e, em, um, uma, para, com, no, na, se, é, está, ou, mas, por, pelo, pela, te, seu, sua, meu`).
+- `tokenize(text)`: split em palavras, filtra tokens com ≥2 chars.
+- `similarity(a, b)`: combina:
+  - **Jaccard** sobre tokens normalizados (peso 0.6)
+  - **Cosine** sobre bigramas de caracteres (peso 0.4)
+  - Retorna `0..1`.
+- `compareHeadlines(input, candidates)`:
+  - Ignora candidatos com `headline.trim().length < 8`.
+  - Ignora a própria headline (mesma `key`).
+  - Ignora candidatos com `< 4` tokens significativos.
+  - Filtra `score > 0.7`.
+  - Ordena desc por score, retorna `Array<{ key, headline, guia, ordem, score }>`.
 
-## O que será feito
+Sem libs externas — implementação ~80 linhas, zero dependências.
 
-### 1) Restaurar o caminho confiável primeiro
-Reconfigurar o provider Google para **Managed by Lovable** no backend.
+### 2. `src/components/mentorados/SimilarHeadlinesBadge.tsx`
+Componente de UI:
 
-Isso é a forma mais segura de restaurar o login imediatamente porque:
-- elimina dependência do `client_id`/`client_secret` customizados que hoje parecem inconsistentes
-- usa o broker gerenciado já compatível com o fluxo `lovable.auth.signInWithOAuth`
-- evita nova divergência entre Google Cloud e a configuração do backend
+**Props:**
+```ts
+{
+  currentKey: string;
+  currentHeadline: string;
+  allRoteiros: Map<string, { headline: string; ... }>;
+  guias: Array<{ numero: number; nome?: string }>;
+  onJumpTo: (guiaNumero: number, ordem: number) => void;
+}
+```
 
-### 2) Validar o fluxo completo no domínio publicado
-Testar especificamente no ambiente publicado:
-- abrir `/auth`
-- clicar em **Entrar com Google**
-- validar:
-  - tela do Google
-  - retorno ao app
-  - criação de sessão
-  - usuário autenticado
+**Comportamento:**
+- `useMemo` debounce de 300ms sobre `currentHeadline` (via `useEffect` + `setTimeout`).
+- Calcula similares com `compareHeadlines`. Se vazio → não renderiza nada.
+- Renderiza badge laranja redondo (`bg-[#FF7A00] text-white rounded-full h-5 min-w-5 px-1.5 text-xs font-semibold`) com a contagem.
+- **Hover (Popover trigger):** preview compacto — até 3 headlines truncadas em 50 chars, com label "Guia X · Bloco Y", botão "Ver todas (N)" no rodapé.
+- **Click "Ver todas":** abre Popover maior com:
+  - Headline completa de cada similar
+  - "Guia X · Bloco: <nome>"
+  - Botão "Ir até" → chama `onJumpTo(guia, ordem)` que faz `setGuiaAtiva(guia)` + scroll/foco no roteiro alvo.
+  - Rodapé: "Ver todas as headlines do mentorado" → abre `MentoradoHeadlinesList` (ou navega).
 
-A validação principal será no domínio publicado (`copyhub.lovable.app`), que é o fluxo real de produção.
+Usa `Popover` de `@/components/ui/popover` (existente). Tipografia Poppins, label gold quando aplicável.
 
-### 3) Confirmar que não há regressão no login manual
-Como o login por email/senha já voltou a funcionar, ele será mantido intocado.
-Nada será alterado em:
-- usuários
-- senhas
-- perfis
-- whitelist
-- roles
-- sessões já existentes
+## Modificações
 
-### 4) Só se houver necessidade futura de credenciais próprias
-Se depois você quiser voltar a usar credenciais próprias do Google, a volta para BYOK deve ser feita do jeito correto:
-- criar ou revisar **um único OAuth Client Web** no mesmo projeto Google
-- usar exatamente o `client_id` e o `client_secret` desse mesmo client
-- cadastrar apenas os redirect URLs mostrados pelo backend
-- revalidar o fluxo inteiro
+### `src/components/mentorados/MentoradoRoteirosView.tsx`
+- Importar `SimilarHeadlinesBadge`.
+- Inserir `<SimilarHeadlinesBadge>` no row do header da headline (linhas 2962-3112), após o `Loader2` de detecção de tipo (~linha 3017), antes do botão de cópia simplificada.
+- Passar:
+  - `currentKey={key}`
+  - `currentHeadline={roteiro.headline}`
+  - `allRoteiros={roteirosLocais}`
+  - `guias={guias}`
+  - `onJumpTo={(g, o) => { setGuiaAtiva(g); requestAnimationFrame(() => document.getElementById(`roteiro-${g}-${o}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }}`
+- Adicionar `id={`roteiro-${guiaAtiva}-${ordem}`}` no container do roteiro (perto da linha 2961) para permitir scroll.
 
-Mas isso fica como etapa opcional posterior. Para resolver agora, a prioridade é **tirar o app do modo BYOK quebrado e voltar para o modo gerenciado estável**.
+## Performance
 
-## Arquivos e áreas impactadas
+- Debounce de 300ms no input antes de recalcular.
+- `useMemo` cacheia o resultado por `(currentHeadline, roteirosLocais size)`.
+- Comparação é O(N) com N = nº de headlines do mentorado (≤ 4 guias × 30 = 120 max). Trivial em CPU.
+- Não toca o banco de dados — tudo em memória.
 
-### Configuração backend
-- provider Google no Lovable Cloud
+## Critérios de aceitação
 
-### Código do projeto
-Nenhum arquivo precisa ser alterado para restaurar o login, porque o código cliente atual já está usando o método correto.
-
-## Garantias
-
-Nada será apagado ou resetado:
-- `auth.users`
-- `profiles`
-- `user_roles`
-- `allowed_emails`
-- senhas manuais já definidas
-- dados dos usuários
-- arquivos armazenados
-
-Também não haverá:
-- migração SQL
-- exclusão de usuários
-- troca de estrutura do banco
-- mudança no fluxo de email/senha
-
-## Resultado esperado
-
-Ao final:
-- o botão **Entrar com Google** volta a funcionar
-- o usuário autentica normalmente com a conta Google
-- o callback completa
-- o code exchange cria a sessão
-- o usuário entra na plataforma sem erro
-
-## Critério de sucesso
-
-O problema será considerado resolvido quando o fluxo abaixo funcionar sem erro:
-`Login Google -> callback -> sessão criada -> redirecionamento para /mentorados`
+- Digitar uma headline parecida com outra existente → badge laranja com contador aparece em ≤300ms após parar de digitar.
+- Hover no badge mostra preview com até 3 similares truncadas em 50 chars.
+- Clicar em "Ver todas" abre popover maior com headline completa + botão "Ir até" funcional (troca guia + scrolla até o roteiro).
+- Não bloqueia digitação, não substitui texto, não chama backend.
+- Não detecta similaridade contra a própria headline nem contra headlines vazias/muito curtas.
+- Threshold > 0.7 (sem falsos positivos óbvios em headlines genéricas).
