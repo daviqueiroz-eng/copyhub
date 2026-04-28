@@ -71,6 +71,7 @@ import { SlashCommandPopover } from "./SlashCommandPopover";
 import { HeadlinesRandomDialog } from "./HeadlinesRandomDialog";
 import { MentoradoHeadlinesList } from "./MentoradoHeadlinesList";
 import { TipoRoteiroDialog, HeadlineComTipo } from "./TipoRoteiroDialog";
+import { SimilarHeadlinesBadge } from "./SimilarHeadlinesBadge";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
 import { TeleprompterDialog } from "./TeleprompterDialog";
@@ -2959,7 +2960,7 @@ export const MentoradoRoteirosView = ({
                       )}
 
                       {/* Headline */}
-                      <div className="mb-2 group/headline">
+                      <div id={`roteiro-${guiaAtiva}-${ordem}`} className="mb-2 group/headline scroll-mt-24">
                         <div className="flex items-center gap-3 flex-wrap">
                           <Checkbox
                             checked={selectedRoteiroKeys.includes(key)}
@@ -3015,6 +3016,24 @@ export const MentoradoRoteirosView = ({
                           {detectingTipoKeys.has(key) && (
                             <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
                           )}
+                          {/* Detecção de headlines parecidas dentro do mentorado */}
+                          <SimilarHeadlinesBadge
+                            currentKey={key}
+                            currentHeadline={roteiro.headline || ""}
+                            allRoteiros={roteirosLocais}
+                            guias={guias}
+                            onJumpTo={(g, o) => {
+                              setGuiaAtiva(g);
+                              requestAnimationFrame(() => {
+                                setTimeout(() => {
+                                  const el = document.getElementById(`roteiro-${g}-${o}`);
+                                  if (el) {
+                                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                                  }
+                                }, 50);
+                              });
+                            }}
+                          />
                           {/* Botão de cópia simplificada - ao lado do select */}
                           {roteiro.tipo_roteiro_id && (
                             <Button
