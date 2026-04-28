@@ -65,7 +65,7 @@ export const SimilarHeadlinesBadge = ({
 
   const scheduleClose = () => {
     if (closeTimer) clearTimeout(closeTimer);
-    const t = setTimeout(() => setHoverOpen(false), 150);
+    const t = setTimeout(() => setHoverOpen(false), 400);
     setCloseTimer(t);
   };
 
@@ -114,7 +114,6 @@ export const SimilarHeadlinesBadge = ({
               setHoverOpen((v) => !v);
             }}
             className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-[#FF7A00] text-white text-[11px] font-semibold font-poppins shadow-sm hover:opacity-90 transition-opacity"
-            title={`${matches.length} headline${matches.length > 1 ? "s" : ""} muito parecida${matches.length > 1 ? "s" : ""}`}
             aria-label="Headlines parecidas"
           >
             {matches.length}
@@ -123,10 +122,13 @@ export const SimilarHeadlinesBadge = ({
         <PopoverContent
           side="right"
           align="start"
+          sideOffset={2}
           className="w-72 p-3 font-poppins"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onMouseEnter={openNow}
           onMouseLeave={scheduleClose}
+          onPointerEnter={openNow}
+          onPointerLeave={scheduleClose}
         >
           <p className="text-sm font-semibold mb-2">
             {matches.length} headline{matches.length > 1 ? "s" : ""} muito parecida{matches.length > 1 ? "s" : ""}
