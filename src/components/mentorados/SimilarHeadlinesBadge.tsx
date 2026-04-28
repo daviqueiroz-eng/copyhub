@@ -65,7 +65,7 @@ export const SimilarHeadlinesBadge = ({
 
   const scheduleClose = () => {
     if (closeTimer) clearTimeout(closeTimer);
-    const t = setTimeout(() => setHoverOpen(false), 400);
+    const t = setTimeout(() => setHoverOpen(false), 1500);
     setCloseTimer(t);
   };
 
