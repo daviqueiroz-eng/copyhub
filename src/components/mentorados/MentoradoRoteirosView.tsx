@@ -100,6 +100,7 @@ import { MapaAvatarSection } from "./MapaAvatarSection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import { MentoradoSwitcherDialog, type SwitcherShortcut } from "./MentoradoSwitcherDialog";
+import { ViralRegistrarDialog } from "@/components/virais/ViralRegistrarDialog";
 import {
   useHeadlineChecklistItems,
   useHeadlineChecklistProgress,
@@ -280,6 +281,7 @@ export const MentoradoRoteirosView = ({
   const [anotacoesExpandidas, setAnotacoesExpandidas] = useState<Set<string>>(new Set());
   const [showNewGuiaDialog, setShowNewGuiaDialog] = useState(false);
   const [showHeadlinesModal, setShowHeadlinesModal] = useState(false);
+  const [showViralRegistrarDialog, setShowViralRegistrarDialog] = useState(false);
   const [headlinesTargetKey, setHeadlinesTargetKey] = useState<string>("");
   const [savedHeadlines, setSavedHeadlines] = useState<AnalysisHeadline[]>([]);
   const [showFindReplace, setShowFindReplace] = useState(false);
@@ -1413,12 +1415,12 @@ export const MentoradoRoteirosView = ({
         position: { top, left },
       });
     } else if (textBeforeCursor.endsWith("/v")) {
-      // Atalho /v: navegar para página de Virais
+      // Atalho /v: abrir dialog de registro de viral SEM sair do roteiro
       const textAfterCursor = value.slice(cursorPos);
       const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
       handleChange(guiaNumero, ordem, field, cleanValue);
       cursorPositionRef.current.set(key, cursorPos - 2);
-      navigate("/virais");
+      setShowViralRegistrarDialog(true);
     } else if (slashCommand.isOpen) {
       // Manter popover aberto se já estiver
       setSlashCommand(prev => ({ ...prev, targetKey: key, targetField: field }));
@@ -2627,7 +2629,7 @@ export const MentoradoRoteirosView = ({
                         return;
                       }
                       if (item.mode === "__navigate_virais") {
-                        navigate("/virais");
+                        setShowViralRegistrarDialog(true);
                         return;
                       }
                       setSlashCommand({
@@ -3570,6 +3572,12 @@ export const MentoradoRoteirosView = ({
         onDeleteAvatarItem={handleDeleteAvatarItem}
       />
 
+      {/* Dialog de Registro de Viral (/v) - inline para não sair do roteiro */}
+      <ViralRegistrarDialog
+        open={showViralRegistrarDialog}
+        onOpenChange={setShowViralRegistrarDialog}
+      />
+
       {/* Modal de Headlines Aleatórias (/3) */}
       <HeadlinesRandomDialog
         open={showHeadlinesModal}
@@ -4142,7 +4150,7 @@ export const MentoradoRoteirosView = ({
             return;
           }
           if (s === "virais") {
-            navigate("/virais");
+            setShowViralRegistrarDialog(true);
             return;
           }
           const modeMap: Record<Exclude<SwitcherShortcut, "headlines" | "virais">, SlashCommandMode> = {
