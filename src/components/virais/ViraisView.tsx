@@ -10,7 +10,7 @@ import { ViralRegistrarDialog } from "./ViralRegistrarDialog";
 export const ViraisView = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const fromPath = (location.state as { from?: string } | null)?.from;
+  const hasFrom = Boolean((location.state as { from?: string } | null)?.from);
   const [filters, setFilters] = useState<ViralFilters>({
     nichoIds: [],
     formatos: [],
@@ -28,11 +28,11 @@ export const ViraisView = () => {
     >
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-3">
-          {fromPath && (
+          {hasFrom && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(fromPath)}
+              onClick={() => navigate(-1)}
               title="Voltar"
             >
               <ArrowLeft className="h-5 w-5" />
