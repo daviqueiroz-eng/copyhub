@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TranscricaoProvider } from "@/contexts/TranscricaoContext";
+import { ViraisRealtimeProvider } from "@/contexts/ViraisRealtimeProvider";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import Mural from "./pages/Mural";
@@ -50,6 +51,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <TranscricaoProvider>
+            <ViraisRealtimeProvider>
             <Layout>
             <Routes>
               <Route path="/auth" element={<Auth />} />
@@ -75,6 +77,7 @@ const App = () => (
               <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
             </Routes>
             </Layout>
+            </ViraisRealtimeProvider>
           </TranscricaoProvider>
         </AuthProvider>
       </BrowserRouter>
