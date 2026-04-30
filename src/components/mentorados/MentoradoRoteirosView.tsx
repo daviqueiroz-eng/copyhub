@@ -2629,7 +2629,7 @@ export const MentoradoRoteirosView = ({
                         return;
                       }
                       if (item.mode === "__navigate_virais") {
-                        setShowViralRegistrarDialog(true);
+                        navigate("/virais", { state: { from: location.pathname + location.search } });
                         return;
                       }
                       setSlashCommand({
@@ -4150,7 +4150,7 @@ export const MentoradoRoteirosView = ({
             return;
           }
           if (s === "virais") {
-            setShowViralRegistrarDialog(true);
+            navigate("/virais", { state: { from: location.pathname + location.search } });
             return;
           }
           const modeMap: Record<Exclude<SwitcherShortcut, "headlines" | "virais">, SlashCommandMode> = {
