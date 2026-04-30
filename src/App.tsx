@@ -26,6 +26,7 @@ import GerenciarUsuarios from "./pages/GerenciarUsuarios";
 import Atividades from "./pages/Atividades";
 import DashGeral from "./pages/DashGeral";
 import CoreStudioTasks from "./pages/CoreStudioTasks";
+import Virais from "./pages/Virais";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
               <Route path="/ideias-melhorias" element={<ProtectedRoute><IdeasMelhorias /></ProtectedRoute>} />
               <Route path="/usuarios" element={<ProtectedRoute><GerenciarUsuarios /></ProtectedRoute>} />
+              <Route path="/virais" element={<ProtectedRoute><Virais /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
             </Routes>

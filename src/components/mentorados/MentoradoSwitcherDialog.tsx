@@ -10,7 +10,8 @@ export type SwitcherShortcut =
   | "intensificadores"
   | "prompts"
   | "registrar_heads"
-  | "termos_virais";
+  | "termos_virais"
+  | "virais";
 
 interface Mentorado {
   id: string;
@@ -42,6 +43,7 @@ const SHORTCUTS: Array<{
   { key: "intensificadores", icon: Zap, label: "Intensificadores", description: "Gerenciar intensificadores", command: "/i", searchTerms: "intensificadores" },
   { key: "prompts", icon: MessageSquare, label: "Prompts", description: "Abrir prompts", command: "/p", searchTerms: "prompts" },
   { key: "registrar_heads", icon: Hash, label: "Registrar heads", description: "Registrar novas heads", command: "/m", searchTerms: "registrar heads mentorados" },
+  { key: "virais", icon: Flame, label: "Virais", description: "Banco de virais", command: "/v", searchTerms: "virais banco" },
   { key: "termos_virais", icon: Flame, label: "Termos virais", description: "Ver termos virais", command: "/t", searchTerms: "termos virais" },
 ];
 
