@@ -3572,6 +3572,12 @@ export const MentoradoRoteirosView = ({
         onDeleteAvatarItem={handleDeleteAvatarItem}
       />
 
+      {/* Dialog de Registro de Viral (/v) - inline para não sair do roteiro */}
+      <ViralRegistrarDialog
+        open={showViralRegistrarDialog}
+        onOpenChange={setShowViralRegistrarDialog}
+      />
+
       {/* Modal de Headlines Aleatórias (/3) */}
       <HeadlinesRandomDialog
         open={showHeadlinesModal}
