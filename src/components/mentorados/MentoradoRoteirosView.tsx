@@ -1412,6 +1412,13 @@ export const MentoradoRoteirosView = ({
         targetField: field,
         position: { top, left },
       });
+    } else if (textBeforeCursor.endsWith("/v")) {
+      // Atalho /v: navegar para página de Virais
+      const textAfterCursor = value.slice(cursorPos);
+      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
+      handleChange(guiaNumero, ordem, field, cleanValue);
+      cursorPositionRef.current.set(key, cursorPos - 2);
+      navigate("/virais");
     } else if (slashCommand.isOpen) {
       // Manter popover aberto se já estiver
       setSlashCommand(prev => ({ ...prev, targetKey: key, targetField: field }));
