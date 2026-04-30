@@ -4141,7 +4141,11 @@ export const MentoradoRoteirosView = ({
             setShowHeadlinesModal(true);
             return;
           }
-          const modeMap: Record<Exclude<SwitcherShortcut, "headlines">, SlashCommandMode> = {
+          if (s === "virais") {
+            navigate("/virais");
+            return;
+          }
+          const modeMap: Record<Exclude<SwitcherShortcut, "headlines" | "virais">, SlashCommandMode> = {
             mapa_avatar: "menu",
             ctas: "ctas",
             intensificadores: "intensificadores",
@@ -4151,7 +4155,7 @@ export const MentoradoRoteirosView = ({
           };
           setSlashCommand({
             isOpen: true,
-            mode: modeMap[s as Exclude<SwitcherShortcut, "headlines">],
+            mode: modeMap[s as Exclude<SwitcherShortcut, "headlines" | "virais">],
             targetKey: "",
             targetField: "headline",
             position: { top: 300, left: 400 },
