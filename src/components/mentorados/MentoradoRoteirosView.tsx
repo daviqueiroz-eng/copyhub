@@ -2616,6 +2616,7 @@ export const MentoradoRoteirosView = ({
                   { key: "/p", label: "Prompts", mode: "prompts" as SlashCommandMode },
                   { key: "/m", label: "Registrar heads", mode: "mentorados" as SlashCommandMode },
                   { key: "/t", label: "Termos virais", mode: "termos_virais" as SlashCommandMode },
+                  { key: "/v", label: "Virais", mode: "__navigate_virais" as SlashCommandMode },
                 ].map(item => (
                   <button
                     key={item.key}
@@ -2623,6 +2624,10 @@ export const MentoradoRoteirosView = ({
                     onClick={() => {
                       if (item.mode === "headlines") {
                         setShowHeadlinesModal(true);
+                        return;
+                      }
+                      if (item.mode === "__navigate_virais") {
+                        navigate("/virais");
                         return;
                       }
                       setSlashCommand({
