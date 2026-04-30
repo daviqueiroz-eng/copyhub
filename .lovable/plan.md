@@ -1,85 +1,149 @@
-# Detecção de Headlines Repetidas/Parecidas
+# Feature: Virais — Banco de Conteúdos Virais
 
-Implementar detecção em tempo real de headlines similares dentro do mentorado atual, com indicador visual e popovers de preview/expansão (igual à imagem de referência).
+Sistema novo para registrar, filtrar e consultar virais de referência. Acessível via atalho `/v` no popover de comandos e via sidebar.
 
-## Onde plugar
+## 1. Banco de Dados
 
-Editor da headline em `src/components/mentorados/MentoradoRoteirosView.tsx`, no bloco da `HEADLINE` (linhas ~2961-3154), ao lado do `Select` "Tipo..." e antes do `Referência`.
+Nova tabela `public.virais` (separada da `termos_virais`, que tem propósito diferente — termos curtos por nicho).
 
-Todas as headlines do mentorado já estão disponíveis no estado local `roteirosLocais: Map<string, RoteiroLocal>` — chave `"${guia}-${ordem}"`. Não precisa de query nova.
+```sql
+create table public.virais (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  headline text not null,
+  estrutura text,
+  formato text not null,         -- 'lista_util' | 'defesa_crenca' | 'storytelling' | 'comparacao'
+  views integer not null default 0,
+  link text not null,
+  nicho_id uuid references public.nichos(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
 
-## Arquivos a criar
+-- RLS
+alter table public.virais enable row level security;
 
-### 1. `src/lib/headlineSimilarity.ts`
-Lógica pura de comparação:
+-- Todos autenticados leem (banco global)
+create policy "viral_select_all" on public.virais
+  for select to authenticated using (true);
 
-- `normalize(text)`: lowercase, remove pontuação, colapsa espaços, remove stopwords PT-BR (`que, o, a, os, as, de, do, da, e, em, um, uma, para, com, no, na, se, é, está, ou, mas, por, pelo, pela, te, seu, sua, meu`).
-- `tokenize(text)`: split em palavras, filtra tokens com ≥2 chars.
-- `similarity(a, b)`: combina:
-  - **Jaccard** sobre tokens normalizados (peso 0.6)
-  - **Cosine** sobre bigramas de caracteres (peso 0.4)
-  - Retorna `0..1`.
-- `compareHeadlines(input, candidates)`:
-  - Ignora candidatos com `headline.trim().length < 8`.
-  - Ignora a própria headline (mesma `key`).
-  - Ignora candidatos com `< 4` tokens significativos.
-  - Filtra `score > 0.7`.
-  - Ordena desc por score, retorna `Array<{ key, headline, guia, ordem, score }>`.
+-- Qualquer autenticado insere (mas só para si)
+create policy "viral_insert_own" on public.virais
+  for insert to authenticated with check (auth.uid() = user_id);
 
-Sem libs externas — implementação ~80 linhas, zero dependências.
+-- Apenas o autor edita
+create policy "viral_update_own" on public.virais
+  for update to authenticated using (auth.uid() = user_id);
 
-### 2. `src/components/mentorados/SimilarHeadlinesBadge.tsx`
-Componente de UI:
+-- Sem DELETE (regra do produto: nunca apagar)
 
-**Props:**
-```ts
-{
-  currentKey: string;
-  currentHeadline: string;
-  allRoteiros: Map<string, { headline: string; ... }>;
-  guias: Array<{ numero: number; nome?: string }>;
-  onJumpTo: (guiaNumero: number, ordem: number) => void;
-}
+-- Trigger updated_at
+create trigger virais_updated_at
+  before update on public.virais
+  for each row execute function public.update_updated_at_column();
+
+-- Realtime para o toast global
+alter publication supabase_realtime add table public.virais;
 ```
 
-**Comportamento:**
-- `useMemo` debounce de 300ms sobre `currentHeadline` (via `useEffect` + `setTimeout`).
-- Calcula similares com `compareHeadlines`. Se vazio → não renderiza nada.
-- Renderiza badge laranja redondo (`bg-[#FF7A00] text-white rounded-full h-5 min-w-5 px-1.5 text-xs font-semibold`) com a contagem.
-- **Hover (Popover trigger):** preview compacto — até 3 headlines truncadas em 50 chars, com label "Guia X · Bloco Y", botão "Ver todas (N)" no rodapé.
-- **Click "Ver todas":** abre Popover maior com:
-  - Headline completa de cada similar
-  - "Guia X · Bloco: <nome>"
-  - Botão "Ir até" → chama `onJumpTo(guia, ordem)` que faz `setGuiaAtiva(guia)` + scroll/foco no roteiro alvo.
-  - Rodapé: "Ver todas as headlines do mentorado" → abre `MentoradoHeadlinesList` (ou navega).
+Reaproveita `nichos` (já existe com create/update/delete). Formatos são **enum fixo no front** (não criar tabela).
 
-Usa `Popover` de `@/components/ui/popover` (existente). Tipografia Poppins, label gold quando aplicável.
+## 2. Hook `useVirais`
 
-## Modificações
+`src/hooks/useVirais.ts`:
+- `useVirais(filters)` — query com filtros: `nichoIds[]`, `formatos[]`, `meusVirais` (bool), `dataInicio`, `dataFim`, `orderBy` ('views' | 'recentes').
+- `useCreateViraisBulk()` — recebe array, faz `insert` em lote, invalida cache.
+- `useUpdateViral()` — só headline/estrutura/views/link; checagem extra de `user_id` no front (RLS já bloqueia).
+- Subscribe Supabase Realtime em `INSERT` para disparar toast global.
 
-### `src/components/mentorados/MentoradoRoteirosView.tsx`
-- Importar `SimilarHeadlinesBadge`.
-- Inserir `<SimilarHeadlinesBadge>` no row do header da headline (linhas 2962-3112), após o `Loader2` de detecção de tipo (~linha 3017), antes do botão de cópia simplificada.
-- Passar:
-  - `currentKey={key}`
-  - `currentHeadline={roteiro.headline}`
-  - `allRoteiros={roteirosLocais}`
-  - `guias={guias}`
-  - `onJumpTo={(g, o) => { setGuiaAtiva(g); requestAnimationFrame(() => document.getElementById(`roteiro-${g}-${o}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }}`
-- Adicionar `id={`roteiro-${guiaAtiva}-${ordem}`}` no container do roteiro (perto da linha 2961) para permitir scroll.
+## 3. Página `/virais`
 
-## Performance
+Arquivo `src/pages/Virais.tsx` + componentes em `src/components/virais/`:
 
-- Debounce de 300ms no input antes de recalcular.
-- `useMemo` cacheia o resultado por `(currentHeadline, roteirosLocais size)`.
-- Comparação é O(N) com N = nº de headlines do mentorado (≤ 4 guias × 30 = 120 max). Trivial em CPU.
-- Não toca o banco de dados — tudo em memória.
+- `ViraisView.tsx` — header com título "Virais" e botão **"+ Registrar novo viral"** (canto sup. dir.).
+- `ViraisFilters.tsx` — barra de filtros:
+  - **Nicho**: multi-select com criação inline (reusa padrão de `usePerfisReferencia`/`useCreateNicho`).
+  - **Formato**: multi-select fixo (4 opções).
+  - **Meus virais**: `Switch`.
+  - **Período**: date range picker (reusa `Calendar` do shadcn).
+  - Botão "Limpar filtros".
+- `ViraisTable.tsx` — tabela com colunas: Headline | Estrutura | Views (formatado 2.1M) | Link (com `ExternalLink`, abre nova aba) | Autor | Data. Ordenação clicável por Views/Data. Paginação de ~20/pg. Ícone lápis aparece só se `viral.user_id === user.id`.
+- Edição inline via dialog `ViralEditDialog.tsx` (mesmos campos do create, sem múltiplos).
 
-## Critérios de aceitação
+Coluna **Autor** mostra "Você" para o próprio user, senão `profiles.nome` (fazer JOIN ou buscar via map de profiles).
 
-- Digitar uma headline parecida com outra existente → badge laranja com contador aparece em ≤300ms após parar de digitar.
-- Hover no badge mostra preview com até 3 similares truncadas em 50 chars.
-- Clicar em "Ver todas" abre popover maior com headline completa + botão "Ir até" funcional (troca guia + scrolla até o roteiro).
-- Não bloqueia digitação, não substitui texto, não chama backend.
-- Não detecta similaridade contra a própria headline nem contra headlines vazias/muito curtas.
-- Threshold > 0.7 (sem falsos positivos óbvios em headlines genéricas).
+## 4. Modal "Registrar novo viral"
+
+`ViralRegistrarDialog.tsx`:
+- Lista de "blocos" (cada um = 1 viral). Inicial: 1 bloco.
+- Cada bloco contém: Nicho (select + criar), Headline, Formato, Estrutura (opcional), Views (numérico), Link (URL), e ícone lixeira no canto superior direito (visível quando há 2+ blocos) para remover **só esse bloco antes de salvar**.
+- Botão tracejado **"+ Registrar mais um viral"** adiciona bloco.
+- Validação com `zod` (campos obrigatórios + URL válida + views >= 0).
+- Submit: bulk insert. Após sucesso, fecha modal e dispara N toasts (1 por viral inserido, com pequeno stagger).
+
+## 5. Toast Global de Comissão
+
+Componente `ViralAprovadoToast` usando `sonner` (já configurado no projeto). Estilo verde do mockup:
+- Título: "Viral Aprovado!!"
+- Subtítulo: "Sua comissão R$297,73" (valor fixo por enquanto — confirmar regra depois).
+- Avatar/ícone à esquerda.
+- Empilhável (sonner já faz), slide-in da direita (já configurado top-right).
+- onClick → `navigate('/virais')`.
+
+Disparado em **dois lugares**:
+1. Quem registra: imediatamente após `createBulk` resolver.
+2. Todos os outros usuários: via canal Realtime escutando `INSERT` em `virais` (registrar listener global em `App.tsx` ou em um novo provider `ViraisRealtimeProvider`).
+
+## 6. Atalho `/v` no Slash Command
+
+Em `src/components/mentorados/SlashCommandPopover.tsx`:
+- Adicionar item "Virais" na grade de atalhos com tecla `/v` e ícone `Flame` (laranja).
+- Ação: `navigate('/virais')` e fechar popover.
+- Atualizar a barra de dicas no rodapé para incluir `/v`.
+- Verificar onde os atalhos são interpretados (handler de keypress no editor) e adicionar `case "v"` para abrir.
+
+## 7. Sidebar
+
+Em `src/components/AppSidebar.tsx`, adicionar entrada:
+```ts
+{ title: "Virais", url: "/virais", icon: Flame }
+```
+
+## 8. Rota
+
+Em `src/App.tsx` adicionar:
+```tsx
+<Route path="/virais" element={<ProtectedRoute><Virais /></ProtectedRoute>} />
+```
+
+## 9. Restrições aplicadas
+
+- ❌ Sem botão de delete em lugar nenhum (nem RLS permite).
+- ❌ Edição bloqueada para não-autores (UI esconde + RLS protege).
+- ❌ Formatos não criáveis (lista hardcoded).
+- ✅ Validação obrigatória client-side (zod) + server (NOT NULL).
+
+## Arquivos criados/editados
+
+**Criados:**
+- `src/pages/Virais.tsx`
+- `src/components/virais/ViraisView.tsx`
+- `src/components/virais/ViraisFilters.tsx`
+- `src/components/virais/ViraisTable.tsx`
+- `src/components/virais/ViralRegistrarDialog.tsx`
+- `src/components/virais/ViralEditDialog.tsx`
+- `src/components/virais/ViralAprovadoToast.tsx`
+- `src/hooks/useVirais.ts`
+- `src/contexts/ViraisRealtimeProvider.tsx`
+- Migration SQL (tabela + RLS + realtime)
+
+**Editados:**
+- `src/App.tsx` (rota + provider)
+- `src/components/AppSidebar.tsx` (item Virais)
+- `src/components/mentorados/SlashCommandPopover.tsx` (atalho /v)
+
+## Pontos a confirmar antes de implementar
+
+1. **Valor da comissão**: o mockup mostra "R$297,73". Esse valor é fixo, calculado por views, ou configurável por admin?
+2. **Toast global para todos**: confirma que TODOS os usuários veem o toast quando qualquer um registra um viral? (Pode ficar barulhento.)
+3. **Formato "Estrutura"**: é texto livre ou deve linkar com algo já existente (ex.: estruturas dos roteiros)?

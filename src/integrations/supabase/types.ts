@@ -2710,6 +2710,53 @@ export type Database = {
         }
         Relationships: []
       }
+      virais: {
+        Row: {
+          created_at: string
+          estrutura: string | null
+          formato: string
+          headline: string
+          id: string
+          link: string
+          nicho_id: string | null
+          updated_at: string
+          user_id: string
+          views: number
+        }
+        Insert: {
+          created_at?: string
+          estrutura?: string | null
+          formato: string
+          headline: string
+          id?: string
+          link: string
+          nicho_id?: string | null
+          updated_at?: string
+          user_id: string
+          views?: number
+        }
+        Update: {
+          created_at?: string
+          estrutura?: string | null
+          formato?: string
+          headline?: string
+          id?: string
+          link?: string
+          nicho_id?: string | null
+          updated_at?: string
+          user_id?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virais_nicho_id_fkey"
+            columns: ["nicho_id"]
+            isOneToOne: false
+            referencedRelation: "nichos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
