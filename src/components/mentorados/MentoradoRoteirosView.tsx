@@ -271,6 +271,7 @@ export const MentoradoRoteirosView = ({
   onSwitchMentorado,
 }: MentoradoRoteirosViewProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showMentoradoCarousel, setShowMentoradoCarousel] = useState(false);
   const [guiaAtiva, setGuiaAtiva] = useState(1);
   const [guias, setGuias] = useState<GuiaConfigLocal[]>([]);
