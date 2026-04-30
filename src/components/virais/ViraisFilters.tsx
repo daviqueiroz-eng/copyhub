@@ -1,0 +1,243 @@
+import { useState } from "react";
+import { Plus, X, Calendar as CalendarIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { useNichos, useCreateNicho } from "@/hooks/useNichos";
+import { FORMATOS_VIRAL, ViralFilters } from "@/hooks/useVirais";
+
+interface Props {
+  filters: ViralFilters;
+  onChange: (f: ViralFilters) => void;
+}
+
+export const ViraisFiltersBar = ({ filters, onChange }: Props) => {
+  const { data: nichos = [] } = useNichos();
+  const createNicho = useCreateNicho();
+  const [novoNicho, setNovoNicho] = useState("");
+  const [openNicho, setOpenNicho] = useState(false);
+  const [openFormato, setOpenFormato] = useState(false);
+
+  const selectedNichos = filters.nichoIds || [];
+  const selectedFormatos = filters.formatos || [];
+
+  const toggleNicho = (id: string) => {
+    const next = selectedNichos.includes(id)
+      ? selectedNichos.filter((n) => n !== id)
+      : [...selectedNichos, id];
+    onChange({ ...filters, nichoIds: next });
+  };
+
+  const toggleFormato = (v: string) => {
+    const next = selectedFormatos.includes(v)
+      ? selectedFormatos.filter((f) => f !== v)
+      : [...selectedFormatos, v];
+    onChange({ ...filters, formatos: next });
+  };
+
+  const handleCreateNicho = async () => {
+    if (!novoNicho.trim()) return;
+    const created = await createNicho.mutateAsync(novoNicho.trim());
+    setNovoNicho("");
+    if (created?.id) {
+      onChange({ ...filters, nichoIds: [...selectedNichos, created.id] });
+    }
+  };
+
+  const limpar = () =>
+    onChange({
+      nichoIds: [],
+      formatos: [],
+      meusVirais: false,
+      dataInicio: null,
+      dataFim: null,
+      orderBy: filters.orderBy || "recentes",
+    });
+
+  return (
+    <div className="flex flex-wrap items-end gap-3 p-4 bg-card border rounded-lg">
+      {/* Nicho */}
+      <div className="flex flex-col gap-1 min-w-[180px]">
+        <Label className="text-xs text-muted-foreground">Nicho</Label>
+        <Popover open={openNicho} onOpenChange={setOpenNicho}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="justify-between">
+              <span className="truncate text-sm">
+                {selectedNichos.length === 0
+                  ? "Todos"
+                  : `${selectedNichos.length} selecionado(s)`}
+              </span>
+              <Plus className="h-3 w-3 ml-2" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-2" align="start">
+            <div className="flex gap-1 mb-2">
+              <Input
+                placeholder="Novo nicho..."
+                value={novoNicho}
+                onChange={(e) => setNovoNicho(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateNicho();
+                }}
+                className="h-8 text-sm"
+              />
+              <Button
+                size="sm"
+                onClick={handleCreateNicho}
+                disabled={!novoNicho.trim()}
+                className="h-8 px-2"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="max-h-60 overflow-y-auto">
+              {nichos.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => toggleNicho(n.id)}
+                  className={`w-full text-left px-2 py-1.5 text-sm rounded hover:bg-accent ${
+                    selectedNichos.includes(n.id) ? "bg-accent" : ""
+                  }`}
+                >
+                  {selectedNichos.includes(n.id) ? "✓ " : ""}
+                  {n.nome}
+                </button>
+              ))}
+              {nichos.length === 0 && (
+                <p className="text-xs text-muted-foreground p-2">
+                  Nenhum nicho cadastrado.
+                </p>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Formato */}
+      <div className="flex flex-col gap-1 min-w-[180px]">
+        <Label className="text-xs text-muted-foreground">Formato</Label>
+        <Popover open={openFormato} onOpenChange={setOpenFormato}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="justify-between">
+              <span className="truncate text-sm">
+                {selectedFormatos.length === 0
+                  ? "Todos"
+                  : `${selectedFormatos.length} selecionado(s)`}
+              </span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-60 p-2" align="start">
+            {FORMATOS_VIRAL.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => toggleFormato(f.value)}
+                className={`w-full text-left px-2 py-1.5 text-sm rounded hover:bg-accent ${
+                  selectedFormatos.includes(f.value) ? "bg-accent" : ""
+                }`}
+              >
+                {selectedFormatos.includes(f.value) ? "✓ " : ""}
+                {f.label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Meus virais */}
+      <div className="flex flex-col gap-1">
+        <Label className="text-xs text-muted-foreground">Meus virais</Label>
+        <div className="h-9 flex items-center px-2">
+          <Switch
+            checked={!!filters.meusVirais}
+            onCheckedChange={(v) => onChange({ ...filters, meusVirais: v })}
+          />
+        </div>
+      </div>
+
+      {/* Período */}
+      <div className="flex flex-col gap-1">
+        <Label className="text-xs text-muted-foreground">De</Label>
+        <div className="relative">
+          <Input
+            type="date"
+            value={filters.dataInicio?.slice(0, 10) || ""}
+            onChange={(e) =>
+              onChange({
+                ...filters,
+                dataInicio: e.target.value
+                  ? new Date(e.target.value).toISOString()
+                  : null,
+              })
+            }
+            className="h-9 text-sm w-[150px]"
+          />
+        </div>
+      </div>
+      <div className="flex flex-col gap-1">
+        <Label className="text-xs text-muted-foreground">Até</Label>
+        <Input
+          type="date"
+          value={filters.dataFim?.slice(0, 10) || ""}
+          onChange={(e) =>
+            onChange({
+              ...filters,
+              dataFim: e.target.value
+                ? new Date(
+                    new Date(e.target.value).setHours(23, 59, 59, 999)
+                  ).toISOString()
+                : null,
+            })
+          }
+          className="h-9 text-sm w-[150px]"
+        />
+      </div>
+
+      <Button variant="ghost" size="sm" onClick={limpar} className="h-9">
+        Limpar filtros
+      </Button>
+
+      {/* Chips de filtros ativos */}
+      {(selectedNichos.length > 0 || selectedFormatos.length > 0) && (
+        <div className="basis-full flex flex-wrap gap-1 mt-1">
+          {selectedNichos.map((id) => {
+            const n = nichos.find((x) => x.id === id);
+            if (!n) return null;
+            return (
+              <Badge
+                key={id}
+                variant="secondary"
+                className="gap-1 cursor-pointer"
+                onClick={() => toggleNicho(id)}
+              >
+                {n.nome}
+                <X className="h-3 w-3" />
+              </Badge>
+            );
+          })}
+          {selectedFormatos.map((f) => {
+            const fmt = FORMATOS_VIRAL.find((x) => x.value === f);
+            if (!fmt) return null;
+            return (
+              <Badge
+                key={f}
+                variant="secondary"
+                className="gap-1 cursor-pointer"
+                onClick={() => toggleFormato(f)}
+              >
+                {fmt.label}
+                <X className="h-3 w-3" />
+              </Badge>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};

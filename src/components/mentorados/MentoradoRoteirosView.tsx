@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -268,6 +269,7 @@ export const MentoradoRoteirosView = ({
   onClose,
   onSwitchMentorado,
 }: MentoradoRoteirosViewProps) => {
+  const navigate = useNavigate();
   const [showMentoradoCarousel, setShowMentoradoCarousel] = useState(false);
   const [guiaAtiva, setGuiaAtiva] = useState(1);
   const [guias, setGuias] = useState<GuiaConfigLocal[]>([]);
@@ -1410,6 +1412,13 @@ export const MentoradoRoteirosView = ({
         targetField: field,
         position: { top, left },
       });
+    } else if (textBeforeCursor.endsWith("/v")) {
+      // Atalho /v: navegar para página de Virais
+      const textAfterCursor = value.slice(cursorPos);
+      const cleanValue = textBeforeCursor.slice(0, -2) + textAfterCursor;
+      handleChange(guiaNumero, ordem, field, cleanValue);
+      cursorPositionRef.current.set(key, cursorPos - 2);
+      navigate("/virais");
     } else if (slashCommand.isOpen) {
       // Manter popover aberto se já estiver
       setSlashCommand(prev => ({ ...prev, targetKey: key, targetField: field }));
@@ -2607,6 +2616,7 @@ export const MentoradoRoteirosView = ({
                   { key: "/p", label: "Prompts", mode: "prompts" as SlashCommandMode },
                   { key: "/m", label: "Registrar heads", mode: "mentorados" as SlashCommandMode },
                   { key: "/t", label: "Termos virais", mode: "termos_virais" as SlashCommandMode },
+                  { key: "/v", label: "Virais", mode: "__navigate_virais" as SlashCommandMode },
                 ].map(item => (
                   <button
                     key={item.key}
@@ -2614,6 +2624,10 @@ export const MentoradoRoteirosView = ({
                     onClick={() => {
                       if (item.mode === "headlines") {
                         setShowHeadlinesModal(true);
+                        return;
+                      }
+                      if (item.mode === "__navigate_virais") {
+                        navigate("/virais");
                         return;
                       }
                       setSlashCommand({
