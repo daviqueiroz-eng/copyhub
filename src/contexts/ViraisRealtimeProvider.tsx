@@ -35,13 +35,20 @@ export const ViraisRealtimeProvider = ({
           // Não notificar o próprio autor (já viu o toast localmente)
           if (row?.user_id === user.id) return;
 
+          // Tocar som de venda
+          try {
+            const audio = new Audio("/sounds/viral-aprovado.wav");
+            audio.volume = 0.7;
+            audio.play().catch(() => {});
+          } catch {}
+
           toast.custom(
             () => (
               <ViralAprovadoToast
                 onClick={() => navigate("/virais")}
               />
             ),
-            { duration: 6000 }
+            { duration: 6000, position: "top-right" }
           );
         }
       )
