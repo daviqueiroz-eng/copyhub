@@ -122,9 +122,14 @@ export const ViralRegistrarDialog = ({ open, onOpenChange }: Props) => {
     // Toast de viral aprovado para o autor (1 por viral, com stagger leve)
     (created || payload).forEach((_, i) => {
       setTimeout(() => {
+        try {
+          const audio = new Audio("/sounds/viral-aprovado.wav");
+          audio.volume = 0.7;
+          audio.play().catch(() => {});
+        } catch {}
         toast.custom(
           () => <ViralAprovadoToast onClick={() => navigate("/virais")} />,
-          { duration: 6000 }
+          { duration: 6000, position: "top-right" }
         );
       }, i * 250);
     });
