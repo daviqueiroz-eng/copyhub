@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
