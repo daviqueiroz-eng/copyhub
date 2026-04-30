@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Flame, Plus } from "lucide-react";
+import { Flame, Plus, ArrowLeft } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useVirais, ViralFilters } from "@/hooks/useVirais";
 import { ViraisFiltersBar } from "./ViraisFilters";
@@ -7,6 +8,9 @@ import { ViraisTable } from "./ViraisTable";
 import { ViralRegistrarDialog } from "./ViralRegistrarDialog";
 
 export const ViraisView = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const fromPath = (location.state as { from?: string } | null)?.from;
   const [filters, setFilters] = useState<ViralFilters>({
     nichoIds: [],
     formatos: [],
@@ -24,6 +28,16 @@ export const ViraisView = () => {
     >
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-3">
+          {fromPath && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(fromPath)}
+              title="Voltar"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
             <Flame className="h-5 w-5 text-orange-500" />
           </div>
