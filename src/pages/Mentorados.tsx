@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { Plus, Search, ExternalLink, Instagram, Trash2, FileText, LayoutGrid } from "lucide-react";
 import { GestaoEntregasView } from "@/components/mentorados/GestaoEntregasView";
 import { useGestaoEntregas } from "@/hooks/useGestaoEntregas";
@@ -85,6 +85,22 @@ const Mentorados = () => {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const { data: mentorados = [] } = useMentorados();
+
+  // Restore last opened mentorado roteiros view (e.g. after navigating to /virais and back)
+  useEffect(() => {
+    if (isRoteirosViewOpen) return;
+    const shouldRestore = sessionStorage.getItem("mentoradoRoteirosOpen") === "1";
+    const lastId = sessionStorage.getItem("lastOpenedMentoradoId");
+    if (shouldRestore && lastId && mentorados.length > 0) {
+      const m = mentorados.find((x) => x.id === lastId);
+      if (m) {
+        setSelectedMentorado(m);
+        setIsRoteirosViewOpen(true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mentorados]);
+
   const createMentorado = useCreateMentorado();
   const updateMentorado = useUpdateMentorado();
   const deleteMentorado = useDeleteMentorado();
@@ -156,6 +172,8 @@ const Mentorados = () => {
     setSelectedMentorado(mentorado);
     setIsRoteirosViewOpen(true);
     localStorage.setItem("lastOpenedMentoradoId", mentorado.id);
+    sessionStorage.setItem("lastOpenedMentoradoId", mentorado.id);
+    sessionStorage.setItem("mentoradoRoteirosOpen", "1");
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -621,10 +639,16 @@ const Mentorados = () => {
         <MentoradoRoteirosView
           mentoradoId={selectedMentorado.id}
           mentoradoNome={selectedMentorado.nome}
-          onClose={() => setIsRoteirosViewOpen(false)}
+          onClose={() => {
+            setIsRoteirosViewOpen(false);
+            sessionStorage.removeItem("mentoradoRoteirosOpen");
+          }}
           onSwitchMentorado={(m) => {
             const full = mentorados.find(mt => mt.id === m.id);
-            if (full) setSelectedMentorado(full);
+            if (full) {
+              setSelectedMentorado(full);
+              sessionStorage.setItem("lastOpenedMentoradoId", full.id);
+            }
           }}
         />
       )}
