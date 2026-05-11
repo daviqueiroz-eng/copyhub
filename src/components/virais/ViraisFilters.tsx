@@ -11,6 +11,11 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { useNichos, useCreateNicho } from "@/hooks/useNichos";
+import {
+  usePerfisReferencia,
+  useCreatePerfilReferencia,
+} from "@/hooks/usePerfisReferencia";
+import { useAuth } from "@/contexts/AuthContext";
 import { FORMATOS_VIRAL, ViralFilters } from "@/hooks/useVirais";
 
 interface Props {
@@ -19,14 +24,31 @@ interface Props {
 }
 
 export const ViraisFiltersBar = ({ filters, onChange }: Props) => {
+  const { user } = useAuth();
   const { data: nichos = [] } = useNichos();
   const createNicho = useCreateNicho();
+  const { data: perfis = [] } = usePerfisReferencia();
+  const createPerfil = useCreatePerfilReferencia();
   const [novoNicho, setNovoNicho] = useState("");
   const [openNicho, setOpenNicho] = useState(false);
   const [openFormato, setOpenFormato] = useState(false);
+  const [openPerfil, setOpenPerfil] = useState(false);
+  const [novoPerfilNome, setNovoPerfilNome] = useState("");
+  const [novoPerfilLink, setNovoPerfilLink] = useState("");
 
   const selectedNichos = filters.nichoIds || [];
   const selectedFormatos = filters.formatos || [];
+  const selectedPerfis = filters.perfilIds || [];
+
+  const isMesAtivo = (() => {
+    if (!filters.dataInicio || !filters.dataFim) return false;
+    const start = new Date();
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    return (
+      new Date(filters.dataInicio).getTime() === start.getTime()
+    );
+  })();
 
   const toggleNicho = (id: string) => {
     const next = selectedNichos.includes(id)
@@ -42,6 +64,13 @@ export const ViraisFiltersBar = ({ filters, onChange }: Props) => {
     onChange({ ...filters, formatos: next });
   };
 
+  const togglePerfil = (id: string) => {
+    const next = selectedPerfis.includes(id)
+      ? selectedPerfis.filter((p) => p !== id)
+      : [...selectedPerfis, id];
+    onChange({ ...filters, perfilIds: next });
+  };
+
   const handleCreateNicho = async () => {
     if (!novoNicho.trim()) return;
     const created = await createNicho.mutateAsync(novoNicho.trim());
@@ -51,10 +80,46 @@ export const ViraisFiltersBar = ({ filters, onChange }: Props) => {
     }
   };
 
+  const handleCreatePerfil = async () => {
+    const nome = novoPerfilNome.trim();
+    const link = novoPerfilLink.trim();
+    if (!nome || !link || !user?.id) return;
+    const created = await createPerfil.mutateAsync({
+      nome,
+      inscritos: "",
+      link,
+      nicho_id: selectedNichos[0] || null,
+      user_id: user.id,
+    });
+    setNovoPerfilNome("");
+    setNovoPerfilLink("");
+    if (created?.id) {
+      onChange({ ...filters, perfilIds: [...selectedPerfis, created.id] });
+    }
+  };
+
+  const toggleMes = (v: boolean) => {
+    if (v) {
+      const start = new Date();
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      onChange({
+        ...filters,
+        dataInicio: start.toISOString(),
+        dataFim: end.toISOString(),
+      });
+    } else {
+      onChange({ ...filters, dataInicio: null, dataFim: null });
+    }
+  };
+
   const limpar = () =>
     onChange({
       nichoIds: [],
       formatos: [],
+      perfilIds: [],
       meusVirais: false,
       dataInicio: null,
       dataFim: null,
