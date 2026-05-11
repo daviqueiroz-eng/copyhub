@@ -215,6 +215,71 @@ export const ViraisFiltersBar = ({ filters, onChange }: Props) => {
         </Popover>
       </div>
 
+      {/* Perfil */}
+      <div className="flex flex-col gap-1 min-w-[180px]">
+        <Label className="text-xs text-muted-foreground">Perfil</Label>
+        <Popover open={openPerfil} onOpenChange={setOpenPerfil}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="justify-between">
+              <span className="truncate text-sm">
+                {selectedPerfis.length === 0
+                  ? "Todos"
+                  : `${selectedPerfis.length} selecionado(s)`}
+              </span>
+              <Plus className="h-3 w-3 ml-2" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-2" align="start">
+            <div className="flex flex-col gap-1 mb-2">
+              <Input
+                placeholder="Nome do perfil..."
+                value={novoPerfilNome}
+                onChange={(e) => setNovoPerfilNome(e.target.value)}
+                className="h-8 text-sm"
+              />
+              <div className="flex gap-1">
+                <Input
+                  placeholder="Link do perfil..."
+                  value={novoPerfilLink}
+                  onChange={(e) => setNovoPerfilLink(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCreatePerfil();
+                  }}
+                  className="h-8 text-sm"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleCreatePerfil}
+                  disabled={!novoPerfilNome.trim() || !novoPerfilLink.trim()}
+                  className="h-8 px-2"
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            <div className="max-h-60 overflow-y-auto">
+              {perfis.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => togglePerfil(p.id)}
+                  className={`w-full text-left px-2 py-1.5 text-sm rounded hover:bg-accent ${
+                    selectedPerfis.includes(p.id) ? "bg-accent" : ""
+                  }`}
+                >
+                  {selectedPerfis.includes(p.id) ? "✓ " : ""}
+                  {p.nome}
+                </button>
+              ))}
+              {perfis.length === 0 && (
+                <p className="text-xs text-muted-foreground p-2">
+                  Nenhum perfil cadastrado.
+                </p>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
       {/* Meus virais */}
       <div className="flex flex-col gap-1">
         <Label className="text-xs text-muted-foreground">Meus virais</Label>
@@ -223,6 +288,14 @@ export const ViraisFiltersBar = ({ filters, onChange }: Props) => {
             checked={!!filters.meusVirais}
             onCheckedChange={(v) => onChange({ ...filters, meusVirais: v })}
           />
+        </div>
+      </div>
+
+      {/* Esse mês */}
+      <div className="flex flex-col gap-1">
+        <Label className="text-xs text-muted-foreground">Esse mês</Label>
+        <div className="h-9 flex items-center px-2">
+          <Switch checked={isMesAtivo} onCheckedChange={toggleMes} />
         </div>
       </div>
 
