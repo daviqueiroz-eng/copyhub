@@ -191,3 +191,21 @@ export const useUpdateViral = () => {
     },
   });
 };
+
+export const useDeleteViral = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("virais").delete().eq("id", id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["virais"] });
+      toast.success("Viral apagado");
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao apagar viral", { description: err.message });
+    },
+  });
+};
