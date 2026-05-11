@@ -2719,6 +2719,7 @@ export type Database = {
           id: string
           link: string
           nicho_id: string | null
+          perfil_id: string | null
           updated_at: string
           user_id: string
           views: number
@@ -2731,6 +2732,7 @@ export type Database = {
           id?: string
           link: string
           nicho_id?: string | null
+          perfil_id?: string | null
           updated_at?: string
           user_id: string
           views?: number
@@ -2743,6 +2745,7 @@ export type Database = {
           id?: string
           link?: string
           nicho_id?: string | null
+          perfil_id?: string | null
           updated_at?: string
           user_id?: string
           views?: number
@@ -2753,6 +2756,13 @@ export type Database = {
             columns: ["nicho_id"]
             isOneToOne: false
             referencedRelation: "nichos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virais_perfil_id_fkey"
+            columns: ["perfil_id"]
+            isOneToOne: false
+            referencedRelation: "perfis_referencia"
             referencedColumns: ["id"]
           },
         ]
