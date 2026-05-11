@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Pencil, ExternalLink, Lock } from "lucide-react";
+import { Pencil, ExternalLink, Lock, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -9,9 +9,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Viral, formatoLabel } from "@/hooks/useVirais";
+import { Viral, formatoLabel, useDeleteViral } from "@/hooks/useVirais";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useAuth";
 import { ViralEditDialog } from "./ViralEditDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Props {
   virais: Viral[];
@@ -36,8 +47,12 @@ const PAGE_SIZE = 20;
 
 export const ViraisTable = ({ virais, loading }: Props) => {
   const { user } = useAuth();
+  const { data: role } = useUserRole();
+  const isAdmin = role === "admin";
+  const deleteViral = useDeleteViral();
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Viral | null>(null);
+  const [deleting, setDeleting] = useState<Viral | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(virais.length / PAGE_SIZE));
   const pageItems = useMemo(
@@ -69,11 +84,12 @@ export const ViraisTable = ({ virais, loading }: Props) => {
             <TableRow>
               <TableHead className="min-w-[280px]">Headline</TableHead>
               <TableHead>Estrutura</TableHead>
+              <TableHead>Perfil</TableHead>
               <TableHead>Views</TableHead>
               <TableHead>Link</TableHead>
               <TableHead>Autor</TableHead>
               <TableHead>Data</TableHead>
-              <TableHead className="w-[60px]"></TableHead>
+              <TableHead className="w-[90px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -86,6 +102,9 @@ export const ViraisTable = ({ virais, loading }: Props) => {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {v.estrutura || formatoLabel(v.formato)}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {v.perfil_nome || "—"}
                   </TableCell>
                   <TableCell className="font-mono text-sm">
                     {formatViews(v.views)}
@@ -112,17 +131,28 @@ export const ViraisTable = ({ virais, loading }: Props) => {
                     {formatDate(v.created_at)}
                   </TableCell>
                   <TableCell>
-                    {isOwner ? (
-                      <button
-                        onClick={() => setEditing(v)}
-                        className="p-1 hover:bg-accent rounded"
-                        title="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <Lock className="h-4 w-4 text-muted-foreground/40" />
-                    )}
+                    <div className="flex items-center gap-1">
+                      {isOwner ? (
+                        <button
+                          onClick={() => setEditing(v)}
+                          className="p-1 hover:bg-accent rounded"
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      ) : !isAdmin ? (
+                        <Lock className="h-4 w-4 text-muted-foreground/40" />
+                      ) : null}
+                      {isAdmin && (
+                        <button
+                          onClick={() => setDeleting(v)}
+                          className="p-1 hover:bg-destructive/10 rounded text-destructive"
+                          title="Apagar viral"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -162,6 +192,30 @@ export const ViraisTable = ({ virais, loading }: Props) => {
       )}
 
       <ViralEditDialog viral={editing} onClose={() => setEditing(null)} />
+
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar viral?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O viral será removido
+              permanentemente do banco de dados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (deleting) await deleteViral.mutateAsync(deleting.id);
+                setDeleting(null);
+              }}
+            >
+              Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
