@@ -28,15 +28,18 @@ export interface Viral {
   views: number;
   link: string;
   nicho_id: string | null;
+  perfil_id: string | null;
   created_at: string;
   updated_at: string;
   autor_nome?: string | null;
   nicho_nome?: string | null;
+  perfil_nome?: string | null;
 }
 
 export interface ViralFilters {
   nichoIds?: string[];
   formatos?: string[];
+  perfilIds?: string[];
   meusVirais?: boolean;
   dataInicio?: string | null;
   dataFim?: string | null;
@@ -50,6 +53,7 @@ export interface NewViralInput {
   views: number;
   link: string;
   nicho_id: string | null;
+  perfil_id?: string | null;
 }
 
 export const useVirais = (filters: ViralFilters = {}) => {
@@ -60,7 +64,7 @@ export const useVirais = (filters: ViralFilters = {}) => {
     queryFn: async (): Promise<Viral[]> => {
       let query = supabase
         .from("virais")
-        .select("*, nicho:nichos(id, nome)")
+        .select("*, nicho:nichos(id, nome), perfil:perfis_referencia(id, nome)")
         .limit(1000);
 
       if (filters.meusVirais && user?.id) {
@@ -71,6 +75,9 @@ export const useVirais = (filters: ViralFilters = {}) => {
       }
       if (filters.formatos && filters.formatos.length > 0) {
         query = query.in("formato", filters.formatos);
+      }
+      if (filters.perfilIds && filters.perfilIds.length > 0) {
+        query = query.in("perfil_id", filters.perfilIds);
       }
       if (filters.dataInicio) {
         query = query.gte("created_at", filters.dataInicio);
@@ -105,6 +112,7 @@ export const useVirais = (filters: ViralFilters = {}) => {
         ...r,
         autor_nome: profilesMap.get(r.user_id) || "Usuário",
         nicho_nome: r.nicho?.nome || null,
+        perfil_nome: r.perfil?.nome || null,
       }));
     },
   });
