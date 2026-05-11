@@ -270,6 +270,82 @@ export const ViralRegistrarDialog = ({ open, onOpenChange }: Props) => {
                   )}
                 </div>
 
+                {/* Perfil */}
+                <div className="col-span-1">
+                  <Label className="text-xs">Perfil (opcional)</Label>
+                  <div className="flex gap-1">
+                    <Select
+                      value={b.perfil_id}
+                      onValueChange={(v) =>
+                        updateBloco(b.uid, { perfil_id: v })
+                      }
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {perfis.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-2"
+                      onClick={() =>
+                        setCriandoPerfilBloco(
+                          criandoPerfilBloco === b.uid ? null : b.uid
+                        )
+                      }
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  {criandoPerfilBloco === b.uid && (
+                    <div className="flex flex-col gap-1 mt-1">
+                      <Input
+                        placeholder="Nome do perfil"
+                        className="h-8 text-sm"
+                        value={novoPerfilNomePorBloco[b.uid] || ""}
+                        onChange={(e) =>
+                          setNovoPerfilNomePorBloco((s) => ({
+                            ...s,
+                            [b.uid]: e.target.value,
+                          }))
+                        }
+                      />
+                      <div className="flex gap-1">
+                        <Input
+                          placeholder="Link do perfil"
+                          className="h-8 text-sm"
+                          value={novoPerfilLinkPorBloco[b.uid] || ""}
+                          onChange={(e) =>
+                            setNovoPerfilLinkPorBloco((s) => ({
+                              ...s,
+                              [b.uid]: e.target.value,
+                            }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter")
+                              handleCreatePerfilBloco(b.uid);
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          className="h-8"
+                          onClick={() => handleCreatePerfilBloco(b.uid)}
+                        >
+                          OK
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Headline */}
                 <div className="col-span-1">
                   <Label className="text-xs">Headline *</Label>
