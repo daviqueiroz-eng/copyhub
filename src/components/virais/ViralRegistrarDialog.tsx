@@ -19,6 +19,11 @@ import {
 } from "@/components/ui/select";
 import { useNichos, useCreateNicho } from "@/hooks/useNichos";
 import {
+  usePerfisReferencia,
+  useCreatePerfilReferencia,
+} from "@/hooks/usePerfisReferencia";
+import { useAuth } from "@/contexts/AuthContext";
+import {
   FORMATOS_VIRAL,
   NewViralInput,
   useCreateViraisBulk,
@@ -35,6 +40,7 @@ interface Props {
 type Bloco = {
   uid: string;
   nicho_id: string;
+  perfil_id: string;
   headline: string;
   formato: string;
   estrutura: string;
@@ -45,6 +51,7 @@ type Bloco = {
 const blocoVazio = (): Bloco => ({
   uid: crypto.randomUUID(),
   nicho_id: "",
+  perfil_id: "",
   headline: "",
   formato: "",
   estrutura: "",
@@ -54,8 +61,11 @@ const blocoVazio = (): Bloco => ({
 
 export const ViralRegistrarDialog = ({ open, onOpenChange }: Props) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: nichos = [] } = useNichos();
   const createNicho = useCreateNicho();
+  const { data: perfis = [] } = usePerfisReferencia();
+  const createPerfil = useCreatePerfilReferencia();
   const createBulk = useCreateViraisBulk();
 
   const [blocos, setBlocos] = useState<Bloco[]>([blocoVazio()]);
@@ -63,6 +73,15 @@ export const ViralRegistrarDialog = ({ open, onOpenChange }: Props) => {
     Record<string, string>
   >({});
   const [criandoNichoBloco, setCriandoNichoBloco] = useState<string | null>(
+    null
+  );
+  const [novoPerfilNomePorBloco, setNovoPerfilNomePorBloco] = useState<
+    Record<string, string>
+  >({});
+  const [novoPerfilLinkPorBloco, setNovoPerfilLinkPorBloco] = useState<
+    Record<string, string>
+  >({});
+  const [criandoPerfilBloco, setCriandoPerfilBloco] = useState<string | null>(
     null
   );
 
@@ -74,7 +93,16 @@ export const ViralRegistrarDialog = ({ open, onOpenChange }: Props) => {
     setBlocos((b) => (b.length > 1 ? b.filter((x) => x.uid !== uid) : b));
   };
 
-  const addBloco = () => setBlocos((b) => [...b, blocoVazio()]);
+  const addBloco = () =>
+    setBlocos((b) => {
+      const last = b[b.length - 1];
+      const novo = blocoVazio();
+      if (last) {
+        novo.nicho_id = last.nicho_id;
+        novo.perfil_id = last.perfil_id;
+      }
+      return [...b, novo];
+    });
 
   const handleCreateNichoBloco = async (uid: string) => {
     const nome = (novoNichoTextoPorBloco[uid] || "").trim();
@@ -85,6 +113,26 @@ export const ViralRegistrarDialog = ({ open, onOpenChange }: Props) => {
     }
     setNovoNichoTextoPorBloco((s) => ({ ...s, [uid]: "" }));
     setCriandoNichoBloco(null);
+  };
+
+  const handleCreatePerfilBloco = async (uid: string) => {
+    const nome = (novoPerfilNomePorBloco[uid] || "").trim();
+    const link = (novoPerfilLinkPorBloco[uid] || "").trim();
+    if (!nome || !link || !user?.id) return;
+    const bloco = blocos.find((x) => x.uid === uid);
+    const created = await createPerfil.mutateAsync({
+      nome,
+      inscritos: "",
+      link,
+      nicho_id: bloco?.nicho_id || null,
+      user_id: user.id,
+    });
+    if (created?.id) {
+      updateBloco(uid, { perfil_id: created.id });
+    }
+    setNovoPerfilNomePorBloco((s) => ({ ...s, [uid]: "" }));
+    setNovoPerfilLinkPorBloco((s) => ({ ...s, [uid]: "" }));
+    setCriandoPerfilBloco(null);
   };
 
   const validar = (b: Bloco): string | null => {
@@ -112,6 +160,7 @@ export const ViralRegistrarDialog = ({ open, onOpenChange }: Props) => {
     }
     const payload: NewViralInput[] = blocos.map((b) => ({
       nicho_id: b.nicho_id,
+      perfil_id: b.perfil_id || null,
       headline: b.headline.trim(),
       formato: b.formato,
       estrutura: b.estrutura.trim() || null,
