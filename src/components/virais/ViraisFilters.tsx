@@ -306,6 +306,7 @@ export const ViraisFiltersBar = ({ filters, onChange }: Props) => {
           <Input
             type="date"
             value={filters.dataInicio?.slice(0, 10) || ""}
+            disabled={isMesAtivo}
             onChange={(e) =>
               onChange({
                 ...filters,
@@ -323,6 +324,7 @@ export const ViraisFiltersBar = ({ filters, onChange }: Props) => {
         <Input
           type="date"
           value={filters.dataFim?.slice(0, 10) || ""}
+          disabled={isMesAtivo}
           onChange={(e) =>
             onChange({
               ...filters,
@@ -342,7 +344,9 @@ export const ViraisFiltersBar = ({ filters, onChange }: Props) => {
       </Button>
 
       {/* Chips de filtros ativos */}
-      {(selectedNichos.length > 0 || selectedFormatos.length > 0) && (
+      {(selectedNichos.length > 0 ||
+        selectedFormatos.length > 0 ||
+        selectedPerfis.length > 0) && (
         <div className="basis-full flex flex-wrap gap-1 mt-1">
           {selectedNichos.map((id) => {
             const n = nichos.find((x) => x.id === id);
@@ -370,6 +374,21 @@ export const ViraisFiltersBar = ({ filters, onChange }: Props) => {
                 onClick={() => toggleFormato(f)}
               >
                 {fmt.label}
+                <X className="h-3 w-3" />
+              </Badge>
+            );
+          })}
+          {selectedPerfis.map((id) => {
+            const p = perfis.find((x) => x.id === id);
+            if (!p) return null;
+            return (
+              <Badge
+                key={id}
+                variant="secondary"
+                className="gap-1 cursor-pointer"
+                onClick={() => togglePerfil(id)}
+              >
+                {p.nome}
                 <X className="h-3 w-3" />
               </Badge>
             );
