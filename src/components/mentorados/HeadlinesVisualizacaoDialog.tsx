@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Loader2, Save } from "lucide-react";
+import { GripVertical, Loader2, Save, Swords } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DndContext,
@@ -18,9 +18,11 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useReorderRoteiros } from "@/hooks/useMentoradosRoteiros";
+import { useReorderRoteiros, useUpsertMentoradoRoteiro, markLocalWrite } from "@/hooks/useMentoradosRoteiros";
 import { useTiposRoteiro } from "@/hooks/useTiposRoteiro";
 import { toast } from "@/hooks/use-toast";
+import { useDispararVotacao, useMinhasVotacoes } from "@/hooks/useHeadlineVotacoes";
+import { ResultadosVotacaoDialog } from "@/components/mentorados/ResultadosVotacaoDialog";
 
 export type HeadlineVisualItem = {
   ordem: number;
