@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, Swords } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -25,6 +25,8 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEn
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { HeadlinesVisualizacaoPanel, HeadlineVisualItem } from "@/components/mentorados/HeadlinesVisualizacaoDialog";
+import { ResultadosVotacaoDialog } from "@/components/mentorados/ResultadosVotacaoDialog";
+import { useDispararVotacao, useMinhasVotacoes } from "@/hooks/useHeadlineVotacoes";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -289,6 +291,12 @@ export const MentoradoRoteirosView = ({
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showSpellChecker, setShowSpellChecker] = useState(false);
   const [showHeadlinesVisualizacao, setShowHeadlinesVisualizacao] = useState(false);
+  const [resultadosVotacaoOpen, setResultadosVotacaoOpen] = useState(false);
+  const dispararVotacao = useDispararVotacao();
+  const { data: minhasVotacoes = [] } = useMinhasVotacoes();
+  const votacoesNaoVistas = minhasVotacoes.filter(
+    (d) => !d.visualizada && d.votos.length > 0
+  ).length;
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
@@ -2437,6 +2445,20 @@ export const MentoradoRoteirosView = ({
               >
                 <Eye className="h-5 w-5" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setResultadosVotacaoOpen(true)}
+                title="Resultados das votações"
+                className="h-9 w-9 relative"
+              >
+                <Swords className="h-5 w-5" />
+                {votacoesNaoVistas > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
+                    +{votacoesNaoVistas}
+                  </span>
+                )}
+              </Button>
             </div>
             
             <Button
@@ -3245,6 +3267,27 @@ export const MentoradoRoteirosView = ({
                               <LinkIcon className="h-3 w-3" />
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 ml-auto"
+                            title="Disparar votação (3 min)"
+                            onClick={async () => {
+                              try {
+                                await dispararVotacao.mutateAsync({
+                                  mentoradoId,
+                                  guiaNumero: guiaAtiva,
+                                  ordem,
+                                  headline: roteiro.headline || "",
+                                });
+                                toast({ title: "Votação disparada (3 min)" });
+                              } catch (e: any) {
+                                toast({ title: "Erro ao disparar votação", description: e?.message, variant: "destructive" });
+                              }
+                            }}
+                          >
+                            <Swords className="h-3.5 w-3.5" style={{ color: "#B8860B" }} />
+                          </Button>
                         </div>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
@@ -4293,6 +4336,10 @@ export const MentoradoRoteirosView = ({
       <HeadlineChecklistConfig
         open={showChecklistConfig}
         onOpenChange={setShowChecklistConfig}
+      />
+      <ResultadosVotacaoDialog
+        open={resultadosVotacaoOpen}
+        onOpenChange={setResultadosVotacaoOpen}
       />
     </div>
   );
