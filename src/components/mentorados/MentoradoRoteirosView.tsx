@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { HeadlinesVisualizacaoDialog, HeadlineVisualItem } from "@/components/mentorados/HeadlinesVisualizacaoDialog";
+import { HeadlinesVisualizacaoPanel, HeadlineVisualItem } from "@/components/mentorados/HeadlinesVisualizacaoDialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -2830,6 +2830,31 @@ export const MentoradoRoteirosView = ({
                 />
               ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
+                {showHeadlinesVisualizacao ? (
+                  <HeadlinesVisualizacaoPanel
+                    mentoradoId={mentoradoId}
+                    guiaNumero={guiaAtiva}
+                    items={(() => {
+                      const guiaCfg = guias.find((g) => g.numero === guiaAtiva);
+                      const total = guiaCfg?.quantidade ?? 0;
+                      const list: HeadlineVisualItem[] = [];
+                      for (let ordem = 1; ordem <= total; ordem++) {
+                        const key = `${guiaAtiva}-${ordem}`;
+                        const r = roteirosLocais.get(key);
+                        list.push({
+                          ordem,
+                          headline: r?.headline || "",
+                          estrutura: r?.estrutura || "",
+                          tipo_roteiro_id: r?.tipo_roteiro_id || null,
+                          link_referencia: r?.link_referencia || null,
+                        });
+                      }
+                      return list;
+                    })()}
+                    onClose={() => setShowHeadlinesVisualizacao(false)}
+                  />
+                ) : (
+                <>
                 {/* Barra de seleção em massa */}
                 {(() => {
                   const allKeysInGuia = Array.from(
@@ -3462,6 +3487,8 @@ export const MentoradoRoteirosView = ({
                     Adicionar roteiro
                   </Button>
                 </div>
+                </>
+                )}
               </div>
               )}
             </div>
@@ -3886,30 +3913,7 @@ export const MentoradoRoteirosView = ({
         }}
       />
 
-      {/* Visualização de headlines (read-only + reorder) */}
-      <HeadlinesVisualizacaoDialog
-        open={showHeadlinesVisualizacao}
-        onOpenChange={setShowHeadlinesVisualizacao}
-        mentoradoId={mentoradoId}
-        guiaNumero={guiaAtiva}
-        items={(() => {
-          const guiaCfg = guias.find((g) => g.numero === guiaAtiva);
-          const total = guiaCfg?.quantidade ?? 0;
-          const list: HeadlineVisualItem[] = [];
-          for (let ordem = 1; ordem <= total; ordem++) {
-            const key = `${guiaAtiva}-${ordem}`;
-            const r = roteirosLocais.get(key);
-            list.push({
-              ordem,
-              headline: r?.headline || "",
-              estrutura: r?.estrutura || "",
-              tipo_roteiro_id: r?.tipo_roteiro_id || null,
-              link_referencia: r?.link_referencia || null,
-            });
-          }
-          return list;
-        })()}
-      />
+      {/* Visualização de headlines agora é renderizada inline (substitui o editor) */}
 
       {/* Spell Checker Panel */}
       <SpellCheckerPanel
