@@ -4337,6 +4337,10 @@ export const MentoradoRoteirosView = ({
         open={showChecklistConfig}
         onOpenChange={setShowChecklistConfig}
       />
+      <ResultadosVotacaoDialog
+        open={resultadosVotacaoOpen}
+        onOpenChange={setResultadosVotacaoOpen}
+      />
     </div>
   );
 };
