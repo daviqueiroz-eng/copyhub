@@ -3838,6 +3838,31 @@ export const MentoradoRoteirosView = ({
         }}
       />
 
+      {/* Visualização de headlines (read-only + reorder) */}
+      <HeadlinesVisualizacaoDialog
+        open={showHeadlinesVisualizacao}
+        onOpenChange={setShowHeadlinesVisualizacao}
+        mentoradoId={mentoradoId}
+        guiaNumero={guiaAtiva}
+        items={(() => {
+          const guiaCfg = guias.find((g) => g.numero === guiaAtiva);
+          const total = guiaCfg?.quantidade ?? 0;
+          const list: HeadlineVisualItem[] = [];
+          for (let ordem = 1; ordem <= total; ordem++) {
+            const key = `${guiaAtiva}-${ordem}`;
+            const r = roteirosLocais.get(key);
+            list.push({
+              ordem,
+              headline: r?.headline || "",
+              estrutura: r?.estrutura || "",
+              tipo_roteiro_id: r?.tipo_roteiro_id || null,
+              link_referencia: r?.link_referencia || null,
+            });
+          }
+          return list;
+        })()}
+      />
+
       {/* Spell Checker Panel */}
       <SpellCheckerPanel
         open={showSpellChecker}
