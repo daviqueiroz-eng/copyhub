@@ -3558,10 +3558,10 @@ export const MentoradoRoteirosView = ({
 
       {/* Botão flutuante com menu expandido para mobile */}
       <Button
-        className="lg:hidden fixed bottom-4 right-4 z-40 h-14 w-14 rounded-full shadow-lg"
+        className="lg:hidden fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full shadow-lg"
         onClick={() => setShowMobileMenu(true)}
       >
-        <Menu className="h-6 w-6" />
+        <Menu className="h-5 w-5" />
       </Button>
       
       {/* Sheet do menu mobile com todas as opções */}
@@ -3675,6 +3675,33 @@ export const MentoradoRoteirosView = ({
               >
                 <Redo2 className="h-4 w-4" />
                 Refazer
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => {
+                  setShowHeadlinesVisualizacao(true);
+                  setShowMobileMenu(false);
+                }}
+              >
+                <Eye className="h-4 w-4" />
+                Ver headlines
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2 relative"
+                onClick={() => {
+                  setResultadosVotacaoOpen(true);
+                  setShowMobileMenu(false);
+                }}
+              >
+                <Swords className="h-4 w-4" />
+                Resultados
+                {votacoesNaoVistas > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
+                    +{votacoesNaoVistas}
+                  </span>
+                )}
               </Button>
             </div>
           </div>

@@ -321,8 +321,27 @@ export const HeadlinesVisualizacaoPanel = ({
   };
 
   const handleChangeHeadline = (ordem: number, novo: string) => {
+    // Detectar URL e extrair como link_referencia (mesma lógica do modo normal)
+    let processedValue = novo;
+    let extractedLink: string | null | undefined = undefined;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const match = novo.match(urlRegex);
+    if (match && match.length > 0) {
+      extractedLink = match[0];
+      processedValue = novo.replace(urlRegex, "").replace(/\s{2,}/g, " ").trim();
+    }
     setOrdered((prev) =>
-      prev.map((it) => (it.ordem === ordem ? { ...it, headline: novo } : it))
+      prev.map((it) =>
+        it.ordem === ordem
+          ? {
+              ...it,
+              headline: processedValue,
+              ...(extractedLink !== undefined
+                ? { link_referencia: extractedLink }
+                : {}),
+            }
+          : it
+      )
     );
     const existing = debounceTimers.current.get(ordem);
     if (existing) clearTimeout(existing);
@@ -330,9 +349,11 @@ export const HeadlinesVisualizacaoPanel = ({
       const current = ordered.find((it) => it.ordem === ordem);
       const itemToSave =
         ordered.find((it) => it.ordem === ordem) ?? current;
-      const target =
-        // pegar valor mais recente do estado
-        novo;
+      const target = processedValue;
+      const linkToSave =
+        extractedLink !== undefined
+          ? extractedLink
+          : itemToSave?.link_referencia ?? null;
       try {
         markLocalWrite();
         await upsert.mutateAsync({
@@ -342,7 +363,7 @@ export const HeadlinesVisualizacaoPanel = ({
           headline: target,
           estrutura: itemToSave?.estrutura ?? "",
           tipoRoteiroId: itemToSave?.tipo_roteiro_id ?? null,
-          linkReferencia: itemToSave?.link_referencia ?? null,
+          linkReferencia: linkToSave,
         });
       } catch (e: any) {
         toast({
