@@ -2830,6 +2830,31 @@ export const MentoradoRoteirosView = ({
                 />
               ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
+                {showHeadlinesVisualizacao ? (
+                  <HeadlinesVisualizacaoPanel
+                    mentoradoId={mentoradoId}
+                    guiaNumero={guiaAtiva}
+                    items={(() => {
+                      const guiaCfg = guias.find((g) => g.numero === guiaAtiva);
+                      const total = guiaCfg?.quantidade ?? 0;
+                      const list: HeadlineVisualItem[] = [];
+                      for (let ordem = 1; ordem <= total; ordem++) {
+                        const key = `${guiaAtiva}-${ordem}`;
+                        const r = roteirosLocais.get(key);
+                        list.push({
+                          ordem,
+                          headline: r?.headline || "",
+                          estrutura: r?.estrutura || "",
+                          tipo_roteiro_id: r?.tipo_roteiro_id || null,
+                          link_referencia: r?.link_referencia || null,
+                        });
+                      }
+                      return list;
+                    })()}
+                    onClose={() => setShowHeadlinesVisualizacao(false)}
+                  />
+                ) : (
+                <>
                 {/* Barra de seleção em massa */}
                 {(() => {
                   const allKeysInGuia = Array.from(
