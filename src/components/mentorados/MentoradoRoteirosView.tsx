@@ -3280,9 +3280,9 @@ export const MentoradoRoteirosView = ({
                                   ordem,
                                   headline: roteiro.headline || "",
                                 });
-                                toast.success("Votação disparada (3 min)");
+                                toast({ title: "Votação disparada (3 min)" });
                               } catch (e: any) {
-                                toast.error(e?.message ?? "Erro ao disparar votação");
+                                toast({ title: "Erro ao disparar votação", description: e?.message, variant: "destructive" });
                               }
                             }}
                           >
