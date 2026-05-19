@@ -2878,7 +2878,20 @@ export const MentoradoRoteirosView = ({
 
                   return (
                     <React.Fragment key={key}>
-                    <div className="group relative mb-8 lg:flex lg:gap-4 lg:items-start">
+                    <div
+                      className="group relative mb-8 lg:flex lg:gap-4 lg:items-start"
+                      data-guia={guiaAtiva}
+                      data-ordem={ordem}
+                      onFocus={() => {
+                        focoPorGuiaRef.current.set(guiaAtiva, ordem);
+                        try {
+                          sessionStorage.setItem(
+                            `roteiro-foco-${mentoradoId}`,
+                            JSON.stringify(Array.from(focoPorGuiaRef.current.entries()))
+                          );
+                        } catch {}
+                      }}
+                    >
                       {/* Painel de anotações - coluna lateral à esquerda, cresce naturalmente */}
                       {true && (() => {
                         const roteiroDB = roteiros.find(
