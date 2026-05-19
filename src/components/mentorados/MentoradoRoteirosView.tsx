@@ -730,18 +730,6 @@ export const MentoradoRoteirosView = ({
     }
   }, [roteiros, isLoading]);
 
-  // (legacy block removed)
-  const __unused_old_init = () => {
-    const newMap = new Map<string, RoteiroLocal>();
-    if (false) {
-      const initialState = new Map(
-        Array.from(newMap.entries()).map(([k, v]) => [k, { ...v }])
-      );
-      setHistory([initialState]);
-      setHistoryIndex(0);
-    }
-  };
-
   // Função para mudar de guia com limpeza de estado
   const handleGuiaChange = useCallback((novaGuia: number) => {
     // Parar timer ativo antes de mudar
