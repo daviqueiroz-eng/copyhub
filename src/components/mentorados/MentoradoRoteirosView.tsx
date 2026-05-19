@@ -2445,6 +2445,20 @@ export const MentoradoRoteirosView = ({
               >
                 <Eye className="h-5 w-5" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setResultadosVotacaoOpen(true)}
+                title="Resultados das votações"
+                className="h-9 w-9 relative"
+              >
+                <Swords className="h-5 w-5" />
+                {votacoesNaoVistas > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
+                    +{votacoesNaoVistas}
+                  </span>
+                )}
+              </Button>
             </div>
             
             <Button
