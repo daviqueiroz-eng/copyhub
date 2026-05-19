@@ -2344,6 +2344,65 @@ export type Database = {
         }
         Relationships: []
       }
+      roteiro_comentarios: {
+        Row: {
+          audio_url: string | null
+          autor_nome: string
+          autor_user_id: string | null
+          conteudo_texto: string | null
+          created_at: string
+          escopo: string
+          guia_numero: number
+          id: string
+          lido_por: Json
+          mentorado_id: string
+          ordem: number
+          resolvido: boolean
+          share_id: string | null
+          trecho_texto: string | null
+        }
+        Insert: {
+          audio_url?: string | null
+          autor_nome: string
+          autor_user_id?: string | null
+          conteudo_texto?: string | null
+          created_at?: string
+          escopo: string
+          guia_numero: number
+          id?: string
+          lido_por?: Json
+          mentorado_id: string
+          ordem: number
+          resolvido?: boolean
+          share_id?: string | null
+          trecho_texto?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          autor_nome?: string
+          autor_user_id?: string | null
+          conteudo_texto?: string | null
+          created_at?: string
+          escopo?: string
+          guia_numero?: number
+          id?: string
+          lido_por?: Json
+          mentorado_id?: string
+          ordem?: number
+          resolvido?: boolean
+          share_id?: string | null
+          trecho_texto?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roteiro_comentarios_share_id_fkey"
+            columns: ["share_id"]
+            isOneToOne: false
+            referencedRelation: "roteiro_guia_shares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roteiro_feedbacks: {
         Row: {
           created_at: string
@@ -2390,6 +2449,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      roteiro_guia_shares: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          criado_por: string
+          guia_numero: number
+          id: string
+          mentorado_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          criado_por: string
+          guia_numero: number
+          id?: string
+          mentorado_id: string
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          criado_por?: string
+          guia_numero?: number
+          id?: string
+          mentorado_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       roteiros: {
         Row: {
@@ -2875,12 +2967,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_roteiro_publico: { Args: { _token: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      inserir_comentario_publico: {
+        Args: {
+          _audio_url: string
+          _autor_nome: string
+          _conteudo_texto: string
+          _escopo: string
+          _ordem: number
+          _token: string
+          _trecho_texto: string
+        }
+        Returns: string
       }
       is_grupo_member: {
         Args: { _grupo_id: string; _user_id: string }
