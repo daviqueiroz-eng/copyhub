@@ -291,3 +291,55 @@ export const useGetGuiasCount = (mentoradoId: string | undefined) => {
     enabled: !!mentoradoId,
   });
 };
+
+// Reorder roteiros within a guia by rewriting headline/estrutura/tipo/link
+// content at each ordem slot — keeps the unique (mentorado_id, guia_numero, ordem)
+// constraint intact and avoids juggling ordem values.
+export const useReorderRoteiros = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      mentoradoId,
+      guiaNumero,
+      newOrder,
+    }: {
+      mentoradoId: string;
+      guiaNumero: number;
+      // newOrder[i] holds the content that should live at ordem = i + 1
+      newOrder: Array<{
+        headline: string;
+        estrutura: string;
+        tipo_roteiro_id: string | null;
+        link_referencia: string | null;
+      }>;
+    }) => {
+      if (!user) throw new Error("Usuário não autenticado");
+      markLocalWrite();
+
+      const rows = newOrder.map((r, i) => ({
+        mentorado_id: mentoradoId,
+        user_id: user.id,
+        guia_numero: guiaNumero,
+        ordem: i + 1,
+        headline: r.headline ?? "",
+        estrutura: r.estrutura ?? "",
+        tipo_roteiro_id: r.tipo_roteiro_id ?? null,
+        link_referencia: r.link_referencia ?? null,
+        deleted_at: null,
+      }));
+
+      const { error } = await supabase
+        .from("mentorados_roteiros")
+        .upsert(rows, { onConflict: "mentorado_id,guia_numero,ordem" });
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["mentorados_roteiros", variables.mentoradoId],
+      });
+    },
+  });
+};

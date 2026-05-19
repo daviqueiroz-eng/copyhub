@@ -1,38 +1,58 @@
-## Atualizações da página Virais
+## 1. Botão "Olho" (Modo Visualização de Headlines)
 
-### 1. Admin pode apagar virais
-- **Banco**: adicionar política RLS de `DELETE` na tabela `virais` permitindo somente quem tem `has_role(auth.uid(), 'admin')`. Nenhum dado existente é apagado.
-- **UI (`ViraisTable.tsx`)**: para usuários admin, na coluna de ações (atualmente mostra ícone de cadeado para virais de outros), exibir um botão de lixeira ao lado/no lugar do cadeado. Clique abre `AlertDialog` de confirmação ("Apagar este viral? Essa ação não pode ser desfeita.") e chama um novo `useDeleteViral()` em `useVirais.ts`.
-- O autor continua vendo o lápis para editar; o admin vê lápis (se for autor) + lixeira; usuários comuns continuam vendo só o cadeado em virais de terceiros.
+**Onde:** `MentoradoRoteirosView.tsx`, na barra de ações lateral aos botões Undo/Redo (linhas ~2356-2378), adicionar um terceiro botão com ícone `Eye` (lucide-react) com tooltip "Visualizar headlines".
 
-### 2. Filtro/coluna "Perfil"
-- **Banco**: adicionar coluna `perfil_id uuid` (nullable) em `virais` com FK para `perfis_referencia(id)` `ON DELETE SET NULL`. Index em `perfil_id`. Nada existente perdido.
-- **Hook `useVirais.ts`**:
-  - Adicionar `perfil_id` em `Viral`, `NewViralInput`, e em `ViralFilters` (`perfilIds?: string[]`).
-  - Query: select com join `perfis_referencia(id, nome)`; mapear `perfil_nome`.
-  - Aplicar filtro `.in("perfil_id", perfilIds)` quando informado.
-- **`ViraisFiltersBar.tsx`**: ao lado do popover "Nicho", adicionar popover "Perfil" usando `usePerfisReferencia()`. Mesmo padrão visual do nicho (multi-select com chips). Botão "+" abre input para criar novo perfil chamando `useCreatePerfilReferencia` (campos mínimos: nome + link; nicho herdado do filtro selecionado se houver, ou null).
-- **`ViraisTable.tsx`**: adicionar coluna "Perfil" exibindo `perfil_nome` (ou "—").
+**Comportamento:**
+- Abre um modo overlay (`Dialog` em modo fullscreen ou painel dentro da área central) listando **somente as headlines da guia ativa** no formato da imagem de referência: número da headline + dropdown "Tipo..." + texto da headline + badge contador (quando houver overdelivery/check).
+- Cada item é **arrastável** (usar `@dnd-kit/sortable`, já no projeto) para reordenar.
+- Ao fechar (botão X), a nova ordem é persistida no banco (`mentorados_roteiros.ordem`) via um novo mutate `useReorderRoteiros` que faz `upsert` em lote trocando `ordem` dos registros afetados na guia ativa.
+- Edições de texto ficam **desabilitadas** nesse modo (read-only). Só reorder + ver "Tipo".
+- A ordem fica refletida no editor principal ao voltar.
 
-### 3. Auto-preenchimento ao "Registrar mais um viral"
-- **`ViralRegistrarDialog.tsx`**: ao clicar em "+ Registrar mais um viral", o novo bloco copia `nicho_id` e `perfil_id` do bloco anterior (último da lista). Demais campos ficam vazios.
-- Adicionar campo "Perfil" em cada bloco (mesmo padrão de Select + botão de criar novo, igual ao filtro). Persiste `perfil_id` no insert.
+**Novo arquivo:** `src/components/mentorados/HeadlinesVisualizacaoDialog.tsx`
+**Novo hook:** método `reorderRoteiros` em `useMentoradosRoteiros.ts` (recebe `mentoradoId`, `guiaNumero`, `Array<{id, ordem}>`, faz upsert chamando `markLocalWrite()`).
 
-### 4. Toggle "Esse mês"
-- **`ViraisFiltersBar.tsx`**: ao lado do switch "Meus virais", adicionar switch "Esse mês".
-- Quando ativo, define `dataInicio` = primeiro dia do mês atual 00:00 e `dataFim` = agora (e desabilita visualmente os inputs De/Até). Ao desativar, limpa `dataInicio`/`dataFim`.
-- Como já usa os filtros de data existentes, não há mudança no hook.
+## 2. Bug: Texto Colado Sumindo
 
-### Garantia de dados
-- Nenhuma operação destrutiva nos dados existentes: as duas mudanças de schema são `ADD COLUMN` (nullable) e `CREATE POLICY`. A deleção só ocorre quando o admin clicar e confirmar.
+**Causa identificada:** em `MentoradoRoteirosView.tsx` linhas 687-713, o `useEffect` que sincroniza `roteiros` (vindo do banco) para `roteirosLocais` **substitui o mapa inteiro** toda vez que `roteiros` muda. Quando o usuário cola texto:
+1. Local muda → debounce de 800ms agendado
+2. Antes do save terminar, qualquer refetch (realtime após janela de 4s, foco da janela, etc.) retorna o `roteiros` do banco sem o paste
+3. O `useEffect` sobrescreve `roteirosLocais` → conteúdo colado some
 
-### Detalhes técnicos
-- Migration:
-  - `ALTER TABLE public.virais ADD COLUMN perfil_id uuid REFERENCES public.perfis_referencia(id) ON DELETE SET NULL;`
-  - `CREATE INDEX idx_virais_perfil_id ON public.virais(perfil_id);`
-  - `CREATE POLICY "Admins podem apagar virais" ON public.virais FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'));`
-- `useDeleteViral` invalida `["virais"]` e mostra toast.
-- Toggle "Esse mês" calcula:
-  ```ts
-  const start = new Date(); start.setDate(1); start.setHours(0,0,0,0);
-  ```
+**Correção:**
+- No useEffect de sincronização, **preservar** chaves que têm timer de debounce pendente em `debounceTimersRef.current` (paste/typing ainda não persistido).
+- Para cada key vinda do banco: se `debounceTimersRef.current.has(key)`, manter o valor local; caso contrário, usar valor do banco.
+- Também ignorar a sincronização inicial se `isUndoRedoRef.current` estiver true.
+
+```ts
+roteiros.forEach((r) => {
+  const key = `${r.guia_numero}-${r.ordem}`;
+  if (debounceTimersRef.current.has(key)) {
+    // pending local write — preserve current local value
+    const existing = roteirosLocais.get(key);
+    if (existing) { newMap.set(key, existing); return; }
+  }
+  newMap.set(key, { headline: r.headline || "", ... });
+});
+```
+
+## 3. Posição (foco) por Leva (Guia)
+
+**Comportamento esperado:** ao sair da Guia 1 olhando para a Headline 8 e voltar depois (vindo de outra guia onde olhava a Headline 5), restaurar o scroll para a Headline 8 da Guia 1.
+
+**Implementação:**
+- Novo state `lastFocusedOrdemPerGuia: Record<number, number>` (Map por `guiaNumero` → `ordem` da headline mais recentemente visível/focada).
+- Observar o scroll do container central (já existe um scroll wrapper na área dos roteiros) com `IntersectionObserver` — sempre que um card de roteiro entra como "principal visível" (>50% visível), gravar `ordem` no map para a `guiaAtiva`.
+- Também atualizar no `onFocus` dos campos `headline`/`estrutura` para garantir precisão quando o usuário está digitando.
+- Em `handleGuiaChange(novaGuia)`, após trocar `guiaAtiva`, agendar (via `requestAnimationFrame` + pequeno timeout) um `scrollIntoView({ block: "center" })` no card cujo `data-ordem={lastFocusedOrdemPerGuia[novaGuia]}`.
+- Persistir o map em `sessionStorage` com chave `roteiro-foco-${mentoradoId}` para sobreviver à navegação entre Virais/voltar, conforme padrão já usado para `lastOpenedMentoradoId`.
+
+**Marcador no DOM:** adicionar `data-ordem={r.ordem}` e `data-guia={r.guia_numero}` no wrapper de cada card de roteiro renderizado.
+
+## Arquivos afetados
+
+- `src/components/mentorados/MentoradoRoteirosView.tsx` (botão Eye, sync defensivo, scroll-restore, data-attrs)
+- `src/components/mentorados/HeadlinesVisualizacaoDialog.tsx` (novo)
+- `src/hooks/useMentoradosRoteiros.ts` (`useReorderRoteiros`)
+
+Nenhuma migração de banco necessária — só usa `ordem` que já existe.

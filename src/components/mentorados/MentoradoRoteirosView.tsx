@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { HeadlinesVisualizacaoDialog, HeadlineVisualItem } from "@/components/mentorados/HeadlinesVisualizacaoDialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -287,6 +288,7 @@ export const MentoradoRoteirosView = ({
   const [savedHeadlines, setSavedHeadlines] = useState<AnalysisHeadline[]>([]);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showSpellChecker, setShowSpellChecker] = useState(false);
+  const [showHeadlinesVisualizacao, setShowHeadlinesVisualizacao] = useState(false);
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
@@ -372,6 +374,8 @@ export const MentoradoRoteirosView = ({
 
   // Refs para debounce
   const debounceTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Última headline (ordem) com foco por guia, para restaurar scroll ao voltar
+  const focoPorGuiaRef = useRef<Map<number, number>>(new Map());
   const pendingChangesRef = useRef<Map<string, RoteiroLocal>>(new Map());
   const inputRefs = useRef<Map<string, HTMLInputElement | HTMLTextAreaElement>>(new Map());
 
@@ -686,27 +690,43 @@ export const MentoradoRoteirosView = ({
   // Inicializar roteiros locais a partir do banco
   useEffect(() => {
     if (isLoading) return;
-    
-    const newMap = new Map<string, RoteiroLocal>();
-    
-    // Preencher com dados do banco
-    roteiros.forEach((r) => {
-      const key = `${r.guia_numero}-${r.ordem}`;
-      newMap.set(key, {
-        headline: r.headline || "",
-        estrutura: r.estrutura || "",
-        tipo_roteiro_id: r.tipo_roteiro_id || null,
-        link_referencia: (r as any).link_referencia || null,
+
+    // Preserve keys that still have a pending local debounce write — otherwise
+    // a refetch (realtime echo, window focus, etc.) would overwrite content
+    // the user just pasted/typed before it finishes saving.
+    setRoteirosLocais((prevLocal) => {
+      const newMap = new Map<string, RoteiroLocal>();
+      roteiros.forEach((r) => {
+        const key = `${r.guia_numero}-${r.ordem}`;
+        if (debounceTimersRef.current.has(key)) {
+          const existing = prevLocal.get(key);
+          if (existing) {
+            newMap.set(key, existing);
+            return;
+          }
+        }
+        newMap.set(key, {
+          headline: r.headline || "",
+          estrutura: r.estrutura || "",
+          tipo_roteiro_id: r.tipo_roteiro_id || null,
+          link_referencia: (r as any).link_referencia || null,
+        });
       });
+      return newMap;
     });
     
-    setRoteirosLocais(newMap);
-    
     // Inicializar histórico com estado inicial
-    if (newMap.size > 0) {
-      const initialState = new Map(
-        Array.from(newMap.entries()).map(([k, v]) => [k, { ...v }])
-      );
+    if (roteiros.length > 0 && history.length === 0) {
+      const initialState = new Map<string, RoteiroLocal>();
+      roteiros.forEach((r) => {
+        const key = `${r.guia_numero}-${r.ordem}`;
+        initialState.set(key, {
+          headline: r.headline || "",
+          estrutura: r.estrutura || "",
+          tipo_roteiro_id: r.tipo_roteiro_id || null,
+          link_referencia: (r as any).link_referencia || null,
+        });
+      });
       setHistory([initialState]);
       setHistoryIndex(0);
     }
@@ -729,6 +749,39 @@ export const MentoradoRoteirosView = ({
     
     setGuiaAtiva(novaGuia);
   }, [activeTimerId]);
+
+  // Hidratar foco-por-guia do sessionStorage ao montar/trocar de mentorado
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(`roteiro-foco-${mentoradoId}`);
+      if (raw) {
+        const arr = JSON.parse(raw) as [number, number][];
+        focoPorGuiaRef.current = new Map(arr);
+      } else {
+        focoPorGuiaRef.current = new Map();
+      }
+    } catch {
+      focoPorGuiaRef.current = new Map();
+    }
+  }, [mentoradoId]);
+
+  // Restaurar scroll para a última headline focada da guia ativa
+  useEffect(() => {
+    if (isLoading) return;
+    const ordemAlvo = focoPorGuiaRef.current.get(guiaAtiva);
+    if (!ordemAlvo) return;
+    const raf = requestAnimationFrame(() => {
+      setTimeout(() => {
+        const el = document.querySelector(
+          `[data-guia="${guiaAtiva}"][data-ordem="${ordemAlvo}"]`
+        );
+        if (el) {
+          (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 80);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [guiaAtiva, isLoading, mentoradoId]);
 
   // Carregar timers do localStorage quando mudar de guia
   useEffect(() => {
@@ -2375,6 +2428,15 @@ export const MentoradoRoteirosView = ({
               >
                 <Redo2 className="h-5 w-5" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowHeadlinesVisualizacao(true)}
+                title="Visualizar headlines"
+                className="h-9 w-9"
+              >
+                <Eye className="h-5 w-5" />
+              </Button>
             </div>
             
             <Button
@@ -2851,7 +2913,20 @@ export const MentoradoRoteirosView = ({
 
                   return (
                     <React.Fragment key={key}>
-                    <div className="group relative mb-8 lg:flex lg:gap-4 lg:items-start">
+                    <div
+                      className="group relative mb-8 lg:flex lg:gap-4 lg:items-start"
+                      data-guia={guiaAtiva}
+                      data-ordem={ordem}
+                      onFocus={() => {
+                        focoPorGuiaRef.current.set(guiaAtiva, ordem);
+                        try {
+                          sessionStorage.setItem(
+                            `roteiro-foco-${mentoradoId}`,
+                            JSON.stringify(Array.from(focoPorGuiaRef.current.entries()))
+                          );
+                        } catch {}
+                      }}
+                    >
                       {/* Painel de anotações - coluna lateral à esquerda, cresce naturalmente */}
                       {true && (() => {
                         const roteiroDB = roteiros.find(
@@ -3809,6 +3884,31 @@ export const MentoradoRoteirosView = ({
             setHighlightedMatch(null);
           }
         }}
+      />
+
+      {/* Visualização de headlines (read-only + reorder) */}
+      <HeadlinesVisualizacaoDialog
+        open={showHeadlinesVisualizacao}
+        onOpenChange={setShowHeadlinesVisualizacao}
+        mentoradoId={mentoradoId}
+        guiaNumero={guiaAtiva}
+        items={(() => {
+          const guiaCfg = guias.find((g) => g.numero === guiaAtiva);
+          const total = guiaCfg?.quantidade ?? 0;
+          const list: HeadlineVisualItem[] = [];
+          for (let ordem = 1; ordem <= total; ordem++) {
+            const key = `${guiaAtiva}-${ordem}`;
+            const r = roteirosLocais.get(key);
+            list.push({
+              ordem,
+              headline: r?.headline || "",
+              estrutura: r?.estrutura || "",
+              tipo_roteiro_id: r?.tipo_roteiro_id || null,
+              link_referencia: r?.link_referencia || null,
+            });
+          }
+          return list;
+        })()}
       />
 
       {/* Spell Checker Panel */}
