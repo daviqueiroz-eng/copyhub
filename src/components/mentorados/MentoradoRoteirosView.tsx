@@ -304,6 +304,8 @@ export const MentoradoRoteirosView = ({
   const votacoesNaoVistas = minhasVotacoes.filter(
     (d) => !d.visualizada && d.votos.length > 0
   ).length;
+  const { data: comentariosGuia = [] } = useRoteiroComentarios(mentoradoId, guiaAtiva);
+  const comentariosAbertos = comentariosGuia.filter((c) => !c.resolvido).length;
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
