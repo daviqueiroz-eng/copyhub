@@ -298,6 +298,7 @@ export const MentoradoRoteirosView = ({
   const [showSpellChecker, setShowSpellChecker] = useState(false);
   const [showHeadlinesVisualizacao, setShowHeadlinesVisualizacao] = useState(false);
   const [resultadosVotacaoOpen, setResultadosVotacaoOpen] = useState(false);
+  const [comentariosPanelOpen, setComentariosPanelOpen] = useState(false);
   const dispararVotacao = useDispararVotacao();
   const { data: minhasVotacoes = [] } = useMinhasVotacoes();
   const votacoesNaoVistas = minhasVotacoes.filter(
