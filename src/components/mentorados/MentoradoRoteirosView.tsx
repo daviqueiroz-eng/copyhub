@@ -25,6 +25,8 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEn
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { HeadlinesVisualizacaoPanel, HeadlineVisualItem } from "@/components/mentorados/HeadlinesVisualizacaoDialog";
+import { ResultadosVotacaoDialog } from "@/components/mentorados/ResultadosVotacaoDialog";
+import { useDispararVotacao, useMinhasVotacoes } from "@/hooks/useHeadlineVotacoes";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
