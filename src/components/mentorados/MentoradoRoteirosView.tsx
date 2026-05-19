@@ -750,6 +750,39 @@ export const MentoradoRoteirosView = ({
     setGuiaAtiva(novaGuia);
   }, [activeTimerId]);
 
+  // Hidratar foco-por-guia do sessionStorage ao montar/trocar de mentorado
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(`roteiro-foco-${mentoradoId}`);
+      if (raw) {
+        const arr = JSON.parse(raw) as [number, number][];
+        focoPorGuiaRef.current = new Map(arr);
+      } else {
+        focoPorGuiaRef.current = new Map();
+      }
+    } catch {
+      focoPorGuiaRef.current = new Map();
+    }
+  }, [mentoradoId]);
+
+  // Restaurar scroll para a última headline focada da guia ativa
+  useEffect(() => {
+    if (isLoading) return;
+    const ordemAlvo = focoPorGuiaRef.current.get(guiaAtiva);
+    if (!ordemAlvo) return;
+    const raf = requestAnimationFrame(() => {
+      setTimeout(() => {
+        const el = document.querySelector(
+          `[data-guia="${guiaAtiva}"][data-ordem="${ordemAlvo}"]`
+        );
+        if (el) {
+          (el as HTMLElement).scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 80);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [guiaAtiva, isLoading, mentoradoId]);
+
   // Carregar timers do localStorage quando mudar de guia
   useEffect(() => {
     setTimersLoaded(false); // Indicar que está carregando
