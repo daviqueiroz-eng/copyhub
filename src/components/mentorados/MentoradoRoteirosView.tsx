@@ -2553,6 +2553,7 @@ export const MentoradoRoteirosView = ({
                       isEditing={editingGuiaNome === guia.numero}
                       tempNome={tempGuiaNome}
                       filledCount={getFilledCount(guia.numero)}
+                      mentoradoId={mentoradoId}
                       onSelect={() => handleGuiaChange(guia.numero)}
                       onStartEdit={() => {
                         setEditingGuiaNome(guia.numero);
