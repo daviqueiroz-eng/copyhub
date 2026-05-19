@@ -2468,6 +2468,20 @@ export const MentoradoRoteirosView = ({
                   </span>
                 )}
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setComentariosPanelOpen((v) => !v)}
+                title="Comentários da guia"
+                className="h-9 w-9 relative"
+              >
+                <MessageSquare className="h-5 w-5" style={{ color: "#B8860B" }} />
+                {comentariosAbertos > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
+                    {comentariosAbertos}
+                  </span>
+                )}
+              </Button>
             </div>
             
             <Button
