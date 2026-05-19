@@ -2393,6 +2393,15 @@ export const MentoradoRoteirosView = ({
               >
                 <Redo2 className="h-5 w-5" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowHeadlinesVisualizacao(true)}
+                title="Visualizar headlines"
+                className="h-9 w-9"
+              >
+                <Eye className="h-5 w-5" />
+              </Button>
             </div>
             
             <Button
