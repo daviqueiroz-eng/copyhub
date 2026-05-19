@@ -41,7 +41,19 @@ interface Props {
   onReordered?: () => void;
 }
 
-function SortableRow({ item, index }: { item: HeadlineVisualItem; index: number }) {
+function SortableRow({
+  item,
+  index,
+  editable,
+  onChangeHeadline,
+  onDispararVotacao,
+}: {
+  item: HeadlineVisualItem;
+  index: number;
+  editable?: boolean;
+  onChangeHeadline?: (ordem: number, novo: string) => void;
+  onDispararVotacao?: (item: HeadlineVisualItem) => void;
+}) {
   const { data: tipos = [] } = useTiposRoteiro();
   const tipo = tipos.find((t) => t.id === item.tipo_roteiro_id);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -82,12 +94,46 @@ function SortableRow({ item, index }: { item: HeadlineVisualItem; index: number 
               {tipo.nome}
             </span>
           )}
-        </div>
-        <p className="text-sm text-foreground whitespace-pre-wrap break-words">
-          {item.headline?.trim() || (
-            <span className="text-muted-foreground italic">— vazio —</span>
+          {onDispararVotacao && (
+            <button
+              type="button"
+              onClick={() => onDispararVotacao(item)}
+              className="ml-auto inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-foreground transition"
+              title="Disparar votação (3 min)"
+            >
+              <Swords className="h-3 w-3" />
+              Votar
+            </button>
           )}
-        </p>
+        </div>
+        {editable ? (
+          <textarea
+            value={item.headline ?? ""}
+            onChange={(e) =>
+              onChangeHeadline?.(item.ordem, e.target.value)
+            }
+            placeholder="— vazio —"
+            rows={1}
+            className="w-full resize-none bg-transparent text-sm text-foreground outline-none focus:ring-1 focus:ring-ring rounded px-1 py-0.5 min-h-[28px]"
+            onInput={(e) => {
+              const el = e.currentTarget;
+              el.style.height = "auto";
+              el.style.height = el.scrollHeight + "px";
+            }}
+            ref={(el) => {
+              if (el) {
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+              }
+            }}
+          />
+        ) : (
+          <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+            {item.headline?.trim() || (
+              <span className="text-muted-foreground italic">— vazio —</span>
+            )}
+          </p>
+        )}
       </div>
     </div>
   );
