@@ -374,6 +374,8 @@ export const MentoradoRoteirosView = ({
 
   // Refs para debounce
   const debounceTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Última headline (ordem) com foco por guia, para restaurar scroll ao voltar
+  const focoPorGuiaRef = useRef<Map<number, number>>(new Map());
   const pendingChangesRef = useRef<Map<string, RoteiroLocal>>(new Map());
   const inputRefs = useRef<Map<string, HTMLInputElement | HTMLTextAreaElement>>(new Map());
 
