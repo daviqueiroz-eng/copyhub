@@ -1310,6 +1310,109 @@ export type Database = {
           },
         ]
       }
+      headline_votacoes: {
+        Row: {
+          created_at: string
+          criado_por: string
+          encerrada: boolean
+          expira_em: string
+          guia_numero: number
+          headline_texto: string
+          id: string
+          iniciada_em: string
+          mentorado_id: string
+          ordem: number
+        }
+        Insert: {
+          created_at?: string
+          criado_por: string
+          encerrada?: boolean
+          expira_em?: string
+          guia_numero: number
+          headline_texto: string
+          id?: string
+          iniciada_em?: string
+          mentorado_id: string
+          ordem: number
+        }
+        Update: {
+          created_at?: string
+          criado_por?: string
+          encerrada?: boolean
+          expira_em?: string
+          guia_numero?: number
+          headline_texto?: string
+          id?: string
+          iniciada_em?: string
+          mentorado_id?: string
+          ordem?: number
+        }
+        Relationships: []
+      }
+      headline_votacoes_visualizadas: {
+        Row: {
+          id: string
+          user_id: string
+          visualizada_em: string
+          votacao_id: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          visualizada_em?: string
+          votacao_id: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          visualizada_em?: string
+          votacao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "headline_votacoes_visualizadas_votacao_id_fkey"
+            columns: ["votacao_id"]
+            isOneToOne: false
+            referencedRelation: "headline_votacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      headline_votacoes_votos: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          id: string
+          nota: number
+          user_id: string
+          votacao_id: string
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          nota: number
+          user_id: string
+          votacao_id: string
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          nota?: number
+          user_id?: string
+          votacao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "headline_votacoes_votos_votacao_id_fkey"
+            columns: ["votacao_id"]
+            isOneToOne: false
+            referencedRelation: "headline_votacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       headlines: {
         Row: {
           category_key: string
