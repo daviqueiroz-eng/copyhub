@@ -1,88 +1,39 @@
-# Plano
+## O que vou ajustar
 
-## 1. Tornar headlines editáveis no modo "olho"
+### 1. Mobile — acesso ao modo "Olho" (visualizar somente headlines) e Resultados das votações
+Hoje a barra com os botões `Eye` (visualizar headlines), `Swords` (resultados das votações) e `Undo/Redo` está marcada como `hidden lg:flex` em `MentoradoRoteirosView.tsx` (linha ~2416), então no celular esses botões somem. Vou:
 
-No `HeadlinesVisualizacaoPanel` (em `src/components/mentorados/HeadlinesVisualizacaoDialog.tsx`), a headline aparece como `<p>` somente leitura. Trocar por um campo editável (textarea autogrow) que escreve a alteração direto em `mentorados_roteiros` usando o mesmo padrão de debounce (800ms) já usado em `MentoradoRoteirosView`.
+- Adicionar dentro do `Sheet` do menu mobile (linha ~3568) uma nova seção **"Visualização"** com dois botões grandes:
+  - **Visualizar headlines** → abre o `HeadlinesVisualizacaoPanel` (mesmo fluxo do desktop).
+  - **Resultados das votações** com o badge `+N` quando há votos não vistos.
+- Assim o usuário no celular consegue entrar no modo de só headlines e ver os resultados das votações, igual ao desktop.
 
-- Substituir o `<p>` da `SortableRow` por um `<textarea>` com autogrow.
-- Onde clicar/digitar, suspender o drag (drag handle continua só no `GripVertical`).
-- Salvamento: chamar uma nova mutação `useUpdateHeadlineOrdem(mentoradoId, guiaNumero, ordem, headline)` em `useMentoradosRoteiros.ts` que faz `upsert` apenas do campo `headline` da linha correspondente, mantendo `estrutura`, `tipo_roteiro_id` e `link_referencia` intactos.
-- Debounce local de 800ms + reflexo do valor digitado em tempo real (estado local controlado).
-- Sem mexer na edição de estrutura/tipo (continua sendo feito na view normal).
+Observação: se "o relógio" significar o **cronômetro de roteiros** (que hoje é desligado no mobile via `if (isMobile) return` na linha 1349), me confirme — esse é um comportamento intencional separado e prefiro não mexer sem confirmação.
 
-## 2. Ícone de espada por headline → dispara votação ao vivo
+### 2. Auto-extrair link colado na headline (modo visualização)
+No modo normal já existe a regex em `handleChange` (linha ~1226 de `MentoradoRoteirosView.tsx`) que detecta `https?://...` na headline, salva em `link_referencia` e remove do texto.
 
-Adicionar um botão de espada (ícone `Swords` do lucide) ao lado de cada headline na visualização. Ao clicar:
-- Cria uma "votação" na tabela e envia broadcast realtime para todos os usuários.
-- Duração: 3 minutos. Tipo: nota de 1 a 10. Comentário opcional.
+No `HeadlinesVisualizacaoPanel` (`HeadlinesVisualizacaoDialog.tsx`, função `handleChangeHeadline`) hoje só salva o texto cru. Vou replicar a mesma lógica:
+- Detectar URL na string digitada/colada.
+- Se houver, gravar `link_referencia = primeira URL` e salvar a headline sem a URL.
+- Persistir junto no `useUpsertMentoradoRoteiro` (que já aceita `linkReferencia`).
 
-### Banco de dados (nova migração)
+Resultado: colar um link no modo "Olho" passa a anexar a referência, igual ao modo normal.
 
-Duas tabelas novas:
+### 3. Botão flutuante do livro cobrindo os acessos no canto inferior direito
+Pelo screenshot, o botão azul de livro no canto inferior direito (mobile) fica em cima da barra de navegação do navegador / badge "Edit with Lovable" e atrapalha. Esse é o botão `lg:hidden fixed bottom-4 right-4` em `MentoradoRoteirosView.tsx` linha 3561.
 
-`headline_votacoes`
-- `id uuid pk`
-- `criado_por uuid` (auth.uid())
-- `mentorado_id uuid`
-- `guia_numero int`
-- `ordem int`
-- `headline_texto text` (snapshot)
-- `iniciada_em timestamptz default now()`
-- `expira_em timestamptz` (now() + 3 min)
-- `encerrada bool default false`
+Vou:
+- Subir a posição para `bottom-20 right-4` (sai da área dos controles do navegador e do badge).
+- Reduzir levemente o tamanho (`h-12 w-12`) para ficar menos invasivo.
+- Garantir `z-40` para não conflitar com outros flutuantes (botão de gerar/estrutura usa `z-50`, então a hierarquia segue correta).
 
-RLS:
-- SELECT: todos autenticados (todo mundo precisa receber).
-- INSERT: `auth.uid() = criado_por`.
-- UPDATE: só criador (para marcar `encerrada`).
+## Arquivos afetados
 
-`headline_votacoes_votos`
-- `id uuid pk`
-- `votacao_id uuid`
-- `user_id uuid`
-- `nota int` (1..10, validado por trigger, não check)
-- `comentario text null`
-- `created_at timestamptz default now()`
-- UNIQUE (`votacao_id`, `user_id`)
+- `src/components/mentorados/MentoradoRoteirosView.tsx`
+  - Mobile Sheet: adicionar seção "Visualização" com botões Olho + Resultados (+badge).
+  - Botão flutuante do menu: reposicionar (`bottom-20`) e redimensionar.
+- `src/components/mentorados/HeadlinesVisualizacaoDialog.tsx`
+  - `handleChangeHeadline`: extrair URL, atualizar `link_referencia` no estado local e no `upsert`.
 
-RLS:
-- SELECT: todos autenticados (criador precisa ver resultado; participantes podem ver o próprio voto — simplificar liberando SELECT autenticado).
-- INSERT: `auth.uid() = user_id` E votação não expirada/encerrada (validar via trigger ou em policy com subselect simples).
-
-Adicionar ambas ao `supabase_realtime` publication.
-
-Tabela auxiliar `headline_votacoes_visualizadas`:
-- `id, votacao_id, user_id, visualizada_em` — para o criador marcar resultados já vistos e calcular o "+N" não vistos.
-
-### Frontend
-
-Novo hook `useHeadlineVotacoes.ts`:
-- `useDispararVotacao({ mentoradoId, guiaNumero, ordem, headline })` — INSERT em `headline_votacoes`.
-- `useRegistrarVoto({ votacao_id, nota, comentario })` — INSERT em `headline_votacoes_votos`.
-- `useVotacoesAtivas()` — query + canal realtime de `headline_votacoes` onde `expira_em > now()` e `encerrada = false`. Auto-encerra ao expirar (UPDATE local + filtro).
-- `useResultadosVotacoes()` — busca votações criadas pelo `auth.uid()` já encerradas, junto com agregação dos votos.
-
-Novo provider `HeadlineVotacoesRealtimeProvider` montado no `App.tsx` (alto nível), análogo ao `ViraisRealtimeProvider`. Ele:
-- Escuta INSERTs em `headline_votacoes` e, para cada nova votação cujo `criado_por !== auth.uid()`, abre um toast persistente top-right (sonner) com:
-  - Snapshot da headline.
-  - Slider/Select de nota 1..10.
-  - Textarea opcional "comentário".
-  - Countdown ao vivo (mm:ss) que fecha sozinho ao expirar.
-- Escuta INSERTs em `headline_votacoes_votos` e, se a votação foi criada por mim, incrementa o contador "+N" não visto.
-
-UI no `HeadlinesVisualizacaoPanel`:
-- Botão `Swords` ao lado do grip de cada headline → confirma e chama `useDispararVotacao`.
-- Segundo botão `Swords` no topo do painel (badge "+N" quando há resultados não vistos) → abre `ResultadosVotacaoDialog` listando minhas votações com: headline, número de votos, média, distribuição (1–10) e comentários. Ao abrir, marca como visualizado.
-
-### Arquivos
-
-- migração SQL (nova) — 3 tabelas + RLS + realtime
-- `src/hooks/useHeadlineVotacoes.ts` (novo)
-- `src/contexts/HeadlineVotacoesRealtimeProvider.tsx` (novo)
-- `src/components/mentorados/HeadlineVotacaoToast.tsx` (novo — card que vai dentro do toast)
-- `src/components/mentorados/ResultadosVotacaoDialog.tsx` (novo)
-- `src/components/mentorados/HeadlinesVisualizacaoDialog.tsx` (editar — campo editável + 2 botões de espada)
-- `src/hooks/useMentoradosRoteiros.ts` (editar — adicionar `useUpdateHeadlineCampo`)
-- `src/App.tsx` (editar — montar o novo provider)
-
-Sem mudanças nos fluxos de edição existentes fora do painel "olho".
+Sem alterações em banco/edge functions.
