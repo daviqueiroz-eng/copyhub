@@ -2519,6 +2519,13 @@ export const MentoradoRoteirosView = ({
 
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Painel de comentários (mentorado) */}
+        <RoteiroComentariosPanel
+          mentoradoId={mentoradoId}
+          guiaNumero={guiaAtiva}
+          open={comentariosPanelOpen}
+          onClose={() => setComentariosPanelOpen(false)}
+        />
         {/* Sidebar - Guias */}
         <div className={cn("border-r bg-muted/30 flex-col shrink-0 transition-all duration-200 hidden lg:flex", leftSidebarMinimized ? "w-10" : "lg:w-48")}>
           {/* Toggle para minimizar sidebar esquerda */}
