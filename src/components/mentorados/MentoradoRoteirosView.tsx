@@ -3267,6 +3267,27 @@ export const MentoradoRoteirosView = ({
                               <LinkIcon className="h-3 w-3" />
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 ml-auto"
+                            title="Disparar votação (3 min)"
+                            onClick={async () => {
+                              try {
+                                await dispararVotacao.mutateAsync({
+                                  mentoradoId,
+                                  guiaNumero: guiaAtiva,
+                                  ordem,
+                                  headline: roteiro.headline || "",
+                                });
+                                toast.success("Votação disparada (3 min)");
+                              } catch (e: any) {
+                                toast.error(e?.message ?? "Erro ao disparar votação");
+                              }
+                            }}
+                          >
+                            <Swords className="h-3.5 w-3.5" style={{ color: "#B8860B" }} />
+                          </Button>
                         </div>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
