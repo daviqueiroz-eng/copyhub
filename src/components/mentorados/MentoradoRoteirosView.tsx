@@ -688,31 +688,59 @@ export const MentoradoRoteirosView = ({
   // Inicializar roteiros locais a partir do banco
   useEffect(() => {
     if (isLoading) return;
-    
-    const newMap = new Map<string, RoteiroLocal>();
-    
-    // Preencher com dados do banco
-    roteiros.forEach((r) => {
-      const key = `${r.guia_numero}-${r.ordem}`;
-      newMap.set(key, {
-        headline: r.headline || "",
-        estrutura: r.estrutura || "",
-        tipo_roteiro_id: r.tipo_roteiro_id || null,
-        link_referencia: (r as any).link_referencia || null,
+
+    // Preserve keys that still have a pending local debounce write — otherwise
+    // a refetch (realtime echo, window focus, etc.) would overwrite content
+    // the user just pasted/typed before it finishes saving.
+    setRoteirosLocais((prevLocal) => {
+      const newMap = new Map<string, RoteiroLocal>();
+      roteiros.forEach((r) => {
+        const key = `${r.guia_numero}-${r.ordem}`;
+        if (debounceTimersRef.current.has(key)) {
+          const existing = prevLocal.get(key);
+          if (existing) {
+            newMap.set(key, existing);
+            return;
+          }
+        }
+        newMap.set(key, {
+          headline: r.headline || "",
+          estrutura: r.estrutura || "",
+          tipo_roteiro_id: r.tipo_roteiro_id || null,
+          link_referencia: (r as any).link_referencia || null,
+        });
       });
+      return newMap;
     });
     
-    setRoteirosLocais(newMap);
-    
     // Inicializar histórico com estado inicial
-    if (newMap.size > 0) {
+    if (roteiros.length > 0 && history.length === 0) {
+      const initialState = new Map<string, RoteiroLocal>();
+      roteiros.forEach((r) => {
+        const key = `${r.guia_numero}-${r.ordem}`;
+        initialState.set(key, {
+          headline: r.headline || "",
+          estrutura: r.estrutura || "",
+          tipo_roteiro_id: r.tipo_roteiro_id || null,
+          link_referencia: (r as any).link_referencia || null,
+        });
+      });
+      setHistory([initialState]);
+      setHistoryIndex(0);
+    }
+  }, [roteiros, isLoading]);
+
+  // (legacy block removed)
+  const __unused_old_init = () => {
+    const newMap = new Map<string, RoteiroLocal>();
+    if (false) {
       const initialState = new Map(
         Array.from(newMap.entries()).map(([k, v]) => [k, { ...v }])
       );
       setHistory([initialState]);
       setHistoryIndex(0);
     }
-  }, [roteiros, isLoading]);
+  };
 
   // Função para mudar de guia com limpeza de estado
   const handleGuiaChange = useCallback((novaGuia: number) => {
