@@ -204,3 +204,101 @@ export const HeadlinesVisualizacaoDialog = ({
     </Dialog>
   );
 };
+
+interface PanelProps {
+  mentoradoId: string;
+  guiaNumero: number;
+  items: HeadlineVisualItem[];
+  onClose: () => void;
+}
+
+export const HeadlinesVisualizacaoPanel = ({
+  mentoradoId,
+  guiaNumero,
+  items,
+  onClose,
+}: PanelProps) => {
+  const [ordered, setOrdered] = useState<HeadlineVisualItem[]>(items);
+  const reorder = useReorderRoteiros();
+
+  useEffect(() => {
+    setOrdered(items);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length, guiaNumero]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const ids = useMemo(() => ordered.map((i) => String(i.ordem)), [ordered]);
+
+  const isDirty = useMemo(
+    () => ordered.some((it, i) => items[i]?.ordem !== it.ordem),
+    [ordered, items]
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = ordered.findIndex((i) => String(i.ordem) === active.id);
+    const newIndex = ordered.findIndex((i) => String(i.ordem) === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const novo = arrayMove(ordered, oldIndex, newIndex);
+    setOrdered(novo);
+    try {
+      await reorder.mutateAsync({
+        mentoradoId,
+        guiaNumero,
+        newOrder: novo.map((it) => ({
+          headline: it.headline,
+          estrutura: it.estrutura,
+          tipo_roteiro_id: it.tipo_roteiro_id,
+          link_referencia: it.link_referencia,
+        })),
+      });
+    } catch (e: any) {
+      toast({
+        title: "Erro ao salvar ordem",
+        description: e?.message ?? "Tente novamente",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div
+      className="max-w-3xl mx-auto"
+      style={{ fontFamily: "'Poppins', system-ui, sans-serif" }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">
+          Visualização de headlines — Guia {guiaNumero}
+        </h2>
+        <div className="flex items-center gap-2">
+          {reorder.isPending && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+          {isDirty && !reorder.isPending && (
+            <span className="text-xs text-muted-foreground">Salvando...</span>
+          )}
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Voltar para edição
+          </Button>
+        </div>
+      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          <div className="space-y-3">
+            {ordered.map((it, idx) => (
+              <SortableRow key={it.ordem} item={it} index={idx} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+    </div>
+  );
+};
