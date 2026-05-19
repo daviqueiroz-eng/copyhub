@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TranscricaoProvider } from "@/contexts/TranscricaoContext";
 import { ViraisRealtimeProvider } from "@/contexts/ViraisRealtimeProvider";
+import { HeadlineVotacoesRealtimeProvider } from "@/contexts/HeadlineVotacoesRealtimeProvider";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import Mural from "./pages/Mural";
@@ -52,6 +53,7 @@ const App = () => (
         <AuthProvider>
           <TranscricaoProvider>
             <ViraisRealtimeProvider>
+            <HeadlineVotacoesRealtimeProvider>
             <Layout>
             <Routes>
               <Route path="/auth" element={<Auth />} />
@@ -77,6 +79,7 @@ const App = () => (
               <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
             </Routes>
             </Layout>
+            </HeadlineVotacoesRealtimeProvider>
             </ViraisRealtimeProvider>
           </TranscricaoProvider>
         </AuthProvider>

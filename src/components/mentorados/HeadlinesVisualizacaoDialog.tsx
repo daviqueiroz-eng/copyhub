@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Loader2, Save } from "lucide-react";
+import { GripVertical, Loader2, Save, Swords } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DndContext,
@@ -18,9 +18,11 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useReorderRoteiros } from "@/hooks/useMentoradosRoteiros";
+import { useReorderRoteiros, useUpsertMentoradoRoteiro, markLocalWrite } from "@/hooks/useMentoradosRoteiros";
 import { useTiposRoteiro } from "@/hooks/useTiposRoteiro";
 import { toast } from "@/hooks/use-toast";
+import { useDispararVotacao, useMinhasVotacoes } from "@/hooks/useHeadlineVotacoes";
+import { ResultadosVotacaoDialog } from "@/components/mentorados/ResultadosVotacaoDialog";
 
 export type HeadlineVisualItem = {
   ordem: number;
@@ -39,7 +41,19 @@ interface Props {
   onReordered?: () => void;
 }
 
-function SortableRow({ item, index }: { item: HeadlineVisualItem; index: number }) {
+function SortableRow({
+  item,
+  index,
+  editable,
+  onChangeHeadline,
+  onDispararVotacao,
+}: {
+  item: HeadlineVisualItem;
+  index: number;
+  editable?: boolean;
+  onChangeHeadline?: (ordem: number, novo: string) => void;
+  onDispararVotacao?: (item: HeadlineVisualItem) => void;
+}) {
   const { data: tipos = [] } = useTiposRoteiro();
   const tipo = tipos.find((t) => t.id === item.tipo_roteiro_id);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -80,12 +94,46 @@ function SortableRow({ item, index }: { item: HeadlineVisualItem; index: number 
               {tipo.nome}
             </span>
           )}
-        </div>
-        <p className="text-sm text-foreground whitespace-pre-wrap break-words">
-          {item.headline?.trim() || (
-            <span className="text-muted-foreground italic">— vazio —</span>
+          {onDispararVotacao && (
+            <button
+              type="button"
+              onClick={() => onDispararVotacao(item)}
+              className="ml-auto inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:border-foreground transition"
+              title="Disparar votação (3 min)"
+            >
+              <Swords className="h-3 w-3" />
+              Votar
+            </button>
           )}
-        </p>
+        </div>
+        {editable ? (
+          <textarea
+            value={item.headline ?? ""}
+            onChange={(e) =>
+              onChangeHeadline?.(item.ordem, e.target.value)
+            }
+            placeholder="— vazio —"
+            rows={1}
+            className="w-full resize-none bg-transparent text-sm text-foreground outline-none focus:ring-1 focus:ring-ring rounded px-1 py-0.5 min-h-[28px]"
+            onInput={(e) => {
+              const el = e.currentTarget;
+              el.style.height = "auto";
+              el.style.height = el.scrollHeight + "px";
+            }}
+            ref={(el) => {
+              if (el) {
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+              }
+            }}
+          />
+        ) : (
+          <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+            {item.headline?.trim() || (
+              <span className="text-muted-foreground italic">— vazio —</span>
+            )}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -220,6 +268,13 @@ export const HeadlinesVisualizacaoPanel = ({
 }: PanelProps) => {
   const [ordered, setOrdered] = useState<HeadlineVisualItem[]>(items);
   const reorder = useReorderRoteiros();
+  const upsert = useUpsertMentoradoRoteiro();
+  const disparar = useDispararVotacao();
+  const { data: minhasVotacoes = [] } = useMinhasVotacoes();
+  const [resultadosOpen, setResultadosOpen] = useState(false);
+  const debounceTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(
+    new Map()
+  );
 
   useEffect(() => {
     setOrdered(items);
@@ -265,6 +320,64 @@ export const HeadlinesVisualizacaoPanel = ({
     }
   };
 
+  const handleChangeHeadline = (ordem: number, novo: string) => {
+    setOrdered((prev) =>
+      prev.map((it) => (it.ordem === ordem ? { ...it, headline: novo } : it))
+    );
+    const existing = debounceTimers.current.get(ordem);
+    if (existing) clearTimeout(existing);
+    const t = setTimeout(async () => {
+      const current = ordered.find((it) => it.ordem === ordem);
+      const itemToSave =
+        ordered.find((it) => it.ordem === ordem) ?? current;
+      const target =
+        // pegar valor mais recente do estado
+        novo;
+      try {
+        markLocalWrite();
+        await upsert.mutateAsync({
+          mentoradoId,
+          guiaNumero,
+          ordem,
+          headline: target,
+          estrutura: itemToSave?.estrutura ?? "",
+          tipoRoteiroId: itemToSave?.tipo_roteiro_id ?? null,
+          linkReferencia: itemToSave?.link_referencia ?? null,
+        });
+      } catch (e: any) {
+        toast({
+          title: "Erro ao salvar headline",
+          description: e?.message ?? "Tente novamente",
+          variant: "destructive",
+        });
+      }
+      debounceTimers.current.delete(ordem);
+    }, 800);
+    debounceTimers.current.set(ordem, t);
+  };
+
+  const handleDisparar = async (it: HeadlineVisualItem) => {
+    try {
+      await disparar.mutateAsync({
+        mentoradoId,
+        guiaNumero,
+        ordem: it.ordem,
+        headline: it.headline ?? "",
+      });
+      toast({ title: "Votação disparada (3 min)" });
+    } catch (e: any) {
+      toast({
+        title: "Erro ao disparar votação",
+        description: e?.message ?? "Tente novamente",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const naoVistos = minhasVotacoes.filter(
+    (d) => !d.visualizada && d.votos.length > 0
+  ).length;
+
   return (
     <div
       className="max-w-3xl mx-auto"
@@ -281,6 +394,21 @@ export const HeadlinesVisualizacaoPanel = ({
           {isDirty && !reorder.isPending && (
             <span className="text-xs text-muted-foreground">Salvando...</span>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setResultadosOpen(true)}
+            className="relative"
+            title="Resultados das minhas votações"
+          >
+            <Swords className="h-4 w-4 mr-1" />
+            Resultados
+            {naoVistos > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
+                +{naoVistos}
+              </span>
+            )}
+          </Button>
           <Button variant="outline" size="sm" onClick={onClose}>
             Voltar para edição
           </Button>
@@ -294,11 +422,22 @@ export const HeadlinesVisualizacaoPanel = ({
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
             {ordered.map((it, idx) => (
-              <SortableRow key={it.ordem} item={it} index={idx} />
+              <SortableRow
+                key={it.ordem}
+                item={it}
+                index={idx}
+                editable
+                onChangeHeadline={handleChangeHeadline}
+                onDispararVotacao={handleDisparar}
+              />
             ))}
           </div>
         </SortableContext>
       </DndContext>
+      <ResultadosVotacaoDialog
+        open={resultadosOpen}
+        onOpenChange={setResultadosOpen}
+      />
     </div>
   );
 };
