@@ -291,6 +291,12 @@ export const MentoradoRoteirosView = ({
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showSpellChecker, setShowSpellChecker] = useState(false);
   const [showHeadlinesVisualizacao, setShowHeadlinesVisualizacao] = useState(false);
+  const [resultadosVotacaoOpen, setResultadosVotacaoOpen] = useState(false);
+  const dispararVotacao = useDispararVotacao();
+  const { data: minhasVotacoes = [] } = useMinhasVotacoes();
+  const votacoesNaoVistas = minhasVotacoes.filter(
+    (d) => !d.visualizada && d.votos.length > 0
+  ).length;
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
