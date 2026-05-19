@@ -288,6 +288,7 @@ export const MentoradoRoteirosView = ({
   const [savedHeadlines, setSavedHeadlines] = useState<AnalysisHeadline[]>([]);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showSpellChecker, setShowSpellChecker] = useState(false);
+  const [showHeadlinesVisualizacao, setShowHeadlinesVisualizacao] = useState(false);
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
