@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, Swords } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, Swords, MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -111,6 +111,9 @@ import {
   useBulkToggleChecklistProgress,
 } from "@/hooks/useHeadlineChecklist";
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
+import { ShareGuiaPopover } from "./ShareGuiaPopover";
+import { RoteiroComentariosPanel } from "./RoteiroComentariosPanel";
+import { useRoteiroComentarios } from "@/hooks/useRoteiroComentarios";
 import { useNichos, useCreateNicho, useDeleteNicho } from "@/hooks/useNichos";
 import { useCreateTermoViral, useTermosVirais } from "@/hooks/useTermosVirais";
 
@@ -161,6 +164,7 @@ const SortableGuiaItem = ({
   isEditing,
   tempNome,
   filledCount,
+  mentoradoId,
   onSelect,
   onStartEdit,
   onNameChange,
@@ -173,6 +177,7 @@ const SortableGuiaItem = ({
   isEditing: boolean;
   tempNome: string;
   filledCount: number;
+  mentoradoId: string;
   onSelect: () => void;
   onStartEdit: () => void;
   onNameChange: (name: string) => void;
@@ -263,6 +268,7 @@ const SortableGuiaItem = ({
       >
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
+      <ShareGuiaPopover mentoradoId={mentoradoId} guiaNumero={guia.numero} />
     </div>
   );
 };
@@ -292,11 +298,14 @@ export const MentoradoRoteirosView = ({
   const [showSpellChecker, setShowSpellChecker] = useState(false);
   const [showHeadlinesVisualizacao, setShowHeadlinesVisualizacao] = useState(false);
   const [resultadosVotacaoOpen, setResultadosVotacaoOpen] = useState(false);
+  const [comentariosPanelOpen, setComentariosPanelOpen] = useState(false);
   const dispararVotacao = useDispararVotacao();
   const { data: minhasVotacoes = [] } = useMinhasVotacoes();
   const votacoesNaoVistas = minhasVotacoes.filter(
     (d) => !d.visualizada && d.votos.length > 0
   ).length;
+  const { data: comentariosGuia = [] } = useRoteiroComentarios(mentoradoId, guiaAtiva);
+  const comentariosAbertos = comentariosGuia.filter((c) => !c.resolvido).length;
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
@@ -2459,6 +2468,20 @@ export const MentoradoRoteirosView = ({
                   </span>
                 )}
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setComentariosPanelOpen((v) => !v)}
+                title="Comentários da guia"
+                className="h-9 w-9 relative"
+              >
+                <MessageSquare className="h-5 w-5" style={{ color: "#B8860B" }} />
+                {comentariosAbertos > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
+                    {comentariosAbertos}
+                  </span>
+                )}
+              </Button>
             </div>
             
             <Button
@@ -2496,6 +2519,13 @@ export const MentoradoRoteirosView = ({
 
       {/* Content */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Painel de comentários (mentorado) */}
+        <RoteiroComentariosPanel
+          mentoradoId={mentoradoId}
+          guiaNumero={guiaAtiva}
+          open={comentariosPanelOpen}
+          onClose={() => setComentariosPanelOpen(false)}
+        />
         {/* Sidebar - Guias */}
         <div className={cn("border-r bg-muted/30 flex-col shrink-0 transition-all duration-200 hidden lg:flex", leftSidebarMinimized ? "w-10" : "lg:w-48")}>
           {/* Toggle para minimizar sidebar esquerda */}
@@ -2547,6 +2577,7 @@ export const MentoradoRoteirosView = ({
                       isEditing={editingGuiaNome === guia.numero}
                       tempNome={tempGuiaNome}
                       filledCount={getFilledCount(guia.numero)}
+                      mentoradoId={mentoradoId}
                       onSelect={() => handleGuiaChange(guia.numero)}
                       onStartEdit={() => {
                         setEditingGuiaNome(guia.numero);
