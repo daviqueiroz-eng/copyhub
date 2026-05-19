@@ -3487,6 +3487,8 @@ export const MentoradoRoteirosView = ({
                     Adicionar roteiro
                   </Button>
                 </div>
+                </>
+                )}
               </div>
               )}
             </div>
