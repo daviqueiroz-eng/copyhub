@@ -29,6 +29,7 @@ import Atividades from "./pages/Atividades";
 import DashGeral from "./pages/DashGeral";
 import CoreStudioTasks from "./pages/CoreStudioTasks";
 import Virais from "./pages/Virais";
+import RoteiroPublico from "./pages/RoteiroPublico";
 
 const queryClient = new QueryClient();
 
@@ -54,31 +55,38 @@ const App = () => (
           <TranscricaoProvider>
             <ViraisRealtimeProvider>
             <HeadlineVotacoesRealtimeProvider>
-            <Layout>
             <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/" element={<RootRedirect />} />
-              <Route path="/dash-geral" element={<ProtectedRoute><DashGeral /></ProtectedRoute>} />
-              <Route path="/acompanhamento" element={<ProtectedRoute><Acompanhamento /></ProtectedRoute>} />
-              <Route path="/perfil" element={<Navigate to="/acompanhamento" replace />} />
-              <Route path="/mentorados" element={<ProtectedRoute><Mentorados /></ProtectedRoute>} />
-              <Route path="/core-manager" element={<ProtectedRoute><CoreStudioTasks /></ProtectedRoute>} />
-              <Route path="/headlines" element={<ProtectedRoute><Headlines /></ProtectedRoute>} />
-              <Route path="/testes" element={<ProtectedRoute><Testes /></ProtectedRoute>} />
-              <Route path="/testes/trinka" element={<ProtectedRoute><TrinkaGame /></ProtectedRoute>} />
-              <Route path="/testes/analise-roteiro" element={<ProtectedRoute><AnaliseRoteiroGame /></ProtectedRoute>} />
-              <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-              <Route path="/treinamentos" element={<ProtectedRoute><Treinamentos /></ProtectedRoute>} />
-              <Route path="/modo-flow" element={<ProtectedRoute><Atividades /></ProtectedRoute>} />
-              <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
-              <Route path="/ideias-melhorias" element={<ProtectedRoute><IdeasMelhorias /></ProtectedRoute>} />
-              <Route path="/usuarios" element={<ProtectedRoute><GerenciarUsuarios /></ProtectedRoute>} />
-              <Route path="/virais" element={<ProtectedRoute><Virais /></ProtectedRoute>} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
+              <Route path="/r/:token" element={<RoteiroPublico />} />
+              <Route
+                path="*"
+                element={
+                  <Layout>
+                    <Routes>
+                      <Route path="/auth" element={<Auth />} />
+                      <Route path="/reset-password" element={<ResetPassword />} />
+                      <Route path="/" element={<RootRedirect />} />
+                      <Route path="/dash-geral" element={<ProtectedRoute><DashGeral /></ProtectedRoute>} />
+                      <Route path="/acompanhamento" element={<ProtectedRoute><Acompanhamento /></ProtectedRoute>} />
+                      <Route path="/perfil" element={<Navigate to="/acompanhamento" replace />} />
+                      <Route path="/mentorados" element={<ProtectedRoute><Mentorados /></ProtectedRoute>} />
+                      <Route path="/core-manager" element={<ProtectedRoute><CoreStudioTasks /></ProtectedRoute>} />
+                      <Route path="/headlines" element={<ProtectedRoute><Headlines /></ProtectedRoute>} />
+                      <Route path="/testes" element={<ProtectedRoute><Testes /></ProtectedRoute>} />
+                      <Route path="/testes/trinka" element={<ProtectedRoute><TrinkaGame /></ProtectedRoute>} />
+                      <Route path="/testes/analise-roteiro" element={<ProtectedRoute><AnaliseRoteiroGame /></ProtectedRoute>} />
+                      <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+                      <Route path="/treinamentos" element={<ProtectedRoute><Treinamentos /></ProtectedRoute>} />
+                      <Route path="/modo-flow" element={<ProtectedRoute><Atividades /></ProtectedRoute>} />
+                      <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
+                      <Route path="/ideias-melhorias" element={<ProtectedRoute><IdeasMelhorias /></ProtectedRoute>} />
+                      <Route path="/usuarios" element={<ProtectedRoute><GerenciarUsuarios /></ProtectedRoute>} />
+                      <Route path="/virais" element={<ProtectedRoute><Virais /></ProtectedRoute>} />
+                      <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
+                    </Routes>
+                  </Layout>
+                }
+              />
             </Routes>
-            </Layout>
             </HeadlineVotacoesRealtimeProvider>
             </ViraisRealtimeProvider>
           </TranscricaoProvider>
