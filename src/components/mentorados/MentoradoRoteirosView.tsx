@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { HeadlinesVisualizacaoDialog, HeadlineVisualItem } from "@/components/mentorados/HeadlinesVisualizacaoDialog";
+import { HeadlinesVisualizacaoPanel, HeadlineVisualItem } from "@/components/mentorados/HeadlinesVisualizacaoDialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
