@@ -1,58 +1,88 @@
-## 1. Botão "Olho" (Modo Visualização de Headlines)
+# Plano
 
-**Onde:** `MentoradoRoteirosView.tsx`, na barra de ações lateral aos botões Undo/Redo (linhas ~2356-2378), adicionar um terceiro botão com ícone `Eye` (lucide-react) com tooltip "Visualizar headlines".
+## 1. Tornar headlines editáveis no modo "olho"
 
-**Comportamento:**
-- Abre um modo overlay (`Dialog` em modo fullscreen ou painel dentro da área central) listando **somente as headlines da guia ativa** no formato da imagem de referência: número da headline + dropdown "Tipo..." + texto da headline + badge contador (quando houver overdelivery/check).
-- Cada item é **arrastável** (usar `@dnd-kit/sortable`, já no projeto) para reordenar.
-- Ao fechar (botão X), a nova ordem é persistida no banco (`mentorados_roteiros.ordem`) via um novo mutate `useReorderRoteiros` que faz `upsert` em lote trocando `ordem` dos registros afetados na guia ativa.
-- Edições de texto ficam **desabilitadas** nesse modo (read-only). Só reorder + ver "Tipo".
-- A ordem fica refletida no editor principal ao voltar.
+No `HeadlinesVisualizacaoPanel` (em `src/components/mentorados/HeadlinesVisualizacaoDialog.tsx`), a headline aparece como `<p>` somente leitura. Trocar por um campo editável (textarea autogrow) que escreve a alteração direto em `mentorados_roteiros` usando o mesmo padrão de debounce (800ms) já usado em `MentoradoRoteirosView`.
 
-**Novo arquivo:** `src/components/mentorados/HeadlinesVisualizacaoDialog.tsx`
-**Novo hook:** método `reorderRoteiros` em `useMentoradosRoteiros.ts` (recebe `mentoradoId`, `guiaNumero`, `Array<{id, ordem}>`, faz upsert chamando `markLocalWrite()`).
+- Substituir o `<p>` da `SortableRow` por um `<textarea>` com autogrow.
+- Onde clicar/digitar, suspender o drag (drag handle continua só no `GripVertical`).
+- Salvamento: chamar uma nova mutação `useUpdateHeadlineOrdem(mentoradoId, guiaNumero, ordem, headline)` em `useMentoradosRoteiros.ts` que faz `upsert` apenas do campo `headline` da linha correspondente, mantendo `estrutura`, `tipo_roteiro_id` e `link_referencia` intactos.
+- Debounce local de 800ms + reflexo do valor digitado em tempo real (estado local controlado).
+- Sem mexer na edição de estrutura/tipo (continua sendo feito na view normal).
 
-## 2. Bug: Texto Colado Sumindo
+## 2. Ícone de espada por headline → dispara votação ao vivo
 
-**Causa identificada:** em `MentoradoRoteirosView.tsx` linhas 687-713, o `useEffect` que sincroniza `roteiros` (vindo do banco) para `roteirosLocais` **substitui o mapa inteiro** toda vez que `roteiros` muda. Quando o usuário cola texto:
-1. Local muda → debounce de 800ms agendado
-2. Antes do save terminar, qualquer refetch (realtime após janela de 4s, foco da janela, etc.) retorna o `roteiros` do banco sem o paste
-3. O `useEffect` sobrescreve `roteirosLocais` → conteúdo colado some
+Adicionar um botão de espada (ícone `Swords` do lucide) ao lado de cada headline na visualização. Ao clicar:
+- Cria uma "votação" na tabela e envia broadcast realtime para todos os usuários.
+- Duração: 3 minutos. Tipo: nota de 1 a 10. Comentário opcional.
 
-**Correção:**
-- No useEffect de sincronização, **preservar** chaves que têm timer de debounce pendente em `debounceTimersRef.current` (paste/typing ainda não persistido).
-- Para cada key vinda do banco: se `debounceTimersRef.current.has(key)`, manter o valor local; caso contrário, usar valor do banco.
-- Também ignorar a sincronização inicial se `isUndoRedoRef.current` estiver true.
+### Banco de dados (nova migração)
 
-```ts
-roteiros.forEach((r) => {
-  const key = `${r.guia_numero}-${r.ordem}`;
-  if (debounceTimersRef.current.has(key)) {
-    // pending local write — preserve current local value
-    const existing = roteirosLocais.get(key);
-    if (existing) { newMap.set(key, existing); return; }
-  }
-  newMap.set(key, { headline: r.headline || "", ... });
-});
-```
+Duas tabelas novas:
 
-## 3. Posição (foco) por Leva (Guia)
+`headline_votacoes`
+- `id uuid pk`
+- `criado_por uuid` (auth.uid())
+- `mentorado_id uuid`
+- `guia_numero int`
+- `ordem int`
+- `headline_texto text` (snapshot)
+- `iniciada_em timestamptz default now()`
+- `expira_em timestamptz` (now() + 3 min)
+- `encerrada bool default false`
 
-**Comportamento esperado:** ao sair da Guia 1 olhando para a Headline 8 e voltar depois (vindo de outra guia onde olhava a Headline 5), restaurar o scroll para a Headline 8 da Guia 1.
+RLS:
+- SELECT: todos autenticados (todo mundo precisa receber).
+- INSERT: `auth.uid() = criado_por`.
+- UPDATE: só criador (para marcar `encerrada`).
 
-**Implementação:**
-- Novo state `lastFocusedOrdemPerGuia: Record<number, number>` (Map por `guiaNumero` → `ordem` da headline mais recentemente visível/focada).
-- Observar o scroll do container central (já existe um scroll wrapper na área dos roteiros) com `IntersectionObserver` — sempre que um card de roteiro entra como "principal visível" (>50% visível), gravar `ordem` no map para a `guiaAtiva`.
-- Também atualizar no `onFocus` dos campos `headline`/`estrutura` para garantir precisão quando o usuário está digitando.
-- Em `handleGuiaChange(novaGuia)`, após trocar `guiaAtiva`, agendar (via `requestAnimationFrame` + pequeno timeout) um `scrollIntoView({ block: "center" })` no card cujo `data-ordem={lastFocusedOrdemPerGuia[novaGuia]}`.
-- Persistir o map em `sessionStorage` com chave `roteiro-foco-${mentoradoId}` para sobreviver à navegação entre Virais/voltar, conforme padrão já usado para `lastOpenedMentoradoId`.
+`headline_votacoes_votos`
+- `id uuid pk`
+- `votacao_id uuid`
+- `user_id uuid`
+- `nota int` (1..10, validado por trigger, não check)
+- `comentario text null`
+- `created_at timestamptz default now()`
+- UNIQUE (`votacao_id`, `user_id`)
 
-**Marcador no DOM:** adicionar `data-ordem={r.ordem}` e `data-guia={r.guia_numero}` no wrapper de cada card de roteiro renderizado.
+RLS:
+- SELECT: todos autenticados (criador precisa ver resultado; participantes podem ver o próprio voto — simplificar liberando SELECT autenticado).
+- INSERT: `auth.uid() = user_id` E votação não expirada/encerrada (validar via trigger ou em policy com subselect simples).
 
-## Arquivos afetados
+Adicionar ambas ao `supabase_realtime` publication.
 
-- `src/components/mentorados/MentoradoRoteirosView.tsx` (botão Eye, sync defensivo, scroll-restore, data-attrs)
-- `src/components/mentorados/HeadlinesVisualizacaoDialog.tsx` (novo)
-- `src/hooks/useMentoradosRoteiros.ts` (`useReorderRoteiros`)
+Tabela auxiliar `headline_votacoes_visualizadas`:
+- `id, votacao_id, user_id, visualizada_em` — para o criador marcar resultados já vistos e calcular o "+N" não vistos.
 
-Nenhuma migração de banco necessária — só usa `ordem` que já existe.
+### Frontend
+
+Novo hook `useHeadlineVotacoes.ts`:
+- `useDispararVotacao({ mentoradoId, guiaNumero, ordem, headline })` — INSERT em `headline_votacoes`.
+- `useRegistrarVoto({ votacao_id, nota, comentario })` — INSERT em `headline_votacoes_votos`.
+- `useVotacoesAtivas()` — query + canal realtime de `headline_votacoes` onde `expira_em > now()` e `encerrada = false`. Auto-encerra ao expirar (UPDATE local + filtro).
+- `useResultadosVotacoes()` — busca votações criadas pelo `auth.uid()` já encerradas, junto com agregação dos votos.
+
+Novo provider `HeadlineVotacoesRealtimeProvider` montado no `App.tsx` (alto nível), análogo ao `ViraisRealtimeProvider`. Ele:
+- Escuta INSERTs em `headline_votacoes` e, para cada nova votação cujo `criado_por !== auth.uid()`, abre um toast persistente top-right (sonner) com:
+  - Snapshot da headline.
+  - Slider/Select de nota 1..10.
+  - Textarea opcional "comentário".
+  - Countdown ao vivo (mm:ss) que fecha sozinho ao expirar.
+- Escuta INSERTs em `headline_votacoes_votos` e, se a votação foi criada por mim, incrementa o contador "+N" não visto.
+
+UI no `HeadlinesVisualizacaoPanel`:
+- Botão `Swords` ao lado do grip de cada headline → confirma e chama `useDispararVotacao`.
+- Segundo botão `Swords` no topo do painel (badge "+N" quando há resultados não vistos) → abre `ResultadosVotacaoDialog` listando minhas votações com: headline, número de votos, média, distribuição (1–10) e comentários. Ao abrir, marca como visualizado.
+
+### Arquivos
+
+- migração SQL (nova) — 3 tabelas + RLS + realtime
+- `src/hooks/useHeadlineVotacoes.ts` (novo)
+- `src/contexts/HeadlineVotacoesRealtimeProvider.tsx` (novo)
+- `src/components/mentorados/HeadlineVotacaoToast.tsx` (novo — card que vai dentro do toast)
+- `src/components/mentorados/ResultadosVotacaoDialog.tsx` (novo)
+- `src/components/mentorados/HeadlinesVisualizacaoDialog.tsx` (editar — campo editável + 2 botões de espada)
+- `src/hooks/useMentoradosRoteiros.ts` (editar — adicionar `useUpdateHeadlineCampo`)
+- `src/App.tsx` (editar — montar o novo provider)
+
+Sem mudanças nos fluxos de edição existentes fora do painel "olho".
