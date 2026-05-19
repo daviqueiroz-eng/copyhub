@@ -268,6 +268,13 @@ export const HeadlinesVisualizacaoPanel = ({
 }: PanelProps) => {
   const [ordered, setOrdered] = useState<HeadlineVisualItem[]>(items);
   const reorder = useReorderRoteiros();
+  const upsert = useUpsertMentoradoRoteiro();
+  const disparar = useDispararVotacao();
+  const { data: minhasVotacoes = [] } = useMinhasVotacoes();
+  const [resultadosOpen, setResultadosOpen] = useState(false);
+  const debounceTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(
+    new Map()
+  );
 
   useEffect(() => {
     setOrdered(items);
@@ -313,6 +320,64 @@ export const HeadlinesVisualizacaoPanel = ({
     }
   };
 
+  const handleChangeHeadline = (ordem: number, novo: string) => {
+    setOrdered((prev) =>
+      prev.map((it) => (it.ordem === ordem ? { ...it, headline: novo } : it))
+    );
+    const existing = debounceTimers.current.get(ordem);
+    if (existing) clearTimeout(existing);
+    const t = setTimeout(async () => {
+      const current = ordered.find((it) => it.ordem === ordem);
+      const itemToSave =
+        ordered.find((it) => it.ordem === ordem) ?? current;
+      const target =
+        // pegar valor mais recente do estado
+        novo;
+      try {
+        markLocalWrite();
+        await upsert.mutateAsync({
+          mentoradoId,
+          guiaNumero,
+          ordem,
+          headline: target,
+          estrutura: itemToSave?.estrutura ?? "",
+          tipoRoteiroId: itemToSave?.tipo_roteiro_id ?? null,
+          linkReferencia: itemToSave?.link_referencia ?? null,
+        });
+      } catch (e: any) {
+        toast({
+          title: "Erro ao salvar headline",
+          description: e?.message ?? "Tente novamente",
+          variant: "destructive",
+        });
+      }
+      debounceTimers.current.delete(ordem);
+    }, 800);
+    debounceTimers.current.set(ordem, t);
+  };
+
+  const handleDisparar = async (it: HeadlineVisualItem) => {
+    try {
+      await disparar.mutateAsync({
+        mentoradoId,
+        guiaNumero,
+        ordem: it.ordem,
+        headline: it.headline ?? "",
+      });
+      toast({ title: "Votação disparada (3 min)" });
+    } catch (e: any) {
+      toast({
+        title: "Erro ao disparar votação",
+        description: e?.message ?? "Tente novamente",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const naoVistos = minhasVotacoes.filter(
+    (d) => !d.visualizada && d.votos.length > 0
+  ).length;
+
   return (
     <div
       className="max-w-3xl mx-auto"
@@ -329,6 +394,21 @@ export const HeadlinesVisualizacaoPanel = ({
           {isDirty && !reorder.isPending && (
             <span className="text-xs text-muted-foreground">Salvando...</span>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setResultadosOpen(true)}
+            className="relative"
+            title="Resultados das minhas votações"
+          >
+            <Swords className="h-4 w-4 mr-1" />
+            Resultados
+            {naoVistos > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
+                +{naoVistos}
+              </span>
+            )}
+          </Button>
           <Button variant="outline" size="sm" onClick={onClose}>
             Voltar para edição
           </Button>
@@ -342,11 +422,22 @@ export const HeadlinesVisualizacaoPanel = ({
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
             {ordered.map((it, idx) => (
-              <SortableRow key={it.ordem} item={it} index={idx} />
+              <SortableRow
+                key={it.ordem}
+                item={it}
+                index={idx}
+                editable
+                onChangeHeadline={handleChangeHeadline}
+                onDispararVotacao={handleDisparar}
+              />
             ))}
           </div>
         </SortableContext>
       </DndContext>
+      <ResultadosVotacaoDialog
+        open={resultadosOpen}
+        onOpenChange={setResultadosOpen}
+      />
     </div>
   );
 };
