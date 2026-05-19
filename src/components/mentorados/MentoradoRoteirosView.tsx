@@ -161,6 +161,7 @@ const SortableGuiaItem = ({
   isEditing,
   tempNome,
   filledCount,
+  mentoradoId,
   onSelect,
   onStartEdit,
   onNameChange,
@@ -173,6 +174,7 @@ const SortableGuiaItem = ({
   isEditing: boolean;
   tempNome: string;
   filledCount: number;
+  mentoradoId: string;
   onSelect: () => void;
   onStartEdit: () => void;
   onNameChange: (name: string) => void;
@@ -263,6 +265,7 @@ const SortableGuiaItem = ({
       >
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
+      <ShareGuiaPopover mentoradoId={mentoradoId} guiaNumero={guia.numero} />
     </div>
   );
 };
