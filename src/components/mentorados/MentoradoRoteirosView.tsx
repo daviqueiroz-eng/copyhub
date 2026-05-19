@@ -111,6 +111,9 @@ import {
   useBulkToggleChecklistProgress,
 } from "@/hooks/useHeadlineChecklist";
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
+import { ShareGuiaPopover } from "./ShareGuiaPopover";
+import { RoteiroComentariosPanel } from "./RoteiroComentariosPanel";
+import { useRoteiroComentarios } from "@/hooks/useRoteiroComentarios";
 import { useNichos, useCreateNicho, useDeleteNicho } from "@/hooks/useNichos";
 import { useCreateTermoViral, useTermosVirais } from "@/hooks/useTermosVirais";
 
