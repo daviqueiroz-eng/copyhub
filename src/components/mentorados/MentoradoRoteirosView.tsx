@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, Swords, MessageSquare, MoreVertical, Share2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -54,6 +55,7 @@ import {
   useRestoreGuia,
   markLocalWrite,
 } from "@/hooks/useMentoradosRoteiros";
+import { HeadlineAudioRecorder } from "./HeadlineAudioRecorder";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -449,6 +451,33 @@ export const MentoradoRoteirosView = ({
   const historyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
+  const queryClient = useQueryClient();
+  // Mapa de áudios complementares por chave guia-ordem
+  const audioByKey = useMemo(() => {
+    const m = new Map<string, string | null>();
+    (roteiros as unknown as Array<{ guia_numero: number; ordem: number; headline_audio_url?: string | null }>).forEach((r) => {
+      m.set(`${r.guia_numero}-${r.ordem}`, r.headline_audio_url ?? null);
+    });
+    return m;
+  }, [roteiros]);
+
+  const handleHeadlineAudioChange = useCallback(
+    async (guiaNumero: number, ordem: number, url: string | null) => {
+      markLocalWrite();
+      const { error } = await supabase
+        .from("mentorados_roteiros")
+        .update({ headline_audio_url: url })
+        .eq("mentorado_id", mentoradoId)
+        .eq("guia_numero", guiaNumero)
+        .eq("ordem", ordem);
+      if (error) {
+        toast({ title: "Erro ao salvar áudio", description: error.message, variant: "destructive" });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["mentorados_roteiros", mentoradoId] });
+    },
+    [mentoradoId]
+  );
   const { data: mentorados = [] } = useMentorados();
   const { data: trelloImport } = useTrelloImport();
   const { data: tiposRoteiro = [] } = useTiposRoteiro();
@@ -3358,6 +3387,13 @@ export const MentoradoRoteirosView = ({
                           >
                             <Swords className="h-3.5 w-3.5" style={{ color: "#B8860B" }} />
                           </Button>
+                          <HeadlineAudioRecorder
+                            mentoradoId={mentoradoId}
+                            guiaNumero={guiaAtiva}
+                            ordem={ordem}
+                            audioUrl={audioByKey.get(`${guiaAtiva}-${ordem}`) ?? null}
+                            onChange={(url) => handleHeadlineAudioChange(guiaAtiva, ordem, url)}
+                          />
                         </div>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}

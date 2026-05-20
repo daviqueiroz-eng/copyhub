@@ -29,6 +29,7 @@ type Roteiro = {
   ordem: number;
   headline: string | null;
   estrutura: string | null;
+  headline_audio_url?: string | null;
 };
 
 type Comentario = {
@@ -266,28 +267,36 @@ const RoteiroPublico = () => {
       audioCtxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
+      analyser.fftSize = 1024;
       source.connect(analyser);
       analyserRef.current = analyser;
       const data = new Uint8Array(analyser.frequencyBinCount);
       const draw = () => {
+        if (!analyserRef.current) return;
         const canvas = canvasRef.current;
-        if (!canvas || !analyserRef.current) return;
+        if (!canvas) {
+          // canvas ainda não montou — tenta no próximo frame
+          rafRef.current = requestAnimationFrame(draw);
+          return;
+        }
         const c = canvas.getContext("2d");
         if (!c) return;
-        analyserRef.current.getByteFrequencyData(data);
+        analyserRef.current.getByteTimeDomainData(data);
         const w = canvas.width;
         const h = canvas.height;
         c.clearRect(0, 0, w, h);
-        const bars = 32;
-        const step = Math.floor(data.length / bars);
-        const barW = w / bars;
-        for (let i = 0; i < bars; i++) {
-          const v = data[i * step] / 255;
-          const barH = Math.max(2, v * h);
-          c.fillStyle = "#B8860B";
-          c.fillRect(i * barW + 1, (h - barH) / 2, barW - 2, barH);
+        c.lineWidth = 2;
+        c.strokeStyle = "#B8860B";
+        c.beginPath();
+        const slice = w / data.length;
+        for (let i = 0; i < data.length; i++) {
+          const v = data[i] / 128.0;
+          const y = (v * h) / 2;
+          const x = i * slice;
+          if (i === 0) c.moveTo(x, y);
+          else c.lineTo(x, y);
         }
+        c.stroke();
         rafRef.current = requestAnimationFrame(draw);
       };
       draw();
@@ -589,12 +598,25 @@ const RoteiroPublico = () => {
                     {headline && (
                       <div className="mb-6">
                         <div className="flex items-center justify-between mb-2">
-                          <p
-                            className="text-xs font-bold tracking-wide"
-                            style={{ color: "#B8860B" }}
-                          >
-                            HEADLINE {String(r.ordem).padStart(2, "0")}
-                          </p>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <p
+                              className="text-xs font-bold tracking-wide"
+                              style={{ color: "#B8860B" }}
+                            >
+                              HEADLINE {String(r.ordem).padStart(2, "0")}
+                            </p>
+                            {r.headline_audio_url && (
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="text-sm"
+                                  style={{ color: "#16a34a", fontFamily: '"Caveat", "Comic Sans MS", cursive' }}
+                                >
+                                  🎙 Áudio complementar
+                                </span>
+                                <audio controls src={r.headline_audio_url} className="h-8" style={{ maxWidth: 260 }} />
+                              </div>
+                            )}
+                          </div>
                           <Button
                             variant="ghost"
                             size="sm"

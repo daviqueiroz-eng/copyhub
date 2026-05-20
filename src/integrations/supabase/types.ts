@@ -1859,6 +1859,7 @@ export type Database = {
           estrutura: string | null
           guia_numero: number
           headline: string | null
+          headline_audio_url: string | null
           id: string
           link_referencia: string | null
           mentorado_id: string
@@ -1873,6 +1874,7 @@ export type Database = {
           estrutura?: string | null
           guia_numero?: number
           headline?: string | null
+          headline_audio_url?: string | null
           id?: string
           link_referencia?: string | null
           mentorado_id: string
@@ -1887,6 +1889,7 @@ export type Database = {
           estrutura?: string | null
           guia_numero?: number
           headline?: string | null
+          headline_audio_url?: string | null
           id?: string
           link_referencia?: string | null
           mentorado_id?: string
