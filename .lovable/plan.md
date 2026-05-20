@@ -1,149 +1,37 @@
-# Compartilhar guia com mentorado via link público + comentários
+## Atualizações no sistema de compartilhamento de roteiros
 
-## Visão geral
+### 1. Copiar link sempre com URL personalizada atualizada
+- No `ShareGuiaDialog`, atualmente o campo `url` usa `share?.slug || share?.token`, mas depois de salvar um slug novo o estado local pode estar "atrás" do cache. Garantir que após `salvarSlug` o React Query invalide imediatamente e o input mostre o slug novo antes do copy.
+- Ajustar `useAtualizarShareSlug` para retornar o registro atualizado (`.select().single()`) e fazer `setQueryData` otimista da chave `["roteiro-share", mentoradoId, guiaNumero]`, assim o `url` no diálogo já reflete o novo slug imediatamente, sem precisar reabrir.
 
-Adicionar a possibilidade de **compartilhar uma guia** com o mentorado (ou qualquer pessoa) através de um **link público**, onde a pessoa visualiza o roteiro em modo somente leitura, limpo e minimalista, podendo **comentar** (texto ou áudio) na headline, no roteiro ou em trechos selecionados. Esses comentários aparecem para o usuário interno em um **painel lateral esquerdo** (abrível/minimizável), igual à imagem de referência.
+### 2. Mentorado pode editar o próprio comentário + visualização de onda no áudio
+- **Edição de comentário (RoteiroPublico)**: cada comentário criado pelo visitante guarda um id local (em `localStorage`, chave `roteiro_publico_meus_comentarios_<share_id>`) com a lista de ids que ele criou. Apenas comentários cujo id estiver nessa lista mostram botão "Editar" e "Excluir".
+- Backend: criar duas RPCs `SECURITY DEFINER`:
+  - `atualizar_comentario_publico(_slug_or_token text, _comentario_id uuid, _conteudo_texto text)` — só permite update se o comentário pertence ao share resolvido e não tem `autor_user_id` (foi feito pelo público). Apenas texto é editável (áudio fica imutável para simplicidade).
+  - `excluir_comentario_publico(_slug_or_token text, _comentario_id uuid)` — mesma regra.
+- UI: ao clicar "Editar", o conteúdo vira um `Textarea` inline com botões "Salvar/Cancelar".
+- **Visualização da onda do áudio durante gravação**: usar `AudioContext` + `AnalyserNode` em paralelo ao `MediaRecorder`. Desenhar uma onda animada em um `<canvas>` (waveform tipo barras verticais reagindo ao `getByteFrequencyData`) abaixo do botão de gravar enquanto `isRecording`. Limpar tudo ao parar.
 
-**Regra crítica e inegociável:** os comentários do mentorado **NUNCA** podem sobrescrever ou apagar o conteúdo que ele preencheu. Comentários moram em tabela separada, totalmente isolada dos campos `headline` e `estrutura` dos roteiros.
+### 3. Esconder referências (link_referencia) do mentorado
+- Em `get_roteiro_publico_v2` (e `get_roteiro_publico`), remover `link_referencia` do `jsonb_build_object` dos roteiros, retornando apenas `ordem`, `headline`, `estrutura`.
+- Em `RoteiroPublico.tsx`, remover qualquer renderização do badge "Referência".
 
----
+### 4. Ordenar comentários pela posição do roteiro (não pela data)
+- No painel lateral (`RoteiroComentariosPanel`) e na página pública, ordenar a lista por:
+  1. `ordem` ASC (número do roteiro/headline)
+  2. `escopo` na ordem `headline` → `estrutura` → `selecao`
+  3. `created_at` ASC (desempate dentro do mesmo ponto)
+- Aplicar tanto no SELECT do hook `useRoteiroComentarios` quanto no `get_roteiro_publico_v2` (ORDER BY na agregação).
+- Resultado: se o mentorado comenta H1→E2→H1 novamente, o segundo comentário em H1 fica imediatamente abaixo do primeiro comentário de H1, em ordem cronológica dentro daquele bloco — e E2 fica abaixo de tudo do bloco 1.
 
-## 1. Compartilhamento da guia (lado do usuário interno)
-
-- Ao passar o mouse sobre cada **aba de guia** (no `SortableGuiaItem` dentro de `MentoradoRoteirosView.tsx`), aparece um ícone de **Share2** (lucide) ao lado dos outros ícones.
-- Clique abre um pequeno **popover** com:
-  - Campo readonly com a URL pública (ex.: `https://copyhub.lovable.app/r/{shareToken}`)
-  - Botão **Copiar link**
-  - Toggle **Ativo/Inativo** (para revogar o link)
-- O `shareToken` é um UUID gerado uma vez por guia (mentorado_id + guia_numero) e persistido no banco. Se já existir, reaproveita.
-
-## 2. Página pública do mentorado (`/r/:token`)
-
-Nova rota pública (fora do `ProtectedRoute`): `/r/:token` → `RoteiroPublicoView.tsx`.
-
-Visual **clean e minimalista**:
-- Fundo neutro, fonte Poppins (padrão do projeto).
-- Apenas: nome da guia + lista de blocos `HEADLINE 0X` / `ESTRUTURA 0X` em **somente leitura**.
-- Sem sidebar, sem menus, sem chat IA, sem timer, sem nada.
-- Apenas uma ação por bloco: ícone de balão de comentário ao passar o mouse, ou seleção de texto que dispara um popover flutuante "Comentar trecho selecionado".
-- Painel direito recolhível com a lista de comentários já feitos por ele (para acompanhar a thread).
-
-**Tipos de comentário que o mentorado pode criar:**
-1. Comentário geral na **headline** (escopo = `headline`, ordem N)
-2. Comentário geral no **roteiro/estrutura** (escopo = `estrutura`, ordem N)
-3. Comentário em **trecho selecionado** (escopo = `selecao`, ordem N + `trecho_texto` + range opcional)
-
-**Entrada do comentário:**
-- Aba **Texto**: textarea simples + botão Enviar.
-- Aba **Áudio**: botão gravar usando `MediaRecorder` (igual ao já usado em `useVideoRecorder`/`TeleprompterDialog`). Upload em bucket `roteiro-comentarios-audio`.
-- Sem login. Apenas pede um **nome** uma vez (salvo em `localStorage` por token) para identificar o autor.
-
-## 3. Painel de comentários (lado do usuário interno)
-
-Novo componente `RoteiroComentariosPanel.tsx`, inserido no layout esquerdo do `MentoradoRoteirosView` (similar ao `FloatingNotesPanel`):
-- **Toggle no header** (ícone `MessageSquare` com badge contando comentários não lidos da guia ativa).
-- Aberto: drawer/painel à esquerda com lista de comentários da guia atual, agrupados por headline/estrutura/seleção.
-- Cada item mostra: autor, data, escopo (ex.: "Headline 03" / "Trecho: '...'"), texto ou player de áudio (`<audio controls>`), e botão "marcar como lido / resolver".
-- Realtime via Supabase channel para que novos comentários do mentorado apareçam na hora com um toast no canto superior direito (padrão do projeto).
-- Pode ser **minimizado** (vira só um ícone fino) ou **expandido**.
-
-## 4. Segurança e isolamento de dados
-
-**Não há nenhuma escrita do mentorado nos campos do roteiro.** A página pública só faz:
-- `SELECT` (via função RPC `get_roteiro_publico(token)`) que devolve os blocos da guia em readonly.
-- `INSERT` em `roteiro_comentarios`.
-- `INSERT` em `storage.objects` no bucket de áudio.
-
-Tabelas dos roteiros (`mentorados_roteiros`) ficam **bloqueadas** para usuários anônimos — nenhuma policy nova de UPDATE/DELETE para `anon`.
-
----
-
-## Detalhes técnicos
-
-### Novas tabelas (migration)
-
-```sql
--- Token de compartilhamento por guia
-create table public.roteiro_guia_shares (
-  id uuid primary key default gen_random_uuid(),
-  mentorado_id uuid not null,
-  guia_numero int not null,
-  token uuid not null unique default gen_random_uuid(),
-  ativo boolean not null default true,
-  criado_por uuid not null,
-  created_at timestamptz not null default now(),
-  unique (mentorado_id, guia_numero)
-);
-
--- Comentários
-create table public.roteiro_comentarios (
-  id uuid primary key default gen_random_uuid(),
-  share_id uuid not null references public.roteiro_guia_shares(id) on delete cascade,
-  mentorado_id uuid not null,
-  guia_numero int not null,
-  ordem int not null,
-  escopo text not null check (escopo in ('headline','estrutura','selecao')),
-  trecho_texto text,
-  autor_nome text not null,
-  autor_user_id uuid, -- null para mentorado público
-  conteudo_texto text,
-  audio_url text,
-  resolvido boolean not null default false,
-  lido_por jsonb not null default '[]'::jsonb,
-  created_at timestamptz not null default now()
-);
-
-alter table public.roteiro_guia_shares enable row level security;
-alter table public.roteiro_comentarios enable row level security;
-```
-
-**RLS:**
-- `roteiro_guia_shares`: usuários autenticados leem/inserem/atualizam (whitelist já gerencia auth do app).
-- `roteiro_comentarios`: 
-  - SELECT autenticado: livre (todos os internos veem).
-  - SELECT anônimo: apenas via RPC `get_comentarios_publicos(token)`.
-  - INSERT anônimo: permitido **somente** com `share_id` válido + ativo (validado por trigger/check via função `is_share_ativo(share_id)`).
-
-### Função pública RPC
-
-```sql
-create or replace function public.get_roteiro_publico(_token uuid)
-returns table(...) security definer set search_path = public ...
-```
-Retorna headline/estrutura readonly + lista de comentários do token.
-
-### Bucket de áudio
-
-Bucket `roteiro-comentarios-audio` público para leitura. Upload via cliente público (anon key) com path prefixado pelo share token.
-
-### Componentes / arquivos novos
-
-- `src/pages/RoteiroPublico.tsx` — página pública sem `ProtectedRoute`.
-- `src/components/mentorados/publico/RoteiroPublicoView.tsx` — UI minimalista.
-- `src/components/mentorados/publico/ComentarioInput.tsx` — texto + áudio.
-- `src/components/mentorados/ShareGuiaPopover.tsx` — popover do botão Share.
-- `src/components/mentorados/RoteiroComentariosPanel.tsx` — painel lateral esquerdo.
-- `src/hooks/useRoteiroShares.ts` — get/create token por guia.
-- `src/hooks/useRoteiroComentarios.ts` — list/insert/realtime.
-
-### Componentes / arquivos editados
-
-- `src/App.tsx` — adicionar `<Route path="/r/:token" element={<RoteiroPublico />} />` fora do `ProtectedRoute`.
-- `src/components/mentorados/MentoradoRoteirosView.tsx`:
-  - Adicionar ícone Share2 no `SortableGuiaItem` (com hover).
-  - Adicionar toggle de painel de comentários no header (com badge de não lidos).
-  - Renderizar `RoteiroComentariosPanel` à esquerda (acoplado ao layout existente).
-
-### Garantia de não-sobrescrita dos dados do mentor
-
-- A página pública **não importa nem usa** nenhum hook de mutação de `useMentoradosRoteiros`.
-- A função RPC pública só faz SELECT.
-- Não existe nenhum INSERT/UPDATE anônimo em `mentorados_roteiros` (policies continuam restritas a `authenticated`).
-
----
-
-## Fora de escopo (para confirmar antes de implementar)
-
-- Notificações por e-mail quando o mentorado comenta — não incluído.
-- Resposta do mentor aparecendo de volta para o mentorado — não incluído (mentorado só comenta, não vê respostas). Confirmar se está correto.
-- Expiração automática do link — não incluído (só toggle ativo/inativo manual).
+### Detalhes técnicos
+- **Arquivos editados**:
+  - `src/components/mentorados/ShareGuiaPopover.tsx` — atualização otimista do slug
+  - `src/hooks/useRoteiroShares.ts` — `useAtualizarShareSlug` retorna registro + setQueryData
+  - `src/pages/RoteiroPublico.tsx` — waveform, editar/excluir próprios comentários, remover referência, ordenação
+  - `src/components/mentorados/RoteiroComentariosPanel.tsx` — ordenação por posição
+  - `src/hooks/useRoteiroComentarios.ts` — ORDER BY ordem, escopo_rank, created_at
+- **Nova migration**:
+  - Atualizar `get_roteiro_publico_v2` (remover `link_referencia`, ordenar comentários por ordem+escopo+created_at)
+  - Criar `atualizar_comentario_publico` e `excluir_comentario_publico` (SECURITY DEFINER, restritas a comentários públicos do share)
+- **localStorage** identifica quais comentários o visitante pode editar (sem login).

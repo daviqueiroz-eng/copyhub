@@ -57,9 +57,17 @@ export const useRoteiroComentarios = (
         .select("*")
         .eq("mentorado_id", mentoradoId)
         .eq("guia_numero", guiaNumero)
-        .order("created_at", { ascending: false });
+        .order("ordem", { ascending: true })
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as RoteiroComentario[];
+      const rows = (data ?? []) as unknown as RoteiroComentario[];
+      const rank = (e: string) => (e === "headline" ? 1 : e === "estrutura" ? 2 : 3);
+      return rows.sort((a, b) => {
+        if (a.ordem !== b.ordem) return a.ordem - b.ordem;
+        const r = rank(a.escopo) - rank(b.escopo);
+        if (r !== 0) return r;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
     },
     enabled: !!mentoradoId && !!guiaNumero,
   });
