@@ -262,20 +262,60 @@ const SortableGuiaItem = ({
         </Button>
       )}
       
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 hidden lg:flex"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        title="Apagar guia"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
-      <ShareGuiaPopover mentoradoId={mentoradoId} guiaNumero={guia.numero} />
+      <GuiaActionsMenu
+        mentoradoId={mentoradoId}
+        guiaNumero={guia.numero}
+        onDelete={onDelete}
+      />
     </div>
+  );
+};
+
+const GuiaActionsMenu = ({
+  mentoradoId,
+  guiaNumero,
+  onDelete,
+}: {
+  mentoradoId: string;
+  guiaNumero: number;
+  onDelete: () => void;
+}) => {
+  const [shareOpen, setShareOpen] = useState(false);
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hidden lg:flex"
+            onClick={(e) => e.stopPropagation()}
+            title="Opções da guia"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuItem onSelect={() => setShareOpen(true)}>
+            <Share2 className="h-4 w-4 mr-2" style={{ color: "#B8860B" }} />
+            Compartilhar
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => onDelete()}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Apagar
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ShareGuiaDialog
+        mentoradoId={mentoradoId}
+        guiaNumero={guiaNumero}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
+    </>
   );
 };
 
