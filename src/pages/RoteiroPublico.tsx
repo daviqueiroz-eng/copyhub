@@ -29,6 +29,7 @@ type Roteiro = {
   ordem: number;
   headline: string | null;
   estrutura: string | null;
+  headline_audio_url?: string | null;
 };
 
 type Comentario = {
