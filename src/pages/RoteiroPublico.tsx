@@ -598,12 +598,25 @@ const RoteiroPublico = () => {
                     {headline && (
                       <div className="mb-6">
                         <div className="flex items-center justify-between mb-2">
-                          <p
-                            className="text-xs font-bold tracking-wide"
-                            style={{ color: "#B8860B" }}
-                          >
-                            HEADLINE {String(r.ordem).padStart(2, "0")}
-                          </p>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <p
+                              className="text-xs font-bold tracking-wide"
+                              style={{ color: "#B8860B" }}
+                            >
+                              HEADLINE {String(r.ordem).padStart(2, "0")}
+                            </p>
+                            {r.headline_audio_url && (
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="text-sm"
+                                  style={{ color: "#16a34a", fontFamily: '"Caveat", "Comic Sans MS", cursive' }}
+                                >
+                                  🎙 Áudio complementar
+                                </span>
+                                <audio controls src={r.headline_audio_url} className="h-8" style={{ maxWidth: 260 }} />
+                              </div>
+                            )}
+                          </div>
                           <Button
                             variant="ghost"
                             size="sm"
