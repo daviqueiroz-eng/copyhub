@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { Share2, Copy, Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -16,29 +18,32 @@ import {
   useToggleShareAtivo,
 } from "@/hooks/useRoteiroShares";
 
-export const ShareGuiaPopover = ({
+export const ShareGuiaDialog = ({
   mentoradoId,
   guiaNumero,
+  open,
+  onOpenChange,
 }: {
   mentoradoId: string;
   guiaNumero: number;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
 }) => {
-  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const { data: share } = useRoteiroShare(mentoradoId, guiaNumero);
   const criar = useCriarOuObterShare();
   const toggle = useToggleShareAtivo();
 
-  const handleOpen = async (next: boolean) => {
-    setOpen(next);
-    if (next && !share) {
-      try {
-        await criar.mutateAsync({ mentoradoId, guiaNumero });
-      } catch (e) {
-        toast({ title: "Erro ao gerar link", variant: "destructive" });
-      }
+  useEffect(() => {
+    if (open && !share) {
+      criar
+        .mutateAsync({ mentoradoId, guiaNumero })
+        .catch(() =>
+          toast({ title: "Erro ao gerar link", variant: "destructive" })
+        );
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, share]);
 
   const url = share
     ? `${window.location.origin}/r/${share.token}`
@@ -53,30 +58,15 @@ export const ShareGuiaPopover = ({
   };
 
   return (
-    <Popover open={open} onOpenChange={handleOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 hidden lg:flex hover:bg-[#B8860B]/10"
-          onClick={(e) => e.stopPropagation()}
-          title="Compartilhar guia"
-        >
-          <Share2 className="h-4 w-4" style={{ color: "#B8860B" }} />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-80"
-        align="end"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle>Compartilhar guia</DialogTitle>
+          <DialogDescription>
+            Envie esse link para o mentorado comentar
+          </DialogDescription>
+        </DialogHeader>
         <div className="space-y-3">
-          <div>
-            <p className="font-semibold text-sm">Compartilhar guia</p>
-            <p className="text-xs text-muted-foreground">
-              Envie esse link para o mentorado comentar
-            </p>
-          </div>
           <div className="flex gap-2">
             <Input value={url} readOnly className="text-xs" />
             <Button size="icon" variant="outline" onClick={handleCopy} disabled={!share}>
@@ -98,7 +88,7 @@ export const ShareGuiaPopover = ({
             </div>
           )}
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 };

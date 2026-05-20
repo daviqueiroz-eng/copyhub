@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, Swords, MessageSquare } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, Swords, MessageSquare, MoreVertical, Share2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -111,7 +111,13 @@ import {
   useBulkToggleChecklistProgress,
 } from "@/hooks/useHeadlineChecklist";
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
-import { ShareGuiaPopover } from "./ShareGuiaPopover";
+import { ShareGuiaDialog } from "./ShareGuiaPopover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { RoteiroComentariosPanel } from "./RoteiroComentariosPanel";
 import { useRoteiroComentarios } from "@/hooks/useRoteiroComentarios";
 import { useNichos, useCreateNicho, useDeleteNicho } from "@/hooks/useNichos";
@@ -256,20 +262,60 @@ const SortableGuiaItem = ({
         </Button>
       )}
       
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10 hidden lg:flex"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        title="Apagar guia"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
-      <ShareGuiaPopover mentoradoId={mentoradoId} guiaNumero={guia.numero} />
+      <GuiaActionsMenu
+        mentoradoId={mentoradoId}
+        guiaNumero={guia.numero}
+        onDelete={onDelete}
+      />
     </div>
+  );
+};
+
+const GuiaActionsMenu = ({
+  mentoradoId,
+  guiaNumero,
+  onDelete,
+}: {
+  mentoradoId: string;
+  guiaNumero: number;
+  onDelete: () => void;
+}) => {
+  const [shareOpen, setShareOpen] = useState(false);
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hidden lg:flex"
+            onClick={(e) => e.stopPropagation()}
+            title="Opções da guia"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuItem onSelect={() => setShareOpen(true)}>
+            <Share2 className="h-4 w-4 mr-2" style={{ color: "#B8860B" }} />
+            Compartilhar
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => onDelete()}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Apagar
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ShareGuiaDialog
+        mentoradoId={mentoradoId}
+        guiaNumero={guiaNumero}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
+    </>
   );
 };
 
