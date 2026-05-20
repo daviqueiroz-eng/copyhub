@@ -404,10 +404,15 @@ const RoteiroPublico = () => {
   const meusComentarios = useMemo(
     () =>
       dados?.comentarios.filter(
-        (c) => c.autor_nome.trim().toLowerCase() === nome.trim().toLowerCase()
+        (c) =>
+          meusIds.includes(c.id) ||
+          (nome.trim() &&
+            c.autor_nome.trim().toLowerCase() === nome.trim().toLowerCase())
       ) ?? [],
-    [dados, nome]
+    [dados, nome, meusIds]
   );
+
+  const podeEditar = (id: string) => meusIds.includes(id);
 
   if (loading) {
     return (
@@ -481,11 +486,68 @@ const RoteiroPublico = () => {
                         "{c.trecho_texto}"
                       </p>
                     )}
-                    {c.conteudo_texto && (
-                      <p className="whitespace-pre-wrap mt-1">{c.conteudo_texto}</p>
+                    {editandoId === c.id ? (
+                      <div className="space-y-1 mt-1">
+                        <Textarea
+                          value={editTexto}
+                          onChange={(e) => setEditTexto(e.target.value)}
+                          rows={3}
+                          className="text-xs"
+                        />
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={() => {
+                              setEditandoId(null);
+                              setEditTexto("");
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={() => salvarEdicao(c.id)}
+                          >
+                            Salvar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      c.conteudo_texto && (
+                        <p className="whitespace-pre-wrap mt-1">{c.conteudo_texto}</p>
+                      )
                     )}
                     {c.audio_url && (
                       <audio controls src={c.audio_url} className="w-full mt-1 h-8" />
+                    )}
+                    {podeEditar(c.id) && editandoId !== c.id && (
+                      <div className="flex justify-end gap-1 mt-1">
+                        {c.conteudo_texto && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={() => {
+                              setEditandoId(c.id);
+                              setEditTexto(c.conteudo_texto ?? "");
+                            }}
+                          >
+                            <Pencil className="h-3 w-3 mr-1" />
+                            Editar
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-[10px] text-destructive"
+                          onClick={() => excluirMeuComentario(c.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -549,17 +611,6 @@ const RoteiroPublico = () => {
                         >
                           {headline}
                         </p>
-                        {r.link_referencia && (
-                          <a
-                            href={r.link_referencia}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline mt-1"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            Referência
-                          </a>
-                        )}
                       </div>
                     )}
                     {estrutura && (
