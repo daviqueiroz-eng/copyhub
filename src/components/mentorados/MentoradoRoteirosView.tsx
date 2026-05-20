@@ -3387,6 +3387,13 @@ export const MentoradoRoteirosView = ({
                           >
                             <Swords className="h-3.5 w-3.5" style={{ color: "#B8860B" }} />
                           </Button>
+                          <HeadlineAudioRecorder
+                            mentoradoId={mentoradoId}
+                            guiaNumero={guiaAtiva}
+                            ordem={ordem}
+                            audioUrl={audioByKey.get(`${guiaAtiva}-${ordem}`) ?? null}
+                            onChange={(url) => handleHeadlineAudioChange(guiaAtiva, ordem, url)}
+                          />
                         </div>
                         <InlineSpellCheckEditor
                           value={roteiro.headline}
