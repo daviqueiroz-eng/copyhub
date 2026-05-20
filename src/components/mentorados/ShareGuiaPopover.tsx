@@ -58,11 +58,11 @@ export const ShareGuiaPopover = ({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity hidden lg:flex"
+          className="h-8 w-8 hidden lg:flex hover:bg-[#B8860B]/10"
           onClick={(e) => e.stopPropagation()}
           title="Compartilhar guia"
         >
-          <Share2 className="h-3.5 w-3.5" style={{ color: "#B8860B" }} />
+          <Share2 className="h-4 w-4" style={{ color: "#B8860B" }} />
         </Button>
       </PopoverTrigger>
       <PopoverContent
