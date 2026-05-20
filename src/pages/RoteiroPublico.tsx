@@ -74,14 +74,15 @@ const RoteiroPublico = () => {
   const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const mimeRef = useRef<string>("audio/webm");
   const [enviando, setEnviando] = useState(false);
 
   // Carrega dados
   const carregar = async () => {
     if (!token) return;
     setLoading(true);
-    const { data, error } = await supabase.rpc("get_roteiro_publico", {
-      _token: token,
+    const { data, error } = await supabase.rpc("get_roteiro_publico_v2", {
+      _slug_or_token: token,
     });
     if (error) {
       setErro("Erro ao carregar.");
@@ -181,19 +182,33 @@ const RoteiroPublico = () => {
   const iniciarGravacao = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
+      const candidates = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4;codecs=mp4a.40.2",
+        "audio/mp4",
+        "audio/aac",
+      ];
+      const mime =
+        candidates.find((c) =>
+          typeof MediaRecorder !== "undefined" &&
+          (MediaRecorder as unknown as { isTypeSupported?: (t: string) => boolean })
+            .isTypeSupported?.(c)
+        ) || "";
+      mimeRef.current = mime || "audio/webm";
+      const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       mediaRef.current = mr;
       chunksRef.current = [];
       mr.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       mr.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const blob = new Blob(chunksRef.current, { type: mimeRef.current });
         setAudioBlob(blob);
         setAudioPreviewUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach((t) => t.stop());
       };
-      mr.start();
+      mr.start(250);
       setGravando(true);
     } catch (e) {
       toast({ title: "Não foi possível acessar o microfone", variant: "destructive" });
@@ -221,18 +236,20 @@ const RoteiroPublico = () => {
       localStorage.setItem(NOME_KEY_PREFIX + token, nomeTrim);
       let audioUrl: string | null = null;
       if (audioBlob) {
-        const fileName = `${token}/${Date.now()}.webm`;
+        const mime = mimeRef.current || audioBlob.type || "audio/webm";
+        const ext = mime.includes("mp4") ? "mp4" : mime.includes("aac") ? "aac" : "webm";
+        const fileName = `${token}/${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("roteiro-comentarios-audio")
-          .upload(fileName, audioBlob, { contentType: "audio/webm" });
+          .upload(fileName, audioBlob, { contentType: mime });
         if (upErr) throw upErr;
         const { data: pub } = supabase.storage
           .from("roteiro-comentarios-audio")
           .getPublicUrl(fileName);
         audioUrl = pub.publicUrl;
       }
-      const { error } = await supabase.rpc("inserir_comentario_publico", {
-        _token: token,
+      const { error } = await supabase.rpc("inserir_comentario_publico_v2", {
+        _slug_or_token: token,
         _ordem: contexto.ordem,
         _escopo: contexto.escopo,
         _trecho_texto: contexto.trecho ?? null,
