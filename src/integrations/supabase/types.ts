@@ -2970,6 +2970,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      atualizar_comentario_publico: {
+        Args: {
+          _comentario_id: string
+          _conteudo_texto: string
+          _slug_or_token: string
+        }
+        Returns: undefined
+      }
+      excluir_comentario_publico: {
+        Args: { _comentario_id: string; _slug_or_token: string }
+        Returns: undefined
+      }
       get_roteiro_publico: { Args: { _token: string }; Returns: Json }
       get_roteiro_publico_v2: {
         Args: { _slug_or_token: string }
