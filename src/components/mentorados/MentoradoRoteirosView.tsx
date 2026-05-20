@@ -451,6 +451,7 @@ export const MentoradoRoteirosView = ({
   const historyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
+  const queryClient = useQueryClient();
   // Mapa de áudios complementares por chave guia-ordem
   const audioByKey = useMemo(() => {
     const m = new Map<string, string | null>();
