@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, Swords, MessageSquare } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, Swords, MessageSquare, MoreVertical, Share2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -111,7 +111,13 @@ import {
   useBulkToggleChecklistProgress,
 } from "@/hooks/useHeadlineChecklist";
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
-import { ShareGuiaPopover } from "./ShareGuiaPopover";
+import { ShareGuiaDialog } from "./ShareGuiaPopover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { RoteiroComentariosPanel } from "./RoteiroComentariosPanel";
 import { useRoteiroComentarios } from "@/hooks/useRoteiroComentarios";
 import { useNichos, useCreateNicho, useDeleteNicho } from "@/hooks/useNichos";
