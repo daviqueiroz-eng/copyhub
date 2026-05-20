@@ -85,13 +85,22 @@ export const useAtualizarShareSlug = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { id: string; slug: string | null }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("roteiro_guia_shares")
         .update({ slug: input.slug })
-        .eq("id", input.id);
+        .eq("id", input.id)
+        .select()
+        .single();
       if (error) throw error;
+      return data as RoteiroGuiaShare;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data) {
+        qc.setQueryData(
+          ["roteiro-share", data.mentorado_id, data.guia_numero],
+          data
+        );
+      }
       qc.invalidateQueries({ queryKey: ["roteiro-share"] });
     },
   });
