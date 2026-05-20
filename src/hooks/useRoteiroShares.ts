@@ -7,6 +7,7 @@ export type RoteiroGuiaShare = {
   mentorado_id: string;
   guia_numero: number;
   token: string;
+  slug: string | null;
   ativo: boolean;
   criado_por: string;
   created_at: string;
@@ -71,6 +72,22 @@ export const useToggleShareAtivo = () => {
       const { error } = await supabase
         .from("roteiro_guia_shares")
         .update({ ativo: input.ativo })
+        .eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["roteiro-share"] });
+    },
+  });
+};
+
+export const useAtualizarShareSlug = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; slug: string | null }) => {
+      const { error } = await supabase
+        .from("roteiro_guia_shares")
+        .update({ slug: input.slug })
         .eq("id", input.id);
       if (error) throw error;
     },
