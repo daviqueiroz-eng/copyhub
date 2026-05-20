@@ -1,37 +1,47 @@
-## Atualizações no sistema de compartilhamento de roteiros
+## Áudio complementar na headline + waveform do mentorado
 
-### 1. Copiar link sempre com URL personalizada atualizada
-- No `ShareGuiaDialog`, atualmente o campo `url` usa `share?.slug || share?.token`, mas depois de salvar um slug novo o estado local pode estar "atrás" do cache. Garantir que após `salvarSlug` o React Query invalide imediatamente e o input mostre o slug novo antes do copy.
-- Ajustar `useAtualizarShareSlug` para retornar o registro atualizado (`.select().single()`) e fazer `setQueryData` otimista da chave `["roteiro-share", mentoradoId, guiaNumero]`, assim o `url` no diálogo já reflete o novo slug imediatamente, sem precisar reabrir.
+### 1. Gravar áudio na headline (editor do usuário)
 
-### 2. Mentorado pode editar o próprio comentário + visualização de onda no áudio
-- **Edição de comentário (RoteiroPublico)**: cada comentário criado pelo visitante guarda um id local (em `localStorage`, chave `roteiro_publico_meus_comentarios_<share_id>`) com a lista de ids que ele criou. Apenas comentários cujo id estiver nessa lista mostram botão "Editar" e "Excluir".
-- Backend: criar duas RPCs `SECURITY DEFINER`:
-  - `atualizar_comentario_publico(_slug_or_token text, _comentario_id uuid, _conteudo_texto text)` — só permite update se o comentário pertence ao share resolvido e não tem `autor_user_id` (foi feito pelo público). Apenas texto é editável (áudio fica imutável para simplicidade).
-  - `excluir_comentario_publico(_slug_or_token text, _comentario_id uuid)` — mesma regra.
-- UI: ao clicar "Editar", o conteúdo vira um `Textarea` inline com botões "Salvar/Cancelar".
-- **Visualização da onda do áudio durante gravação**: usar `AudioContext` + `AnalyserNode` em paralelo ao `MediaRecorder`. Desenhar uma onda animada em um `<canvas>` (waveform tipo barras verticais reagindo ao `getByteFrequencyData`) abaixo do botão de gravar enquanto `isRecording`. Limpar tudo ao parar.
+**Onde aparece**: ao lado direito do botão de espada (votação) em cada headline no `MentoradoRoteirosView.tsx` (próximo da linha 3340–3360). Um pequeno botão de microfone (`Mic`) com tooltip "Gravar áudio complementar".
 
-### 3. Esconder referências (link_referencia) do mentorado
-- Em `get_roteiro_publico_v2` (e `get_roteiro_publico`), remover `link_referencia` do `jsonb_build_object` dos roteiros, retornando apenas `ordem`, `headline`, `estrutura`.
-- Em `RoteiroPublico.tsx`, remover qualquer renderização do badge "Referência".
+**Comportamento**:
+- Clique inicia gravação inline (substitui o botão por: `Parar` + canvas com waveform animado + cronômetro em segundos, igual ao padrão do `RoteiroPublico`).
+- Ao parar, sobe o blob para o bucket `roteiro-comentarios-audio` (já existe, público) no caminho `headline-audio/<mentorado_id>/<guia>/<ordem>-<timestamp>.<ext>` e salva a URL em uma nova coluna `headline_audio_url` em `mentorados_roteiros`.
+- Quando já existe áudio: aparece um badge verde estilo "🎙 Áudio complementar" + player nativo `<audio controls>` compacto + botão `X` para apagar (limpa coluna e remove do bucket).
+- O próprio usuário pode reproduzir clicando no player.
 
-### 4. Ordenar comentários pela posição do roteiro (não pela data)
-- No painel lateral (`RoteiroComentariosPanel`) e na página pública, ordenar a lista por:
-  1. `ordem` ASC (número do roteiro/headline)
-  2. `escopo` na ordem `headline` → `estrutura` → `selecao`
-  3. `created_at` ASC (desempate dentro do mesmo ponto)
-- Aplicar tanto no SELECT do hook `useRoteiroComentarios` quanto no `get_roteiro_publico_v2` (ORDER BY na agregação).
-- Resultado: se o mentorado comenta H1→E2→H1 novamente, o segundo comentário em H1 fica imediatamente abaixo do primeiro comentário de H1, em ordem cronológica dentro daquele bloco — e E2 fica abaixo de tudo do bloco 1.
+**Componente novo**: `HeadlineAudioRecorder.tsx` (encapsula gravação + waveform + upload + player) — usado dentro do bloco da headline. Reutiliza a mesma lógica de waveform corrigida (ver item 3).
+
+### 2. Mentorado escuta o áudio no link público
+
+**Database**:
+- Migration: `ALTER TABLE mentorados_roteiros ADD COLUMN headline_audio_url text;`
+- Atualizar `get_roteiro_publico_v2` (e `get_roteiro_publico`) para incluir `headline_audio_url` no `jsonb_build_object` dos roteiros.
+
+**UI pública** (`RoteiroPublico.tsx`):
+- Logo após o label "HEADLINE NN", se `roteiro.headline_audio_url` existir, renderizar um chip verde "🎙 Áudio complementar" com `<audio controls>` embutido (visual igual à imagem de referência: label verde manuscrito ao lado do "HEADLINE 01", e player abaixo do título).
+- Mentorado **só escuta** — sem botão de apagar/editar.
+
+### 3. Corrigir waveform durante gravação do mentorado
+
+**Diagnóstico**: o canvas só monta quando `gravando=true`, mas `iniciarWaveform` é chamado no mesmo tick em que setGravando dispara — no primeiro `draw()` o `canvasRef.current` ainda é `null` e o loop sai (`return` sem reagendar `requestAnimationFrame`). Resultado: barra cinza vazia.
+
+**Correção em `RoteiroPublico.tsx`**:
+- No `draw()`, se `canvasRef.current` for null mas o analyser ainda existir, reagendar `requestAnimationFrame(draw)` em vez de retornar — assim ele tenta de novo no próximo frame, quando o canvas já estiver montado.
+- Trocar para `getByteTimeDomainData` (onda senoidal contínua, mais perceptível como "fala") em vez de barras de frequência, ou manter barras mas usar mais ganho visual (`barH = Math.max(2, v * h * 1.5)`).
+- Definir `canvas.width = canvas.clientWidth * devicePixelRatio` no primeiro frame válido, para evitar canvas esticado/borrado.
+
+A mesma função (já corrigida) é reusada pelo `HeadlineAudioRecorder` do editor.
 
 ### Detalhes técnicos
-- **Arquivos editados**:
-  - `src/components/mentorados/ShareGuiaPopover.tsx` — atualização otimista do slug
-  - `src/hooks/useRoteiroShares.ts` — `useAtualizarShareSlug` retorna registro + setQueryData
-  - `src/pages/RoteiroPublico.tsx` — waveform, editar/excluir próprios comentários, remover referência, ordenação
-  - `src/components/mentorados/RoteiroComentariosPanel.tsx` — ordenação por posição
-  - `src/hooks/useRoteiroComentarios.ts` — ORDER BY ordem, escopo_rank, created_at
-- **Nova migration**:
-  - Atualizar `get_roteiro_publico_v2` (remover `link_referencia`, ordenar comentários por ordem+escopo+created_at)
-  - Criar `atualizar_comentario_publico` e `excluir_comentario_publico` (SECURITY DEFINER, restritas a comentários públicos do share)
-- **localStorage** identifica quais comentários o visitante pode editar (sem login).
+
+**Arquivos a editar/criar**:
+- `supabase/migrations/<timestamp>_headline_audio.sql` — adiciona coluna + atualiza as duas RPCs públicas.
+- `src/components/mentorados/HeadlineAudioRecorder.tsx` (novo) — gravação, waveform, upload para `roteiro-comentarios-audio`, player, deletar.
+- `src/components/mentorados/MentoradoRoteirosView.tsx` — montar `<HeadlineAudioRecorder ... />` ao lado do botão Swords; estender o tipo local de roteiro com `headline_audio_url`.
+- `src/hooks/useMentoradosRoteiros.ts` — incluir `headline_audio_url` no select/insert/update (manter compatibilidade com salvamento atual).
+- `src/pages/RoteiroPublico.tsx` — (a) corrigir loop de waveform; (b) renderizar badge "Áudio complementar" + player quando `headline_audio_url` vier do RPC.
+
+**Storage**: o bucket `roteiro-comentarios-audio` já é público — políticas existentes de INSERT públicas serão reutilizadas. Para áudios do dono (editor logado) o upload ocorrerá autenticado normalmente.
+
+**Sem mudança** em: ordenação de comentários, sistema de edição de comentário do mentorado, slug, ou qualquer outra parte do app.
