@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,6 +16,7 @@ import {
   useRoteiroShare,
   useCriarOuObterShare,
   useToggleShareAtivo,
+  useAtualizarShareSlug,
 } from "@/hooks/useRoteiroShares";
 
 export const ShareGuiaDialog = ({
@@ -33,6 +34,13 @@ export const ShareGuiaDialog = ({
   const { data: share } = useRoteiroShare(mentoradoId, guiaNumero);
   const criar = useCriarOuObterShare();
   const toggle = useToggleShareAtivo();
+  const atualizarSlug = useAtualizarShareSlug();
+  const [editandoSlug, setEditandoSlug] = useState(false);
+  const [slugInput, setSlugInput] = useState("");
+
+  useEffect(() => {
+    setSlugInput(share?.slug ?? "");
+  }, [share?.slug]);
 
   useEffect(() => {
     if (open && !share) {
@@ -45,8 +53,9 @@ export const ShareGuiaDialog = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, share]);
 
+  const slugAtual = share?.slug || share?.token || "";
   const url = share
-    ? `${window.location.origin}/r/${share.token}`
+    ? `${window.location.origin}/r/${slugAtual}`
     : "Gerando...";
 
   const handleCopy = async () => {
@@ -55,6 +64,37 @@ export const ShareGuiaDialog = ({
     setCopied(true);
     toast({ title: "Link copiado!" });
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const salvarSlug = async () => {
+    if (!share) return;
+    const limpo = slugInput
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
+    if (limpo && limpo.length < 3) {
+      toast({ title: "Use ao menos 3 caracteres", variant: "destructive" });
+      return;
+    }
+    try {
+      await atualizarSlug.mutateAsync({
+        id: share.id,
+        slug: limpo || null,
+      });
+      setSlugInput(limpo);
+      setEditandoSlug(false);
+      toast({ title: "Link personalizado salvo!" });
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message || "";
+      toast({
+        title: msg.includes("duplicate")
+          ? "Esse link já está em uso"
+          : "Erro ao salvar link",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -73,6 +113,61 @@ export const ShareGuiaDialog = ({
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
+          {share && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Personalizar link</Label>
+              {editandoSlug ? (
+                <div className="flex gap-2 items-center">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    /r/
+                  </span>
+                  <Input
+                    value={slugInput}
+                    onChange={(e) => setSlugInput(e.target.value)}
+                    placeholder="meu-mentorado"
+                    className="text-xs h-8"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    onClick={salvarSlug}
+                    disabled={atualizarSlug.isPending}
+                  >
+                    Salvar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setSlugInput(share.slug ?? "");
+                      setEditandoSlug(false);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground truncate">
+                    {share.slug
+                      ? `/r/${share.slug}`
+                      : "Usando link gerado automaticamente"}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditandoSlug(true)}
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    {share.slug ? "Editar" : "Personalizar"}
+                  </Button>
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground">
+                Apenas letras, números e hífen. Mín. 3 caracteres.
+              </p>
+            </div>
+          )}
           {share && (
             <div className="flex items-center justify-between pt-1">
               <Label htmlFor="share-ativo" className="text-xs">

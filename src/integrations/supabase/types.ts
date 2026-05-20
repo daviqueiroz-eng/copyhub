@@ -2458,6 +2458,7 @@ export type Database = {
           guia_numero: number
           id: string
           mentorado_id: string
+          slug: string | null
           token: string
           updated_at: string
         }
@@ -2468,6 +2469,7 @@ export type Database = {
           guia_numero: number
           id?: string
           mentorado_id: string
+          slug?: string | null
           token?: string
           updated_at?: string
         }
@@ -2478,6 +2480,7 @@ export type Database = {
           guia_numero?: number
           id?: string
           mentorado_id?: string
+          slug?: string | null
           token?: string
           updated_at?: string
         }
@@ -2968,6 +2971,10 @@ export type Database = {
     }
     Functions: {
       get_roteiro_publico: { Args: { _token: string }; Returns: Json }
+      get_roteiro_publico_v2: {
+        Args: { _slug_or_token: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2983,6 +2990,18 @@ export type Database = {
           _escopo: string
           _ordem: number
           _token: string
+          _trecho_texto: string
+        }
+        Returns: string
+      }
+      inserir_comentario_publico_v2: {
+        Args: {
+          _audio_url: string
+          _autor_nome: string
+          _conteudo_texto: string
+          _escopo: string
+          _ordem: number
+          _slug_or_token: string
           _trecho_texto: string
         }
         Returns: string
