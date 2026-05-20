@@ -711,10 +711,23 @@ const RoteiroPublico = () => {
                 </Button>
               )}
               {gravando && (
-                <Button variant="destructive" size="sm" onClick={pararGravacao} className="gap-1">
-                  <Square className="h-4 w-4" />
-                  Parar
-                </Button>
+                <div className="flex items-center gap-2 flex-1">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={pararGravacao}
+                    className="gap-1"
+                  >
+                    <Square className="h-4 w-4" />
+                    Parar
+                  </Button>
+                  <canvas
+                    ref={canvasRef}
+                    width={220}
+                    height={32}
+                    className="flex-1 rounded bg-muted"
+                  />
+                </div>
               )}
               {audioPreviewUrl && !gravando && (
                 <div className="flex items-center gap-2 flex-1">
