@@ -44,7 +44,7 @@ export const RoteiroComentariosPanel = ({
 
   return (
     <div
-      className="hidden lg:flex flex-col border-r bg-background"
+      className="hidden lg:flex flex-col border-l bg-background"
       style={{ width: 320, fontFamily: "'Poppins', system-ui, sans-serif" }}
     >
       <div className="flex items-center justify-between p-3 border-b">
