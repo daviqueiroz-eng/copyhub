@@ -3578,6 +3578,13 @@ export const MentoradoRoteirosView = ({
           mostrarSublinhados={mostrarSublinhados}
           onToggleSublinhados={() => setMostrarSublinhados((v) => !v)}
         />
+        {/* Painel de comentários (mentorado) - lado direito */}
+        <RoteiroComentariosPanel
+          mentoradoId={mentoradoId}
+          guiaNumero={guiaAtiva}
+          open={comentariosPanelOpen}
+          onClose={() => setComentariosPanelOpen(false)}
+        />
       </div>
 
       {/* Botão flutuante com menu expandido para mobile */}
