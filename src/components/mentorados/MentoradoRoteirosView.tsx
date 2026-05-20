@@ -54,6 +54,7 @@ import {
   useRestoreGuia,
   markLocalWrite,
 } from "@/hooks/useMentoradosRoteiros";
+import { HeadlineAudioRecorder } from "./HeadlineAudioRecorder";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -449,6 +450,32 @@ export const MentoradoRoteirosView = ({
   const historyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: roteiros = [], isLoading } = useMentoradosRoteiros(mentoradoId);
+  // Mapa de áudios complementares por chave guia-ordem
+  const audioByKey = useMemo(() => {
+    const m = new Map<string, string | null>();
+    (roteiros as unknown as Array<{ guia_numero: number; ordem: number; headline_audio_url?: string | null }>).forEach((r) => {
+      m.set(`${r.guia_numero}-${r.ordem}`, r.headline_audio_url ?? null);
+    });
+    return m;
+  }, [roteiros]);
+
+  const handleHeadlineAudioChange = useCallback(
+    async (guiaNumero: number, ordem: number, url: string | null) => {
+      markLocalWrite();
+      const { error } = await supabase
+        .from("mentorados_roteiros")
+        .update({ headline_audio_url: url })
+        .eq("mentorado_id", mentoradoId)
+        .eq("guia_numero", guiaNumero)
+        .eq("ordem", ordem);
+      if (error) {
+        toast({ title: "Erro ao salvar áudio", description: error.message, variant: "destructive" });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["mentorados_roteiros", mentoradoId] });
+    },
+    [mentoradoId]
+  );
   const { data: mentorados = [] } = useMentorados();
   const { data: trelloImport } = useTrelloImport();
   const { data: tiposRoteiro = [] } = useTiposRoteiro();
