@@ -21,14 +21,14 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  ExternalLink,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 type Roteiro = {
   ordem: number;
   headline: string | null;
   estrutura: string | null;
-  link_referencia: string | null;
 };
 
 type Comentario = {
@@ -53,6 +53,25 @@ type Dados = {
 };
 
 const NOME_KEY_PREFIX = "roteiro-publico-nome-";
+const MEUS_KEY_PREFIX = "roteiro-publico-meus-";
+
+const lerMeusIds = (token: string): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(MEUS_KEY_PREFIX + token) || "[]");
+  } catch {
+    return [];
+  }
+};
+const salvarMeuId = (token: string, id: string) => {
+  const atual = lerMeusIds(token);
+  if (!atual.includes(id)) {
+    localStorage.setItem(MEUS_KEY_PREFIX + token, JSON.stringify([...atual, id]));
+  }
+};
+const removerMeuIdLocal = (token: string, id: string) => {
+  const atual = lerMeusIds(token).filter((x) => x !== id);
+  localStorage.setItem(MEUS_KEY_PREFIX + token, JSON.stringify(atual));
+};
 
 const RoteiroPublico = () => {
   const { token } = useParams<{ token: string }>();
@@ -76,6 +95,22 @@ const RoteiroPublico = () => {
   const chunksRef = useRef<BlobPart[]>([]);
   const mimeRef = useRef<string>("audio/webm");
   const [enviando, setEnviando] = useState(false);
+
+  // Waveform
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  // Comentários do visitante
+  const [meusIds, setMeusIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (token) setMeusIds(lerMeusIds(token));
+  }, [token]);
+
+  // Edição inline
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editTexto, setEditTexto] = useState("");
 
   // Carrega dados
   const carregar = async () => {
@@ -207,9 +242,11 @@ const RoteiroPublico = () => {
         setAudioBlob(blob);
         setAudioPreviewUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach((t) => t.stop());
+        pararWaveform();
       };
       mr.start(250);
       setGravando(true);
+      iniciarWaveform(stream);
     } catch (e) {
       toast({ title: "Não foi possível acessar o microfone", variant: "destructive" });
     }
@@ -218,6 +255,94 @@ const RoteiroPublico = () => {
   const pararGravacao = () => {
     mediaRef.current?.stop();
     setGravando(false);
+  };
+
+  const iniciarWaveform = (stream: MediaStream) => {
+    try {
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new Ctx();
+      audioCtxRef.current = ctx;
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const draw = () => {
+        const canvas = canvasRef.current;
+        if (!canvas || !analyserRef.current) return;
+        const c = canvas.getContext("2d");
+        if (!c) return;
+        analyserRef.current.getByteFrequencyData(data);
+        const w = canvas.width;
+        const h = canvas.height;
+        c.clearRect(0, 0, w, h);
+        const bars = 32;
+        const step = Math.floor(data.length / bars);
+        const barW = w / bars;
+        for (let i = 0; i < bars; i++) {
+          const v = data[i * step] / 255;
+          const barH = Math.max(2, v * h);
+          c.fillStyle = "#B8860B";
+          c.fillRect(i * barW + 1, (h - barH) / 2, barW - 2, barH);
+        }
+        rafRef.current = requestAnimationFrame(draw);
+      };
+      draw();
+    } catch {
+      // ignore
+    }
+  };
+
+  const pararWaveform = () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    analyserRef.current?.disconnect();
+    analyserRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+  };
+
+  useEffect(() => () => pararWaveform(), []);
+
+  const salvarEdicao = async (id: string) => {
+    if (!token) return;
+    const v = editTexto.trim();
+    if (!v) {
+      toast({ title: "Escreva algo", variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase.rpc("atualizar_comentario_publico", {
+      _slug_or_token: token,
+      _comentario_id: id,
+      _conteudo_texto: v,
+    });
+    if (error) {
+      toast({ title: "Erro ao salvar", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Comentário atualizado!" });
+    setEditandoId(null);
+    setEditTexto("");
+    carregar();
+  };
+
+  const excluirMeuComentario = async (id: string) => {
+    if (!token) return;
+    const { error } = await supabase.rpc("excluir_comentario_publico", {
+      _slug_or_token: token,
+      _comentario_id: id,
+    });
+    if (error) {
+      toast({ title: "Erro ao excluir", variant: "destructive" });
+      return;
+    }
+    removerMeuIdLocal(token, id);
+    setMeusIds(lerMeusIds(token));
+    toast({ title: "Comentário excluído" });
+    carregar();
   };
 
   const enviar = async () => {
@@ -248,7 +373,7 @@ const RoteiroPublico = () => {
           .getPublicUrl(fileName);
         audioUrl = pub.publicUrl;
       }
-      const { error } = await supabase.rpc("inserir_comentario_publico_v2", {
+      const { data: novoId, error } = await supabase.rpc("inserir_comentario_publico_v2", {
         _slug_or_token: token,
         _ordem: contexto.ordem,
         _escopo: contexto.escopo,
@@ -258,6 +383,10 @@ const RoteiroPublico = () => {
         _audio_url: audioUrl,
       });
       if (error) throw error;
+      if (novoId && token) {
+        salvarMeuId(token, novoId as unknown as string);
+        setMeusIds(lerMeusIds(token));
+      }
       toast({ title: "Comentário enviado!" });
       setDialogOpen(false);
       setTexto("");
