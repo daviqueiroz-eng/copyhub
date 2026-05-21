@@ -544,7 +544,14 @@ export const HeadlinesVisualizacaoPanel = ({
               </span>
             )}
           </Button>
-          <Button variant="outline" size="sm" onClick={onClose}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await flushAll();
+              onClose();
+            }}
+          >
             Voltar para edição
           </Button>
         </div>
