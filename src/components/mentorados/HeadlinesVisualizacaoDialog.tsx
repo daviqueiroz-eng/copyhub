@@ -300,9 +300,95 @@ export const HeadlinesVisualizacaoPanel = ({
   const disparar = useDispararVotacao();
   const { data: minhasVotacoes = [] } = useMinhasVotacoes();
   const [resultadosOpen, setResultadosOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const orderedRef = useRef<HeadlineVisualItem[]>(items);
+  useEffect(() => {
+    orderedRef.current = ordered;
+  }, [ordered]);
   const debounceTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(
     new Map()
   );
+  const pendingSaves = useRef<
+    Map<number, { headline: string; linkReferencia: string | null }>
+  >(new Map());
+
+  const saveOrdem = async (ordem: number) => {
+    const pending = pendingSaves.current.get(ordem);
+    if (!pending) return;
+    pendingSaves.current.delete(ordem);
+    const itemToSave = orderedRef.current.find((it) => it.ordem === ordem);
+    try {
+      markLocalWrite();
+      await upsert.mutateAsync({
+        mentoradoId,
+        guiaNumero,
+        ordem,
+        headline: pending.headline,
+        estrutura: itemToSave?.estrutura ?? "",
+        tipoRoteiroId: itemToSave?.tipo_roteiro_id ?? null,
+        linkReferencia: pending.linkReferencia,
+      });
+      // Sync the cache so the normal edit view sees the new values immediately
+      queryClient.setQueryData<any[]>(
+        ["mentorados_roteiros", mentoradoId],
+        (prev) => {
+          if (!prev) return prev;
+          const idx = prev.findIndex(
+            (r) => r.guia_numero === guiaNumero && r.ordem === ordem
+          );
+          if (idx === -1) {
+            return [
+              ...prev,
+              {
+                id: `temp-${guiaNumero}-${ordem}`,
+                mentorado_id: mentoradoId,
+                guia_numero: guiaNumero,
+                ordem,
+                headline: pending.headline,
+                estrutura: itemToSave?.estrutura ?? "",
+                tipo_roteiro_id: itemToSave?.tipo_roteiro_id ?? null,
+                link_referencia: pending.linkReferencia,
+                deleted_at: null,
+              },
+            ];
+          }
+          const copy = [...prev];
+          copy[idx] = {
+            ...copy[idx],
+            headline: pending.headline,
+            link_referencia: pending.linkReferencia,
+          };
+          return copy;
+        }
+      );
+    } catch (e: any) {
+      toast({
+        title: "Erro ao salvar headline",
+        description: e?.message ?? "Tente novamente",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const flushAll = async () => {
+    const ordens = Array.from(pendingSaves.current.keys());
+    debounceTimers.current.forEach((t) => clearTimeout(t));
+    debounceTimers.current.clear();
+    await Promise.all(ordens.map((o) => saveOrdem(o)));
+  };
+
+  // Flush pending saves on unmount so nothing is lost when toggling views
+  useEffect(() => {
+    return () => {
+      debounceTimers.current.forEach((t) => clearTimeout(t));
+      const ordens = Array.from(pendingSaves.current.keys());
+      ordens.forEach((o) => {
+        // fire-and-forget; React Query mutation continues after unmount
+        saveOrdem(o);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setOrdered(items);
@@ -373,36 +459,36 @@ export const HeadlinesVisualizacaoPanel = ({
     );
     const existing = debounceTimers.current.get(ordem);
     if (existing) clearTimeout(existing);
-    const t = setTimeout(async () => {
-      const current = ordered.find((it) => it.ordem === ordem);
-      const itemToSave =
-        ordered.find((it) => it.ordem === ordem) ?? current;
-      const target = processedValue;
-      const linkToSave =
-        extractedLink !== undefined
-          ? extractedLink
-          : itemToSave?.link_referencia ?? null;
-      try {
-        markLocalWrite();
-        await upsert.mutateAsync({
-          mentoradoId,
-          guiaNumero,
-          ordem,
-          headline: target,
-          estrutura: itemToSave?.estrutura ?? "",
-          tipoRoteiroId: itemToSave?.tipo_roteiro_id ?? null,
-          linkReferencia: linkToSave,
-        });
-      } catch (e: any) {
-        toast({
-          title: "Erro ao salvar headline",
-          description: e?.message ?? "Tente novamente",
-          variant: "destructive",
-        });
-      }
+    const currentItem = orderedRef.current.find((it) => it.ordem === ordem);
+    const linkToSave =
+      extractedLink !== undefined
+        ? extractedLink
+        : currentItem?.link_referencia ?? null;
+    pendingSaves.current.set(ordem, {
+      headline: processedValue,
+      linkReferencia: linkToSave,
+    });
+    const t = setTimeout(() => {
       debounceTimers.current.delete(ordem);
+      void saveOrdem(ordem);
     }, 800);
     debounceTimers.current.set(ordem, t);
+  };
+
+  const handleRemoveLink = (ordem: number) => {
+    setOrdered((prev) =>
+      prev.map((it) =>
+        it.ordem === ordem ? { ...it, link_referencia: null } : it
+      )
+    );
+    const currentItem = orderedRef.current.find((it) => it.ordem === ordem);
+    pendingSaves.current.set(ordem, {
+      headline: currentItem?.headline ?? "",
+      linkReferencia: null,
+    });
+    const existing = debounceTimers.current.get(ordem);
+    if (existing) clearTimeout(existing);
+    void saveOrdem(ordem);
   };
 
   const handleDisparar = async (it: HeadlineVisualItem) => {
@@ -478,6 +564,7 @@ export const HeadlinesVisualizacaoPanel = ({
                 editable
                 onChangeHeadline={handleChangeHeadline}
                 onDispararVotacao={handleDisparar}
+                onRemoveLink={handleRemoveLink}
               />
             ))}
           </div>
