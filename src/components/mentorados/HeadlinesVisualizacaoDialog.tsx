@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Loader2, Save, Swords } from "lucide-react";
+import { ExternalLink, GripVertical, Loader2, Save, Swords, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
   closestCenter,
@@ -47,12 +48,14 @@ function SortableRow({
   editable,
   onChangeHeadline,
   onDispararVotacao,
+  onRemoveLink,
 }: {
   item: HeadlineVisualItem;
   index: number;
   editable?: boolean;
   onChangeHeadline?: (ordem: number, novo: string) => void;
   onDispararVotacao?: (item: HeadlineVisualItem) => void;
+  onRemoveLink?: (ordem: number) => void;
 }) {
   const { data: tipos = [] } = useTiposRoteiro();
   const tipo = tipos.find((t) => t.id === item.tipo_roteiro_id);
@@ -107,6 +110,7 @@ function SortableRow({
           )}
         </div>
         {editable ? (
+          <>
           <textarea
             value={item.headline ?? ""}
             onChange={(e) =>
@@ -127,6 +131,30 @@ function SortableRow({
               }
             }}
           />
+          {item.link_referencia && (
+            <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-indigo-300/60 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-700 dark:text-indigo-300">
+              <a
+                href={item.link_referencia}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:underline max-w-[260px] truncate"
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                <span className="truncate">Referência</span>
+              </a>
+              {onRemoveLink && (
+                <button
+                  type="button"
+                  onClick={() => onRemoveLink(item.ordem)}
+                  className="text-indigo-500 hover:text-indigo-700"
+                  title="Remover referência"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+          </>
         ) : (
           <p className="text-sm text-foreground whitespace-pre-wrap break-words">
             {item.headline?.trim() || (
