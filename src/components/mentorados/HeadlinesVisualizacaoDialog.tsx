@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Loader2, Save, Swords } from "lucide-react";
+import { ExternalLink, GripVertical, Loader2, Save, Swords, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
   closestCenter,
@@ -47,12 +48,14 @@ function SortableRow({
   editable,
   onChangeHeadline,
   onDispararVotacao,
+  onRemoveLink,
 }: {
   item: HeadlineVisualItem;
   index: number;
   editable?: boolean;
   onChangeHeadline?: (ordem: number, novo: string) => void;
   onDispararVotacao?: (item: HeadlineVisualItem) => void;
+  onRemoveLink?: (ordem: number) => void;
 }) {
   const { data: tipos = [] } = useTiposRoteiro();
   const tipo = tipos.find((t) => t.id === item.tipo_roteiro_id);
@@ -107,6 +110,7 @@ function SortableRow({
           )}
         </div>
         {editable ? (
+          <>
           <textarea
             value={item.headline ?? ""}
             onChange={(e) =>
@@ -127,6 +131,30 @@ function SortableRow({
               }
             }}
           />
+          {item.link_referencia && (
+            <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-indigo-300/60 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 text-[11px] text-indigo-700 dark:text-indigo-300">
+              <a
+                href={item.link_referencia}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:underline max-w-[260px] truncate"
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                <span className="truncate">Referência</span>
+              </a>
+              {onRemoveLink && (
+                <button
+                  type="button"
+                  onClick={() => onRemoveLink(item.ordem)}
+                  className="text-indigo-500 hover:text-indigo-700"
+                  title="Remover referência"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+          </>
         ) : (
           <p className="text-sm text-foreground whitespace-pre-wrap break-words">
             {item.headline?.trim() || (
@@ -272,9 +300,95 @@ export const HeadlinesVisualizacaoPanel = ({
   const disparar = useDispararVotacao();
   const { data: minhasVotacoes = [] } = useMinhasVotacoes();
   const [resultadosOpen, setResultadosOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const orderedRef = useRef<HeadlineVisualItem[]>(items);
+  useEffect(() => {
+    orderedRef.current = ordered;
+  }, [ordered]);
   const debounceTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(
     new Map()
   );
+  const pendingSaves = useRef<
+    Map<number, { headline: string; linkReferencia: string | null }>
+  >(new Map());
+
+  const saveOrdem = async (ordem: number) => {
+    const pending = pendingSaves.current.get(ordem);
+    if (!pending) return;
+    pendingSaves.current.delete(ordem);
+    const itemToSave = orderedRef.current.find((it) => it.ordem === ordem);
+    try {
+      markLocalWrite();
+      await upsert.mutateAsync({
+        mentoradoId,
+        guiaNumero,
+        ordem,
+        headline: pending.headline,
+        estrutura: itemToSave?.estrutura ?? "",
+        tipoRoteiroId: itemToSave?.tipo_roteiro_id ?? null,
+        linkReferencia: pending.linkReferencia,
+      });
+      // Sync the cache so the normal edit view sees the new values immediately
+      queryClient.setQueryData<any[]>(
+        ["mentorados_roteiros", mentoradoId],
+        (prev) => {
+          if (!prev) return prev;
+          const idx = prev.findIndex(
+            (r) => r.guia_numero === guiaNumero && r.ordem === ordem
+          );
+          if (idx === -1) {
+            return [
+              ...prev,
+              {
+                id: `temp-${guiaNumero}-${ordem}`,
+                mentorado_id: mentoradoId,
+                guia_numero: guiaNumero,
+                ordem,
+                headline: pending.headline,
+                estrutura: itemToSave?.estrutura ?? "",
+                tipo_roteiro_id: itemToSave?.tipo_roteiro_id ?? null,
+                link_referencia: pending.linkReferencia,
+                deleted_at: null,
+              },
+            ];
+          }
+          const copy = [...prev];
+          copy[idx] = {
+            ...copy[idx],
+            headline: pending.headline,
+            link_referencia: pending.linkReferencia,
+          };
+          return copy;
+        }
+      );
+    } catch (e: any) {
+      toast({
+        title: "Erro ao salvar headline",
+        description: e?.message ?? "Tente novamente",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const flushAll = async () => {
+    const ordens = Array.from(pendingSaves.current.keys());
+    debounceTimers.current.forEach((t) => clearTimeout(t));
+    debounceTimers.current.clear();
+    await Promise.all(ordens.map((o) => saveOrdem(o)));
+  };
+
+  // Flush pending saves on unmount so nothing is lost when toggling views
+  useEffect(() => {
+    return () => {
+      debounceTimers.current.forEach((t) => clearTimeout(t));
+      const ordens = Array.from(pendingSaves.current.keys());
+      ordens.forEach((o) => {
+        // fire-and-forget; React Query mutation continues after unmount
+        saveOrdem(o);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setOrdered(items);
@@ -345,36 +459,36 @@ export const HeadlinesVisualizacaoPanel = ({
     );
     const existing = debounceTimers.current.get(ordem);
     if (existing) clearTimeout(existing);
-    const t = setTimeout(async () => {
-      const current = ordered.find((it) => it.ordem === ordem);
-      const itemToSave =
-        ordered.find((it) => it.ordem === ordem) ?? current;
-      const target = processedValue;
-      const linkToSave =
-        extractedLink !== undefined
-          ? extractedLink
-          : itemToSave?.link_referencia ?? null;
-      try {
-        markLocalWrite();
-        await upsert.mutateAsync({
-          mentoradoId,
-          guiaNumero,
-          ordem,
-          headline: target,
-          estrutura: itemToSave?.estrutura ?? "",
-          tipoRoteiroId: itemToSave?.tipo_roteiro_id ?? null,
-          linkReferencia: linkToSave,
-        });
-      } catch (e: any) {
-        toast({
-          title: "Erro ao salvar headline",
-          description: e?.message ?? "Tente novamente",
-          variant: "destructive",
-        });
-      }
+    const currentItem = orderedRef.current.find((it) => it.ordem === ordem);
+    const linkToSave =
+      extractedLink !== undefined
+        ? extractedLink
+        : currentItem?.link_referencia ?? null;
+    pendingSaves.current.set(ordem, {
+      headline: processedValue,
+      linkReferencia: linkToSave,
+    });
+    const t = setTimeout(() => {
       debounceTimers.current.delete(ordem);
+      void saveOrdem(ordem);
     }, 800);
     debounceTimers.current.set(ordem, t);
+  };
+
+  const handleRemoveLink = (ordem: number) => {
+    setOrdered((prev) =>
+      prev.map((it) =>
+        it.ordem === ordem ? { ...it, link_referencia: null } : it
+      )
+    );
+    const currentItem = orderedRef.current.find((it) => it.ordem === ordem);
+    pendingSaves.current.set(ordem, {
+      headline: currentItem?.headline ?? "",
+      linkReferencia: null,
+    });
+    const existing = debounceTimers.current.get(ordem);
+    if (existing) clearTimeout(existing);
+    void saveOrdem(ordem);
   };
 
   const handleDisparar = async (it: HeadlineVisualItem) => {
@@ -430,7 +544,14 @@ export const HeadlinesVisualizacaoPanel = ({
               </span>
             )}
           </Button>
-          <Button variant="outline" size="sm" onClick={onClose}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await flushAll();
+              onClose();
+            }}
+          >
             Voltar para edição
           </Button>
         </div>
@@ -450,6 +571,7 @@ export const HeadlinesVisualizacaoPanel = ({
                 editable
                 onChangeHeadline={handleChangeHeadline}
                 onDispararVotacao={handleDisparar}
+                onRemoveLink={handleRemoveLink}
               />
             ))}
           </div>
