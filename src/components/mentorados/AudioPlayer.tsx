@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -109,6 +109,17 @@ export const AudioPlayer = ({ src, initialDuration, className }: Props) => {
       <span className="text-[10px] tabular-nums text-muted-foreground shrink-0">
         {fmt(current)} / {fmt(duration)}
       </span>
+      <a
+        href={src}
+        download
+        target="_blank"
+        rel="noopener noreferrer"
+        className="shrink-0 inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+        title="Baixar áudio"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Download className="h-3.5 w-3.5" />
+      </a>
       <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
     </div>
   );
