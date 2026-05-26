@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, Download } from "lucide-react";
+import { Play, Pause, Download, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 type Props = {
   src: string;
@@ -27,6 +29,7 @@ export const AudioPlayer = ({ src, initialDuration, className }: Props) => {
   );
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
 
   useEffect(() => {
     const a = audioRef.current;
@@ -136,6 +139,50 @@ export const AudioPlayer = ({ src, initialDuration, className }: Props) => {
         }}
       >
         <Download className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        disabled={transcribing}
+        className="shrink-0 inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-50"
+        title="Baixar transcrição"
+        onClick={async (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          if (transcribing) return;
+          setTranscribing(true);
+          try {
+            const { data, error } = await supabase.functions.invoke("transcrever-audio", {
+              body: { audio_url: src },
+            });
+            if (error) throw error;
+            const texto = (data as { texto?: string; error?: string })?.texto;
+            if (!texto) throw new Error((data as { error?: string })?.error || "Sem texto");
+            const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `transcricao-${Date.now()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            toast({ title: "Transcrição pronta" });
+          } catch (err) {
+            toast({
+              title: "Falha ao transcrever",
+              description: err instanceof Error ? err.message : "Erro",
+              variant: "destructive",
+            });
+          } finally {
+            setTranscribing(false);
+          }
+        }}
+      >
+        {transcribing ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <FileText className="h-3.5 w-3.5" />
+        )}
       </button>
       <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
     </div>
