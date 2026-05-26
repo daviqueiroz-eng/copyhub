@@ -651,7 +651,12 @@ const RoteiroPublico = () => {
                       )
                     )}
                     {c.audio_url && (
-                      <audio controls src={c.audio_url} className="w-full mt-1 h-8" />
+                      <div className="mt-1">
+                        <AudioPlayer
+                          src={c.audio_url}
+                          initialDuration={c.audio_duracao_segundos ?? null}
+                        />
+                      </div>
                     )}
                     {podeEditar(c.id) && editandoId !== c.id && (
                       <div className="flex justify-end gap-1 mt-1">
@@ -821,7 +826,9 @@ const RoteiroPublico = () => {
         >
           <DialogHeader>
             <DialogTitle>
-              {contexto?.escopo === "selecao"
+              {contexto?.parent_id
+                ? `Responder a ${contexto.parent_autor ?? ""}`
+                : contexto?.escopo === "selecao"
                 ? "Comentar trecho selecionado"
                 : contexto?.escopo === "headline"
                 ? `Comentar Headline ${String(contexto?.ordem ?? 0).padStart(2, "0")}`
@@ -877,7 +884,11 @@ const RoteiroPublico = () => {
               )}
               {audioPreviewUrl && !gravando && (
                 <div className="flex items-center gap-2 flex-1">
-                  <audio controls src={audioPreviewUrl} className="h-8 flex-1" />
+                  <AudioPlayer
+                    src={audioPreviewUrl}
+                    initialDuration={audioDuracaoRef.current}
+                    className="flex-1"
+                  />
                   <Button
                     variant="ghost"
                     size="icon"
