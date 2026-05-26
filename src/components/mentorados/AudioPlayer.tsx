@@ -30,6 +30,11 @@ export const AudioPlayer = ({ src, initialDuration, className }: Props) => {
   const [current, setCurrent] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [speed, setSpeed] = useState<1 | 1.5 | 2>(1);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = speed;
+  }, [speed]);
 
   useEffect(() => {
     const a = audioRef.current;
@@ -112,6 +117,18 @@ export const AudioPlayer = ({ src, initialDuration, className }: Props) => {
       <span className="text-[10px] tabular-nums text-muted-foreground shrink-0">
         {fmt(current)} / {fmt(duration)}
       </span>
+      <button
+        type="button"
+        className="shrink-0 inline-flex items-center justify-center h-6 px-1.5 rounded-md hover:bg-muted text-[10px] font-semibold tabular-nums text-muted-foreground hover:text-foreground"
+        title="Velocidade"
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setSpeed((s) => (s === 1 ? 1.5 : s === 1.5 ? 2 : 1));
+        }}
+      >
+        {speed}x
+      </button>
       <button
         type="button"
         className="shrink-0 inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
