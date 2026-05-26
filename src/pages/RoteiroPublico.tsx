@@ -571,9 +571,10 @@ const RoteiroPublico = () => {
                           size="sm"
                           variant="ghost"
                           className="h-6 px-2 text-[10px] text-destructive"
+                          title="Arquivar (não é apagado)"
                           onClick={() => excluirMeuComentario(c.id)}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Archive className="h-3 w-3" />
                         </Button>
                       </div>
                     )}
