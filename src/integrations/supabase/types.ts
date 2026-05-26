@@ -2349,6 +2349,8 @@ export type Database = {
       }
       roteiro_comentarios: {
         Row: {
+          arquivado: boolean
+          audio_duracao_segundos: number | null
           audio_url: string | null
           autor_nome: string
           autor_user_id: string | null
@@ -2360,11 +2362,14 @@ export type Database = {
           lido_por: Json
           mentorado_id: string
           ordem: number
+          parent_id: string | null
           resolvido: boolean
           share_id: string | null
           trecho_texto: string | null
         }
         Insert: {
+          arquivado?: boolean
+          audio_duracao_segundos?: number | null
           audio_url?: string | null
           autor_nome: string
           autor_user_id?: string | null
@@ -2376,11 +2381,14 @@ export type Database = {
           lido_por?: Json
           mentorado_id: string
           ordem: number
+          parent_id?: string | null
           resolvido?: boolean
           share_id?: string | null
           trecho_texto?: string | null
         }
         Update: {
+          arquivado?: boolean
+          audio_duracao_segundos?: number | null
           audio_url?: string | null
           autor_nome?: string
           autor_user_id?: string | null
@@ -2392,11 +2400,19 @@ export type Database = {
           lido_por?: Json
           mentorado_id?: string
           ordem?: number
+          parent_id?: string | null
           resolvido?: boolean
           share_id?: string | null
           trecho_texto?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "roteiro_comentarios_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "roteiro_comentarios"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "roteiro_comentarios_share_id_fkey"
             columns: ["share_id"]
@@ -3009,18 +3025,33 @@ export type Database = {
         }
         Returns: string
       }
-      inserir_comentario_publico_v2: {
-        Args: {
-          _audio_url: string
-          _autor_nome: string
-          _conteudo_texto: string
-          _escopo: string
-          _ordem: number
-          _slug_or_token: string
-          _trecho_texto: string
-        }
-        Returns: string
-      }
+      inserir_comentario_publico_v2:
+        | {
+            Args: {
+              _audio_url: string
+              _autor_nome: string
+              _conteudo_texto: string
+              _escopo: string
+              _ordem: number
+              _slug_or_token: string
+              _trecho_texto: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _audio_duracao?: number
+              _audio_url: string
+              _autor_nome: string
+              _conteudo_texto: string
+              _escopo: string
+              _ordem: number
+              _parent_id?: string
+              _slug_or_token: string
+              _trecho_texto: string
+            }
+            Returns: string
+          }
       is_grupo_member: {
         Args: { _grupo_id: string; _user_id: string }
         Returns: boolean
