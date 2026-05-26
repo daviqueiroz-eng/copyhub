@@ -1,47 +1,60 @@
-## Áudio complementar na headline + waveform do mentorado
+## O que será feito
 
-### 1. Gravar áudio na headline (editor do usuário)
+### 1. Respostas em comentários (conversa entre mentor e mentorado)
+- Cada comentário poderá receber respostas em thread (lista aninhada abaixo do comentário pai).
+- Mentor responde pelo painel interno (`RoteiroComentariosPanel`).
+- Mentorado responde pela página pública (`RoteiroPublico`), com texto e/ou áudio (mesma UX da criação de comentário, incluindo waveform).
+- Respostas aparecem em tempo real nos dois lados (já existe canal realtime na tabela `roteiro_comentarios`, será reaproveitado).
+- Marcação de "Resolver" continua valendo só para o comentário pai (resolve a thread inteira visualmente).
 
-**Onde aparece**: ao lado direito do botão de espada (votação) em cada headline no `MentoradoRoteirosView.tsx` (próximo da linha 3340–3360). Um pequeno botão de microfone (`Mic`) com tooltip "Gravar áudio complementar".
+### 2. Duração do áudio sempre visível
+- Hoje o player nativo mostra `00:00` até o usuário dar play, porque os blobs gravados via MediaRecorder (webm/opus) não trazem `duration` no metadata.
+- Será criado um componente `AudioPlayer` reutilizável que:
+  - Calcula a duração real medindo o blob/URL com `AudioContext.decodeAudioData` (ou seek-trick `audio.currentTime = 1e9`).
+  - Mostra `mm:ss / mm:ss` ao lado do play, mesmo antes de tocar.
+  - Substituirá os `<audio controls>` no painel interno e na página pública.
 
-**Comportamento**:
-- Clique inicia gravação inline (substitui o botão por: `Parar` + canvas com waveform animado + cronômetro em segundos, igual ao padrão do `RoteiroPublico`).
-- Ao parar, sobe o blob para o bucket `roteiro-comentarios-audio` (já existe, público) no caminho `headline-audio/<mentorado_id>/<guia>/<ordem>-<timestamp>.<ext>` e salva a URL em uma nova coluna `headline_audio_url` em `mentorados_roteiros`.
-- Quando já existe áudio: aparece um badge verde estilo "🎙 Áudio complementar" + player nativo `<audio controls>` compacto + botão `X` para apagar (limpa coluna e remove do bucket).
-- O próprio usuário pode reproduzir clicando no player.
+### 3. Preservação total do histórico (regra permanente)
+- Nenhum comentário, resposta ou áudio será apagado fisicamente, agora ou em atualizações futuras.
+- Botão de lixeira no painel interno e na página pública passa a ser **arquivar** (soft delete): some da visualização padrão, mas fica registrado no banco.
+- Adicionado toggle "Mostrar arquivados" no painel para auditoria.
+- Será salvo na memória do projeto como regra Core: *"Comentários, respostas e áudios nunca são apagados — apenas arquivados (soft delete)."*
 
-**Componente novo**: `HeadlineAudioRecorder.tsx` (encapsula gravação + waveform + upload + player) — usado dentro do bloco da headline. Reutiliza a mesma lógica de waveform corrigida (ver item 3).
+---
 
-### 2. Mentorado escuta o áudio no link público
+## Detalhes técnicos
 
-**Database**:
-- Migration: `ALTER TABLE mentorados_roteiros ADD COLUMN headline_audio_url text;`
-- Atualizar `get_roteiro_publico_v2` (e `get_roteiro_publico`) para incluir `headline_audio_url` no `jsonb_build_object` dos roteiros.
+### Banco (`supabase--migration`)
+```sql
+ALTER TABLE public.roteiro_comentarios
+  ADD COLUMN parent_id uuid REFERENCES public.roteiro_comentarios(id),
+  ADD COLUMN arquivado boolean NOT NULL DEFAULT false,
+  ADD COLUMN audio_duracao_segundos numeric;
 
-**UI pública** (`RoteiroPublico.tsx`):
-- Logo após o label "HEADLINE NN", se `roteiro.headline_audio_url` existir, renderizar um chip verde "🎙 Áudio complementar" com `<audio controls>` embutido (visual igual à imagem de referência: label verde manuscrito ao lado do "HEADLINE 01", e player abaixo do título).
-- Mentorado **só escuta** — sem botão de apagar/editar.
+CREATE INDEX idx_roteiro_comentarios_parent ON public.roteiro_comentarios(parent_id);
+```
+- `parent_id` → respostas referenciam o comentário pai.
+- `arquivado` substitui o DELETE.
+- `audio_duracao_segundos` cache opcional, gravado no upload (evita recomputar).
 
-### 3. Corrigir waveform durante gravação do mentorado
+### RPCs atualizadas
+- `get_roteiro_publico_v2`: retorna `parent_id`, `arquivado`, `audio_duracao_segundos`; filtra `arquivado = false` por padrão.
+- `inserir_comentario_publico_v2`: aceita novo parâmetro `_parent_id uuid` e `_audio_duracao numeric`.
+- Nova RPC `arquivar_comentario_publico(_slug_or_token, _comentario_id)` (mentorado arquiva o próprio).
+- `excluir_comentario_publico` deixa de deletar — passa a marcar `arquivado = true` (mantém assinatura para compatibilidade).
 
-**Diagnóstico**: o canvas só monta quando `gravando=true`, mas `iniciarWaveform` é chamado no mesmo tick em que setGravando dispara — no primeiro `draw()` o `canvasRef.current` ainda é `null` e o loop sai (`return` sem reagendar `requestAnimationFrame`). Resultado: barra cinza vazia.
+### Frontend
+- `useRoteiroComentarios.ts`: novo hook `useResponderComentario` (interno) e `useArquivarComentario`; query passa a montar árvore (pai + `respostas[]`).
+- `RoteiroComentariosPanel.tsx`: renderiza thread, botão "Responder" abre mini-form (texto + mic), botão lixeira vira "Arquivar".
+- `RoteiroPublico.tsx`: idem para o mentorado — botão "Responder" abaixo de cada comentário do mentor, com mesmo recorder/waveform já existente.
+- Novo `src/components/mentorados/AudioPlayer.tsx`: player customizado com duração pré-calculada, usado nos dois lados.
+- Ordenação das threads: pai pela regra atual (ordem → escopo → created_at); respostas por `created_at ASC` dentro do pai.
 
-**Correção em `RoteiroPublico.tsx`**:
-- No `draw()`, se `canvasRef.current` for null mas o analyser ainda existir, reagendar `requestAnimationFrame(draw)` em vez de retornar — assim ele tenta de novo no próximo frame, quando o canvas já estiver montado.
-- Trocar para `getByteTimeDomainData` (onda senoidal contínua, mais perceptível como "fala") em vez de barras de frequência, ou manter barras mas usar mais ganho visual (`barH = Math.max(2, v * h * 1.5)`).
-- Definir `canvas.width = canvas.clientWidth * devicePixelRatio` no primeiro frame válido, para evitar canvas esticado/borrado.
-
-A mesma função (já corrigida) é reusada pelo `HeadlineAudioRecorder` do editor.
-
-### Detalhes técnicos
-
-**Arquivos a editar/criar**:
-- `supabase/migrations/<timestamp>_headline_audio.sql` — adiciona coluna + atualiza as duas RPCs públicas.
-- `src/components/mentorados/HeadlineAudioRecorder.tsx` (novo) — gravação, waveform, upload para `roteiro-comentarios-audio`, player, deletar.
-- `src/components/mentorados/MentoradoRoteirosView.tsx` — montar `<HeadlineAudioRecorder ... />` ao lado do botão Swords; estender o tipo local de roteiro com `headline_audio_url`.
-- `src/hooks/useMentoradosRoteiros.ts` — incluir `headline_audio_url` no select/insert/update (manter compatibilidade com salvamento atual).
-- `src/pages/RoteiroPublico.tsx` — (a) corrigir loop de waveform; (b) renderizar badge "Áudio complementar" + player quando `headline_audio_url` vier do RPC.
-
-**Storage**: o bucket `roteiro-comentarios-audio` já é público — políticas existentes de INSERT públicas serão reutilizadas. Para áudios do dono (editor logado) o upload ocorrerá autenticado normalmente.
-
-**Sem mudança** em: ordenação de comentários, sistema de edição de comentário do mentorado, slug, ou qualquer outra parte do app.
+### Arquivos afetados
+- `supabase/migrations/<novo>.sql` (novo)
+- `src/hooks/useRoteiroComentarios.ts`
+- `src/components/mentorados/RoteiroComentariosPanel.tsx`
+- `src/components/mentorados/AudioPlayer.tsx` (novo)
+- `src/components/mentorados/HeadlineAudioRecorder.tsx` (gravar duração no upload)
+- `src/pages/RoteiroPublico.tsx`
+- `mem://index.md` + nova entrada de memória sobre soft-delete permanente

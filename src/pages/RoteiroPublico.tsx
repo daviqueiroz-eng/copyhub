@@ -22,8 +22,10 @@ import {
   ChevronRight,
   X,
   Pencil,
-  Trash2,
+  Archive,
+  Reply,
 } from "lucide-react";
+import { AudioPlayer } from "@/components/mentorados/AudioPlayer";
 
 type Roteiro = {
   ordem: number;
@@ -40,6 +42,8 @@ type Comentario = {
   autor_nome: string;
   conteudo_texto: string | null;
   audio_url: string | null;
+  audio_duracao_segundos?: number | null;
+  parent_id?: string | null;
   created_at: string;
 };
 
@@ -87,11 +91,15 @@ const RoteiroPublico = () => {
     ordem: number;
     escopo: "headline" | "estrutura" | "selecao";
     trecho?: string;
+    parent_id?: string;
+    parent_autor?: string;
   } | null>(null);
   const [texto, setTexto] = useState("");
   const [gravando, setGravando] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
+  const audioStartRef = useRef<number>(0);
+  const audioDuracaoRef = useRef<number>(0);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const mimeRef = useRef<string>("audio/webm");
@@ -205,9 +213,16 @@ const RoteiroPublico = () => {
   const abrirDialog = (
     ordem: number,
     escopo: "headline" | "estrutura" | "selecao",
-    trecho?: string
+    trecho?: string,
+    parent?: { id: string; autor: string }
   ) => {
-    setContexto({ ordem, escopo, trecho });
+    setContexto({
+      ordem,
+      escopo,
+      trecho,
+      parent_id: parent?.id,
+      parent_autor: parent?.autor,
+    });
     setTexto("");
     setAudioBlob(null);
     setAudioPreviewUrl(null);
@@ -240,12 +255,14 @@ const RoteiroPublico = () => {
       };
       mr.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: mimeRef.current });
+        audioDuracaoRef.current = (Date.now() - audioStartRef.current) / 1000;
         setAudioBlob(blob);
         setAudioPreviewUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach((t) => t.stop());
         pararWaveform();
       };
       mr.start(250);
+      audioStartRef.current = Date.now();
       setGravando(true);
       iniciarWaveform(stream);
     } catch (e) {
@@ -390,6 +407,8 @@ const RoteiroPublico = () => {
         _autor_nome: nomeTrim,
         _conteudo_texto: texto.trim() || null,
         _audio_url: audioUrl,
+        _parent_id: contexto.parent_id ?? null,
+        _audio_duracao: audioBlob ? audioDuracaoRef.current || null : null,
       });
       if (error) throw error;
       if (novoId && token) {
@@ -420,6 +439,108 @@ const RoteiroPublico = () => {
       ) ?? [],
     [dados, nome, meusIds]
   );
+
+  const { paisPorChave, respostasPorPai } = useMemo(() => {
+    const pais = new Map<string, Comentario[]>();
+    const resp = new Map<string, Comentario[]>();
+    (dados?.comentarios ?? []).forEach((c) => {
+      if (c.parent_id) {
+        const arr = resp.get(c.parent_id) ?? [];
+        arr.push(c);
+        resp.set(c.parent_id, arr);
+      } else {
+        const k = `${c.ordem}|${c.escopo}`;
+        const arr = pais.get(k) ?? [];
+        arr.push(c);
+        pais.set(k, arr);
+      }
+    });
+    pais.forEach((arr) =>
+      arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    );
+    resp.forEach((arr) =>
+      arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    );
+    return { paisPorChave: pais, respostasPorPai: resp };
+  }, [dados]);
+
+  const renderComentariosDoBloco = (ordem: number, escopo: "headline" | "estrutura") => {
+    const lista = paisPorChave.get(`${ordem}|${escopo}`) ?? [];
+    // também trechos selecionados desse bloco
+    const trechos = escopo === "estrutura"
+      ? (paisPorChave.get(`${ordem}|selecao`) ?? [])
+      : [];
+    const todos = [...lista, ...trechos];
+    if (todos.length === 0) return null;
+    return (
+      <div className="mt-3 space-y-2">
+        {todos.map((c) => (
+          <div key={c.id} className="rounded-md border bg-muted/30 p-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">{c.autor_nome}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {new Date(c.created_at).toLocaleString("pt-BR", {
+                  day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                })}
+              </span>
+            </div>
+            {c.trecho_texto && (
+              <p className="italic text-[11px] border-l-2 pl-2 my-1 text-muted-foreground">
+                "{c.trecho_texto}"
+              </p>
+            )}
+            {c.conteudo_texto && (
+              <p className="whitespace-pre-wrap mt-1">{c.conteudo_texto}</p>
+            )}
+            {c.audio_url && (
+              <div className="mt-1">
+                <AudioPlayer src={c.audio_url} initialDuration={c.audio_duracao_segundos ?? null} />
+              </div>
+            )}
+            {(respostasPorPai.get(c.id) ?? []).map((r) => (
+              <div
+                key={r.id}
+                className="mt-2 ml-3 border-l-2 pl-2"
+                style={{ borderColor: "#B8860B" }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-[11px]">↳ {r.autor_nome}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(r.created_at).toLocaleString("pt-BR", {
+                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                {r.conteudo_texto && (
+                  <p className="whitespace-pre-wrap text-[11px] mt-0.5">{r.conteudo_texto}</p>
+                )}
+                {r.audio_url && (
+                  <div className="mt-1">
+                    <AudioPlayer src={r.audio_url} initialDuration={r.audio_duracao_segundos ?? null} />
+                  </div>
+                )}
+              </div>
+            ))}
+            <div className="flex justify-end mt-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-[10px] gap-1"
+                onClick={() =>
+                  abrirDialog(c.ordem, c.escopo === "selecao" ? "selecao" : c.escopo, c.trecho_texto ?? undefined, {
+                    id: c.id,
+                    autor: c.autor_nome,
+                  })
+                }
+              >
+                <Reply className="h-3 w-3" /> Responder
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const podeEditar = (id: string) => meusIds.includes(id);
 
@@ -530,7 +651,12 @@ const RoteiroPublico = () => {
                       )
                     )}
                     {c.audio_url && (
-                      <audio controls src={c.audio_url} className="w-full mt-1 h-8" />
+                      <div className="mt-1">
+                        <AudioPlayer
+                          src={c.audio_url}
+                          initialDuration={c.audio_duracao_segundos ?? null}
+                        />
+                      </div>
                     )}
                     {podeEditar(c.id) && editandoId !== c.id && (
                       <div className="flex justify-end gap-1 mt-1">
@@ -552,9 +678,10 @@ const RoteiroPublico = () => {
                           size="sm"
                           variant="ghost"
                           className="h-6 px-2 text-[10px] text-destructive"
+                          title="Arquivar (não é apagado)"
                           onClick={() => excluirMeuComentario(c.id)}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Archive className="h-3 w-3" />
                         </Button>
                       </div>
                     )}
@@ -613,7 +740,7 @@ const RoteiroPublico = () => {
                                 >
                                   🎙 Áudio complementar
                                 </span>
-                                <audio controls src={r.headline_audio_url} className="h-8" style={{ maxWidth: 260 }} />
+                                <AudioPlayer src={r.headline_audio_url} className="min-w-[240px]" />
                               </div>
                             )}
                           </div>
@@ -633,6 +760,7 @@ const RoteiroPublico = () => {
                         >
                           {headline}
                         </p>
+                        {renderComentariosDoBloco(r.ordem, "headline")}
                       </div>
                     )}
                     {estrutura && (
@@ -660,6 +788,7 @@ const RoteiroPublico = () => {
                         >
                           {estrutura}
                         </p>
+                        {renderComentariosDoBloco(r.ordem, "estrutura")}
                       </div>
                     )}
                   </section>
@@ -697,7 +826,9 @@ const RoteiroPublico = () => {
         >
           <DialogHeader>
             <DialogTitle>
-              {contexto?.escopo === "selecao"
+              {contexto?.parent_id
+                ? `Responder a ${contexto.parent_autor ?? ""}`
+                : contexto?.escopo === "selecao"
                 ? "Comentar trecho selecionado"
                 : contexto?.escopo === "headline"
                 ? `Comentar Headline ${String(contexto?.ordem ?? 0).padStart(2, "0")}`
@@ -753,7 +884,11 @@ const RoteiroPublico = () => {
               )}
               {audioPreviewUrl && !gravando && (
                 <div className="flex items-center gap-2 flex-1">
-                  <audio controls src={audioPreviewUrl} className="h-8 flex-1" />
+                  <AudioPlayer
+                    src={audioPreviewUrl}
+                    initialDuration={audioDuracaoRef.current}
+                    className="flex-1"
+                  />
                   <Button
                     variant="ghost"
                     size="icon"

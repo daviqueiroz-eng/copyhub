@@ -15,6 +15,9 @@ export type RoteiroComentario = {
   autor_user_id: string | null;
   conteudo_texto: string | null;
   audio_url: string | null;
+  audio_duracao_segundos?: number | null;
+  parent_id?: string | null;
+  arquivado?: boolean;
   resolvido: boolean;
   lido_por: string[];
   created_at: string;
@@ -57,6 +60,7 @@ export const useRoteiroComentarios = (
         .select("*")
         .eq("mentorado_id", mentoradoId)
         .eq("guia_numero", guiaNumero)
+        .eq("arquivado", false)
         .order("ordem", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -85,6 +89,8 @@ export const useCriarComentarioInterno = () => {
       trecho_texto?: string | null;
       conteudo_texto?: string | null;
       audio_url?: string | null;
+      audio_duracao_segundos?: number | null;
+      parent_id?: string | null;
       share_id?: string | null;
       autor_nome: string;
     }) => {
@@ -97,10 +103,12 @@ export const useCriarComentarioInterno = () => {
         trecho_texto: input.trecho_texto ?? null,
         conteudo_texto: input.conteudo_texto ?? null,
         audio_url: input.audio_url ?? null,
+        audio_duracao_segundos: input.audio_duracao_segundos ?? null,
+        parent_id: input.parent_id ?? null,
         share_id: input.share_id ?? null,
         autor_user_id: user.id,
         autor_nome: input.autor_nome,
-      });
+      } as never);
       if (error) throw error;
     },
     onSuccess: (_, vars) => {
@@ -131,9 +139,10 @@ export const useDeletarComentario = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      // Soft-delete: nada é apagado, apenas arquivado
       const { error } = await supabase
         .from("roteiro_comentarios")
-        .delete()
+        .update({ arquivado: true } as never)
         .eq("id", id);
       if (error) throw error;
     },
