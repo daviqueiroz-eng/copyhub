@@ -735,7 +735,7 @@ const RoteiroPublico = () => {
                                 >
                                   🎙 Áudio complementar
                                 </span>
-                                <audio controls src={r.headline_audio_url} className="h-8" style={{ maxWidth: 260 }} />
+                                <AudioPlayer src={r.headline_audio_url} className="min-w-[240px]" />
                               </div>
                             )}
                           </div>
@@ -755,6 +755,7 @@ const RoteiroPublico = () => {
                         >
                           {headline}
                         </p>
+                        {renderComentariosDoBloco(r.ordem, "headline")}
                       </div>
                     )}
                     {estrutura && (
@@ -782,6 +783,7 @@ const RoteiroPublico = () => {
                         >
                           {estrutura}
                         </p>
+                        {renderComentariosDoBloco(r.ordem, "estrutura")}
                       </div>
                     )}
                   </section>
