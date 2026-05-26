@@ -22,8 +22,10 @@ import {
   ChevronRight,
   X,
   Pencil,
-  Trash2,
+  Archive,
+  Reply,
 } from "lucide-react";
+import { AudioPlayer } from "@/components/mentorados/AudioPlayer";
 
 type Roteiro = {
   ordem: number;
@@ -40,6 +42,8 @@ type Comentario = {
   autor_nome: string;
   conteudo_texto: string | null;
   audio_url: string | null;
+  audio_duracao_segundos?: number | null;
+  parent_id?: string | null;
   created_at: string;
 };
 
@@ -87,11 +91,15 @@ const RoteiroPublico = () => {
     ordem: number;
     escopo: "headline" | "estrutura" | "selecao";
     trecho?: string;
+    parent_id?: string;
+    parent_autor?: string;
   } | null>(null);
   const [texto, setTexto] = useState("");
   const [gravando, setGravando] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
+  const audioStartRef = useRef<number>(0);
+  const audioDuracaoRef = useRef<number>(0);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const mimeRef = useRef<string>("audio/webm");
@@ -205,9 +213,16 @@ const RoteiroPublico = () => {
   const abrirDialog = (
     ordem: number,
     escopo: "headline" | "estrutura" | "selecao",
-    trecho?: string
+    trecho?: string,
+    parent?: { id: string; autor: string }
   ) => {
-    setContexto({ ordem, escopo, trecho });
+    setContexto({
+      ordem,
+      escopo,
+      trecho,
+      parent_id: parent?.id,
+      parent_autor: parent?.autor,
+    });
     setTexto("");
     setAudioBlob(null);
     setAudioPreviewUrl(null);
@@ -240,12 +255,14 @@ const RoteiroPublico = () => {
       };
       mr.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: mimeRef.current });
+        audioDuracaoRef.current = (Date.now() - audioStartRef.current) / 1000;
         setAudioBlob(blob);
         setAudioPreviewUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach((t) => t.stop());
         pararWaveform();
       };
       mr.start(250);
+      audioStartRef.current = Date.now();
       setGravando(true);
       iniciarWaveform(stream);
     } catch (e) {
@@ -390,6 +407,8 @@ const RoteiroPublico = () => {
         _autor_nome: nomeTrim,
         _conteudo_texto: texto.trim() || null,
         _audio_url: audioUrl,
+        _parent_id: contexto.parent_id ?? null,
+        _audio_duracao: audioBlob ? audioDuracaoRef.current || null : null,
       });
       if (error) throw error;
       if (novoId && token) {
