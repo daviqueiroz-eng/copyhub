@@ -109,17 +109,34 @@ export const AudioPlayer = ({ src, initialDuration, className }: Props) => {
       <span className="text-[10px] tabular-nums text-muted-foreground shrink-0">
         {fmt(current)} / {fmt(duration)}
       </span>
-      <a
-        href={src}
-        download
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        type="button"
         className="shrink-0 inline-flex items-center justify-center h-6 w-6 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
         title="Baixar áudio"
-        onClick={(e) => e.stopPropagation()}
+        onClick={async (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          try {
+            const res = await fetch(src);
+            if (!res.ok) throw new Error("download failed");
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const ext = (src.split("?")[0].split(".").pop() || "webm").toLowerCase();
+            const filename = `audio-${Date.now()}.${ext}`;
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          } catch {
+            window.open(src, "_blank");
+          }
+        }}
       >
         <Download className="h-3.5 w-3.5" />
-      </a>
+      </button>
       <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
     </div>
   );
