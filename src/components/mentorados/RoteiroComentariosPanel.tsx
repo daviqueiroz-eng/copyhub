@@ -1,13 +1,20 @@
-import { useMemo } from "react";
-import { MessageSquare, X, Check, Trash2 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { MessageSquare, X, Check, Archive, Mic, Square, Send, Reply, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
   useRoteiroComentarios,
   useMarcarComentarioResolvido,
   useDeletarComentario,
+  useCriarComentarioInterno,
+  type RoteiroComentario,
 } from "@/hooks/useRoteiroComentarios";
+import { AudioPlayer } from "./AudioPlayer";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 export const RoteiroComentariosPanel = ({
   mentoradoId,
@@ -22,11 +29,41 @@ export const RoteiroComentariosPanel = ({
 }) => {
   const { data: comentarios = [] } = useRoteiroComentarios(mentoradoId, guiaNumero);
   const marcar = useMarcarComentarioResolvido();
-  const deletar = useDeletarComentario();
+  const arquivar = useDeletarComentario();
+  const criar = useCriarComentarioInterno();
+  const { user } = useAuth();
+
+  const [replyTo, setReplyTo] = useState<RoteiroComentario | null>(null);
+  const [replyTexto, setReplyTexto] = useState("");
+  const [replyAudio, setReplyAudio] = useState<{ blob: Blob; url: string; mime: string; duracao: number } | null>(null);
+  const [gravando, setGravando] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const mediaRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const mimeRef = useRef<string>("audio/webm");
+  const startedAtRef = useRef<number>(0);
+
+  const { pais, respostasPorPai } = useMemo(() => {
+    const pais = comentarios.filter((c) => !c.parent_id);
+    const respostasPorPai = new Map<string, RoteiroComentario[]>();
+    comentarios
+      .filter((c) => !!c.parent_id)
+      .forEach((c) => {
+        const arr = respostasPorPai.get(c.parent_id!) ?? [];
+        arr.push(c);
+        respostasPorPai.set(c.parent_id!, arr);
+      });
+    respostasPorPai.forEach((arr) =>
+      arr.sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      )
+    );
+    return { pais, respostasPorPai };
+  }, [comentarios]);
 
   const grupos = useMemo(() => {
     const map = new Map<string, typeof comentarios>();
-    comentarios.forEach((c) => {
+    pais.forEach((c) => {
       const label =
         c.escopo === "headline"
           ? `Headline ${String(c.ordem).padStart(2, "0")}`
@@ -38,7 +75,94 @@ export const RoteiroComentariosPanel = ({
       map.set(label, arr);
     });
     return Array.from(map.entries());
-  }, [comentarios]);
+  }, [pais]);
+
+  const iniciarGravacao = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const candidates = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4;codecs=mp4a.40.2",
+        "audio/mp4",
+      ];
+      const mime = candidates.find((c) =>
+        typeof MediaRecorder !== "undefined" &&
+        (MediaRecorder as unknown as { isTypeSupported?: (t: string) => boolean })
+          .isTypeSupported?.(c)
+      ) || "";
+      mimeRef.current = mime || "audio/webm";
+      const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      mediaRef.current = mr;
+      chunksRef.current = [];
+      startedAtRef.current = Date.now();
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeRef.current });
+        const duracao = (Date.now() - startedAtRef.current) / 1000;
+        stream.getTracks().forEach((t) => t.stop());
+        setReplyAudio({ blob, url: URL.createObjectURL(blob), mime: mimeRef.current, duracao });
+      };
+      mr.start(250);
+      setGravando(true);
+    } catch {
+      toast({ title: "Não foi possível acessar o microfone", variant: "destructive" });
+    }
+  };
+
+  const pararGravacao = () => {
+    mediaRef.current?.stop();
+    setGravando(false);
+  };
+
+  const enviarResposta = async () => {
+    if (!replyTo || !user) return;
+    if (!replyTexto.trim() && !replyAudio) {
+      toast({ title: "Escreva ou grave algo", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      let audioUrl: string | null = null;
+      let duracao: number | null = null;
+      if (replyAudio) {
+        const ext = replyAudio.mime.includes("mp4") ? "mp4" : "webm";
+        const path = `respostas/${mentoradoId}/${guiaNumero}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("roteiro-comentarios-audio")
+          .upload(path, replyAudio.blob, { contentType: replyAudio.mime });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage
+          .from("roteiro-comentarios-audio")
+          .getPublicUrl(path);
+        audioUrl = pub.publicUrl;
+        duracao = replyAudio.duracao;
+      }
+      await criar.mutateAsync({
+        mentoradoId,
+        guiaNumero,
+        ordem: replyTo.ordem,
+        escopo: replyTo.escopo,
+        trecho_texto: null,
+        conteudo_texto: replyTexto.trim() || null,
+        audio_url: audioUrl,
+        audio_duracao_segundos: duracao,
+        parent_id: replyTo.id,
+        share_id: replyTo.share_id ?? null,
+        autor_nome: user.user_metadata?.full_name || user.email || "Mentor",
+      });
+      setReplyTo(null);
+      setReplyTexto("");
+      setReplyAudio(null);
+      toast({ title: "Resposta enviada" });
+    } catch (e: any) {
+      toast({ title: "Erro ao enviar", description: e?.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -52,7 +176,7 @@ export const RoteiroComentariosPanel = ({
           <MessageSquare className="h-4 w-4" style={{ color: "#B8860B" }} />
           <p className="font-semibold text-sm">Comentários</p>
           <Badge variant="secondary" className="text-xs">
-            {comentarios.length}
+            {pais.length}
           </Badge>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
@@ -61,7 +185,7 @@ export const RoteiroComentariosPanel = ({
       </div>
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-4">
-          {comentarios.length === 0 && (
+          {pais.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8">
               Nenhum comentário ainda. Compartilhe a guia para receber comentários.
             </p>
@@ -102,9 +226,138 @@ export const RoteiroComentariosPanel = ({
                       <p className="whitespace-pre-wrap">{c.conteudo_texto}</p>
                     )}
                     {c.audio_url && (
-                      <audio controls src={c.audio_url} className="w-full mt-1 h-8" />
+                      <div className="mt-1">
+                        <AudioPlayer
+                          src={c.audio_url}
+                          initialDuration={c.audio_duracao_segundos ?? null}
+                        />
+                      </div>
                     )}
+
+                    {/* Respostas (thread) */}
+                    {(respostasPorPai.get(c.id) ?? []).map((r) => (
+                      <div
+                        key={r.id}
+                        className="mt-2 ml-3 border-l-2 pl-2 rounded"
+                        style={{ borderColor: "#B8860B" }}
+                      >
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="font-semibold text-[11px]">
+                            ↳ {r.autor_nome}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(r.created_at).toLocaleString("pt-BR", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        {r.conteudo_texto && (
+                          <p className="whitespace-pre-wrap text-[11px]">{r.conteudo_texto}</p>
+                        )}
+                        {r.audio_url && (
+                          <div className="mt-1">
+                            <AudioPlayer
+                              src={r.audio_url}
+                              initialDuration={r.audio_duracao_segundos ?? null}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Form de resposta */}
+                    {replyTo?.id === c.id && (
+                      <div className="mt-2 space-y-1 border-t pt-2">
+                        <Textarea
+                          value={replyTexto}
+                          onChange={(e) => setReplyTexto(e.target.value)}
+                          placeholder="Escreva sua resposta..."
+                          rows={2}
+                          className="text-xs"
+                        />
+                        <div className="flex items-center gap-1">
+                          {!gravando && !replyAudio && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-[10px] gap-1"
+                              onClick={iniciarGravacao}
+                            >
+                              <Mic className="h-3 w-3" /> Áudio
+                            </Button>
+                          )}
+                          {gravando && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="h-6 px-2 text-[10px] gap-1"
+                              onClick={pararGravacao}
+                            >
+                              <Square className="h-3 w-3" /> Parar
+                            </Button>
+                          )}
+                          {replyAudio && (
+                            <div className="flex items-center gap-1 flex-1">
+                              <AudioPlayer
+                                src={replyAudio.url}
+                                initialDuration={replyAudio.duracao}
+                                className="flex-1"
+                              />
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => setReplyAudio(null)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                          <div className="flex-1" />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={() => {
+                              setReplyTo(null);
+                              setReplyTexto("");
+                              setReplyAudio(null);
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-6 px-2 text-[10px] gap-1"
+                            onClick={enviarResposta}
+                            disabled={uploading}
+                          >
+                            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                            Enviar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex justify-end gap-1 mt-1">
+                      {replyTo?.id !== c.id && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={() => {
+                            setReplyTo(c);
+                            setReplyTexto("");
+                            setReplyAudio(null);
+                          }}
+                        >
+                          <Reply className="h-3 w-3 mr-1" />
+                          Responder
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -120,9 +373,10 @@ export const RoteiroComentariosPanel = ({
                         size="sm"
                         variant="ghost"
                         className="h-6 px-2 text-[10px] text-destructive"
-                        onClick={() => deletar.mutate(c.id)}
+                        title="Arquivar (não é apagado)"
+                        onClick={() => arquivar.mutate(c.id)}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Archive className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
