@@ -264,6 +264,9 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
       <textarea
         ref={textareaRef}
         value={value}
+        spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="off"
         onChange={(e) => {
           const cursorPos = e.target.selectionStart;
           onChange(e.target.value, cursorPos);
