@@ -362,6 +362,7 @@ export const MentoradoRoteirosView = ({
   const [mostrarSublinhados, setMostrarSublinhados] = useState<boolean>(() => {
     return false;
   });
+  const inlineErrorHighlightsEnabled = false;
   const [erroSelecionadoId, setErroSelecionadoId] = useState<string | null>(null);
   const [categoriaAtiva, setCategoriaAtiva] = useState<RevisaoErrorTipo>("ortografico");
   const [revisaoPanelOpen, setRevisaoPanelOpen] = useState<boolean>(false);
@@ -3437,7 +3438,7 @@ export const MentoradoRoteirosView = ({
                               ? getRevisaoErrorsForField(guiaAtiva, ordem, "headline")
                               : getErrorsForField(guiaAtiva, ordem, "headline")
                           }
-                          showErrors={mostrarSublinhados || showInlineErrors}
+                          showErrors={inlineErrorHighlightsEnabled && (mostrarSublinhados || showInlineErrors)}
                           activeErrorId={mostrarSublinhados ? erroSelecionadoId : null}
                           onErrorClick={mostrarSublinhados ? setErroSelecionadoId : undefined}
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "headline", error)}
@@ -3581,7 +3582,7 @@ export const MentoradoRoteirosView = ({
                               ? getRevisaoErrorsForField(guiaAtiva, ordem, "estrutura")
                               : getErrorsForField(guiaAtiva, ordem, "estrutura")
                           }
-                          showErrors={mostrarSublinhados || showInlineErrors}
+                          showErrors={inlineErrorHighlightsEnabled && (mostrarSublinhados || showInlineErrors)}
                           activeErrorId={mostrarSublinhados ? erroSelecionadoId : null}
                           onErrorClick={mostrarSublinhados ? setErroSelecionadoId : undefined}
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
@@ -4105,7 +4106,7 @@ export const MentoradoRoteirosView = ({
         }}
         onErrorsChange={(errors) => {
           setSpellErrors(errors);
-          if (errors.length > 0) {
+          if (inlineErrorHighlightsEnabled && errors.length > 0) {
             setShowInlineErrors(true);
           }
         }}
