@@ -2457,7 +2457,7 @@ export const MentoradoRoteirosView = ({
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
       <div className="flex flex-col border-b bg-card">
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="relative flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-5 w-5" />
@@ -2580,7 +2580,12 @@ export const MentoradoRoteirosView = ({
               <ClipboardCopy className="h-4 w-4" />
               Copiar todos
             </Button>
-            <TopClockWidget />
+          </div>
+          {/* Clock centralizado no header */}
+          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 pointer-events-none">
+            <div className="pointer-events-auto">
+              <TopClockWidget />
+            </div>
           </div>
         </div>
         
@@ -3647,21 +3652,7 @@ export const MentoradoRoteirosView = ({
           </div>
         </ScrollArea>
         
-        <RevisaoInteligenrePanel
-          errors={revisaoErrors}
-          isAnalyzing={isAnalyzingRevisao}
-          activeErrorId={erroSelecionadoId}
-          setActiveErrorId={setErroSelecionadoId}
-          categoriaAtiva={categoriaAtiva}
-          setCategoriaAtiva={setCategoriaAtiva}
-          open={revisaoPanelOpen}
-          onToggleOpen={() => setRevisaoPanelOpen((v) => !v)}
-          onApplySuggestion={aplicarSugestaoRevisao}
-          onIgnore={ignorarErroRevisao}
-          onRevalidar={() => reanalisarRevisao()}
-          mostrarSublinhados={mostrarSublinhados}
-          onToggleSublinhados={() => setMostrarSublinhados((v) => !v)}
-        />
+        {/* RevisaoInteligenrePanel removido temporariamente - será reimplementado */}
         {/* Painel de comentários (mentorado) - lado direito */}
         <RoteiroComentariosPanel
           mentoradoId={mentoradoId}
