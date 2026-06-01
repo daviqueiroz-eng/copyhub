@@ -38,6 +38,7 @@ import { FindReplaceDialog } from "./FindReplaceDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
 import { RoteiroChecklist, TimersRecord } from "./RoteiroChecklist";
+import { TopClockWidget } from "./TopClockWidget";
 import { RoteiroAnotacoesPanel } from "./RoteiroAnotacoesPanel";
 import { RoteiroFeedbackDialog } from "./RoteiroFeedbackDialog";
 import { RoteiroProgressBar } from "./RoteiroProgressBar";
@@ -2580,6 +2581,10 @@ export const MentoradoRoteirosView = ({
               Copiar todos
             </Button>
           </div>
+        </div>
+        {/* Cronômetro / Pomodoro / Temporizador centralizado */}
+        <div className="hidden lg:flex justify-center -mt-2 pb-2">
+          <TopClockWidget />
         </div>
         
         {/* Progress Bar - desktop only */}
