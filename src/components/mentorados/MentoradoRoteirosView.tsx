@@ -3092,9 +3092,7 @@ export const MentoradoRoteirosView = ({
                     >
                       {/* Painel de anotações - coluna lateral à esquerda, cresce naturalmente */}
                       {true && (() => {
-                        const roteiroDB = roteiros.find(
-                          (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
-                        );
+                        const roteiroDB = roteirosDbByKey.get(`${guiaAtiva}-${ordem}`);
                         return (
                           <div
                             className={cn(
