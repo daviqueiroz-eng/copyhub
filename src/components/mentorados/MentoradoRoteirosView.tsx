@@ -358,11 +358,11 @@ export const MentoradoRoteirosView = ({
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
-  // Revisão Inteligente — análise sempre ativa; o "olho" controla apenas a exibição visual dos sublinhados
+  // Revisão Inteligente — sublinhados inline desativados temporariamente
   const [mostrarSublinhados, setMostrarSublinhados] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("revisao-mostrar-sublinhados") !== "0";
+    return false;
   });
+  const inlineErrorHighlightsEnabled = false;
   const [erroSelecionadoId, setErroSelecionadoId] = useState<string | null>(null);
   const [categoriaAtiva, setCategoriaAtiva] = useState<RevisaoErrorTipo>("ortografico");
   const [revisaoPanelOpen, setRevisaoPanelOpen] = useState<boolean>(false);
@@ -2226,7 +2226,7 @@ export const MentoradoRoteirosView = ({
     reanalisar: reanalisarRevisao,
     removeError: removeRevisaoError,
   } = useRevisaoInteligente({
-    enabled: true,
+    enabled: false,
     guiaAtiva,
     guiaQuantidade: guiaAtivaConfig.quantidade,
     roteirosLocais,
@@ -2241,7 +2241,7 @@ export const MentoradoRoteirosView = ({
   // Persistir preferência do "olho" (mostrar/ocultar sublinhados no texto)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    localStorage.setItem("revisao-mostrar-sublinhados", mostrarSublinhados ? "1" : "0");
+    localStorage.setItem("revisao-mostrar-sublinhados", "0");
     if (!mostrarSublinhados) {
       setErroSelecionadoId(null);
     }
@@ -3438,7 +3438,7 @@ export const MentoradoRoteirosView = ({
                               ? getRevisaoErrorsForField(guiaAtiva, ordem, "headline")
                               : getErrorsForField(guiaAtiva, ordem, "headline")
                           }
-                          showErrors={mostrarSublinhados || showInlineErrors}
+                          showErrors={inlineErrorHighlightsEnabled && (mostrarSublinhados || showInlineErrors)}
                           activeErrorId={mostrarSublinhados ? erroSelecionadoId : null}
                           onErrorClick={mostrarSublinhados ? setErroSelecionadoId : undefined}
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "headline", error)}
@@ -3582,7 +3582,7 @@ export const MentoradoRoteirosView = ({
                               ? getRevisaoErrorsForField(guiaAtiva, ordem, "estrutura")
                               : getErrorsForField(guiaAtiva, ordem, "estrutura")
                           }
-                          showErrors={mostrarSublinhados || showInlineErrors}
+                          showErrors={inlineErrorHighlightsEnabled && (mostrarSublinhados || showInlineErrors)}
                           activeErrorId={mostrarSublinhados ? erroSelecionadoId : null}
                           onErrorClick={mostrarSublinhados ? setErroSelecionadoId : undefined}
                           onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
@@ -4106,7 +4106,7 @@ export const MentoradoRoteirosView = ({
         }}
         onErrorsChange={(errors) => {
           setSpellErrors(errors);
-          if (errors.length > 0) {
+          if (inlineErrorHighlightsEnabled && errors.length > 0) {
             setShowInlineErrors(true);
           }
         }}
