@@ -462,6 +462,15 @@ export const MentoradoRoteirosView = ({
     return m;
   }, [roteiros]);
 
+  // Lookup O(1) por chave guia-ordem para evitar roteiros.find() dentro do render dos 25+ roteiros
+  const roteirosDbByKey = useMemo(() => {
+    const m = new Map<string, typeof roteiros[number]>();
+    (roteiros as Array<any>).forEach((r) => {
+      m.set(`${r.guia_numero}-${r.ordem}`, r);
+    });
+    return m;
+  }, [roteiros]);
+
   const handleHeadlineAudioChange = useCallback(
     async (guiaNumero: number, ordem: number, url: string | null) => {
       markLocalWrite();
@@ -3083,9 +3092,7 @@ export const MentoradoRoteirosView = ({
                     >
                       {/* Painel de anotações - coluna lateral à esquerda, cresce naturalmente */}
                       {true && (() => {
-                        const roteiroDB = roteiros.find(
-                          (r) => r.guia_numero === guiaAtiva && r.ordem === ordem
-                        );
+                        const roteiroDB = roteirosDbByKey.get(`${guiaAtiva}-${ordem}`);
                         return (
                           <div
                             className={cn(

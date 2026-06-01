@@ -1,60 +1,41 @@
-## O que será feito
+## Problema
 
-### 1. Respostas em comentários (conversa entre mentor e mentorado)
-- Cada comentário poderá receber respostas em thread (lista aninhada abaixo do comentário pai).
-- Mentor responde pelo painel interno (`RoteiroComentariosPanel`).
-- Mentorado responde pela página pública (`RoteiroPublico`), com texto e/ou áudio (mesma UX da criação de comentário, incluindo waveform).
-- Respostas aparecem em tempo real nos dois lados (já existe canal realtime na tabela `roteiro_comentarios`, será reaproveitado).
-- Marcação de "Resolver" continua valendo só para o comentário pai (resolve a thread inteira visualmente).
+Ao digitar em qualquer headline ou estrutura, todo o componente `MentoradoRoteirosView` (4480 linhas) re-renderiza, incluindo os 25 roteiros do guia inteiro e todos os painéis auxiliares (anotações, checks virais, TTS, Select de tipos, etc.). Com texto longo (como no Guia 5 da screenshot), cada tecla dispara dezenas de re-renders pesados → sensação de travamento.
 
-### 2. Duração do áudio sempre visível
-- Hoje o player nativo mostra `00:00` até o usuário dar play, porque os blobs gravados via MediaRecorder (webm/opus) não trazem `duration` no metadata.
-- Será criado um componente `AudioPlayer` reutilizável que:
-  - Calcula a duração real medindo o blob/URL com `AudioContext.decodeAudioData` (ou seek-trick `audio.currentTime = 1e9`).
-  - Mostra `mm:ss / mm:ss` ao lado do play, mesmo antes de tocar.
-  - Substituirá os `<audio controls>` no painel interno e na página pública.
+## Causas identificadas
 
-### 3. Preservação total do histórico (regra permanente)
-- Nenhum comentário, resposta ou áudio será apagado fisicamente, agora ou em atualizações futuras.
-- Botão de lixeira no painel interno e na página pública passa a ser **arquivar** (soft delete): some da visualização padrão, mas fica registrado no banco.
-- Adicionado toggle "Mostrar arquivados" no painel para auditoria.
-- Será salvo na memória do projeto como regra Core: *"Comentários, respostas e áudios nunca são apagados — apenas arquivados (soft delete)."*
+1. **Lista inline sem componente filho memoizado** — `Array.from(...).map((ordem) => ...)` em ~200 linhas de JSX dentro do pai. Sem `React.memo`, toda mudança de estado re-renderiza os 25 itens.
+2. **`checksVirais.filter(...)` rodando por roteiro a cada render** — chamada `verificarCheck` para cada check × 25 roteiros em todo render.
+3. **`RoteiroAnotacoesPanel` montado para cada um dos 25 itens** com `roteiros.find(...)` linear dentro do map.
+4. **`roteirosLocais` é um `Map`** — substituído por novo Map a cada keystroke, invalidando qualquer comparação rasa nos filhos.
+5. **`InlineSpellCheckEditor` faz `autoResize` síncrono** que força layout (lê `scrollHeight`, escreve `height`) a cada tecla em todos os textareas montados.
+6. **Overlay de spellcheck ainda é montado** mesmo com `showErrors=false` — renderiza um `<div>` espelho do texto inteiro.
 
----
+## Plano de otimização (apenas frontend, sem mudar funcionalidade)
 
-## Detalhes técnicos
+### 1. Extrair `RoteiroRow` como componente memoizado
+Criar `src/components/mentorados/RoteiroRow.tsx` contendo o JSX de um roteiro (headline + estrutura + toolbar + anotações + checks). Envolver com `React.memo` e comparador raso. Passar apenas os dados do roteiro específico + callbacks estáveis (`useCallback`).
 
-### Banco (`supabase--migration`)
-```sql
-ALTER TABLE public.roteiro_comentarios
-  ADD COLUMN parent_id uuid REFERENCES public.roteiro_comentarios(id),
-  ADD COLUMN arquivado boolean NOT NULL DEFAULT false,
-  ADD COLUMN audio_duracao_segundos numeric;
+Resultado: digitar no roteiro #3 só re-renderiza o roteiro #3, não os 24 outros.
 
-CREATE INDEX idx_roteiro_comentarios_parent ON public.roteiro_comentarios(parent_id);
-```
-- `parent_id` → respostas referenciam o comentário pai.
-- `arquivado` substitui o DELETE.
-- `audio_duracao_segundos` cache opcional, gravado no upload (evita recomputar).
+### 2. Memoizar dados derivados por roteiro
+- `checksQueFalharam` → mover para dentro do `RoteiroRow` com `useMemo` dependendo só de `headline`, `estrutura`, `checksVirais`.
+- Pré-construir um `Map<string, RoteiroDB>` por `guia-ordem` em `useMemo` no pai e passar o item certo, eliminando o `roteiros.find()` por linha.
 
-### RPCs atualizadas
-- `get_roteiro_publico_v2`: retorna `parent_id`, `arquivado`, `audio_duracao_segundos`; filtra `arquivado = false` por padrão.
-- `inserir_comentario_publico_v2`: aceita novo parâmetro `_parent_id uuid` e `_audio_duracao numeric`.
-- Nova RPC `arquivar_comentario_publico(_slug_or_token, _comentario_id)` (mentorado arquiva o próprio).
-- `excluir_comentario_publico` deixa de deletar — passa a marcar `arquivado = true` (mantém assinatura para compatibilidade).
+### 3. Estabilizar callbacks passados aos filhos
+Garantir que `handleChange`, `handleFieldBlur`, `handleTipoRoteiroChange`, `handleInlineFixError`, etc. recebidos por `RoteiroRow` sejam estáveis (já usam `useCallback`, mas alguns dependem de estado que muda — revisar deps).
 
-### Frontend
-- `useRoteiroComentarios.ts`: novo hook `useResponderComentario` (interno) e `useArquivarComentario`; query passa a montar árvore (pai + `respostas[]`).
-- `RoteiroComentariosPanel.tsx`: renderiza thread, botão "Responder" abre mini-form (texto + mic), botão lixeira vira "Arquivar".
-- `RoteiroPublico.tsx`: idem para o mentorado — botão "Responder" abaixo de cada comentário do mentor, com mesmo recorder/waveform já existente.
-- Novo `src/components/mentorados/AudioPlayer.tsx`: player customizado com duração pré-calculada, usado nos dois lados.
-- Ordenação das threads: pai pela regra atual (ordem → escopo → created_at); respostas por `created_at ASC` dentro do pai.
+### 4. Otimizar `InlineSpellCheckEditor`
+- Não montar o `<div>` overlay quando `showErrors=false` e `errors.length===0` (já está desativado globalmente, então o overlay vira no-op vazio).
+- Trocar `autoResize` síncrono por `requestAnimationFrame` para não bloquear o input.
 
-### Arquivos afetados
-- `supabase/migrations/<novo>.sql` (novo)
-- `src/hooks/useRoteiroComentarios.ts`
-- `src/components/mentorados/RoteiroComentariosPanel.tsx`
-- `src/components/mentorados/AudioPlayer.tsx` (novo)
-- `src/components/mentorados/HeadlineAudioRecorder.tsx` (gravar duração no upload)
-- `src/pages/RoteiroPublico.tsx`
-- `mem://index.md` + nova entrada de memória sobre soft-delete permanente
+### 5. Outros ganhos pequenos
+- `tiposRoteiro.map` dentro do `<SelectContent>` é leve mas, como o `Select` só monta o conteúdo ao abrir, manter.
+- `setSelectedRoteiroKeys(prev => [...prev, key])` está OK; apenas garantir que o checkbox não cause render do textarea (será resolvido com a extração do `RoteiroRow` + memo no sub-bloco do editor se necessário).
+
+## Não incluído (a pedido)
+- Sem mudanças em lógica de salvamento, sync realtime, IA, ou backend.
+- Sem mexer no fluxo de auto-save / debounce existente.
+
+## Como validar
+Após implementação: abrir Guia 5 com 25 roteiros preenchidos, digitar continuamente em uma estrutura longa e verificar fluidez. Confirmar via React DevTools Profiler que apenas o `RoteiroRow` ativo re-renderiza por keystroke.

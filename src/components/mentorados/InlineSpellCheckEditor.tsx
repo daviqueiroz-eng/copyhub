@@ -82,19 +82,32 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
   }, []);
 
   // Auto-resize textarea
+  const resizeRafRef = useRef<number | null>(null);
   const autoResize = useCallback(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    if (resizeRafRef.current != null) {
+      cancelAnimationFrame(resizeRafRef.current);
     }
-    if (overlayRef.current && textareaRef.current) {
-      overlayRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-    }
+    resizeRafRef.current = requestAnimationFrame(() => {
+      resizeRafRef.current = null;
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.style.height = 'auto';
+        const h = ta.scrollHeight + 'px';
+        ta.style.height = h;
+        if (overlayRef.current) overlayRef.current.style.height = h;
+      }
+    });
   }, []);
 
   useEffect(() => {
     autoResize();
   }, [value, autoResize]);
+
+  useEffect(() => {
+    return () => {
+      if (resizeRafRef.current != null) cancelAnimationFrame(resizeRafRef.current);
+    };
+  }, []);
 
   // Sort errors by position (for rendering)
   const sortedErrors = [...errors].sort((a, b) => a.startIndex - b.startIndex);
@@ -183,9 +196,13 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
     }
   };
 
+  // Fast path: no errors and overlay not needed — skip the heavy overlay rendering entirely
+  const overlayNeeded = showErrors && sortedErrors.length > 0;
+
   return (
     <div ref={containerRef} className="relative">
-      {/* Overlay with highlighted errors */}
+      {/* Overlay with highlighted errors (only mounted when there are visible errors) */}
+      {overlayNeeded && (
       <div
         ref={overlayRef}
         className={cn(
@@ -199,8 +216,7 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
         }}
         aria-hidden="true"
       >
-        {showErrors && sortedErrors.length > 0 ? (
-          sortedErrors.map((error, idx) => {
+        {sortedErrors.map((error, idx) => {
             const prevEnd = idx === 0 ? 0 : sortedErrors[idx - 1].endIndex;
             const beforeText = value.substring(prevEnd, error.startIndex);
             const errorText = value.substring(error.startIndex, error.endIndex);
@@ -254,11 +270,9 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
                 )}
               </span>
             );
-          })
-        ) : (
-          <span className="invisible">{value || " "}</span>
-        )}
+        })}
       </div>
+      )}
 
       {/* Actual textarea - borderless for document style */}
       <textarea
