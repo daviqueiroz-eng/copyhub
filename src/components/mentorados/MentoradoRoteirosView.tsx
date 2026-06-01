@@ -358,10 +358,9 @@ export const MentoradoRoteirosView = ({
   const [spellErrors, setSpellErrors] = useState<SpellError[]>([]);
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [ignoredErrorIds, setIgnoredErrorIds] = useState<Set<string>>(new Set());
-  // Revisão Inteligente — análise sempre ativa; o "olho" controla apenas a exibição visual dos sublinhados
+  // Revisão Inteligente — sublinhados inline desativados temporariamente
   const [mostrarSublinhados, setMostrarSublinhados] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("revisao-mostrar-sublinhados") !== "0";
+    return false;
   });
   const [erroSelecionadoId, setErroSelecionadoId] = useState<string | null>(null);
   const [categoriaAtiva, setCategoriaAtiva] = useState<RevisaoErrorTipo>("ortografico");
@@ -2226,7 +2225,7 @@ export const MentoradoRoteirosView = ({
     reanalisar: reanalisarRevisao,
     removeError: removeRevisaoError,
   } = useRevisaoInteligente({
-    enabled: true,
+    enabled: false,
     guiaAtiva,
     guiaQuantidade: guiaAtivaConfig.quantidade,
     roteirosLocais,
@@ -2241,7 +2240,7 @@ export const MentoradoRoteirosView = ({
   // Persistir preferência do "olho" (mostrar/ocultar sublinhados no texto)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    localStorage.setItem("revisao-mostrar-sublinhados", mostrarSublinhados ? "1" : "0");
+    localStorage.setItem("revisao-mostrar-sublinhados", "0");
     if (!mostrarSublinhados) {
       setErroSelecionadoId(null);
     }
