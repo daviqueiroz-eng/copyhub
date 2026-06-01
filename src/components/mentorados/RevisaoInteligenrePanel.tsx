@@ -24,7 +24,7 @@ const CATEGORIAS: Array<{
   { tipo: "ortografico", label: "Erros ortográficos", dot: "bg-red-500", underline: "decoration-red-500" },
   { tipo: "gramatical", label: "Sugestões gramaticais", dot: "bg-blue-500", underline: "decoration-blue-500" },
   { tipo: "nome_cliente", label: "Nome do cliente", dot: "bg-orange-500", underline: "decoration-orange-500" },
-  { tipo: "mentorado", label: "Mentorado já pontuou", dot: "bg-emerald-500", underline: "decoration-emerald-500" },
+  { tipo: "mentorado", label: "Termo viral", dot: "bg-emerald-500", underline: "decoration-emerald-500" },
 ];
 
 interface RevisaoInteligenrePanelProps {
