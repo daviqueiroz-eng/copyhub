@@ -161,8 +161,16 @@ export const TopClockWidget = () => {
 
   const modoLabel = modo === "cronometro" ? "Cronômetro" : modo === "temporizador" ? "Temporizador" : "Pomodoro";
 
+  const progressPct = total > 0 ? Math.min(100, Math.max(0, (atual / total) * 100)) : 0;
+
   return (
-    <div className="flex items-center gap-1 h-8 px-2 rounded-md border bg-muted/30">
+    <div className="relative flex items-center gap-1 h-8 px-2 rounded-md border bg-muted/30 overflow-hidden min-w-[220px]">
+      {/* Barra de progresso de fundo */}
+      <div
+        className="absolute inset-y-0 left-0 bg-orange-500/15 dark:bg-orange-400/15 transition-all duration-300 pointer-events-none"
+        style={{ width: `${progressPct}%` }}
+      />
+      <div className="relative flex items-center gap-1 w-full">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -247,6 +255,7 @@ export const TopClockWidget = () => {
           </PopoverContent>
         </Popover>
       )}
+      </div>
     </div>
   );
 };
