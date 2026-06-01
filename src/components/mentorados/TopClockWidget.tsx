@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Pause, RotateCcw, Settings, Clock } from "lucide-react";
+import { Play, Pause, RotateCcw, Settings, Clock, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { usePomodoro } from "@/contexts/PomodoroContext";
 
@@ -158,104 +159,94 @@ export const TopClockWidget = () => {
     atual = tempTotal - tempRestante;
   }
 
-  const progresso = total > 0 ? Math.min(100, Math.max(0, (atual / total) * 100)) : 0;
+  const modoLabel = modo === "cronometro" ? "Cronômetro" : modo === "temporizador" ? "Temporizador" : "Pomodoro";
 
   return (
-    <div className="flex flex-col items-center gap-1.5">
-      {/* Seletor de modo */}
-      <div className="flex items-center gap-1 bg-muted/60 rounded-full p-0.5 text-[10px] font-medium">
-        {(["pomodoro", "cronometro", "temporizador"] as Modo[]).map((m) => (
+    <div className="flex items-center gap-1 h-8 px-2 rounded-md border bg-muted/30">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <button
-            key={m}
-            onClick={() => setModo(m)}
-            className={cn(
-              "px-2.5 py-0.5 rounded-full capitalize transition-colors",
-              modo === m
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
+            className="flex items-center gap-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+            title="Trocar modo"
           >
-            {m === "cronometro" ? "cronômetro" : m}
+            {modoLabel}
+            <ChevronDown className="h-3 w-3" />
           </button>
-        ))}
-      </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[140px]">
+          <DropdownMenuItem onClick={() => setModo("pomodoro")}>Pomodoro</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setModo("cronometro")}>Cronômetro</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setModo("temporizador")}>Temporizador</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      {/* Barra de progresso + display */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={onReset}
-          title="Resetar"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-        </Button>
-
-        <div className="flex flex-col items-center">
-          <div className="relative w-48 h-5 rounded-full bg-muted overflow-hidden border">
-            <div
-              className={cn(
-                "h-full transition-all",
-                isRunning ? "bg-orange-500" : "bg-orange-400/70"
-              )}
-              style={{ width: `${progresso}%` }}
-            />
-          </div>
-          <span className="font-mono text-lg font-bold tabular-nums tracking-wider mt-0.5">
-            {display}
-          </span>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={onToggle}
-          title={isRunning ? "Pausar" : "Iniciar"}
-        >
-          {isRunning ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-        </Button>
-
-        {modo === "temporizador" && (
-          <Popover open={tempConfigOpen} onOpenChange={setTempConfigOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" title="Configurar minutos">
-                <Settings className="h-3.5 w-3.5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-3">
-              <div className="space-y-2">
-                <label className="text-xs font-medium flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> Minutos
-                </label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={tempMinInput}
-                  onChange={(e) => setTempMinInput(e.target.value)}
-                  className="h-8"
-                />
-                <Button
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    const mins = Math.max(1, parseInt(tempMinInput) || 1);
-                    const segs = mins * 60;
-                    setTempTotal(segs);
-                    setTempRestante(segs);
-                    setTempRunning(false);
-                    tempEndRef.current = null;
-                    setTempConfigOpen(false);
-                  }}
-                >
-                  Aplicar
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+      <span
+        className={cn(
+          "font-mono text-sm font-semibold tabular-nums min-w-[52px] text-center",
+          isRunning ? "text-orange-600 dark:text-orange-400" : "text-foreground"
         )}
-      </div>
+      >
+        {display}
+      </span>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        onClick={onToggle}
+        title={isRunning ? "Pausar" : "Iniciar"}
+      >
+        {isRunning ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        onClick={onReset}
+        title="Resetar"
+      >
+        <RotateCcw className="h-3 w-3" />
+      </Button>
+
+      {modo === "temporizador" && (
+        <Popover open={tempConfigOpen} onOpenChange={setTempConfigOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-6 w-6" title="Configurar minutos">
+              <Settings className="h-3 w-3" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-3">
+            <div className="space-y-2">
+              <label className="text-xs font-medium flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Minutos
+              </label>
+              <Input
+                type="number"
+                min={1}
+                value={tempMinInput}
+                onChange={(e) => setTempMinInput(e.target.value)}
+                className="h-8"
+              />
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  const mins = Math.max(1, parseInt(tempMinInput) || 1);
+                  const segs = mins * 60;
+                  setTempTotal(segs);
+                  setTempRestante(segs);
+                  setTempRunning(false);
+                  tempEndRef.current = null;
+                  setTempConfigOpen(false);
+                }}
+              >
+                Aplicar
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 };

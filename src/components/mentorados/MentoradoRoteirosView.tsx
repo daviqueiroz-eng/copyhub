@@ -2580,11 +2580,8 @@ export const MentoradoRoteirosView = ({
               <ClipboardCopy className="h-4 w-4" />
               Copiar todos
             </Button>
+            <TopClockWidget />
           </div>
-        </div>
-        {/* Cronômetro / Pomodoro / Temporizador centralizado */}
-        <div className="hidden lg:flex justify-center -mt-2 pb-2">
-          <TopClockWidget />
         </div>
         
         {/* Progress Bar - desktop only */}
