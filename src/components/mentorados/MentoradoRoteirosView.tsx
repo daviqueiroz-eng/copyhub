@@ -2582,6 +2582,10 @@ export const MentoradoRoteirosView = ({
             </Button>
           </div>
         </div>
+        {/* Cronômetro / Pomodoro / Temporizador centralizado */}
+        <div className="hidden lg:flex justify-center -mt-2 pb-2">
+          <TopClockWidget />
+        </div>
         
         {/* Progress Bar - desktop only */}
         <div className="px-6 pb-3 hidden lg:block">
