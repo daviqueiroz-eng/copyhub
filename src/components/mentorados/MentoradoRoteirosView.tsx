@@ -1842,7 +1842,8 @@ export const MentoradoRoteirosView = ({
     const plainText = textParts.join('\n\n---\n\n');
 
     try {
-      const htmlBlob = new Blob([html], { type: 'text/html' });
+      const wrappedHtml = `<div style="font-family: 'Poppins', sans-serif; font-size: 13px;">${html}</div>`;
+      const htmlBlob = new Blob([wrappedHtml], { type: 'text/html' });
       const textBlob = new Blob([plainText], { type: 'text/plain' });
       await navigator.clipboard.write([
         new ClipboardItem({
