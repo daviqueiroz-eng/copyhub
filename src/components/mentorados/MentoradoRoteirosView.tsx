@@ -493,6 +493,7 @@ export const MentoradoRoteirosView = ({
   const { data: trelloImport } = useTrelloImport();
   const { data: tiposRoteiro = [] } = useTiposRoteiro();
   const upsertRoteiro = useUpsertMentoradoRoteiro();
+  const toggleCorrigido = useToggleRoteiroCorrigido();
   const deleteGuia = useDeleteGuia();
   const updateMentorado = useUpdateMentorado();
   const { data: deletedGuias = [] } = useDeletedGuias(mentoradoId);
