@@ -3093,33 +3093,6 @@ export const MentoradoRoteirosView = ({
                         } catch {}
                       }}
                     >
-                      {/* Painel de anotações - coluna lateral à esquerda, cresce naturalmente */}
-                      {true && (() => {
-                        const roteiroDB = roteirosDbByKey.get(`${guiaAtiva}-${ordem}`);
-                        return (
-                          <div
-                            className={cn(
-                              "hidden lg:block shrink-0 transition-all duration-300 ease-out",
-                              anotacoesExpanded ? "lg:w-[280px] xl:w-[320px]" : "lg:w-[150px]"
-                            )}
-                          >
-                            <RoteiroAnotacoesPanel
-                              roteiroId={roteiroDB?.id}
-                              linkReferencia={roteiro.link_referencia}
-                              headline={roteiro.headline}
-                              mentoradoNome={mentoradoNome}
-                              onExpandedChange={(exp) => {
-                                setAnotacoesExpandidas((prev) => {
-                                  const next = new Set(prev);
-                                  if (exp) next.add(key);
-                                  else next.delete(key);
-                                  return next;
-                                });
-                              }}
-                            />
-                          </div>
-                        );
-                      })()}
                       {/* Floating toolbar - mobile: always visible, horizontal; desktop: hover, vertical */}
                       <div className="absolute -right-14 top-0 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex flex-col gap-1">
                         <Button
