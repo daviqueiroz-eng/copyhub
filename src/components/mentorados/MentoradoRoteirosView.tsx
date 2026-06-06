@@ -3440,80 +3440,16 @@ export const MentoradoRoteirosView = ({
                         />
                       </div>
 
-                      {/* Checklist da Headline */}
-                      {checklistItems.length > 0 && (
-                        <div className="mb-2 ml-8 flex flex-wrap items-center gap-x-4 gap-y-1">
-                          {(() => {
-                            const allChecked = checklistItems.every(item =>
-                              checklistProgress.some(p => p.checklist_item_id === item.id && p.ordem_roteiro === ordem && p.checked)
-                            );
-                            return (
-                              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground">
-                                <Checkbox
-                                  checked={allChecked}
-                                  onCheckedChange={(checked) => {
-                                    bulkToggleProgress.mutate({
-                                      mentoradoId,
-                                      guiaNumero: guiaAtiva,
-                                      ordemRoteiro: ordem,
-                                      items: checklistItems,
-                                      checked: !!checked,
-                                    });
-                                  }}
-                                  className="h-3.5 w-3.5"
-                                />
-                                <span className="font-medium">Todos</span>
-                              </label>
-                            );
-                          })()}
-                          {checklistItems.map(item => {
-                            const isChecked = checklistProgress.some(
-                              p => p.checklist_item_id === item.id && p.ordem_roteiro === ordem && p.checked
-                            );
-                            return (
-                              <label key={item.id} className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground">
-                                <Checkbox
-                                  checked={isChecked}
-                                  onCheckedChange={(checked) => {
-                                    toggleProgress.mutate({
-                                      mentoradoId,
-                                      guiaNumero: guiaAtiva,
-                                      ordemRoteiro: ordem,
-                                      checklistItemId: item.id,
-                                      checked: !!checked,
-                                    });
-                                  }}
-                                  className="h-3.5 w-3.5"
-                                />
-                                <span>{item.label}</span>
-                              </label>
-                            );
-                          })}
-                          {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5"
-                              onClick={() => setShowChecklistConfig(true)}
-                              title="Configurar checklist"
-                            >
-                              <Settings2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                      {checklistItems.length === 0 && isAdmin && (
-                        <div className="mb-2 ml-8">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs text-muted-foreground h-6"
-                            onClick={() => setShowChecklistConfig(true)}
-                          >
-                            <Plus className="h-3 w-3 mr-1" /> Configurar checklist
-                          </Button>
-                        </div>
-                      )}
+                      {/* Anotações inline: Referência / Notas / Estudos */}
+                      <div className="mb-3 ml-8">
+                        <RoteiroAnotacoesPanel
+                          layout="horizontal"
+                          roteiroId={roteirosDbByKey.get(`${guiaAtiva}-${ordem}`)?.id}
+                          linkReferencia={roteiro.link_referencia}
+                          headline={roteiro.headline}
+                          mentoradoNome={mentoradoNome}
+                        />
+                      </div>
 
                       {/* Estrutura */}
                       <div className={cn("mb-4 rounded-md transition-colors", (roteiro.estrutura?.length || 0) > 2100 && "bg-red-100 dark:bg-red-950/40 p-2")}>
