@@ -55,6 +55,7 @@ import {
   useDeletedGuias,
   useRestoreGuia,
   markLocalWrite,
+  useToggleRoteiroCorrigido,
 } from "@/hooks/useMentoradosRoteiros";
 import { HeadlineAudioRecorder } from "./HeadlineAudioRecorder";
 import {
