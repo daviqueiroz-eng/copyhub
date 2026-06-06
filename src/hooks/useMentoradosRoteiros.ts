@@ -13,6 +13,7 @@ export type MentoradoRoteiro = {
   estrutura: string;
   tipo_roteiro_id: string | null;
   link_referencia: string | null;
+  corrigido: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
