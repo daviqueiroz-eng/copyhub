@@ -3441,7 +3441,7 @@ export const MentoradoRoteirosView = ({
                       </div>
 
                       {/* Anotações inline: Referência / Notas / Estudos */}
-                      <div className="mb-3 ml-8">
+                      <div className="mb-3">
                         <RoteiroAnotacoesPanel
                           layout="horizontal"
                           roteiroId={roteirosDbByKey.get(`${guiaAtiva}-${ordem}`)?.id}
