@@ -18,13 +18,13 @@ interface RoteiroAnotacoesPanelProps {
   linkReferencia?: string | null;
   headline?: string;
   mentoradoNome?: string;
+  layout?: "vertical" | "horizontal";
 }
 
 const SECOES: Array<{ key: AnotacaoCampo; label: string; placeholder: string }> = [
   { key: "referencia_texto", label: "Referência", placeholder: "Cole referências, links ou trechos relevantes..." },
   { key: "notas", label: "Notas", placeholder: "Notas rápidas sobre este roteiro..." },
   { key: "estudos", label: "Estudos", placeholder: "Insights, estudos e aprendizados..." },
-  { key: "comentario", label: "Comentário", placeholder: "Comentários ou observações..." },
 ];
 
 export const RoteiroAnotacoesPanel = ({
@@ -34,6 +34,7 @@ export const RoteiroAnotacoesPanel = ({
   linkReferencia,
   headline,
   mentoradoNome,
+  layout = "vertical",
 }: RoteiroAnotacoesPanelProps) => {
   const { data: anotacao } = useRoteiroAnotacoes(roteiroId);
   const upsert = useUpsertRoteiroAnotacao();
@@ -136,6 +137,93 @@ export const RoteiroAnotacoesPanel = ({
       mentoradoNome,
     });
   };
+
+  if (layout === "horizontal") {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <div className={cn("flex flex-col gap-1", className)}>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {SECOES.map((s) => {
+              const isOpen = openSections[s.key];
+              const hasContent = (values[s.key] ?? "").trim().length > 0;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => toggle(s.key)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-colors",
+                    isOpen ? "bg-muted border-foreground/20" : "bg-muted/20 hover:bg-muted/40",
+                  )}
+                >
+                  {isOpen ? (
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  <span className={cn("font-medium", hasContent ? "text-foreground" : "text-muted-foreground")}>
+                    {s.label}
+                  </span>
+                  {hasContent && !isOpen && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  )}
+                  {savingField === s.key && (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
+                  {savedField === s.key && (
+                    <Check className="h-3 w-3 text-emerald-500" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {SECOES.map((s) => {
+            const isOpen = openSections[s.key];
+            if (!isOpen) return null;
+            const isReferenciaSection = s.key === "referencia_texto";
+            return (
+              <div key={`${s.key}-content`} className="border rounded-md bg-muted/20 p-2 mt-1">
+                {isReferenciaSection && linkParaTranscrever && (
+                  <div className="mb-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTranscribe();
+                      }}
+                      disabled={transcribing || !roteiroId}
+                      className="h-7 text-xs gap-1.5"
+                    >
+                      {transcribing ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Transcrevendo...
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="h-3.5 w-3.5" />
+                          Transcrever referência
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+                <Textarea
+                  value={values[s.key]}
+                  onChange={(e) => handleChange(s.key, e.target.value)}
+                  placeholder={roteiroId ? s.placeholder : "Digite a headline para habilitar..."}
+                  disabled={!roteiroId}
+                  className="min-h-[160px] text-sm resize-y h-auto"
+                />
+              </div>
+            );
+          })}
+        </div>
+      </TooltipProvider>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={200}>

@@ -1,42 +1,33 @@
-# Tornar o app instalável (PWA simples)
+## Plano final
 
-Abordagem manifest-only: o app fica instalável no celular (Adicionar à tela inicial) e no desktop (botão "Instalar" no Chrome/Edge), sem service worker e sem cache offline — assim evitamos qualquer risco de travar atualizações no editor do Lovable.
+**Objetivo:** Remover totalmente o checklist (linha de caixinhas abaixo da headline) e o painel lateral esquerdo de anotações (que estava cortado). No lugar do checklist, colocar os 3 botões — **Referência**, **Notas**, **Estudos** — em linha. Ao clicar em um, o conteúdo abre para baixo em largura cheia; clicar de novo fecha. **Comentário** é removido.
 
-## O que será feito
+### Mudanças
 
-1. **Criar `public/manifest.webmanifest`** com:
-   - `name`: "Central da Equipe"
-   - `short_name`: "Central"
-   - `start_url`: "/"
-   - `scope`: "/"
-   - `display`: "standalone"
-   - `background_color` e `theme_color`: branco / dourado (#B8860B) seguindo a identidade do projeto
-   - `icons`: 192x192 e 512x512 (normal e maskable)
+**1. `src/components/mentorados/RoteiroAnotacoesPanel.tsx`**
+- Remover `comentario` de `SECOES` (mantém o campo nos states só para não quebrar tipos, ou tira completamente — tira).
+- Adicionar prop `layout?: "vertical" | "horizontal"` (default `vertical`, preserva uso atual).
+- No modo `horizontal`: renderiza os 3 botões em uma linha (mesma estética compacta), e abaixo deles renderiza o `<Textarea>` de cada seção aberta em largura total. Botão de Transcrever continua disponível dentro da seção Referência.
 
-2. **Adicionar tags no `index.html`**:
-   - `<link rel="manifest" href="/manifest.webmanifest">`
-   - `<meta name="theme-color" content="#ffffff">`
-   - `<meta name="apple-mobile-web-app-capable" content="yes">`
-   - `<meta name="apple-mobile-web-app-status-bar-style" content="default">`
-   - `<meta name="apple-mobile-web-app-title" content="Central">`
-   - `<link rel="apple-touch-icon" href="/icon-192.png">`
+**2. `src/components/mentorados/MentoradoRoteirosView.tsx`**
+- **Remover** a coluna lateral esquerda que renderiza `RoteiroAnotacoesPanel` (bloco com `lg:w-[150px]/[280px]`), e o wrapper `lg:flex lg:gap-4`.
+- **Remover** o state `anotacoesExpandidas`, o `prevAnotacoesOpenRef` e o `useEffect` que minimiza a sidebar das guias com base nele.
+- **Remover** todo o bloco do checklist da headline (linhas ~3470–3543): o "Todos", os itens (`Está falando com o macro?`, `Tem 2 termos virais?`, etc.), e o botão de configurar checklist.
+- **Inserir** no lugar do checklist removido: `<RoteiroAnotacoesPanel layout="horizontal" roteiroId={roteiroDB?.id} linkReferencia={roteiro.link_referencia} headline={roteiro.headline} mentoradoNome={mentoradoNome} />` com `ml-8` para alinhar com a headline.
 
-3. **Aguardar você enviar a imagem do ícone**. Quando enviar, eu:
-   - Gero as versões 192x192, 512x512 e apple-touch-icon (180x180)
-   - Coloco em `/public/` e atualizo o manifest
+### Resultado
 
-## O que NÃO será feito
+```
+☐ HEADLINE 01:  [Tipo ▾]                              ⚔ 🎙
+   Texto da headline...
 
-- Sem `vite-plugin-pwa`, sem service worker, sem cache offline (evita problemas de cache no preview).
-- Sem mudanças em lógica de negócio, autenticação ou backend.
-- Sem `display: fullscreen` (mantemos `standalone`, que é o padrão para apps instalados).
+   > Referência   > Notas   > Estudos
+   ┌─────────────────────────────────────┐
+   │ Textarea da seção aberta            │  ← abre para baixo, reclique fecha
+   └─────────────────────────────────────┘
 
-## Como instalar depois de publicado
+   ESTRUTURA 01:
+   ...
+```
 
-- **Android/Chrome**: menu → "Instalar app" / "Adicionar à tela inicial".
-- **iPhone/Safari**: botão compartilhar → "Adicionar à Tela de Início".
-- **Desktop (Chrome/Edge)**: ícone de instalação na barra de endereço.
-
-## Próximo passo
-
-Me envie a imagem que será o ícone do app (de preferência quadrada, mínimo 512x512) e eu finalizo a implementação.
+Sem mudanças de schema, hooks ou lógica de save (continua usando `useUpsertRoteiroAnotacao` com debounce 800ms). Hooks de checklist (`useHeadlineChecklistItems` etc.) e o dialog `HeadlineChecklistConfig` ficam no código mas deixam de ser renderizados — podem ser removidos depois se confirmado.
