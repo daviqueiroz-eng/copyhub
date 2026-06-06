@@ -1854,6 +1854,7 @@ export type Database = {
       }
       mentorados_roteiros: {
         Row: {
+          corrigido: boolean
           created_at: string
           deleted_at: string | null
           estrutura: string | null
@@ -1869,6 +1870,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          corrigido?: boolean
           created_at?: string
           deleted_at?: string | null
           estrutura?: string | null
@@ -1884,6 +1886,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          corrigido?: boolean
           created_at?: string
           deleted_at?: string | null
           estrutura?: string | null
