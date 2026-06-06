@@ -55,6 +55,7 @@ import {
   useDeletedGuias,
   useRestoreGuia,
   markLocalWrite,
+  useToggleRoteiroCorrigido,
 } from "@/hooks/useMentoradosRoteiros";
 import { HeadlineAudioRecorder } from "./HeadlineAudioRecorder";
 import {
@@ -492,6 +493,7 @@ export const MentoradoRoteirosView = ({
   const { data: trelloImport } = useTrelloImport();
   const { data: tiposRoteiro = [] } = useTiposRoteiro();
   const upsertRoteiro = useUpsertMentoradoRoteiro();
+  const toggleCorrigido = useToggleRoteiroCorrigido();
   const deleteGuia = useDeleteGuia();
   const updateMentorado = useUpdateMentorado();
   const { data: deletedGuias = [] } = useDeletedGuias(mentoradoId);
@@ -2389,13 +2391,14 @@ export const MentoradoRoteirosView = ({
       if (finalizedFields.has(`${key}-headline`)) {
         headlinesPreenchidas++;
       }
-      if (finalizedFields.has(`${key}-estrutura`)) {
+      // Roteiros agora são contados apenas quando o usuário marca a caixinha (corrigido)
+      if (roteirosDbByKey.get(key)?.corrigido) {
         roteirosPreenchidos++;
       }
     }
     
     return { headlinesPreenchidas, roteirosPreenchidos, total: quantidade };
-  }, [guias, guiaAtiva, finalizedFields]);
+  }, [guias, guiaAtiva, finalizedFields, roteirosDbByKey]);
   
   const progresso = calcularProgresso();
 
@@ -3215,17 +3218,28 @@ export const MentoradoRoteirosView = ({
                       {/* Headline */}
                       <div id={`roteiro-${guiaAtiva}-${ordem}`} className="mb-2 group/headline scroll-mt-24">
                         <div className="flex items-center gap-3 flex-wrap">
-                          <Checkbox
-                            checked={selectedRoteiroKeys.includes(key)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedRoteiroKeys(prev => [...prev, key]);
-                              } else {
-                                setSelectedRoteiroKeys(prev => prev.filter(k => k !== key));
-                              }
-                            }}
-                            className="h-5 w-5"
-                          />
+                          {(() => {
+                            const isCorrigido = !!roteirosDbByKey.get(key)?.corrigido;
+                            return (
+                              <Checkbox
+                                checked={isCorrigido}
+                                onCheckedChange={(checked) => {
+                                  toggleCorrigido.mutate({
+                                    mentoradoId,
+                                    guiaNumero: guiaAtiva,
+                                    ordem,
+                                    corrigido: !!checked,
+                                  });
+                                }}
+                                className={cn(
+                                  "h-5 w-5",
+                                  isCorrigido &&
+                                    "border-green-500 bg-green-500 text-white data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white"
+                                )}
+                                title={isCorrigido ? "Roteiro corrigido — clique para desmarcar" : "Marcar como corrigido"}
+                              />
+                            );
+                          })()}
                           <span className="font-poppins font-bold text-[#B8860B] text-base">
                             HEADLINE {String(ordem).padStart(2, "0")}:
                           </span>

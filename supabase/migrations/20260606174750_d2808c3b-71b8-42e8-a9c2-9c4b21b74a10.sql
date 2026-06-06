@@ -1,0 +1,1 @@
+ALTER TABLE public.mentorados_roteiros ADD COLUMN IF NOT EXISTS corrigido boolean NOT NULL DEFAULT false;
