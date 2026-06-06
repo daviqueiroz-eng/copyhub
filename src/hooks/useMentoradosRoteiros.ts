@@ -293,6 +293,52 @@ export const useGetGuiasCount = (mentoradoId: string | undefined) => {
   });
 };
 
+// Toggle "corrigido" flag for a specific roteiro slot. Persists to DB and
+// invalidates the local cache so the UI/progress reflects the change.
+export const useToggleRoteiroCorrigido = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      mentoradoId,
+      guiaNumero,
+      ordem,
+      corrigido,
+    }: {
+      mentoradoId: string;
+      guiaNumero: number;
+      ordem: number;
+      corrigido: boolean;
+    }) => {
+      if (!user) throw new Error("Usuário não autenticado");
+      markLocalWrite();
+
+      // Upsert to ensure a row exists even if the user hasn't typed anything yet
+      const { error } = await supabase
+        .from("mentorados_roteiros")
+        .upsert(
+          {
+            mentorado_id: mentoradoId,
+            user_id: user.id,
+            guia_numero: guiaNumero,
+            ordem,
+            corrigido,
+            deleted_at: null,
+          },
+          { onConflict: "mentorado_id,guia_numero,ordem" }
+        );
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["mentorados_roteiros", variables.mentoradoId],
+      });
+    },
+  });
+};
+
 // Reorder roteiros within a guia by rewriting headline/estrutura/tipo/link
 // content at each ordem slot — keeps the unique (mentorado_id, guia_numero, ordem)
 // constraint intact and avoids juggling ordem values.
