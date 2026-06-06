@@ -2391,13 +2391,14 @@ export const MentoradoRoteirosView = ({
       if (finalizedFields.has(`${key}-headline`)) {
         headlinesPreenchidas++;
       }
-      if (finalizedFields.has(`${key}-estrutura`)) {
+      // Roteiros agora são contados apenas quando o usuário marca a caixinha (corrigido)
+      if (roteirosDbByKey.get(key)?.corrigido) {
         roteirosPreenchidos++;
       }
     }
     
     return { headlinesPreenchidas, roteirosPreenchidos, total: quantidade };
-  }, [guias, guiaAtiva, finalizedFields]);
+  }, [guias, guiaAtiva, finalizedFields, roteirosDbByKey]);
   
   const progresso = calcularProgresso();
 
