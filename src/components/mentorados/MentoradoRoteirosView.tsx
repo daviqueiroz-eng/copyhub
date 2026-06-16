@@ -346,6 +346,7 @@ export const MentoradoRoteirosView = ({
   const [headlinesTargetKey, setHeadlinesTargetKey] = useState<string>("");
   const [savedHeadlines, setSavedHeadlines] = useState<AnalysisHeadline[]>([]);
   const [showFindReplace, setShowFindReplace] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showSpellChecker, setShowSpellChecker] = useState(false);
   const [showHeadlinesVisualizacao, setShowHeadlinesVisualizacao] = useState(false);
   const [resultadosVotacaoOpen, setResultadosVotacaoOpen] = useState(false);
