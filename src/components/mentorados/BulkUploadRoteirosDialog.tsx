@@ -67,8 +67,23 @@ function parseBulkText(raw: string): ParsedItem[] {
   }
   if (current.length > 0) blocks.push(current);
 
-  const items: ParsedItem[] = [];
+  // Merge "URL-only" blocks into the previous block.
+  // Caso comum: usuário separa links da mesma headline com linha em branco.
+  const mergedBlocks: string[][] = [];
   for (const block of blocks) {
+    const nonEmpty = block.filter((l) => l.trim().length > 0);
+    const isUrlOnly =
+      nonEmpty.length > 0 &&
+      nonEmpty.every((l) => l.trim().replace(URL_REGEX, "").trim() === "");
+    if (isUrlOnly && mergedBlocks.length > 0) {
+      mergedBlocks[mergedBlocks.length - 1].push(...block);
+    } else {
+      mergedBlocks.push([...block]);
+    }
+  }
+
+  const items: ParsedItem[] = [];
+  for (const block of mergedBlocks) {
     // Remove linhas totalmente vazias do começo/fim
     while (block.length && !block[0].trim()) block.shift();
     while (block.length && !block[block.length - 1].trim()) block.pop();
