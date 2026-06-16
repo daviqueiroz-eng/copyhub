@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 interface ParsedItem {
   headline: string;
   estrutura: string;
+  link_referencia?: string | null;
 }
 
 interface BulkUploadRoteirosDialogProps {
@@ -31,6 +32,7 @@ const LABEL_HEADLINE = /^\s*(headline|t[íi]tulo|hook|gancho)\s*[:\-—]\s*/i;
 const LABEL_ESTRUTURA = /^\s*(estrutura|roteiro|corpo|desenvolvimento|script)\s*[:\-—]\s*/i;
 const NUMBERING = /^\s*(?:\d{1,3}[.)\-:]|[-•·*+])\s+/;
 const SEPARATOR_LINE = /^\s*[-=_*]{3,}\s*$/;
+const URL_REGEX = /(https?:\/\/[^\s]+)/g;
 
 function stripLeading(line: string): string {
   let out = line.replace(NUMBERING, "");
@@ -72,17 +74,33 @@ function parseBulkText(raw: string): ParsedItem[] {
     while (block.length && !block[block.length - 1].trim()) block.pop();
     if (block.length === 0) continue;
 
-    const headline = stripLeading(block[0]);
-    if (!headline) continue;
+    // Coleta TODAS as URLs do bloco — viram referências
+    const allUrls: string[] = [];
+    const linesSemUrl = block.map((ln) => {
+      const found = ln.match(URL_REGEX);
+      if (found) allUrls.push(...found);
+      return ln.replace(URL_REGEX, "").replace(/\s{2,}/g, " ").trim();
+    }).filter((ln) => ln.length > 0);
 
-    const restLines = block.slice(1);
-    // Se a 1ª linha do resto tiver rótulo "Estrutura:", remove só o rótulo
+    if (linesSemUrl.length === 0 && allUrls.length === 0) continue;
+
+    const headline = linesSemUrl.length > 0 ? stripLeading(linesSemUrl[0]) : "";
+    if (!headline && allUrls.length === 0) continue;
+
+    const restLines = linesSemUrl.slice(1);
     if (restLines.length > 0) {
       restLines[0] = stripEstruturaLabel(restLines[0]);
     }
     const estrutura = restLines.join("\n").trim();
 
-    items.push({ headline, estrutura });
+    if (allUrls.length <= 1) {
+      items.push({ headline, estrutura, link_referencia: allUrls[0] || null });
+    } else {
+      // Mais de 1 link → duplica a headline, uma entrada por link
+      for (const url of allUrls) {
+        items.push({ headline, estrutura, link_referencia: url });
+      }
+    }
   }
 
   return items;
