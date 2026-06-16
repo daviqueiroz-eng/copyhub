@@ -9,6 +9,7 @@ interface ParsedItem {
   headline: string;
   estrutura: string;
   link_referencia?: string | null;
+  referencias_extra?: string[];
 }
 
 interface BulkUploadRoteirosDialogProps {
@@ -56,7 +57,9 @@ function parseBulkText(raw: string): ParsedItem[] {
   let current: string[] = [];
 
   for (const line of lines) {
-    if (line.trim() === "" || SEPARATOR_LINE.test(line)) {
+    // Trata espaços, NBSP e zero-width como vazio
+    const cleaned = line.replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, "").trim();
+    if (cleaned === "" || SEPARATOR_LINE.test(line)) {
       if (current.length > 0) {
         blocks.push(current);
         current = [];
@@ -67,8 +70,7 @@ function parseBulkText(raw: string): ParsedItem[] {
   }
   if (current.length > 0) blocks.push(current);
 
-  // Merge "URL-only" blocks into the previous block.
-  // Caso comum: usuário separa links da mesma headline com linha em branco.
+  // Merge "URL-only" blocks into the previous non-URL block (mesmo com vários blanks).
   const mergedBlocks: string[][] = [];
   for (const block of blocks) {
     const nonEmpty = block.filter((l) => l.trim().length > 0);
@@ -76,7 +78,21 @@ function parseBulkText(raw: string): ParsedItem[] {
       nonEmpty.length > 0 &&
       nonEmpty.every((l) => l.trim().replace(URL_REGEX, "").trim() === "");
     if (isUrlOnly && mergedBlocks.length > 0) {
-      mergedBlocks[mergedBlocks.length - 1].push(...block);
+      // Busca o último bloco que tenha texto (não só URLs) para anexar
+      let targetIdx = mergedBlocks.length - 1;
+      while (targetIdx >= 0) {
+        const prevNonEmpty = mergedBlocks[targetIdx].filter((l) => l.trim().length > 0);
+        const prevIsUrlOnly =
+          prevNonEmpty.length > 0 &&
+          prevNonEmpty.every((l) => l.trim().replace(URL_REGEX, "").trim() === "");
+        if (!prevIsUrlOnly) break;
+        targetIdx--;
+      }
+      if (targetIdx >= 0) {
+        mergedBlocks[targetIdx].push(...block);
+      } else {
+        mergedBlocks.push([...block]);
+      }
     } else {
       mergedBlocks.push([...block]);
     }
@@ -99,7 +115,20 @@ function parseBulkText(raw: string): ParsedItem[] {
 
     if (linesSemUrl.length === 0 && allUrls.length === 0) continue;
 
-    const headline = linesSemUrl.length > 0 ? stripLeading(linesSemUrl[0]) : "";
+    // Caso o bloco seja só URLs (sem headline) e exista item anterior,
+    // anexa essas URLs ao item anterior (rede de segurança).
+    if (linesSemUrl.length === 0 && allUrls.length > 0) {
+      if (items.length > 0) {
+        const last = items[items.length - 1];
+        if (!last.link_referencia) {
+          last.link_referencia = allUrls.shift() || null;
+        }
+        last.referencias_extra = [...(last.referencias_extra || []), ...allUrls];
+      }
+      continue;
+    }
+
+    const headline = stripLeading(linesSemUrl[0]);
     if (!headline && allUrls.length === 0) continue;
 
     const restLines = linesSemUrl.slice(1);
@@ -108,14 +137,14 @@ function parseBulkText(raw: string): ParsedItem[] {
     }
     const estrutura = restLines.join("\n").trim();
 
-    if (allUrls.length <= 1) {
-      items.push({ headline, estrutura, link_referencia: allUrls[0] || null });
-    } else {
-      // Mais de 1 link → duplica a headline, uma entrada por link
-      for (const url of allUrls) {
-        items.push({ headline, estrutura, link_referencia: url });
-      }
-    }
+    // UMA headline = UM item, com a 1ª URL como link_referencia
+    // e as demais como referências extra (mantidas na mesma headline).
+    items.push({
+      headline,
+      estrutura,
+      link_referencia: allUrls[0] || null,
+      referencias_extra: allUrls.slice(1),
+    });
   }
 
   return items;
@@ -247,12 +276,20 @@ export function BulkUploadRoteirosDialog({
                     <div className="text-sm font-medium mb-2 whitespace-pre-wrap">{item.headline}</div>
                     {item.link_referencia && (
                       <div className="text-xs mb-2 truncate">
-                        <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA: </span>
+                        <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA 1: </span>
                         <a href={item.link_referencia} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                           {item.link_referencia}
                         </a>
                       </div>
                     )}
+                    {item.referencias_extra && item.referencias_extra.length > 0 && item.referencias_extra.map((url, idx) => (
+                      <div key={idx} className="text-xs mb-2 truncate">
+                        <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA {idx + 2}: </span>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          {url}
+                        </a>
+                      </div>
+                    ))}
                     {item.estrutura && (
                       <>
                         <div className="text-xs font-semibold mb-1" style={{ color: "#B8860B" }}>
