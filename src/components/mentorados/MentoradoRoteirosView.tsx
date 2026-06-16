@@ -35,6 +35,7 @@ import { toast } from "@/hooks/use-toast";
 import { useWebSpeechTTS } from "@/hooks/useWebSpeechTTS";
 import { TTSConfigPopover } from "./TTSConfigPopover";
 import { FindReplaceDialog } from "./FindReplaceDialog";
+import { BulkUploadRoteirosDialog } from "./BulkUploadRoteirosDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
 import { RoteiroChecklist, TimersRecord } from "./RoteiroChecklist";
@@ -345,6 +346,7 @@ export const MentoradoRoteirosView = ({
   const [headlinesTargetKey, setHeadlinesTargetKey] = useState<string>("");
   const [savedHeadlines, setSavedHeadlines] = useState<AnalysisHeadline[]>([]);
   const [showFindReplace, setShowFindReplace] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showSpellChecker, setShowSpellChecker] = useState(false);
   const [showHeadlinesVisualizacao, setShowHeadlinesVisualizacao] = useState(false);
   const [resultadosVotacaoOpen, setResultadosVotacaoOpen] = useState(false);
@@ -2589,6 +2591,15 @@ export const MentoradoRoteirosView = ({
             >
               <FileEdit className="h-4 w-4" />
             </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setShowBulkUpload(true)}
+              title="Subir headlines/roteiros em massa"
+            >
+              <Plus className="h-4 w-4" />
+              Subir em massa
+            </Button>
             <Button variant="outline" className="gap-2" onClick={handleCopyAllRoteiros}>
               <ClipboardCopy className="h-4 w-4" />
               Copiar todos
@@ -4021,6 +4032,69 @@ export const MentoradoRoteirosView = ({
       />
 
       {/* Visualização de headlines agora é renderizada inline (substitui o editor) */}
+
+      {/* Bulk Upload Dialog */}
+      <BulkUploadRoteirosDialog
+        open={showBulkUpload}
+        onClose={() => setShowBulkUpload(false)}
+        guiaNumero={guiaAtiva}
+        guiaQuantidade={guiaAtivaConfig.quantidade}
+        emptyOrdens={(() => {
+          const empties: number[] = [];
+          for (let ordem = 1; ordem <= guiaAtivaConfig.quantidade; ordem++) {
+            const r = roteirosLocais.get(`${guiaAtiva}-${ordem}`);
+            if (!r?.headline?.trim() && !r?.estrutura?.trim()) empties.push(ordem);
+          }
+          return empties;
+        })()}
+        onExpandSlots={async (extra) => {
+          const novaQuantidade = guiaAtivaConfig.quantidade + extra;
+          setGuias((prev) =>
+            prev.map((g) => (g.numero === guiaAtiva ? { ...g, quantidade: novaQuantidade } : g))
+          );
+          await new Promise<void>((resolve, reject) => {
+            updateGuiaQuantidade.mutate(
+              { mentorado_id: mentoradoId, numero: guiaAtiva, quantidade: novaQuantidade },
+              { onSuccess: () => resolve(), onError: (e) => reject(e) }
+            );
+          });
+        }}
+        onApply={async (items) => {
+          // Recompute empty ordens after possible expansion
+          const currentQuantidade =
+            (guias.find((g) => g.numero === guiaAtiva)?.quantidade) || guiaAtivaConfig.quantidade;
+          const empties: number[] = [];
+          for (let ordem = 1; ordem <= currentQuantidade + items.length; ordem++) {
+            const r = roteirosLocais.get(`${guiaAtiva}-${ordem}`);
+            if (!r?.headline?.trim() && !r?.estrutura?.trim()) empties.push(ordem);
+            if (empties.length >= items.length) break;
+          }
+
+          // Update local state immediately for snappy UI
+          setRoteirosLocais((prev) => {
+            const next = new Map(prev);
+            items.forEach((item, i) => {
+              const ordem = empties[i];
+              if (!ordem) return;
+              const key = `${guiaAtiva}-${ordem}`;
+              const existing = next.get(key);
+              next.set(key, {
+                ...(existing || {}),
+                headline: item.headline,
+                estrutura: item.estrutura,
+              } as RoteiroLocal);
+            });
+            return next;
+          });
+
+          // Persist each item
+          items.forEach((item, i) => {
+            const ordem = empties[i];
+            if (!ordem) return;
+            saveRoteiro(guiaAtiva, ordem, item.headline, item.estrutura);
+          });
+        }}
+      />
 
       {/* Spell Checker Panel */}
       <SpellCheckerPanel
