@@ -4078,10 +4078,14 @@ export const MentoradoRoteirosView = ({
               if (!ordem) return;
               const key = `${guiaAtiva}-${ordem}`;
               const existing = next.get(key);
+              const extras = ((item as any).referencias_extra as string[] | undefined) || [];
+              const estruturaFinal = extras.length > 0
+                ? `${extras.map((u, idx) => `Referência ${idx + 2}: ${u}`).join("\n")}${item.estrutura ? `\n\n${item.estrutura}` : ""}`
+                : item.estrutura;
               next.set(key, {
                 ...(existing || {}),
                 headline: item.headline,
-                estrutura: item.estrutura,
+                estrutura: estruturaFinal,
                 link_referencia: item.link_referencia ?? null,
               } as RoteiroLocal);
             });
@@ -4092,7 +4096,11 @@ export const MentoradoRoteirosView = ({
           items.forEach((item, i) => {
             const ordem = empties[i];
             if (!ordem) return;
-            saveRoteiro(guiaAtiva, ordem, item.headline, item.estrutura, undefined, item.link_referencia ?? null);
+            const extras = ((item as any).referencias_extra as string[] | undefined) || [];
+            const estruturaFinal = extras.length > 0
+              ? `${extras.map((u, idx) => `Referência ${idx + 2}: ${u}`).join("\n")}${item.estrutura ? `\n\n${item.estrutura}` : ""}`
+              : item.estrutura;
+            saveRoteiro(guiaAtiva, ordem, item.headline, estruturaFinal, undefined, item.link_referencia ?? null);
           });
         }}
       />
