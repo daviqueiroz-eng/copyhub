@@ -4033,6 +4033,69 @@ export const MentoradoRoteirosView = ({
 
       {/* Visualização de headlines agora é renderizada inline (substitui o editor) */}
 
+      {/* Bulk Upload Dialog */}
+      <BulkUploadRoteirosDialog
+        open={showBulkUpload}
+        onClose={() => setShowBulkUpload(false)}
+        guiaNumero={guiaAtiva}
+        guiaQuantidade={guiaAtivaConfig.quantidade}
+        emptyOrdens={(() => {
+          const empties: number[] = [];
+          for (let ordem = 1; ordem <= guiaAtivaConfig.quantidade; ordem++) {
+            const r = roteirosLocais.get(`${guiaAtiva}-${ordem}`);
+            if (!r?.headline?.trim() && !r?.estrutura?.trim()) empties.push(ordem);
+          }
+          return empties;
+        })()}
+        onExpandSlots={async (extra) => {
+          const novaQuantidade = guiaAtivaConfig.quantidade + extra;
+          setGuias((prev) =>
+            prev.map((g) => (g.numero === guiaAtiva ? { ...g, quantidade: novaQuantidade } : g))
+          );
+          await new Promise<void>((resolve, reject) => {
+            updateGuiaQuantidade.mutate(
+              { mentorado_id: mentoradoId, numero: guiaAtiva, quantidade: novaQuantidade },
+              { onSuccess: () => resolve(), onError: (e) => reject(e) }
+            );
+          });
+        }}
+        onApply={async (items) => {
+          // Recompute empty ordens after possible expansion
+          const currentQuantidade =
+            (guias.find((g) => g.numero === guiaAtiva)?.quantidade) || guiaAtivaConfig.quantidade;
+          const empties: number[] = [];
+          for (let ordem = 1; ordem <= currentQuantidade + items.length; ordem++) {
+            const r = roteirosLocais.get(`${guiaAtiva}-${ordem}`);
+            if (!r?.headline?.trim() && !r?.estrutura?.trim()) empties.push(ordem);
+            if (empties.length >= items.length) break;
+          }
+
+          // Update local state immediately for snappy UI
+          setRoteirosLocais((prev) => {
+            const next = new Map(prev);
+            items.forEach((item, i) => {
+              const ordem = empties[i];
+              if (!ordem) return;
+              const key = `${guiaAtiva}-${ordem}`;
+              const existing = next.get(key);
+              next.set(key, {
+                ...(existing || {}),
+                headline: item.headline,
+                estrutura: item.estrutura,
+              } as RoteiroLocal);
+            });
+            return next;
+          });
+
+          // Persist each item
+          items.forEach((item, i) => {
+            const ordem = empties[i];
+            if (!ordem) return;
+            saveRoteiro(guiaAtiva, ordem, item.headline, item.estrutura);
+          });
+        }}
+      />
+
       {/* Spell Checker Panel */}
       <SpellCheckerPanel
         open={showSpellChecker}
