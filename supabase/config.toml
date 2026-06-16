@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.detectar-tipo-roteiro]
 verify_jwt = false
+
+[functions.parse-bulk-roteiros]
+verify_jwt = false
