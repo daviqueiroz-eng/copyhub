@@ -276,12 +276,20 @@ export function BulkUploadRoteirosDialog({
                     <div className="text-sm font-medium mb-2 whitespace-pre-wrap">{item.headline}</div>
                     {item.link_referencia && (
                       <div className="text-xs mb-2 truncate">
-                        <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA: </span>
+                        <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA 1: </span>
                         <a href={item.link_referencia} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                           {item.link_referencia}
                         </a>
                       </div>
                     )}
+                    {item.referencias_extra && item.referencias_extra.length > 0 && item.referencias_extra.map((url, idx) => (
+                      <div key={idx} className="text-xs mb-2 truncate">
+                        <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA {idx + 2}: </span>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          {url}
+                        </a>
+                      </div>
+                    ))}
                     {item.estrutura && (
                       <>
                         <div className="text-xs font-semibold mb-1" style={{ color: "#B8860B" }}>
