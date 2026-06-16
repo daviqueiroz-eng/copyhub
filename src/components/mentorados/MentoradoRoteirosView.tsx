@@ -35,6 +35,7 @@ import { toast } from "@/hooks/use-toast";
 import { useWebSpeechTTS } from "@/hooks/useWebSpeechTTS";
 import { TTSConfigPopover } from "./TTSConfigPopover";
 import { FindReplaceDialog } from "./FindReplaceDialog";
+import { BulkUploadRoteirosDialog } from "./BulkUploadRoteirosDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
 import { RoteiroChecklist, TimersRecord } from "./RoteiroChecklist";
