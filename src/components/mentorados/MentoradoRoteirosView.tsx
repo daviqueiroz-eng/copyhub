@@ -2591,6 +2591,15 @@ export const MentoradoRoteirosView = ({
             >
               <FileEdit className="h-4 w-4" />
             </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setShowBulkUpload(true)}
+              title="Subir headlines/roteiros em massa"
+            >
+              <Plus className="h-4 w-4" />
+              Subir em massa
+            </Button>
             <Button variant="outline" className="gap-2" onClick={handleCopyAllRoteiros}>
               <ClipboardCopy className="h-4 w-4" />
               Copiar todos
