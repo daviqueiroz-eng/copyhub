@@ -4082,6 +4082,7 @@ export const MentoradoRoteirosView = ({
                 ...(existing || {}),
                 headline: item.headline,
                 estrutura: item.estrutura,
+                link_referencia: item.link_referencia ?? null,
               } as RoteiroLocal);
             });
             return next;
@@ -4091,7 +4092,7 @@ export const MentoradoRoteirosView = ({
           items.forEach((item, i) => {
             const ordem = empties[i];
             if (!ordem) return;
-            saveRoteiro(guiaAtiva, ordem, item.headline, item.estrutura);
+            saveRoteiro(guiaAtiva, ordem, item.headline, item.estrutura, undefined, item.link_referencia ?? null);
           });
         }}
       />
