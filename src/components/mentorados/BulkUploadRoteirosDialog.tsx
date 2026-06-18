@@ -330,40 +330,55 @@ export function BulkUploadRoteirosDialog({
               </Button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto border rounded-md p-3">
-              <div className="space-y-3">
-                {items.map((item, i) => (
-                  <div key={i} className="border-l-2 pl-3" style={{ borderColor: "#B8860B" }}>
-                    <div className="text-xs font-semibold mb-1" style={{ color: "#B8860B" }}>
+            <div className="space-y-3">
+              {items.map((item, i) => (
+                <div key={i} className="border-l-2 pl-3" style={{ borderColor: "#B8860B" }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-xs font-semibold" style={{ color: "#B8860B" }}>
                       HEADLINE #{i + 1}
                     </div>
-                    <div className="text-sm font-medium mb-2 whitespace-pre-wrap">{item.headline}</div>
-                    {item.link_referencia && (
-                      <div className="text-xs mb-2 truncate">
-                        <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA 1: </span>
-                        <a href={item.link_referencia} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                          {item.link_referencia}
-                        </a>
-                      </div>
-                    )}
-                    {item.referencias_extra && item.referencias_extra.length > 0 && item.referencias_extra.map((url, idx) => (
-                      <div key={idx} className="text-xs mb-2 truncate">
-                        <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA {idx + 2}: </span>
-                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                          {url}
-                        </a>
-                      </div>
-                    ))}
-                    {item.estrutura && (
-                      <>
-                        <div className="text-xs font-semibold mb-1" style={{ color: "#B8860B" }}>
-                          ESTRUTURA
-                        </div>
-                        <div className="text-sm whitespace-pre-wrap text-muted-foreground">{item.estrutura}</div>
-                      </>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs gap-1"
+                      onClick={() => handleCopyItem(item, i)}
+                    >
+                      {copiedIndex === i ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                      {copiedIndex === i ? "Copiado" : "Copiar"}
+                    </Button>
                   </div>
-                ))}
-              </div>
+                  <div className="text-sm font-medium mb-2 whitespace-pre-wrap">{item.headline}</div>
+                  {item.link_referencia && (
+                    <div className="text-xs mb-2 truncate">
+                      <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA 1: </span>
+                      <a href={item.link_referencia} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {item.link_referencia}
+                      </a>
+                    </div>
+                  )}
+                  {item.referencias_extra && item.referencias_extra.length > 0 && item.referencias_extra.map((url, idx) => (
+                    <div key={idx} className="text-xs mb-2 truncate">
+                      <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA {idx + 2}: </span>
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {url}
+                      </a>
+                    </div>
+                  ))}
+                  {item.estrutura && (
+                    <>
+                      <div className="text-xs font-semibold mb-1" style={{ color: "#B8860B" }}>
+                        ESTRUTURA
+                      </div>
+                      <div className="text-sm whitespace-pre-wrap text-muted-foreground">{item.estrutura}</div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={onClose} disabled={applying}>Cancelar</Button>
