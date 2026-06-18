@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Copy, Check, Pencil } from "lucide-react";
+import { Copy, Check, Pencil, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,8 @@ export const ShareGuiaDialog = ({
   onOpenChange: (v: boolean) => void;
 }) => {
   const [copied, setCopied] = useState(false);
+  const [copiedConteudo, setCopiedConteudo] = useState(false);
+  const [copiandoConteudo, setCopiandoConteudo] = useState(false);
   const { data: share } = useRoteiroShare(mentoradoId, guiaNumero);
   const criar = useCriarOuObterShare();
   const toggle = useToggleShareAtivo();
@@ -64,6 +67,88 @@ export const ShareGuiaDialog = ({
     setCopied(true);
     toast({ title: "Link copiado!" });
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const handleCopyConteudo = async () => {
+    try {
+      setCopiandoConteudo(true);
+      const { data, error } = await supabase
+        .from("mentorados_roteiros")
+        .select("ordem, headline, estrutura, link_referencia")
+        .eq("mentorado_id", mentoradoId)
+        .eq("guia_numero", guiaNumero)
+        .order("ordem", { ascending: true });
+      if (error) throw error;
+
+      const rows = (data ?? []).filter(
+        (r) => (r.headline ?? "").trim() || (r.estrutura ?? "").trim()
+      );
+      if (rows.length === 0) {
+        toast({ title: "Nenhum roteiro nesta guia", variant: "destructive" });
+        return;
+      }
+
+      const GOLD = "#B8860B";
+      const pad = (n: number) => String(n).padStart(2, "0");
+
+      const htmlParts: string[] = [];
+      const textParts: string[] = [];
+
+      rows.forEach((r, idx) => {
+        const n = pad(idx + 1);
+        const headline = (r.headline ?? "").trim();
+        const estrutura = (r.estrutura ?? "").trim();
+        const linkRef = (r.link_referencia ?? "").trim();
+
+        htmlParts.push(
+          `<p><strong style="color:${GOLD}">HEADLINE ${n}</strong></p>` +
+            `<p>${headline.replace(/\n/g, "<br>")}</p>`
+        );
+        textParts.push(`HEADLINE ${n}`, headline);
+
+        if (linkRef) {
+          htmlParts.push(
+            `<p><strong style="color:${GOLD}">REFERÊNCIA ${n}</strong></p>` +
+              `<p>${linkRef}</p>`
+          );
+          textParts.push("", `REFERÊNCIA ${n}`, linkRef);
+        }
+
+        if (estrutura) {
+          htmlParts.push(
+            `<p><strong style="color:${GOLD}">ESTRUTURA ${n}</strong></p>` +
+              `<p>${estrutura.replace(/\n/g, "<br>")}</p>`
+          );
+          textParts.push("", `ESTRUTURA ${n}`, estrutura);
+        }
+
+        htmlParts.push("<p><br></p>");
+        textParts.push("", "");
+      });
+
+      const html = htmlParts.join("");
+      const text = textParts.join("\n");
+
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([text], { type: "text/plain" }),
+          }),
+        ]);
+      } catch {
+        await navigator.clipboard.writeText(text);
+      }
+
+      setCopiedConteudo(true);
+      toast({ title: "Conteúdo copiado com referências!" });
+      setTimeout(() => setCopiedConteudo(false), 2000);
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message || "Erro ao copiar";
+      toast({ title: msg, variant: "destructive" });
+    } finally {
+      setCopiandoConteudo(false);
+    }
   };
 
   const salvarSlug = async () => {
@@ -182,6 +267,28 @@ export const ShareGuiaDialog = ({
               />
             </div>
           )}
+          <div className="pt-2 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleCopyConteudo}
+              disabled={copiandoConteudo}
+              style={{ borderColor: "#B8860B", color: "#B8860B" }}
+            >
+              {copiedConteudo ? (
+                <Check className="h-4 w-4 mr-2" />
+              ) : (
+                <FileText className="h-4 w-4 mr-2" />
+              )}
+              {copiedConteudo
+                ? "Copiado com referências"
+                : "Copiar conteúdo com referências"}
+            </Button>
+            <p className="text-[10px] text-muted-foreground mt-1 text-center">
+              Copia headlines, referências e estruturas desta guia.
+            </p>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
