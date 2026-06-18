@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Upload, ArrowLeft, Wand2 } from "lucide-react";
+import { Loader2, Upload, ArrowLeft, Wand2, Copy, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface ParsedItem {
@@ -162,6 +162,7 @@ export function BulkUploadRoteirosDialog({
   const [texto, setTexto] = useState("");
   const [items, setItems] = useState<ParsedItem[] | null>(null);
   const [applying, setApplying] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -210,6 +211,68 @@ export function BulkUploadRoteirosDialog({
     } finally {
       setApplying(false);
     }
+  };
+
+  const handleCopyItem = async (item: ParsedItem, index: number) => {
+    const ordemFormatada = String(index + 1).padStart(2, '0');
+
+    // HTML formatado para editores ricos
+    const htmlParts: string[] = [];
+    htmlParts.push(`<p><b style="color: #B8860B;">HEADLINE ${ordemFormatada}:</b></p><p>${item.headline || ''}</p>`);
+
+    if (item.link_referencia) {
+      htmlParts.push(`<br/><p><b style="color: #B8860B;">REFERÊNCIA 1:</b></p><p>${item.link_referencia}</p>`);
+    }
+    if (item.referencias_extra && item.referencias_extra.length > 0) {
+      item.referencias_extra.forEach((url, idx) => {
+        htmlParts.push(`<br/><p><b style="color: #B8860B;">REFERÊNCIA ${idx + 2}:</b></p><p>${url}</p>`);
+      });
+    }
+
+    if (item.estrutura) {
+      htmlParts.push(`<br/><p><b style="color: #B8860B;">ESTRUTURA ${ordemFormatada}:</b></p><p>${(item.estrutura || '').replace(/\n/g, '<br/>')}</p>`);
+    }
+
+    const html = `<div style="font-family: 'Poppins', sans-serif; font-size: 13px;">${htmlParts.join('')}</div>`;
+
+    // Texto limpo
+    const textParts: string[] = [];
+    textParts.push(`HEADLINE ${ordemFormatada}:\n\n${item.headline || ''}`);
+
+    if (item.link_referencia) {
+      textParts.push(`\n\nREFERÊNCIA 1:\n\n${item.link_referencia}`);
+    }
+    if (item.referencias_extra && item.referencias_extra.length > 0) {
+      item.referencias_extra.forEach((url, idx) => {
+        textParts.push(`\n\nREFERÊNCIA ${idx + 2}:\n\n${url}`);
+      });
+    }
+
+    if (item.estrutura) {
+      textParts.push(`\n\nESTRUTURA ${ordemFormatada}:\n\n${item.estrutura || ''}`);
+    }
+
+    const plainText = textParts.join('');
+
+    try {
+      const htmlBlob = new Blob([html], { type: 'text/html' });
+      const textBlob = new Blob([plainText], { type: 'text/plain' });
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': htmlBlob,
+          'text/plain': textBlob
+        })
+      ]);
+    } catch {
+      navigator.clipboard.writeText(plainText);
+    }
+
+    setCopiedIndex(index);
+    toast({
+      title: "Copiado!",
+      description: `Item ${ordemFormatada} copiado com referências.`,
+    });
+    setTimeout(() => setCopiedIndex(null), 2000);
   };
 
   const willExpand = items ? Math.max(0, items.length - emptyOrdens.length) : 0;
@@ -267,40 +330,55 @@ export function BulkUploadRoteirosDialog({
               </Button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto border rounded-md p-3">
-              <div className="space-y-3">
-                {items.map((item, i) => (
-                  <div key={i} className="border-l-2 pl-3" style={{ borderColor: "#B8860B" }}>
-                    <div className="text-xs font-semibold mb-1" style={{ color: "#B8860B" }}>
+            <div className="space-y-3">
+              {items.map((item, i) => (
+                <div key={i} className="border-l-2 pl-3" style={{ borderColor: "#B8860B" }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-xs font-semibold" style={{ color: "#B8860B" }}>
                       HEADLINE #{i + 1}
                     </div>
-                    <div className="text-sm font-medium mb-2 whitespace-pre-wrap">{item.headline}</div>
-                    {item.link_referencia && (
-                      <div className="text-xs mb-2 truncate">
-                        <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA 1: </span>
-                        <a href={item.link_referencia} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                          {item.link_referencia}
-                        </a>
-                      </div>
-                    )}
-                    {item.referencias_extra && item.referencias_extra.length > 0 && item.referencias_extra.map((url, idx) => (
-                      <div key={idx} className="text-xs mb-2 truncate">
-                        <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA {idx + 2}: </span>
-                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                          {url}
-                        </a>
-                      </div>
-                    ))}
-                    {item.estrutura && (
-                      <>
-                        <div className="text-xs font-semibold mb-1" style={{ color: "#B8860B" }}>
-                          ESTRUTURA
-                        </div>
-                        <div className="text-sm whitespace-pre-wrap text-muted-foreground">{item.estrutura}</div>
-                      </>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs gap-1"
+                      onClick={() => handleCopyItem(item, i)}
+                    >
+                      {copiedIndex === i ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                      {copiedIndex === i ? "Copiado" : "Copiar"}
+                    </Button>
                   </div>
-                ))}
-              </div>
+                  <div className="text-sm font-medium mb-2 whitespace-pre-wrap">{item.headline}</div>
+                  {item.link_referencia && (
+                    <div className="text-xs mb-2 truncate">
+                      <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA 1: </span>
+                      <a href={item.link_referencia} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {item.link_referencia}
+                      </a>
+                    </div>
+                  )}
+                  {item.referencias_extra && item.referencias_extra.length > 0 && item.referencias_extra.map((url, idx) => (
+                    <div key={idx} className="text-xs mb-2 truncate">
+                      <span className="font-semibold" style={{ color: "#B8860B" }}>REFERÊNCIA {idx + 2}: </span>
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {url}
+                      </a>
+                    </div>
+                  ))}
+                  {item.estrutura && (
+                    <>
+                      <div className="text-xs font-semibold mb-1" style={{ color: "#B8860B" }}>
+                        ESTRUTURA
+                      </div>
+                      <div className="text-sm whitespace-pre-wrap text-muted-foreground">{item.estrutura}</div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={onClose} disabled={applying}>Cancelar</Button>
