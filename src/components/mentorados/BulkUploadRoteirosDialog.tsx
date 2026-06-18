@@ -162,6 +162,7 @@ export function BulkUploadRoteirosDialog({
   const [texto, setTexto] = useState("");
   const [items, setItems] = useState<ParsedItem[] | null>(null);
   const [applying, setApplying] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) {
