@@ -213,6 +213,68 @@ export function BulkUploadRoteirosDialog({
     }
   };
 
+  const handleCopyItem = async (item: ParsedItem, index: number) => {
+    const ordemFormatada = String(index + 1).padStart(2, '0');
+
+    // HTML formatado para editores ricos
+    const htmlParts: string[] = [];
+    htmlParts.push(`<p><b style="color: #B8860B;">HEADLINE ${ordemFormatada}:</b></p><p>${item.headline || ''}</p>`);
+
+    if (item.link_referencia) {
+      htmlParts.push(`<br/><p><b style="color: #B8860B;">REFERÊNCIA 1:</b></p><p>${item.link_referencia}</p>`);
+    }
+    if (item.referencias_extra && item.referencias_extra.length > 0) {
+      item.referencias_extra.forEach((url, idx) => {
+        htmlParts.push(`<br/><p><b style="color: #B8860B;">REFERÊNCIA ${idx + 2}:</b></p><p>${url}</p>`);
+      });
+    }
+
+    if (item.estrutura) {
+      htmlParts.push(`<br/><p><b style="color: #B8860B;">ESTRUTURA ${ordemFormatada}:</b></p><p>${(item.estrutura || '').replace(/\n/g, '<br/>')}</p>`);
+    }
+
+    const html = `<div style="font-family: 'Poppins', sans-serif; font-size: 13px;">${htmlParts.join('')}</div>`;
+
+    // Texto limpo
+    const textParts: string[] = [];
+    textParts.push(`HEADLINE ${ordemFormatada}:\n\n${item.headline || ''}`);
+
+    if (item.link_referencia) {
+      textParts.push(`\n\nREFERÊNCIA 1:\n\n${item.link_referencia}`);
+    }
+    if (item.referencias_extra && item.referencias_extra.length > 0) {
+      item.referencias_extra.forEach((url, idx) => {
+        textParts.push(`\n\nREFERÊNCIA ${idx + 2}:\n\n${url}`);
+      });
+    }
+
+    if (item.estrutura) {
+      textParts.push(`\n\nESTRUTURA ${ordemFormatada}:\n\n${item.estrutura || ''}`);
+    }
+
+    const plainText = textParts.join('');
+
+    try {
+      const htmlBlob = new Blob([html], { type: 'text/html' });
+      const textBlob = new Blob([plainText], { type: 'text/plain' });
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': htmlBlob,
+          'text/plain': textBlob
+        })
+      ]);
+    } catch {
+      navigator.clipboard.writeText(plainText);
+    }
+
+    setCopiedIndex(index);
+    toast({
+      title: "Copiado!",
+      description: `Item ${ordemFormatada} copiado com referências.`,
+    });
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
   const willExpand = items ? Math.max(0, items.length - emptyOrdens.length) : 0;
 
   return (
