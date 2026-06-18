@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Upload, ArrowLeft, Wand2 } from "lucide-react";
+import { Loader2, Upload, ArrowLeft, Wand2, Copy, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface ParsedItem {
