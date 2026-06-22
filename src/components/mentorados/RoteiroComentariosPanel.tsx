@@ -79,6 +79,13 @@ export const RoteiroComentariosPanel = ({
     return Array.from(map.entries());
   }, [pais]);
 
+  // Quando uma headline está em foco, mostrar apenas os comentários dela
+  const gruposVisiveis = useMemo(() => {
+    if (activeOrdem == null) return grupos;
+    const filtrados = grupos.filter(([, g]) => g.ordem === activeOrdem);
+    return filtrados.length > 0 ? filtrados : grupos;
+  }, [grupos, activeOrdem]);
+
   // Acompanhar a headline visível no editor e sincronizar o painel
   useEffect(() => {
     if (!open) return;
@@ -236,7 +243,7 @@ export const RoteiroComentariosPanel = ({
               Nenhum comentário ainda. Compartilhe a guia para receber comentários.
             </p>
           )}
-          {grupos.map(([label, grupo]) => (
+          {gruposVisiveis.map(([label, grupo]) => (
             <div
               key={label}
               data-comentarios-ordem={grupo.ordem}
