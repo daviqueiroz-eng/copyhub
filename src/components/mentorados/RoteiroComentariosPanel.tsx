@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, X, Check, Archive, Mic, Square, Send, Reply, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,6 +42,8 @@ export const RoteiroComentariosPanel = ({
   const chunksRef = useRef<Blob[]>([]);
   const mimeRef = useRef<string>("audio/webm");
   const startedAtRef = useRef<number>(0);
+  const scrollRootRef = useRef<HTMLDivElement | null>(null);
+  const [activeOrdem, setActiveOrdem] = useState<number | null>(null);
 
   const { pais, respostasPorPai } = useMemo(() => {
     const pais = comentarios.filter((c) => !c.parent_id);
@@ -62,7 +64,7 @@ export const RoteiroComentariosPanel = ({
   }, [comentarios]);
 
   const grupos = useMemo(() => {
-    const map = new Map<string, typeof comentarios>();
+    const map = new Map<string, { ordem: number; escopo: string; lista: typeof comentarios }>();
     pais.forEach((c) => {
       const label =
         c.escopo === "headline"
@@ -70,12 +72,56 @@ export const RoteiroComentariosPanel = ({
           : c.escopo === "estrutura"
           ? `Estrutura ${String(c.ordem).padStart(2, "0")}`
           : `Trecho — bloco ${String(c.ordem).padStart(2, "0")}`;
-      const arr = map.get(label) ?? [];
-      arr.push(c);
-      map.set(label, arr);
+      const entry = map.get(label) ?? { ordem: c.ordem, escopo: c.escopo, lista: [] as typeof comentarios };
+      entry.lista.push(c);
+      map.set(label, entry);
     });
     return Array.from(map.entries());
   }, [pais]);
+
+  // Acompanhar a headline visível no editor e sincronizar o painel
+  useEffect(() => {
+    if (!open) return;
+    const targets = Array.from(
+      document.querySelectorAll<HTMLElement>(`[id^="roteiro-${guiaNumero}-"]`)
+    );
+    if (targets.length === 0) return;
+
+    const visibility = new Map<number, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          const id = (e.target as HTMLElement).id;
+          const match = id.match(/^roteiro-\d+-(\d+)$/);
+          if (!match) return;
+          const ord = Number(match[1]);
+          visibility.set(ord, e.isIntersecting ? e.intersectionRatio : 0);
+        });
+        let best: { ord: number; ratio: number } | null = null;
+        visibility.forEach((ratio, ord) => {
+          if (!best || ratio > best.ratio) best = { ord, ratio };
+        });
+        if (best && best.ratio > 0) setActiveOrdem(best.ord);
+      },
+      { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+    targets.forEach((t) => observer.observe(t));
+    return () => observer.disconnect();
+  }, [open, guiaNumero, comentarios.length]);
+
+  // Quando a headline ativa muda, rolar o painel para o grupo correspondente
+  useEffect(() => {
+    if (activeOrdem == null) return;
+    const root = scrollRootRef.current;
+    if (!root) return;
+    const viewport = root.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]");
+    const target = root.querySelector<HTMLElement>(
+      `[data-comentarios-ordem="${activeOrdem}"]`
+    );
+    if (!viewport || !target) return;
+    const top = target.offsetTop - 8;
+    viewport.scrollTo({ top, behavior: "smooth" });
+  }, [activeOrdem, grupos.length]);
 
   const iniciarGravacao = async () => {
     try {
@@ -183,15 +229,23 @@ export const RoteiroComentariosPanel = ({
           <X className="h-4 w-4" />
         </Button>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1" ref={scrollRootRef}>
         <div className="p-3 space-y-4">
           {pais.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8">
               Nenhum comentário ainda. Compartilhe a guia para receber comentários.
             </p>
           )}
-          {grupos.map(([label, lista]) => (
-            <div key={label}>
+          {grupos.map(([label, grupo]) => (
+            <div
+              key={label}
+              data-comentarios-ordem={grupo.ordem}
+              className={
+                activeOrdem === grupo.ordem
+                  ? "rounded-md ring-1 ring-[#B8860B]/40 bg-[#B8860B]/5 p-2 -m-2"
+                  : ""
+              }
+            >
               <p
                 className="text-xs font-semibold mb-2"
                 style={{ color: "#B8860B" }}
@@ -199,7 +253,7 @@ export const RoteiroComentariosPanel = ({
                 {label}
               </p>
               <div className="space-y-2">
-                {lista.map((c) => (
+                {grupo.lista.map((c) => (
                   <div
                     key={c.id}
                     className={`rounded-md border p-2 text-xs ${
