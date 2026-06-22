@@ -174,16 +174,8 @@ export const AudioPlayer = ({ src, initialDuration, className }: Props) => {
             if (error) throw error;
             const texto = (data as { texto?: string; error?: string })?.texto;
             if (!texto) throw new Error((data as { error?: string })?.error || "Sem texto");
-            const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `transcricao-${Date.now()}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            toast({ title: "Transcrição pronta" });
+            await navigator.clipboard.writeText(texto);
+            toast({ title: "Transcrição copiada" });
           } catch (err) {
             toast({
               title: "Falha ao transcrever",
