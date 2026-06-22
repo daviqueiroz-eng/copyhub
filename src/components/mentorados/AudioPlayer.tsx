@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause, Download, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 type Props = {
@@ -167,43 +168,12 @@ export const AudioPlayer = ({ src, initialDuration, className }: Props) => {
           if (transcribing) return;
           setTranscribing(true);
           try {
-            const SR: any =
-              (window as any).SpeechRecognition ||
-              (window as any).webkitSpeechRecognition;
-            if (!SR) throw new Error("Navegador sem suporte a reconhecimento de voz");
-
-            const recognition = new SR();
-            recognition.lang = "pt-BR";
-            recognition.continuous = true;
-            recognition.interimResults = false;
-
-            let texto = "";
-            recognition.onresult = (event: any) => {
-              for (let i = event.resultIndex; i < event.results.length; i++) {
-                if (event.results[i].isFinal) {
-                  texto += event.results[i][0].transcript + " ";
-                }
-              }
-            };
-
-            const audio = new Audio(src);
-            audio.crossOrigin = "anonymous";
-
-            await new Promise<void>((resolve, reject) => {
-              recognition.onerror = (e: any) => reject(new Error(e.error || "Erro no reconhecimento"));
-              recognition.onend = () => resolve();
-              audio.onended = () => {
-                setTimeout(() => {
-                  try { recognition.stop(); } catch { /* noop */ }
-                }, 500);
-              };
-              audio.onerror = () => reject(new Error("Erro ao reproduzir áudio"));
-              recognition.start();
-              audio.play().catch(reject);
+            const { data, error } = await supabase.functions.invoke("transcrever-audio", {
+              body: { audio_url: src },
             });
-
-            texto = texto.trim();
-            if (!texto) throw new Error("Não foi possível captar áudio. Permita o microfone e reproduza o áudio em voz alta.");
+            if (error) throw error;
+            const texto = (data as { texto?: string; error?: string })?.texto;
+            if (!texto) throw new Error((data as { error?: string })?.error || "Sem texto");
             const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
