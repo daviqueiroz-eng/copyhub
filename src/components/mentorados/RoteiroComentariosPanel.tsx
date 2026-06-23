@@ -42,7 +42,6 @@ export const RoteiroComentariosPanel = ({
   const chunksRef = useRef<Blob[]>([]);
   const mimeRef = useRef<string>("audio/webm");
   const startedAtRef = useRef<number>(0);
-  const scrollRootRef = useRef<HTMLDivElement | null>(null);
   const [activeOrdem, setActiveOrdem] = useState<number | null>(null);
 
   const { pais, respostasPorPai } = useMemo(() => {
@@ -111,20 +110,6 @@ export const RoteiroComentariosPanel = ({
     targets.forEach((t) => observer.observe(t));
     return () => observer.disconnect();
   }, [open, guiaNumero, comentarios.length]);
-
-  // Quando a headline ativa muda, rolar o painel para o grupo correspondente
-  useEffect(() => {
-    if (activeOrdem == null) return;
-    const root = scrollRootRef.current;
-    if (!root) return;
-    const viewport = root.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]");
-    const target = root.querySelector<HTMLElement>(
-      `[data-comentarios-ordem="${activeOrdem}"]`
-    );
-    if (!viewport || !target) return;
-    const top = target.offsetTop - 8;
-    viewport.scrollTo({ top, behavior: "smooth" });
-  }, [activeOrdem, grupos.length]);
 
   const iniciarGravacao = async () => {
     try {
@@ -217,7 +202,7 @@ export const RoteiroComentariosPanel = ({
 
   return (
     <div
-      className="hidden lg:flex flex-col border-l bg-background shrink-0 overflow-hidden [&_*]:break-words [&_*]:[overflow-wrap:anywhere]"
+      className="hidden lg:flex flex-col border-l bg-background shrink-0 min-h-0 overflow-hidden [&_*]:break-words [&_*]:[overflow-wrap:anywhere]"
       style={{ width: 320, fontFamily: "'Poppins', system-ui, sans-serif" }}
     >
       <div className="flex items-center justify-between p-3 border-b">
@@ -232,7 +217,7 @@ export const RoteiroComentariosPanel = ({
           <X className="h-4 w-4" />
         </Button>
       </div>
-      <ScrollArea className="flex-1" ref={scrollRootRef}>
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-3 space-y-4">
           {pais.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8">
