@@ -79,12 +79,8 @@ export const RoteiroComentariosPanel = ({
     return Array.from(map.entries());
   }, [pais]);
 
-  // Quando uma headline está em foco, mostrar apenas os comentários dela
-  const gruposVisiveis = useMemo(() => {
-    if (activeOrdem == null) return grupos;
-    const filtrados = grupos.filter(([, g]) => g.ordem === activeOrdem);
-    return filtrados.length > 0 ? filtrados : grupos;
-  }, [grupos, activeOrdem]);
+  // Mostrar todos os comentários sempre — apenas destacar o grupo da headline ativa
+  const gruposVisiveis = grupos;
 
   // Acompanhar a headline visível no editor e sincronizar o painel
   useEffect(() => {
