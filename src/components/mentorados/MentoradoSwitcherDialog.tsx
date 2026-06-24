@@ -154,7 +154,7 @@ export const MentoradoSwitcherDialog = ({
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1 mb-2">
                 Mentorados
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {filteredMentorados.map((m, i) => {
                   const flatIdx = i;
                   const isActive = activeIndex === flatIdx;
@@ -168,7 +168,7 @@ export const MentoradoSwitcherDialog = ({
                         onClose();
                       }}
                       className={cn(
-                        "flex flex-col items-center gap-1.5 p-2 rounded-lg w-[78px] transition-all",
+                        "flex flex-col items-center gap-1.5 p-2 rounded-lg w-[78px] shrink-0 transition-all",
                         isActive ? "bg-accent ring-2 ring-primary" : "hover:bg-accent/50",
                         isCurrent && !isActive && "ring-1 ring-primary/40"
                       )}
