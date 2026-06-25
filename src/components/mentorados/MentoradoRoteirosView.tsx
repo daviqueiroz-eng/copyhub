@@ -273,6 +273,7 @@ const SortableGuiaItem = ({
         </Button>
       )}
       
+      <GuiaEyeToggle mentoradoId={mentoradoId} guiaNumero={guia.numero} />
       <GuiaActionsMenu
         mentoradoId={mentoradoId}
         guiaNumero={guia.numero}
