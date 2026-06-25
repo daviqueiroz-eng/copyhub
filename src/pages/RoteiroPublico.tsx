@@ -171,6 +171,23 @@ const RoteiroPublico = () => {
     if (saved) setNome(saved);
   }, [token]);
 
+  // Fetch sibling guias quando vier do link do mentorado (?m=slug)
+  useEffect(() => {
+    if (!mentoradoSlug) {
+      setGuiasList([]);
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase.rpc("get_mentorado_publico", {
+        _slug_or_token: mentoradoSlug,
+      });
+      if (!error && data) {
+        const d = data as { guias?: typeof guiasList };
+        setGuiasList(d.guias ?? []);
+      }
+    })();
+  }, [mentoradoSlug]);
+
   // Seleção de texto -> popover flutuante
   const [selecao, setSelecao] = useState<{
     ordem: number;
