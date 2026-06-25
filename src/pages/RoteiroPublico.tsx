@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,7 +80,12 @@ const removerMeuIdLocal = (token: string, id: string) => {
 
 const RoteiroPublico = () => {
   const { token } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
+  const mentoradoSlug = searchParams.get("m");
   const [dados, setDados] = useState<Dados | null>(null);
+  const [guiasList, setGuiasList] = useState<
+    { guia_numero: number; slug: string | null; token: string; nome: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [nome, setNome] = useState("");
