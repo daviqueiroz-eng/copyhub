@@ -4210,6 +4210,12 @@ export const MentoradoRoteirosView = ({
         </AlertDialogContent>
       </AlertDialog>
 
+      <ShareMentoradoDialog
+        mentoradoId={mentoradoId}
+        open={shareMentoradoOpen}
+        onOpenChange={setShareMentoradoOpen}
+      />
+
       {/* Feedback Dialog após completar checklist */}
       <RoteiroFeedbackDialog
         open={showFeedbackDialog}
