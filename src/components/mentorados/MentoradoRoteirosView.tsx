@@ -598,6 +598,7 @@ export const MentoradoRoteirosView = ({
   
   // Estado para confirmação de deletar guia
   const [guiaToDelete, setGuiaToDelete] = useState<number | null>(null);
+  const [shareMentoradoOpen, setShareMentoradoOpen] = useState(false);
   const [showTrashDropdown, setShowTrashDropdown] = useState(false);
   
   // Estado para checklist mobile
