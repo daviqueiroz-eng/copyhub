@@ -1682,6 +1682,47 @@ export type Database = {
           },
         ]
       }
+      mentorado_shares: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          criado_por: string
+          id: string
+          mentorado_id: string
+          slug: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          criado_por: string
+          id?: string
+          mentorado_id: string
+          slug?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          criado_por?: string
+          id?: string
+          mentorado_id?: string
+          slug?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorado_shares_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: true
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorados: {
         Row: {
           apresentacao: string | null
@@ -3004,6 +3045,7 @@ export type Database = {
         Args: { _comentario_id: string; _slug_or_token: string }
         Returns: undefined
       }
+      get_mentorado_publico: { Args: { _slug_or_token: string }; Returns: Json }
       get_roteiro_publico: { Args: { _token: string }; Returns: Json }
       get_roteiro_publico_v2: {
         Args: { _slug_or_token: string }

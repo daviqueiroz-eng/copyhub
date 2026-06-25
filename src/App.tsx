@@ -30,6 +30,7 @@ import DashGeral from "./pages/DashGeral";
 import CoreStudioTasks from "./pages/CoreStudioTasks";
 import Virais from "./pages/Virais";
 import RoteiroPublico from "./pages/RoteiroPublico";
+import MentoradoPublico from "./pages/MentoradoPublico";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
             <HeadlineVotacoesRealtimeProvider>
             <Routes>
               <Route path="/r/:token" element={<RoteiroPublico />} />
+              <Route path="/m/:slug" element={<MentoradoPublico />} />
               <Route
                 path="*"
                 element={

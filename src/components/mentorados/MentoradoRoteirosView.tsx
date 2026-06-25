@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, Swords, MessageSquare, MoreVertical, Share2 } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, EyeOff, Swords, MessageSquare, MoreVertical, Share2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -117,6 +117,12 @@ import {
 } from "@/hooks/useHeadlineChecklist";
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
 import { ShareGuiaDialog } from "./ShareGuiaPopover";
+import { ShareMentoradoDialog } from "./ShareMentoradoDialog";
+import {
+  useRoteiroShare,
+  useCriarOuObterShare,
+  useToggleShareAtivo,
+} from "@/hooks/useRoteiroShares";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -267,6 +273,7 @@ const SortableGuiaItem = ({
         </Button>
       )}
       
+      <GuiaEyeToggle mentoradoId={mentoradoId} guiaNumero={guia.numero} />
       <GuiaActionsMenu
         mentoradoId={mentoradoId}
         guiaNumero={guia.numero}
@@ -321,6 +328,48 @@ const GuiaActionsMenu = ({
         onOpenChange={setShareOpen}
       />
     </>
+  );
+};
+
+const GuiaEyeToggle = ({
+  mentoradoId,
+  guiaNumero,
+}: {
+  mentoradoId: string;
+  guiaNumero: number;
+}) => {
+  const { data: share } = useRoteiroShare(mentoradoId, guiaNumero);
+  const criar = useCriarOuObterShare();
+  const toggle = useToggleShareAtivo();
+  const ativo = !!share?.ativo;
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      let s = share;
+      if (!s) {
+        s = await criar.mutateAsync({ mentoradoId, guiaNumero });
+      }
+      await toggle.mutateAsync({ id: s.id, ativo: !s.ativo });
+    } catch {
+      // silencioso
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8 hidden lg:flex"
+      onClick={handleClick}
+      title={ativo ? "Guia visível no link do mentorado" : "Guia oculta no link do mentorado"}
+    >
+      {ativo ? (
+        <Eye className="h-4 w-4" style={{ color: "#B8860B" }} />
+      ) : (
+        <EyeOff className="h-4 w-4 text-muted-foreground" />
+      )}
+    </Button>
   );
 };
 
@@ -549,6 +598,7 @@ export const MentoradoRoteirosView = ({
   
   // Estado para confirmação de deletar guia
   const [guiaToDelete, setGuiaToDelete] = useState<number | null>(null);
+  const [shareMentoradoOpen, setShareMentoradoOpen] = useState(false);
   const [showTrashDropdown, setShowTrashDropdown] = useState(false);
   
   // Estado para checklist mobile
@@ -2640,6 +2690,18 @@ export const MentoradoRoteirosView = ({
             </Button>
           </div>
           {!leftSidebarMinimized && (<>
+          <div className="px-2 lg:px-3 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              onClick={() => setShareMentoradoOpen(true)}
+              title="Gerar link único do mentorado"
+            >
+              <Share2 className="h-3.5 w-3.5" style={{ color: "#B8860B" }} />
+              Compartilhar mentorado
+            </Button>
+          </div>
           <ScrollArea className="flex-1">
             <div className="p-2 lg:p-3 space-y-1">
               <DndContext
@@ -4147,6 +4209,12 @@ export const MentoradoRoteirosView = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ShareMentoradoDialog
+        mentoradoId={mentoradoId}
+        open={shareMentoradoOpen}
+        onOpenChange={setShareMentoradoOpen}
+      />
 
       {/* Feedback Dialog após completar checklist */}
       <RoteiroFeedbackDialog
