@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ChevronRight } from "lucide-react";
@@ -20,21 +20,39 @@ export default function MentoradoPublico() {
   const [dados, setDados] = useState<Dados | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const carregar = useCallback(async (showLoading = false) => {
     if (!slug) return;
-    (async () => {
-      setLoading(true);
-      const { data, error } = await supabase.rpc("get_mentorado_publico", {
-        _slug_or_token: slug,
-      });
-      if (error) {
-        setDados({ mentorado_nome: "", guias: [], error: error.message });
-      } else {
-        setDados(data as unknown as Dados);
-      }
-      setLoading(false);
-    })();
+    if (showLoading) setLoading(true);
+    const { data, error } = await supabase.rpc("get_mentorado_publico", {
+      _slug_or_token: slug,
+    });
+    if (error) {
+      setDados({ mentorado_nome: "", guias: [], error: error.message });
+    } else {
+      setDados(data as unknown as Dados);
+    }
+    if (showLoading) setLoading(false);
   }, [slug]);
+
+  useEffect(() => {
+    carregar(true);
+    const ch = supabase
+      .channel(`mentorado-publico-${slug}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "roteiro_guia_shares" },
+        () => carregar(false)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "mentorados_guias_config" },
+        () => carregar(false)
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [slug, carregar]);
 
   if (loading) {
     return (
