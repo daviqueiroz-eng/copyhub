@@ -588,9 +588,151 @@ const RoteiroPublico = () => {
       style={{ fontFamily: "'Poppins', system-ui, sans-serif" }}
     >
       <div className="flex">
-        {/* Painel lateral esquerdo */}
+        {/* Sidebar esquerda: guias do mentorado (igual Google Docs) */}
+        {guiasList.length > 0 && (
+          <aside className="hidden md:flex flex-col border-r bg-background w-60 sticky top-0 h-screen">
+            <div className="flex items-center gap-2 p-3 border-b">
+              <p className="font-semibold text-sm">Guias</p>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="p-2 space-y-1">
+                {guiasList.map((g) => {
+                  const target = g.slug || g.token;
+                  const ativo = target === token;
+                  return (
+                    <Link
+                      key={g.guia_numero}
+                      to={`/r/${target}?m=${encodeURIComponent(mentoradoSlug!)}`}
+                      className={`flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors ${
+                        ativo
+                          ? "bg-accent font-semibold"
+                          : "hover:bg-accent/50"
+                      }`}
+                    >
+                      <span
+                        className="text-[10px] font-semibold w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                        style={{ background: "#B8860B", color: "white" }}
+                      >
+                        {g.guia_numero}
+                      </span>
+                      <span className="truncate">{g.nome}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </aside>
+        )}
+
+        {/* Conteúdo principal */}
+        <main className="flex-1 min-w-0">
+          {!painelAberto && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="m-3 gap-2"
+              onClick={() => setPainelAberto(true)}
+            >
+              <MessageSquare className="h-4 w-4" />
+              Meus comentários
+            </Button>
+          )}
+          <div className="max-w-2xl mx-auto px-6 py-10">
+            <header className="mb-8">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                {dados.mentorado_nome}
+              </p>
+              <h1 className="text-2xl font-semibold">
+                {dados.guia_nome || `Guia ${dados.guia_numero}`}
+              </h1>
+            </header>
+
+            <div className="space-y-10">
+              {dados.roteiros.map((r) => {
+                const headline = (r.headline ?? "").trim();
+                const estrutura = (r.estrutura ?? "").trim();
+                if (!headline && !estrutura) return null;
+                return (
+                  <section key={r.ordem} className="group">
+                    {headline && (
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <p
+                              className="text-xs font-bold tracking-wide"
+                              style={{ color: "#B8860B" }}
+                            >
+                              HEADLINE {String(r.ordem).padStart(2, "0")}
+                            </p>
+                            {r.headline_audio_url && (
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="text-sm"
+                                  style={{ color: "#16a34a", fontFamily: '"Caveat", "Comic Sans MS", cursive' }}
+                                >
+                                  🎙 Áudio complementar
+                                </span>
+                                <AudioPlayer src={r.headline_audio_url} className="min-w-[240px]" />
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-xs"
+                            onClick={() => abrirDialog(r.ordem, "headline")}
+                          >
+                            <MessageSquare className="h-3 w-3" />
+                            Comentar
+                          </Button>
+                        </div>
+                        <p
+                          data-bloco-ordem={r.ordem}
+                          className="whitespace-pre-wrap leading-relaxed select-text"
+                        >
+                          {headline}
+                        </p>
+                        {renderComentariosDoBloco(r.ordem, "headline")}
+                      </div>
+                    )}
+                    {estrutura && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <p
+                            className="text-xs font-bold tracking-wide"
+                            style={{ color: "#B8860B" }}
+                          >
+                            ESTRUTURA {String(r.ordem).padStart(2, "0")}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-xs"
+                            onClick={() => abrirDialog(r.ordem, "estrutura")}
+                          >
+                            <MessageSquare className="h-3 w-3" />
+                            Comentar
+                          </Button>
+                        </div>
+                        <p
+                          data-bloco-ordem={r.ordem}
+                          className="whitespace-pre-wrap leading-relaxed select-text"
+                        >
+                          {estrutura}
+                        </p>
+                        {renderComentariosDoBloco(r.ordem, "estrutura")}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          </div>
+        </main>
+
+        {/* Painel direito: meus comentários (igual Google Docs) */}
         {painelAberto && (
-          <aside className="hidden md:flex flex-col border-r bg-background w-72 sticky top-0 h-screen">
+          <aside className="hidden md:flex flex-col border-l bg-background w-72 sticky top-0 h-screen">
             <div className="flex items-center justify-between p-3 border-b">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" style={{ color: "#B8860B" }} />
@@ -602,7 +744,7 @@ const RoteiroPublico = () => {
                 className="h-7 w-7"
                 onClick={() => setPainelAberto(false)}
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
             <div className="p-3 border-b">
@@ -713,112 +855,6 @@ const RoteiroPublico = () => {
             </ScrollArea>
           </aside>
         )}
-
-        {/* Conteúdo principal */}
-        <main className="flex-1 min-w-0">
-          {!painelAberto && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="m-3 gap-2"
-              onClick={() => setPainelAberto(true)}
-            >
-              <ChevronRight className="h-4 w-4" />
-              Meus comentários
-            </Button>
-          )}
-          <div className="max-w-2xl mx-auto px-6 py-10">
-            <header className="mb-8">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                {dados.mentorado_nome}
-              </p>
-              <h1 className="text-2xl font-semibold">
-                {dados.guia_nome || `Guia ${dados.guia_numero}`}
-              </h1>
-            </header>
-
-            <div className="space-y-10">
-              {dados.roteiros.map((r) => {
-                const headline = (r.headline ?? "").trim();
-                const estrutura = (r.estrutura ?? "").trim();
-                if (!headline && !estrutura) return null;
-                return (
-                  <section key={r.ordem} className="group">
-                    {headline && (
-                      <div className="mb-6">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <p
-                              className="text-xs font-bold tracking-wide"
-                              style={{ color: "#B8860B" }}
-                            >
-                              HEADLINE {String(r.ordem).padStart(2, "0")}
-                            </p>
-                            {r.headline_audio_url && (
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="text-sm"
-                                  style={{ color: "#16a34a", fontFamily: '"Caveat", "Comic Sans MS", cursive' }}
-                                >
-                                  🎙 Áudio complementar
-                                </span>
-                                <AudioPlayer src={r.headline_audio_url} className="min-w-[240px]" />
-                              </div>
-                            )}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-xs"
-                            onClick={() => abrirDialog(r.ordem, "headline")}
-                          >
-                            <MessageSquare className="h-3 w-3" />
-                            Comentar
-                          </Button>
-                        </div>
-                        <p
-                          data-bloco-ordem={r.ordem}
-                          className="whitespace-pre-wrap leading-relaxed select-text"
-                        >
-                          {headline}
-                        </p>
-                        {renderComentariosDoBloco(r.ordem, "headline")}
-                      </div>
-                    )}
-                    {estrutura && (
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <p
-                            className="text-xs font-bold tracking-wide"
-                            style={{ color: "#B8860B" }}
-                          >
-                            ESTRUTURA {String(r.ordem).padStart(2, "0")}
-                          </p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-xs"
-                            onClick={() => abrirDialog(r.ordem, "estrutura")}
-                          >
-                            <MessageSquare className="h-3 w-3" />
-                            Comentar
-                          </Button>
-                        </div>
-                        <p
-                          data-bloco-ordem={r.ordem}
-                          className="whitespace-pre-wrap leading-relaxed select-text"
-                        >
-                          {estrutura}
-                        </p>
-                        {renderComentariosDoBloco(r.ordem, "estrutura")}
-                      </div>
-                    )}
-                  </section>
-                );
-              })}
-            </div>
-          </div>
-        </main>
       </div>
 
       {/* Popover flutuante de seleção */}
