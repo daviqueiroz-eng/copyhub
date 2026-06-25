@@ -177,7 +177,7 @@ const RoteiroPublico = () => {
       setGuiasList([]);
       return;
     }
-    (async () => {
+    const carregarGuias = async () => {
       const { data, error } = await supabase.rpc("get_mentorado_publico", {
         _slug_or_token: mentoradoSlug,
       });
@@ -185,7 +185,19 @@ const RoteiroPublico = () => {
         const d = data as { guias?: typeof guiasList };
         setGuiasList(d.guias ?? []);
       }
-    })();
+    };
+    carregarGuias();
+    const ch = supabase
+      .channel(`pub-guias-${mentoradoSlug}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "roteiro_guia_shares" },
+        () => carregarGuias()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [mentoradoSlug]);
 
   // Seleção de texto -> popover flutuante
