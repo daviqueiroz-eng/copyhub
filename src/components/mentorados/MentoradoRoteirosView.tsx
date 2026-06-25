@@ -2690,6 +2690,18 @@ export const MentoradoRoteirosView = ({
             </Button>
           </div>
           {!leftSidebarMinimized && (<>
+          <div className="px-2 lg:px-3 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              onClick={() => setShareMentoradoOpen(true)}
+              title="Gerar link único do mentorado"
+            >
+              <Share2 className="h-3.5 w-3.5" style={{ color: "#B8860B" }} />
+              Compartilhar mentorado
+            </Button>
+          </div>
           <ScrollArea className="flex-1">
             <div className="p-2 lg:p-3 space-y-1">
               <DndContext
