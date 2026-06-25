@@ -117,6 +117,12 @@ import {
 } from "@/hooks/useHeadlineChecklist";
 import { HeadlineChecklistConfig } from "./HeadlineChecklistConfig";
 import { ShareGuiaDialog } from "./ShareGuiaPopover";
+import { ShareMentoradoDialog } from "./ShareMentoradoDialog";
+import {
+  useRoteiroShare,
+  useCriarOuObterShare,
+  useToggleShareAtivo,
+} from "@/hooks/useRoteiroShares";
 import {
   DropdownMenu,
   DropdownMenuContent,
