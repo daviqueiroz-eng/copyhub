@@ -330,6 +330,48 @@ const GuiaActionsMenu = ({
   );
 };
 
+const GuiaEyeToggle = ({
+  mentoradoId,
+  guiaNumero,
+}: {
+  mentoradoId: string;
+  guiaNumero: number;
+}) => {
+  const { data: share } = useRoteiroShare(mentoradoId, guiaNumero);
+  const criar = useCriarOuObterShare();
+  const toggle = useToggleShareAtivo();
+  const ativo = !!share?.ativo;
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      let s = share;
+      if (!s) {
+        s = await criar.mutateAsync({ mentoradoId, guiaNumero });
+      }
+      await toggle.mutateAsync({ id: s.id, ativo: !s.ativo });
+    } catch {
+      // silencioso
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8 hidden lg:flex"
+      onClick={handleClick}
+      title={ativo ? "Guia visível no link do mentorado" : "Guia oculta no link do mentorado"}
+    >
+      {ativo ? (
+        <Eye className="h-4 w-4" style={{ color: "#B8860B" }} />
+      ) : (
+        <EyeOff className="h-4 w-4 text-muted-foreground" />
+      )}
+    </Button>
+  );
+};
+
 export const MentoradoRoteirosView = ({
   mentoradoId,
   mentoradoNome,
