@@ -1,38 +1,72 @@
 ## Objetivo
-Deixar a tela de Roteiros (`MentoradoRoteirosView`) com cara mais próxima do Google Docs (referência: imagem 3), sem perder nenhuma funcionalidade — apenas reorganizando/escondendo elementos no header e ajustando a sidebar esquerda.
 
-## Mudanças no Header (topo)
+Trocar os textareas de **headline** e **estrutura** por um editor rico (TipTap) com barra de formatação funcional estilo Google Docs: estilo de parágrafo, fonte, tamanho, negrito/itálico/sublinhado, cor do texto, marca-texto, link, alinhamento, listas (bullet, numerada, check), recuo e mais.
 
-Arquivo: `src/components/mentorados/MentoradoRoteirosView.tsx`
+## Como vai funcionar
 
-1. **Remover do topo:**
-   - Logo/marca "Copy Hub" (caso esteja sendo renderizada via layout pai do `Mentorados.tsx` quando a view de roteiros está aberta — verificar e ocultar enquanto a view estiver ativa).
-   - Componente `<TopClockWidget />` (Pomodoro/Cronômetro centralizado no header — linhas ~2660–2665).
-   - Botão de atalhos de teclado / seção "Atalhos" da sidebar esquerda (linhas ~2888–2890).
+- O campo continua salvando no banco em `headline` e `estrutura` (colunas `text`), mas agora em **HTML**.
+- Conteúdo antigo (texto puro) é tratado como HTML válido — quebras de linha `\n` viram `<br>` na renderização. Nada precisa ser migrado.
+- Para tudo que hoje depende de "texto puro" (slash commands `/3`/`/v`/`/t`, contagem de caracteres, viral check, busca/substituir, IA, copiar, corretor) eu derivo o texto plano do HTML em tempo real (`element.innerText`).
 
-2. **Manter exatamente como na imagem 3:**
-   - Botão `X` (voltar), título "Roteiros - {nome}" e subtítulo "Guia X • Y/Z preenchidas".
-   - Ícone "Salvo agora" (status de salvamento) ao lado do título.
-   - Botões do topo direito: **Visualizar outro mentorado**, **Subir em massa**, **Copiar todos**, **Compartilhar mentorado**.
-   - Indicadores **Headlines: 15/15** e **Roteiros: 15/15** no canto superior direito da toolbar (mover o `RoteiroProgressBar` da linha ~2669 para dentro da barra de ferramentas de formatação, alinhado à direita, como na imagem 3). Também manter o "100%" de zoom à direita deles.
+## Componente novo: `RichTextEditor`
 
-3. **Toolbar de formatação** (linha abaixo do header):
-   - Manter Undo/Redo, Texto normal, Poppins, tamanho de fonte, B/I/U, cor, link, alinhamento, listas, indentação, menu "..." — exatamente como já está hoje.
+Substitui o `InlineSpellCheckEditor` nos campos de headline e estrutura.
 
-## Mudanças na Sidebar Esquerda
+- Baseado em **TipTap** (`@tiptap/react`, `@tiptap/starter-kit`) + extensões: `Underline`, `TextStyle`, `Color`, `Highlight`, `FontFamily`, `TextAlign`, `Link`, `Placeholder`, `TaskList`/`TaskItem`.
+- Mantém: autosave debounced, autoresize (cresce com conteúdo), spellcheck nativo (Grammarly/QuillBot continuam funcionando, é um contenteditable), placeholder, foco programático.
+- Mantém a API atual do `InlineSpellCheckEditor` (`value`, `onChange`, `onBlur`, `onKeyDown`) — só que `value` agora é HTML. Funções dependentes recebem versão texto via util `htmlToPlain()`.
 
-Deixar mais "Google Docs":
-- Manter a lista de **Guias** com drag-and-drop, contador X/Y, olho de visibilidade e botão "+ Nova Guia" no rodapé (já existe — só ajustar visual).
-- Manter o accordion **Perfil**.
-- Estilo: fundo branco/discreto, tipografia menor, item ativo com pill azul-claro (como Docs), ícone de "guias" pequeno ao lado do título "Guias no documento".
-- **Remover** a seção "Atalhos" (linhas ~2888+) e o botão "Compartilhar mentorado" do topo da sidebar (movido para o header, item já listado acima).
+## Barra de formatação (DocsToolbar)
 
-## O que NÃO muda
-- Toda a lógica de edição, salvamento, realtime, comentários, votações, corretor, find/replace, headlines visualização, share, bulk upload, copy all permanece intacta.
-- Atalhos de teclado (Ctrl+Z, Ctrl+H, Tab para trocar mentorado, comandos `/`) continuam funcionando — só o **ícone visual** de atalhos sai do header.
-- Pomodoro continua acessível pelo sistema global (`PomodoroContext`) — só o widget no header da view de Roteiros some.
+Sticky no topo do editor, igual ao print da referência:
 
-## Detalhes técnicos
-- Mover `<RoteiroProgressBar />` para dentro do mesmo flex da toolbar de formatação, com `ml-auto` para ficar à direita.
-- Ajustar paddings do header (`py-4` → `py-2`) para deixar mais compacto como Docs.
-- Sidebar: trocar `bg-muted/30` por `bg-background`, items ativos com `bg-blue-50 text-blue-700` (tokenizado via classe semântica).
+```text
+[↶ ↷ 🖨]  | [Texto normal ▾] | [Poppins ▾] | [− 14 +] | [B I U] [A▾] [🖍▾] | [🔗 🖼] | [≣▾] [• ≡ ☑] [⇥ ⇤] | [⋯]   [Headlines x/y • Roteiros x/y] [100%]
+```
+
+- **Estilo**: Texto normal, Título 1-3 (mapeia para `heading` níveis 1-3).
+- **Fonte**: Poppins (padrão), Inter, Arial, Georgia, Courier.
+- **Tamanho**: −/+ com input numérico (10-72), aplicado via `TextStyle` + CSS inline.
+- **B / I / U**: toggleBold / toggleItalic / toggleUnderline.
+- **Cor texto** e **marca-texto**: popover com paleta (8 cores + custom).
+- **Link**: prompt simples; **Imagem**: input file → upload no bucket `feedback-images` (já existe) e insere como `<img>`.
+- **Alinhamento**: esquerda, centro, direita, justificar.
+- **Listas**: bullet, numerada, tarefas (check).
+- **Recuo**: aumentar / diminuir.
+- **⋯**: menu com "Limpar formatação".
+
+Barra renderizada uma única vez no topo do `MentoradoRoteirosView` (ela observa o editor com foco atual via contexto leve `ActiveEditorContext`). Isso evita uma barra por campo e bate visualmente com Docs.
+
+## Impactos e ajustes necessários
+
+1. **Salvamento** — `headline`/`estrutura` passam a guardar HTML. Hooks de save (`useUpdateRoteiro`) seguem iguais. Adiciono sanitização leve no servidor? Não — `dangerouslySetInnerHTML` só na renderização interna; em locais públicos (`RoteiroPublico`, copiar/compartilhar) eu uso `htmlToPlain()` ou renderização sanitizada via `DOMPurify`.
+2. **Compartilhamento público / Copiar todos / Copiar com referências** — usam `htmlToPlain()` para preservar o comportamento atual de texto puro com quebras.
+3. **Slash commands** (`/3`, `/4`, `/v`, `/t`, etc.) — reescritos como extensão TipTap "SlashCommand" que escuta `/` e dispara as mesmas ações já existentes.
+4. **Corretor inline + viral check + erros wavy** — extensão TipTap "Decorations" que aplica `ProseMirror` decorations nas mesmas posições calculadas a partir do texto plano.
+5. **Localizar/substituir** — opera no texto plano; ao confirmar substituição, regenera o HTML preservando estilos em runs não afetados.
+6. **Realtime sync** — diff continua igual; o conteúdo é apenas uma string maior.
+7. **Contagem > 2100 chars (fundo vermelho)** — calcula em cima de `htmlToPlain().length`.
+8. **Teleprompter, IA, votação, comentários** — continuam recebendo texto plano via `htmlToPlain()`.
+
+## Entrega em fases (commits pequenos)
+
+1. Instalar TipTap + extensões. Criar `RichTextEditor` e `DocsToolbar` isolados, com toolbar fixa no topo do `MentoradoRoteirosView`. Manter `InlineSpellCheckEditor` vivo.
+2. Trocar **estrutura** pelo `RichTextEditor` (campo maior, menos features dependentes). Validar autosave, realtime, copiar, compartilhar.
+3. Trocar **headline** pelo `RichTextEditor`. Validar viral check, votação, contagem.
+4. Reescrever slash commands como extensão TipTap.
+5. Portar corretor inline (decorations) e localizar/substituir.
+6. Remover `InlineSpellCheckEditor`.
+
+## Riscos
+
+- Conteúdo legado com caracteres especiais (`<`, `>`, `&`) precisa ser escapado ao tratar como HTML na primeira carga. Faço isso no `RichTextEditor` na hidratação.
+- Realtime: dois usuários editando ao mesmo tempo continuam com o modelo "last write wins" atual; não vou introduzir CRDT agora.
+- Aumento de payload (HTML é maior que texto puro). Aceitável.
+
+## O que NÃO entra agora
+
+- Comentários ancorados em trechos (igual Docs) — fora de escopo.
+- Histórico de versões.
+- Colaboração em tempo real com cursores (CRDT/Yjs).
+
+Quer que eu siga por essa abordagem em fases? Posso começar pela **fase 1 + 2** já no próximo passo.
