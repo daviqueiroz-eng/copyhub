@@ -2,7 +2,7 @@ import { useEffect, forwardRef, useImperativeHandle, useRef } from "react";
 import { useEditor, EditorContent, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
-import TextStyle from "@tiptap/extension-text-style";
+import { TextStyle, FontSize } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import FontFamily from "@tiptap/extension-font-family";
@@ -41,6 +41,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
         StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
         Underline,
         TextStyle,
+        FontSize,
         Color,
         Highlight.configure({ multicolor: true }),
         FontFamily,
