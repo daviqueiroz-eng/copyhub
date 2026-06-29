@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Search, Map, FileText, Megaphone, Zap, MessageSquare, Hash, Flame } from "lucide-react";
+import { Search, Map, FileText, Megaphone, Zap, MessageSquare, Hash, Flame, ExternalLink, PanelRightOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type SwitcherShortcut =
@@ -27,6 +27,7 @@ interface MentoradoSwitcherDialogProps {
   currentMentoradoId: string;
   onSelectMentorado: (m: Mentorado) => void;
   onSelectShortcut: (s: SwitcherShortcut) => void;
+  onPreviewMentorado?: (m: Mentorado) => void;
 }
 
 const SHORTCUTS: Array<{
@@ -54,6 +55,7 @@ export const MentoradoSwitcherDialog = ({
   currentMentoradoId,
   onSelectMentorado,
   onSelectShortcut,
+  onPreviewMentorado,
 }: MentoradoSwitcherDialogProps) => {
   const [search, setSearch] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -160,15 +162,11 @@ export const MentoradoSwitcherDialog = ({
                   const isActive = activeIndex === flatIdx;
                   const isCurrent = m.id === currentMentoradoId;
                   return (
-                    <button
+                    <div
                       key={m.id}
                       onMouseEnter={() => setActiveIndex(flatIdx)}
-                      onClick={() => {
-                        if (!isCurrent) onSelectMentorado(m);
-                        onClose();
-                      }}
                       className={cn(
-                        "flex flex-col items-center gap-1.5 p-2 rounded-lg w-[78px] shrink-0 transition-all",
+                        "group relative flex flex-col items-center gap-1.5 p-2 rounded-lg w-[78px] shrink-0 transition-all cursor-default",
                         isActive ? "bg-accent ring-2 ring-primary" : "hover:bg-accent/50",
                         isCurrent && !isActive && "ring-1 ring-primary/40"
                       )}
@@ -183,7 +181,44 @@ export const MentoradoSwitcherDialog = ({
                       <span className="text-[11px] font-medium truncate w-full text-center">
                         {m.nome.split(" ")[0]}
                       </span>
-                    </button>
+
+                      {/* Hover actions */}
+                      {!isCurrent && (
+                        <div
+                          className={cn(
+                            "absolute inset-x-1 bottom-1 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
+                            isActive && "opacity-100"
+                          )}
+                        >
+                          <button
+                            type="button"
+                            title="Abrir perfil"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectMentorado(m);
+                              onClose();
+                            }}
+                            className="w-full text-[10px] flex items-center justify-center gap-1 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 shadow"
+                          >
+                            <ExternalLink className="h-3 w-3" /> Perfil
+                          </button>
+                          {onPreviewMentorado && (
+                            <button
+                              type="button"
+                              title="Ver roteiros ao lado"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onPreviewMentorado(m);
+                                onClose();
+                              }}
+                              className="w-full text-[10px] flex items-center justify-center gap-1 py-1 rounded bg-background border border-border hover:bg-accent shadow"
+                            >
+                              <PanelRightOpen className="h-3 w-3" /> Ao lado
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>

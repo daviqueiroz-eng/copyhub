@@ -108,6 +108,7 @@ import { MapaAvatarSection } from "./MapaAvatarSection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import { MentoradoSwitcherDialog, type SwitcherShortcut } from "./MentoradoSwitcherDialog";
+import { MentoradoSideRoteirosSheet } from "./MentoradoSideRoteirosSheet";
 import { ViralRegistrarDialog } from "@/components/virais/ViralRegistrarDialog";
 import {
   useHeadlineChecklistItems,
@@ -382,6 +383,7 @@ export const MentoradoRoteirosView = ({
   const navigate = useNavigate();
   const location = useLocation();
   const [showMentoradoCarousel, setShowMentoradoCarousel] = useState(false);
+  const [previewMentorado, setPreviewMentorado] = useState<{ id: string; nome: string } | null>(null);
   const [guiaAtiva, setGuiaAtiva] = useState(1);
   const [guias, setGuias] = useState<GuiaConfigLocal[]>([]);
   const [showFirstGuiaDialog, setShowFirstGuiaDialog] = useState(true);
@@ -4525,6 +4527,9 @@ export const MentoradoRoteirosView = ({
         onSelectMentorado={(m) => {
           if (m.id !== mentoradoId) onSwitchMentorado?.(m);
         }}
+        onPreviewMentorado={(m) => {
+          setPreviewMentorado({ id: m.id, nome: m.nome });
+        }}
         onSelectShortcut={(s: SwitcherShortcut) => {
           if (s === "headlines") {
             setShowHeadlinesModal(true);
@@ -4549,6 +4554,17 @@ export const MentoradoRoteirosView = ({
             targetField: "headline",
             position: { top: 300, left: 400 },
           });
+        }}
+      />
+
+      {/* Painel lateral de roteiros de outro mentorado (sem sair da tela) */}
+      <MentoradoSideRoteirosSheet
+        mentoradoId={previewMentorado?.id ?? null}
+        mentoradoNome={previewMentorado?.nome}
+        onClose={() => setPreviewMentorado(null)}
+        onOpenFull={(id) => {
+          const m = (mentorados || []).find((x) => x.id === id);
+          if (m) onSwitchMentorado?.(m);
         }}
       />
 
