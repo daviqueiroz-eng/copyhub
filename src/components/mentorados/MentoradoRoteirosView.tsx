@@ -2646,14 +2646,14 @@ export const MentoradoRoteirosView = ({
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyAllRoteiros} title="Copiar todos">
               <ClipboardCopy className="h-4 w-4" />
             </Button>
-            <div className="hidden 2xl:flex items-center pl-2 ml-1 border-l w-[180px]">
+            <div className="hidden md:flex items-center pl-2 ml-1 border-l w-[180px]">
               <RoteiroProgressBar
                 headlinesPreenchidas={progresso.headlinesPreenchidas}
                 roteirosPreenchidos={progresso.roteirosPreenchidos}
                 total={progresso.total}
               />
             </div>
-            <span className="2xl:hidden text-xs font-medium text-muted-foreground ml-2 whitespace-nowrap">
+            <span className="md:hidden text-xs font-medium text-muted-foreground ml-2 whitespace-nowrap">
               {progresso.total > 0 ? Math.round(((progresso.headlinesPreenchidas + progresso.roteirosPreenchidos) / (progresso.total * 2)) * 100) : 0}%
             </span>
           </div>
