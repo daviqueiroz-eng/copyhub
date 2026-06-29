@@ -367,6 +367,9 @@ export const HeadlinesVisualizacaoPanel = ({
           return copy;
         }
       );
+      // Notify parent so it can update its local in-memory state and prevent
+      // headlines from "disappearing" when switching back to the normal view.
+      onItemSaved?.(ordem, pending.headline, pending.linkReferencia);
     } catch (e: any) {
       toast({
         title: "Erro ao salvar headline",
