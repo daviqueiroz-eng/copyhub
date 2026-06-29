@@ -286,6 +286,11 @@ interface PanelProps {
   guiaNumero: number;
   items: HeadlineVisualItem[];
   onClose: () => void;
+  onItemSaved?: (
+    ordem: number,
+    headline: string,
+    linkReferencia: string | null
+  ) => void;
 }
 
 export const HeadlinesVisualizacaoPanel = ({
@@ -293,6 +298,7 @@ export const HeadlinesVisualizacaoPanel = ({
   guiaNumero,
   items,
   onClose,
+  onItemSaved,
 }: PanelProps) => {
   const [ordered, setOrdered] = useState<HeadlineVisualItem[]>(items);
   const reorder = useReorderRoteiros();
@@ -361,6 +367,9 @@ export const HeadlinesVisualizacaoPanel = ({
           return copy;
         }
       );
+      // Notify parent so it can update its local in-memory state and prevent
+      // headlines from "disappearing" when switching back to the normal view.
+      onItemSaved?.(ordem, pending.headline, pending.linkReferencia);
     } catch (e: any) {
       toast({
         title: "Erro ao salvar headline",
