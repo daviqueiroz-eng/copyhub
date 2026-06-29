@@ -4527,6 +4527,9 @@ export const MentoradoRoteirosView = ({
         onSelectMentorado={(m) => {
           if (m.id !== mentoradoId) onSwitchMentorado?.(m);
         }}
+        onPreviewMentorado={(m) => {
+          setPreviewMentorado({ id: m.id, nome: m.nome });
+        }}
         onSelectShortcut={(s: SwitcherShortcut) => {
           if (s === "headlines") {
             setShowHeadlinesModal(true);
@@ -4551,6 +4554,17 @@ export const MentoradoRoteirosView = ({
             targetField: "headline",
             position: { top: 300, left: 400 },
           });
+        }}
+      />
+
+      {/* Painel lateral de roteiros de outro mentorado (sem sair da tela) */}
+      <MentoradoSideRoteirosSheet
+        mentoradoId={previewMentorado?.id ?? null}
+        mentoradoNome={previewMentorado?.nome}
+        onClose={() => setPreviewMentorado(null)}
+        onOpenFull={(id) => {
+          const m = (mentorados || []).find((x) => x.id === id);
+          if (m) onSwitchMentorado?.(m);
         }}
       />
 
