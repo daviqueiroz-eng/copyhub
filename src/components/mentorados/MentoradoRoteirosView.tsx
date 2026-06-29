@@ -4523,5 +4523,6 @@ export const MentoradoRoteirosView = ({
         onOpenChange={setResultadosVotacaoOpen}
       />
     </div>
+    </ActiveEditorProvider>
   );
 };
