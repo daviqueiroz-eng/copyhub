@@ -2524,6 +2524,7 @@ export const MentoradoRoteirosView = ({
   }
 
   return (
+    <ActiveEditorProvider>
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
       <div className="flex flex-col border-b bg-card">
