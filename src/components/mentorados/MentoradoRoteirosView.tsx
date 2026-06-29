@@ -2669,6 +2669,10 @@ export const MentoradoRoteirosView = ({
             </div>
           </div>
         </div>
+        {/* Barra de formatação estilo Google Docs (afeta o campo focado) */}
+        <div className="hidden lg:flex justify-center px-6 pb-3">
+          <DocsToolbar />
+        </div>
       </div>
 
       {/* Content */}
