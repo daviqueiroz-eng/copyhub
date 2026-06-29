@@ -114,7 +114,7 @@ export function DocsToolbar() {
     >
       {/* Estilo de parágrafo */}
       <Select value={currentStyle} onValueChange={setStyle}>
-        <SelectTrigger className="h-8 w-[130px] rounded-md border-0 bg-transparent hover:bg-accent text-xs">
+        <SelectTrigger className="h-8 w-[88px] rounded-md border-0 bg-transparent hover:bg-accent text-xs px-2">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -129,7 +129,7 @@ export function DocsToolbar() {
 
       {/* Fonte */}
       <Select value={currentFont} onValueChange={setFont}>
-        <SelectTrigger className="h-8 w-[110px] rounded-md border-0 bg-transparent hover:bg-accent text-xs">
+        <SelectTrigger className="h-8 w-[78px] rounded-md border-0 bg-transparent hover:bg-accent text-xs px-2">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
