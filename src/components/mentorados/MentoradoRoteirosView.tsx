@@ -2528,151 +2528,96 @@ export const MentoradoRoteirosView = ({
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
       <div className="flex flex-col border-b bg-card">
-        <div className="relative flex items-center justify-between gap-4 px-6 py-3">
-          <div className="flex items-center gap-4 shrink-0">
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-5 w-5" />
+        <div className="relative flex items-center justify-between gap-3 px-4 py-2">
+          <div className="flex items-center gap-2 shrink-0 min-w-0 max-w-[260px]">
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 shrink-0">
+              <X className="h-4 w-4" />
             </Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold font-poppins">
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h1 className="text-sm font-bold font-poppins truncate">
                   Roteiros{!leftSidebarMinimized && ` - ${mentoradoNome}`}
                 </h1>
-                
                 {currentMentorado?.instagram && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-pink-500 hover:text-pink-600 hover:bg-pink-100 dark:hover:bg-pink-950"
+                    className="h-6 w-6 shrink-0 text-pink-500 hover:text-pink-600 hover:bg-pink-100 dark:hover:bg-pink-950"
                     onClick={() => {
                       const handle = currentMentorado.instagram!.replace('@', '');
                       window.open(`https://instagram.com/${handle}`, '_blank');
                     }}
                     title={`@${currentMentorado.instagram.replace('@', '')}`}
                   >
-                    <Instagram className="h-4 w-4" />
+                    <Instagram className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                
                 {(trelloCard?.cardUrl || currentMentorado?.link_trello) && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-blue-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-950"
+                    className="h-6 w-6 shrink-0 text-blue-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-950"
                     onClick={() => window.open(trelloCard?.cardUrl || currentMentorado?.link_trello || '', '_blank')}
                     title="Abrir no Trello"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">
-                Guia {guiaAtiva} • {getFilledCount(guiaAtiva)}/{guiaAtivaConfig.quantidade} preenchidos
-              </p>
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap leading-tight">
+                Guia {guiaAtiva} • {getFilledCount(guiaAtiva)}/{guiaAtivaConfig.quantidade}
+              </span>
             </div>
           </div>
           {/* Barra de formatação estilo Google Docs (afeta o campo focado) */}
-          <div className="hidden lg:flex flex-1 justify-center min-w-0">
+          <div className="hidden lg:flex flex-1 justify-center min-w-0 px-2">
             <DocsToolbar />
           </div>
-          <div className="hidden lg:flex items-center gap-2 shrink-0">
-            {/* Botões Undo/Redo */}
-            <div className="flex items-center gap-1 border-r pr-2 mr-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleUndo}
-                disabled={historyIndex <= 0}
-                title="Desfazer (Ctrl+Z)"
-                className="h-9 w-9"
-              >
-                <Undo2 className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleRedo}
-                disabled={historyIndex >= history.length - 1}
-                title="Refazer (Ctrl+Shift+Z)"
-                className="h-9 w-9"
-              >
-                <Redo2 className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowHeadlinesVisualizacao((v) => !v)}
-                title={showHeadlinesVisualizacao ? "Voltar para edição" : "Visualizar headlines"}
-                className="h-9 w-9"
-              >
-                <Eye className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setResultadosVotacaoOpen(true)}
-                title="Resultados das votações"
-                className="h-9 w-9 relative"
-              >
-                <Swords className="h-5 w-5" />
-                {votacoesNaoVistas > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
-                    +{votacoesNaoVistas}
-                  </span>
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setComentariosPanelOpen((v) => !v)}
-                title="Comentários da guia"
-                className="h-9 w-9 relative"
-              >
-                <MessageSquare className="h-5 w-5" style={{ color: "#B8860B" }} />
-                {comentariosAbertos > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">
-                    {comentariosAbertos}
-                  </span>
-                )}
-              </Button>
-            </div>
-            
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setShowFindReplace(true)}
-              title="Localizar e Substituir (Ctrl+H)"
-            >
+          <div className="hidden lg:flex items-center gap-0.5 shrink-0">
+            <Button variant="ghost" size="icon" onClick={handleUndo} disabled={historyIndex <= 0} title="Desfazer (Ctrl+Z)" className="h-8 w-8">
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleRedo} disabled={historyIndex >= history.length - 1} title="Refazer (Ctrl+Shift+Z)" className="h-8 w-8">
+              <Redo2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setShowHeadlinesVisualizacao((v) => !v)} title={showHeadlinesVisualizacao ? "Voltar para edição" : "Visualizar headlines"} className="h-8 w-8">
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setResultadosVotacaoOpen(true)} title="Resultados das votações" className="h-8 w-8 relative">
+              <Swords className="h-4 w-4" />
+              {votacoesNaoVistas > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">+{votacoesNaoVistas}</span>
+              )}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setComentariosPanelOpen((v) => !v)} title="Comentários da guia" className="h-8 w-8 relative">
+              <MessageSquare className="h-4 w-4" style={{ color: "#B8860B" }} />
+              {comentariosAbertos > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 leading-none">{comentariosAbertos}</span>
+              )}
+            </Button>
+            <div className="h-5 w-px bg-border mx-1" />
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowFindReplace(true)} title="Localizar e Substituir (Ctrl+H)">
               <Search className="h-4 w-4" />
             </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setShowSpellChecker(true)}
-              title="Corretor Automático"
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowSpellChecker(true)} title="Corretor Automático">
               <FileEdit className="h-4 w-4" />
             </Button>
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={() => setShowBulkUpload(true)}
-              title="Subir headlines/roteiros em massa"
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowBulkUpload(true)} title="Subir headlines/roteiros em massa">
               <Plus className="h-4 w-4" />
-              Subir em massa
             </Button>
-            <Button variant="outline" className="gap-2" onClick={handleCopyAllRoteiros}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyAllRoteiros} title="Copiar todos">
               <ClipboardCopy className="h-4 w-4" />
-              Copiar todos
             </Button>
-            <div className="hidden lg:flex items-center pl-2 ml-1 border-l">
+            <div className="hidden 2xl:flex items-center pl-2 ml-1 border-l w-[180px]">
               <RoteiroProgressBar
                 headlinesPreenchidas={progresso.headlinesPreenchidas}
                 roteirosPreenchidos={progresso.roteirosPreenchidos}
                 total={progresso.total}
               />
             </div>
+            <span className="2xl:hidden text-xs font-medium text-muted-foreground ml-2 whitespace-nowrap">
+              {progresso.total > 0 ? Math.round(((progresso.headlinesPreenchidas + progresso.roteirosPreenchidos) / (progresso.total * 2)) * 100) : 0}%
+            </span>
           </div>
         </div>
       </div>
