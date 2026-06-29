@@ -39,7 +39,6 @@ import { BulkUploadRoteirosDialog } from "./BulkUploadRoteirosDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
 import { RoteiroChecklist, TimersRecord } from "./RoteiroChecklist";
-import { TopClockWidget } from "./TopClockWidget";
 import { RoteiroAnotacoesPanel } from "./RoteiroAnotacoesPanel";
 import { RoteiroFeedbackDialog } from "./RoteiroFeedbackDialog";
 import { RoteiroProgressBar } from "./RoteiroProgressBar";
@@ -2657,16 +2656,10 @@ export const MentoradoRoteirosView = ({
               Copiar todos
             </Button>
           </div>
-          {/* Clock centralizado no header */}
-          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 pointer-events-none">
-            <div className="pointer-events-auto">
-              <TopClockWidget />
-            </div>
-          </div>
         </div>
         
-        {/* Progress Bar - desktop only */}
-        <div className="px-6 pb-3 hidden lg:block">
+        {/* Progress Bar - desktop only, alinhada à direita estilo Google Docs */}
+        <div className="px-6 pb-2 hidden lg:flex justify-end">
           <RoteiroProgressBar
             headlinesPreenchidas={progresso.headlinesPreenchidas}
             roteirosPreenchidos={progresso.roteirosPreenchidos}
@@ -2884,70 +2877,6 @@ export const MentoradoRoteirosView = ({
               </CollapsibleContent>
             </Collapsible>
             <div className="border-b" />
-
-            {/* Seção de Atalhos - acima da lixeira */}
-            <div className="pb-2 border-b hidden lg:block">
-              <p className="text-sm font-semibold mb-2 text-muted-foreground">Atalhos</p>
-              <div className="space-y-0.5 text-xs text-muted-foreground">
-                {[
-                  { key: "/", label: "Mapa do avatar", mode: "menu" as SlashCommandMode },
-                  { key: "/3", label: "Headlines", mode: "headlines" as SlashCommandMode },
-                  { key: "/c", label: "CTAs", mode: "ctas" as SlashCommandMode },
-                  { key: "/i", label: "Intensificadores", mode: "intensificadores" as SlashCommandMode },
-                  { key: "/p", label: "Prompts", mode: "prompts" as SlashCommandMode },
-                  { key: "/m", label: "Registrar heads", mode: "mentorados" as SlashCommandMode },
-                  { key: "/t", label: "Termos virais", mode: "termos_virais" as SlashCommandMode },
-                  { key: "/v", label: "Virais", mode: "__navigate_virais" as SlashCommandMode },
-                ].map(item => (
-                  <button
-                    key={item.key}
-                    className="w-full text-left flex items-center gap-1.5 py-1 px-1 rounded hover:bg-accent transition-colors"
-                    onClick={() => {
-                      if (item.mode === "headlines") {
-                        setShowHeadlinesModal(true);
-                        return;
-                      }
-                      if (item.mode === "__navigate_virais") {
-                        navigate("/virais", { state: { from: location.pathname + location.search } });
-                        return;
-                      }
-                      setSlashCommand({
-                        isOpen: true,
-                        mode: item.mode,
-                        targetKey: "",
-                        targetField: "headline",
-                        position: { top: 300, left: 400 },
-                      });
-                    }}
-                  >
-                    <span className="font-mono bg-muted px-1 rounded">{item.key}</span> {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Seção de Configurações */}
-            <div className="pb-2 border-b hidden lg:block">
-              <p className="text-sm font-semibold mb-2 text-muted-foreground">Configurações</p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">IA</span>
-                  <Switch
-                    checked={iaEnabled}
-                    onCheckedChange={setIaEnabled}
-                    className="scale-75"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Cronômetro</span>
-                  <Switch
-                    checked={cronometroEnabled}
-                    onCheckedChange={setCronometroEnabled}
-                    className="scale-75"
-                  />
-                </div>
-              </div>
-            </div>
 
             {/* Lixeira com guias deletadas */}
             {deletedGuias.length > 0 && (
