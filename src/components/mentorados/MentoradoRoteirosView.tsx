@@ -2528,14 +2528,16 @@ export const MentoradoRoteirosView = ({
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
       <div className="flex flex-col border-b bg-card">
-        <div className="relative flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-4">
+        <div className="relative flex items-center justify-between gap-4 px-6 py-3">
+          <div className="flex items-center gap-4 shrink-0">
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-5 w-5" />
             </Button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold font-poppins">Roteiros - {mentoradoNome}</h1>
+                <h1 className="text-xl font-bold font-poppins">
+                  Roteiros{!leftSidebarMinimized && ` - ${mentoradoNome}`}
+                </h1>
                 
                 {currentMentorado?.instagram && (
                   <Button
@@ -2569,7 +2571,11 @@ export const MentoradoRoteirosView = ({
               </p>
             </div>
           </div>
-          <div className="hidden lg:flex items-center gap-2">
+          {/* Barra de formatação estilo Google Docs (afeta o campo focado) */}
+          <div className="hidden lg:flex flex-1 justify-center min-w-0">
+            <DocsToolbar />
+          </div>
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
             {/* Botões Undo/Redo */}
             <div className="flex items-center gap-1 border-r pr-2 mr-1">
               <Button
@@ -2668,10 +2674,6 @@ export const MentoradoRoteirosView = ({
               />
             </div>
           </div>
-        </div>
-        {/* Barra de formatação estilo Google Docs (afeta o campo focado) */}
-        <div className="hidden lg:flex justify-center px-6 pb-3">
-          <DocsToolbar />
         </div>
       </div>
 
