@@ -2657,16 +2657,10 @@ export const MentoradoRoteirosView = ({
               Copiar todos
             </Button>
           </div>
-          {/* Clock centralizado no header */}
-          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 pointer-events-none">
-            <div className="pointer-events-auto">
-              <TopClockWidget />
-            </div>
-          </div>
         </div>
         
-        {/* Progress Bar - desktop only */}
-        <div className="px-6 pb-3 hidden lg:block">
+        {/* Progress Bar - desktop only, alinhada à direita estilo Google Docs */}
+        <div className="px-6 pb-2 hidden lg:flex justify-end">
           <RoteiroProgressBar
             headlinesPreenchidas={progresso.headlinesPreenchidas}
             roteirosPreenchidos={progresso.roteirosPreenchidos}
