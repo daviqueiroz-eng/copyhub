@@ -38,7 +38,12 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
 
     const editor = useEditor({
       extensions: [
-        StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+        StarterKit.configure({
+          heading: { levels: [1, 2, 3] },
+          // Increase undo/redo memory and shorten merge window so each
+          // typing pause becomes a separate undo step.
+          history: { depth: 500, newGroupDelay: 400 },
+        }),
         Underline,
         TextStyle,
         FontSize,
@@ -82,9 +87,16 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     useEffect(() => {
       if (!editor) return;
       const incoming = toEditorHtml(value);
-      if (incoming === editor.getHTML()) return;
+      const currentHtml = editor.getHTML();
+      if (incoming === currentHtml) return;
       // Don't fight the user while focused
       if (editor.isFocused) return;
+      // Avoid wiping undo history on autosave echoes where the visible
+      // text is identical even though HTML serialization differs slightly.
+      if (htmlToPlain(incoming) === htmlToPlain(currentHtml)) {
+        lastEmittedRef.current = currentHtml;
+        return;
+      }
       editor.commands.setContent(incoming, { emitUpdate: false });
       lastEmittedRef.current = incoming;
     }, [value, editor]);
