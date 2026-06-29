@@ -403,6 +403,44 @@ export const MentoradoRoteirosView = ({
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showSpellChecker, setShowSpellChecker] = useState(false);
   const [showHeadlinesVisualizacao, setShowHeadlinesVisualizacao] = useState(false);
+  // Zoom local do "papel" do documento (Cmd/Ctrl + / - / 0)
+  const [pageZoom, setPageZoom] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    const saved = parseFloat(localStorage.getItem("roteiros-page-zoom") || "1");
+    return isNaN(saved) ? 1 : Math.min(2, Math.max(0.5, saved));
+  });
+  useEffect(() => {
+    try { localStorage.setItem("roteiros-page-zoom", String(pageZoom)); } catch {}
+  }, [pageZoom]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "+" || e.key === "=" ) {
+        e.preventDefault();
+        setPageZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)));
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        setPageZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)));
+      } else if (e.key === "0") {
+        e.preventDefault();
+        setPageZoom(1);
+      }
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      setPageZoom((z) => {
+        const next = z + (e.deltaY < 0 ? 0.1 : -0.1);
+        return Math.min(2, Math.max(0.5, +next.toFixed(2)));
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("wheel", onWheel);
+    };
+  }, []);
   const [resultadosVotacaoOpen, setResultadosVotacaoOpen] = useState(false);
   const [comentariosPanelOpen, setComentariosPanelOpen] = useState(false);
   const dispararVotacao = useDispararVotacao();
