@@ -403,6 +403,44 @@ export const MentoradoRoteirosView = ({
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showSpellChecker, setShowSpellChecker] = useState(false);
   const [showHeadlinesVisualizacao, setShowHeadlinesVisualizacao] = useState(false);
+  // Zoom local do "papel" do documento (Cmd/Ctrl + / - / 0)
+  const [pageZoom, setPageZoom] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    const saved = parseFloat(localStorage.getItem("roteiros-page-zoom") || "1");
+    return isNaN(saved) ? 1 : Math.min(2, Math.max(0.5, saved));
+  });
+  useEffect(() => {
+    try { localStorage.setItem("roteiros-page-zoom", String(pageZoom)); } catch {}
+  }, [pageZoom]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "+" || e.key === "=" ) {
+        e.preventDefault();
+        setPageZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)));
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        setPageZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)));
+      } else if (e.key === "0") {
+        e.preventDefault();
+        setPageZoom(1);
+      }
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      setPageZoom((z) => {
+        const next = z + (e.deltaY < 0 ? 0.1 : -0.1);
+        return Math.min(2, Math.max(0.5, +next.toFixed(2)));
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("wheel", onWheel);
+    };
+  }, []);
   const [resultadosVotacaoOpen, setResultadosVotacaoOpen] = useState(false);
   const [comentariosPanelOpen, setComentariosPanelOpen] = useState(false);
   const dispararVotacao = useDispararVotacao();
@@ -2906,9 +2944,12 @@ export const MentoradoRoteirosView = ({
         {/* Main - Documento estilo Google Docs */}
         <ScrollArea className="flex-1 bg-muted/20">
           <div className="flex py-4 lg:py-8 px-2 lg:px-4 pb-48 justify-center">
-            <div className="w-full max-w-[1280px]">
-            {/* Paper container - expandido para usar mais espaço horizontal */}
-            <div className="w-full bg-background shadow-md rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
+            <div
+              className="mx-auto"
+              style={{ zoom: pageZoom as unknown as string }}
+            >
+            {/* Paper container - estilo Google Docs (página A4) */}
+            <div className="w-[816px] max-w-full bg-background shadow-[0_1px_3px_rgba(60,64,67,.15),0_4px_8px_rgba(60,64,67,.15)] rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
               {/* Renderizar OverdeliveryView se for guia de overdelivery */}
               {guiaAtivaConfig.isOverdelivery ? (
                 <OverdeliveryView
