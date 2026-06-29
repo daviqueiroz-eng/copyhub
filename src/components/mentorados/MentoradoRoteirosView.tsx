@@ -2655,16 +2655,14 @@ export const MentoradoRoteirosView = ({
               <ClipboardCopy className="h-4 w-4" />
               Copiar todos
             </Button>
+            <div className="hidden lg:flex items-center pl-2 ml-1 border-l">
+              <RoteiroProgressBar
+                headlinesPreenchidas={progresso.headlinesPreenchidas}
+                roteirosPreenchidos={progresso.roteirosPreenchidos}
+                total={progresso.total}
+              />
+            </div>
           </div>
-        </div>
-        
-        {/* Progress Bar - desktop only, alinhada à direita estilo Google Docs */}
-        <div className="px-6 pb-2 hidden lg:flex justify-end">
-          <RoteiroProgressBar
-            headlinesPreenchidas={progresso.headlinesPreenchidas}
-            roteirosPreenchidos={progresso.roteirosPreenchidos}
-            total={progresso.total}
-          />
         </div>
       </div>
 
