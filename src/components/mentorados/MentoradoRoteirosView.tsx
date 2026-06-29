@@ -2944,9 +2944,12 @@ export const MentoradoRoteirosView = ({
         {/* Main - Documento estilo Google Docs */}
         <ScrollArea className="flex-1 bg-muted/20">
           <div className="flex py-4 lg:py-8 px-2 lg:px-4 pb-48 justify-center">
-            <div className="w-full max-w-[1280px]">
-            {/* Paper container - expandido para usar mais espaço horizontal */}
-            <div className="w-full bg-background shadow-md rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
+            <div
+              className="mx-auto"
+              style={{ zoom: pageZoom as unknown as string }}
+            >
+            {/* Paper container - estilo Google Docs (página A4) */}
+            <div className="w-[816px] max-w-full bg-background shadow-[0_1px_3px_rgba(60,64,67,.15),0_4px_8px_rgba(60,64,67,.15)] rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
               {/* Renderizar OverdeliveryView se for guia de overdelivery */}
               {guiaAtivaConfig.isOverdelivery ? (
                 <OverdeliveryView
