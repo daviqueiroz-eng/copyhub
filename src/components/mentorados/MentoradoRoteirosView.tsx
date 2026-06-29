@@ -39,7 +39,6 @@ import { BulkUploadRoteirosDialog } from "./BulkUploadRoteirosDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
 import { RoteiroChecklist, TimersRecord } from "./RoteiroChecklist";
-import { TopClockWidget } from "./TopClockWidget";
 import { RoteiroAnotacoesPanel } from "./RoteiroAnotacoesPanel";
 import { RoteiroFeedbackDialog } from "./RoteiroFeedbackDialog";
 import { RoteiroProgressBar } from "./RoteiroProgressBar";
