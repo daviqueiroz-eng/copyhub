@@ -38,6 +38,10 @@ import { FindReplaceDialog } from "./FindReplaceDialog";
 import { BulkUploadRoteirosDialog } from "./BulkUploadRoteirosDialog";
 import { SpellCheckerPanel, SpellError } from "./SpellCheckerPanel";
 import { InlineSpellCheckEditor, SpellError as InlineSpellError } from "./InlineSpellCheckEditor";
+import { ActiveEditorProvider } from "./docs-editor/ActiveEditorContext";
+import { DocsToolbar } from "./docs-editor/DocsToolbar";
+import { RichTextEditor } from "./docs-editor/RichTextEditor";
+import { htmlToPlain, toEditorHtml, looksLikeHtml } from "@/lib/htmlPlain";
 import { RoteiroChecklist, TimersRecord } from "./RoteiroChecklist";
 import { RoteiroAnotacoesPanel } from "./RoteiroAnotacoesPanel";
 import { RoteiroFeedbackDialog } from "./RoteiroFeedbackDialog";
@@ -2520,6 +2524,7 @@ export const MentoradoRoteirosView = ({
   }
 
   return (
+    <ActiveEditorProvider>
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
       <div className="flex flex-col border-b bg-card">
@@ -2663,6 +2668,10 @@ export const MentoradoRoteirosView = ({
               />
             </div>
           </div>
+        </div>
+        {/* Barra de formatação estilo Google Docs (afeta o campo focado) */}
+        <div className="hidden lg:flex justify-center px-6 pb-3">
+          <DocsToolbar />
         </div>
       </div>
 
@@ -3472,72 +3481,21 @@ export const MentoradoRoteirosView = ({
                       </div>
 
                       {/* Estrutura */}
-                      <div className={cn("mb-4 rounded-md transition-colors", (roteiro.estrutura?.length || 0) > 2100 && "bg-red-100 dark:bg-red-950/40 p-2")}>
+                      <div className={cn("mb-4 rounded-md transition-colors", (htmlToPlain(roteiro.estrutura).length) > 2100 && "bg-red-100 dark:bg-red-950/40 p-2")}>
                         <span className="font-poppins font-bold text-[#B8860B] text-base">
                           ESTRUTURA {String(ordem).padStart(2, "0")}:
                         </span>
-                        <InlineSpellCheckEditor
-                          value={roteiro.estrutura}
-                          onChange={(value, cursorPos) => {
-                            handleInputChange2(guiaAtiva, ordem, "estrutura", value, cursorPos);
-                          }}
-                          onKeyDown={(e) => handleInputKeyDown(e, guiaAtiva, ordem, "estrutura")}
-                          onBlur={() => handleFieldBlur(guiaAtiva, ordem, "estrutura")}
-                          onSelect={(e) => {
-                            const target = e.currentTarget;
-                            cursorPositionRef.current.set(key, target.selectionStart || 0);
-                          }}
-                          onMouseUp={(e) => {
-                            if (!iaEnabled) return;
-                            const target = e.currentTarget;
-                            const start = target.selectionStart;
-                            const end = target.selectionEnd;
-                            if (start !== end && end - start > 0) {
-                              const selectedText = target.value.substring(start, end);
-                              if (selectedText.trim().length > 0) {
-                                const rect = target.getBoundingClientRect();
-                                setFloatingAdjust({
-                                  x: e.clientX,
-                                  y: e.clientY - 40,
-                                  text: selectedText,
-                                  campo: "estrutura",
-                                  roteiroKey: key,
-                                  headline: roteiro.headline,
-                                  estrutura: roteiro.estrutura,
-                                });
-                              }
-                            }
-                          }}
-                          onPaste={(e) => {
-                            const clipboardText = e.clipboardData.getData("text/plain");
-                            if (clipboardText) {
-                              e.preventDefault();
-                              // Convert single line breaks to double for paragraph spacing
-                              const normalized = clipboardText
-                                .replace(/\r\n/g, "\n")
-                                .replace(/(?<!\n)\n(?!\n)/g, "\n\n")
-                                .replace(/\n{3,}/g, "\n\n");
-                              const textarea = e.currentTarget;
-                              const start = textarea.selectionStart;
-                              const end = textarea.selectionEnd;
-                              const current = roteiro.estrutura || "";
-                              const newValue = current.substring(0, start) + normalized + current.substring(end);
-                              handleInputChange2(guiaAtiva, ordem, "estrutura", newValue, start + normalized.length);
-                            }
-                          }}
-                          placeholder="Digite a estrutura do roteiro... (use / para comandos)"
-                          className="text-[14px] min-h-[60px] mt-1"
-                          errors={
-                            mostrarSublinhados
-                              ? getRevisaoErrorsForField(guiaAtiva, ordem, "estrutura")
-                              : getErrorsForField(guiaAtiva, ordem, "estrutura")
-                          }
-                          showErrors={inlineErrorHighlightsEnabled && (mostrarSublinhados || showInlineErrors)}
-                          activeErrorId={mostrarSublinhados ? erroSelecionadoId : null}
-                          onErrorClick={mostrarSublinhados ? setErroSelecionadoId : undefined}
-                          onFixError={(error) => handleInlineFixError(guiaAtiva, ordem, "estrutura", error)}
-                          onIgnoreError={handleIgnoreError}
-                        />
+                        <div className="text-[14px] mt-1">
+                          <RichTextEditor
+                            value={roteiro.estrutura}
+                            onChange={(html) => {
+                              handleInputChange2(guiaAtiva, ordem, "estrutura", html);
+                            }}
+                            onBlur={() => handleFieldBlur(guiaAtiva, ordem, "estrutura")}
+                            placeholder="Digite a estrutura do roteiro..."
+                            minHeight={60}
+                          />
+                        </div>
                         <div className={cn("text-right text-xs mt-1", (roteiro.estrutura?.length || 0) > 2100 ? "text-destructive font-semibold" : "text-muted-foreground")}>
                           {roteiro.estrutura?.length || 0} caracteres
                         </div>
@@ -4518,5 +4476,6 @@ export const MentoradoRoteirosView = ({
         onOpenChange={setResultadosVotacaoOpen}
       />
     </div>
+    </ActiveEditorProvider>
   );
 };
