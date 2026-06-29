@@ -3066,6 +3066,24 @@ export const MentoradoRoteirosView = ({
                       return list;
                     })()}
                     onClose={() => setShowHeadlinesVisualizacao(false)}
+                    onItemSaved={(ordem, headline, linkReferencia) => {
+                      const key = `${guiaAtiva}-${ordem}`;
+                      setRoteirosLocais((prev) => {
+                        const next = new Map(prev);
+                        const existing = next.get(key) || {
+                          headline: "",
+                          estrutura: "",
+                          tipo_roteiro_id: null,
+                          link_referencia: null,
+                        };
+                        next.set(key, {
+                          ...existing,
+                          headline,
+                          link_referencia: linkReferencia,
+                        });
+                        return next;
+                      });
+                    }}
                   />
                 ) : (
                 <>
