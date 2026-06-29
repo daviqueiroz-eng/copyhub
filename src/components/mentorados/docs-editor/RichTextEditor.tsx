@@ -42,7 +42,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           heading: { levels: [1, 2, 3] },
           // Increase undo/redo memory and shorten merge window so each
           // typing pause becomes a separate undo step.
-          history: { depth: 500, newGroupDelay: 400 },
+          undoRedo: { depth: 500, newGroupDelay: 400 },
         }),
         Underline,
         TextStyle,
