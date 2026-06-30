@@ -338,6 +338,17 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
           datesSet={() => updateTitle()}
         />
       </div>
+      </div>
+
+      {/* Controle de Produção embutido à direita */}
+      <div className="lg:sticky lg:top-0 h-[calc(100vh-8rem)] rounded-lg border border-border overflow-hidden bg-card">
+        <iframe
+          src="https://controleproducao.desorcompany.com/"
+          title="Controle de Produção"
+          className="w-full h-full border-0"
+          loading="lazy"
+        />
+      </div>
 
       <GestaoEntregaDialog
         open={dialogOpen}
