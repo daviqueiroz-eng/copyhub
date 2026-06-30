@@ -202,9 +202,10 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
   };
 
   return (
-    <div className="h-full flex flex-col gestao-calendar">
+    <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 gestao-calendar">
+      <div className="h-full flex flex-col min-w-0">
       {/* Custom Header */}
-      <div className="flex items-center justify-between mb-4 shrink-0">
+      <div className="flex items-center justify-between mb-4 shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold capitalize text-foreground">{currentTitle}</h2>
           <div className="flex items-center gap-1">
@@ -335,6 +336,17 @@ export const GestaoCalendarioView = ({ entregas }: Props) => {
             );
           }}
           datesSet={() => updateTitle()}
+        />
+      </div>
+      </div>
+
+      {/* Controle de Produção embutido à direita */}
+      <div className="lg:sticky lg:top-0 h-[calc(100vh-8rem)] rounded-lg border border-border overflow-hidden bg-card">
+        <iframe
+          src="https://controleproducao.desorcompany.com/"
+          title="Controle de Produção"
+          className="w-full h-full border-0"
+          loading="lazy"
         />
       </div>
 
