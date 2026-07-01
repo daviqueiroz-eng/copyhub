@@ -1536,33 +1536,9 @@ export const MentoradoRoteirosView = ({
   const isMobile = useIsMobile();
   
   const checkTimerAndAlert = useCallback((field: "headline" | "estrutura") => {
-    // No mobile, nunca mostrar alerta de timer
-    if (isMobile) return;
-    
-    // Se cronômetro está desabilitado, não alertar
-    if (!cronometroEnabled) return;
-    
-    // Se o timer de revisão está ativo, não mostrar alerta (usuário está revisando)
-    if (timers["revisar"]?.isRunning) return;
-    
-    // Mapear campo para timer ID
-    const timerId = field === "headline" ? "headlines" : "roteiros";
-    const timer = timers[timerId];
-    
-    // Se o timer não está rodando e não está finalizado, mostrar alerta
-    if (!timer?.isRunning && !timer?.finalizado) {
-      // Evitar spam de alertas (só mostrar a cada 30 segundos)
-      const now = Date.now();
-      if (now - lastAlertTimeRef.current > 30000) {
-        lastAlertTimeRef.current = now;
-        setTimerAlertField(timerId);
-        setShowTimerAlert(true);
-        
-        // Auto-fechar após 5 segundos
-        setTimeout(() => setShowTimerAlert(false), 5000);
-      }
-    }
-  }, [timers, cronometroEnabled, isMobile]);
+    // Alerta de cronômetro/IA foi removido — funcionalidade descontinuada.
+    return;
+  }, []);
 
   // Detectar /1 ou /2 para abrir diretamente o modo correto
   const handleInputChange2 = useCallback((
