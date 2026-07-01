@@ -124,7 +124,7 @@ export const GestaoEntregasView = () => {
   return (
     <div className="flex flex-col h-full">
       <Tabs value={activeTab} className="flex flex-col flex-1 min-h-0" onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between shrink-0 mb-0 flex-wrap gap-1">
+        <div className={`${activeTab === "calendario" ? "hidden" : "flex"} items-center justify-between shrink-0 mb-0 flex-wrap gap-1`}>
           <div className="flex items-center gap-2 flex-wrap">
             <TabsList>
               <TabsTrigger value="bussola" className="gap-1.5">
