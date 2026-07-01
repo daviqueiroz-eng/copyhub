@@ -1,6 +1,7 @@
 import { useEffect, forwardRef, useImperativeHandle, useRef } from "react";
 import { useEditor, EditorContent, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { DOMParser as PMDOMParser } from "@tiptap/pm/model";
 import Underline from "@tiptap/extension-underline";
 import { TextStyle, FontSize } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
@@ -96,7 +97,10 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           const htmlOut = paragraphs
             .map((p) => `<p>${escape(p).replace(/\n/g, "<br>")}</p>`)
             .join("");
-          view.pasteHTML(htmlOut);
+          const container = document.createElement("div");
+          container.innerHTML = htmlOut;
+          const slice = PMDOMParser.fromSchema(view.state.schema).parseSlice(container);
+          view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView());
           return true;
         },
       },
