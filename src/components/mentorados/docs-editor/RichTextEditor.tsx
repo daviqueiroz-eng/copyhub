@@ -72,6 +72,33 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
           if (onKeyDown) onKeyDown(event);
           return false;
         },
+        handlePaste: (view, event) => {
+          const clipboard = event.clipboardData;
+          if (!clipboard) return false;
+          const html = clipboard.getData("text/html");
+          // Se veio HTML (ex.: Google Docs, Notion, alguns navegadores), deixa o TipTap tratar.
+          if (html && html.trim().length > 0) return false;
+          const text = clipboard.getData("text/plain");
+          if (!text) return false;
+          event.preventDefault();
+          // Normaliza quebras de linha (CRLF -> LF) e divide em parágrafos por linhas em branco.
+          const normalized = text.replace(/\r\n?/g, "\n");
+          const paragraphs = normalized
+            .split(/\n{2,}/)
+            .map((p) => p.trim())
+            .filter((p) => p.length > 0);
+          if (paragraphs.length === 0) return true;
+          const escape = (s: string) =>
+            s
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;");
+          const htmlOut = paragraphs
+            .map((p) => `<p>${escape(p).replace(/\n/g, "<br>")}</p>`)
+            .join("");
+          view.pasteHTML(htmlOut);
+          return true;
+        },
       },
       onUpdate: ({ editor: ed }) => {
         const html = ed.getHTML();
