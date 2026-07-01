@@ -174,7 +174,7 @@ export const GestaoEntregasView = () => {
           )}
         </div>
 
-        <TabsContent value="calendario" className="flex-1 min-h-0 mt-0">
+        <TabsContent value="calendario" className="flex-1 min-h-0 mt-0 flex flex-col data-[state=inactive]:hidden">
           <GestaoCalendarioView entregas={entregas} />
         </TabsContent>
 
