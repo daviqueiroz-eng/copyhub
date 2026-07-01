@@ -307,7 +307,7 @@ All colors MUST be HSL.
 
 /* TipTap Rich Text Editor (Docs-style fields) */
 .tiptap { outline: none; }
-.tiptap p { margin: 0 0 0.5em 0; }
+.tiptap p { margin: 0 0 1em 0; }
 .tiptap p:last-child { margin-bottom: 0; }
 .tiptap h1 { font-size: 1.6em; font-weight: 700; margin: 0.4em 0 0.2em; }
 .tiptap h2 { font-size: 1.35em; font-weight: 700; margin: 0.4em 0 0.2em; }
