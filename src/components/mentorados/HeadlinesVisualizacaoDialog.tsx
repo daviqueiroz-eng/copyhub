@@ -69,6 +69,14 @@ function SortableRow({
 
   const num = String(index + 1).padStart(2, "0");
 
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [item.headline]);
+
   return (
     <div
       ref={setNodeRef}
@@ -112,23 +120,23 @@ function SortableRow({
         {editable ? (
           <>
           <textarea
+            ref={textareaRef}
             value={item.headline ?? ""}
             onChange={(e) =>
               onChangeHeadline?.(item.ordem, e.target.value)
             }
             placeholder="— vazio —"
             rows={1}
+            spellCheck={true}
+            autoCorrect="on"
+            data-gramm="true"
+            data-gramm_editor="true"
+            data-enable-grammarly="true"
             className="w-full resize-none bg-transparent text-sm text-foreground outline-none focus:ring-1 focus:ring-ring rounded px-1 py-0.5 min-h-[28px]"
             onInput={(e) => {
               const el = e.currentTarget;
               el.style.height = "auto";
               el.style.height = el.scrollHeight + "px";
-            }}
-            ref={(el) => {
-              if (el) {
-                el.style.height = "auto";
-                el.style.height = el.scrollHeight + "px";
-              }
             }}
           />
           {item.link_referencia && (
