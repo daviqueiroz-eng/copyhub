@@ -3184,28 +3184,6 @@ export const MentoradoRoteirosView = ({
                       {/* Headline */}
                       <div id={`roteiro-${guiaAtiva}-${ordem}`} className="mb-2 group/headline scroll-mt-24">
                         <div className="flex items-center gap-3 flex-wrap">
-                          {(() => {
-                            const isCorrigido = !!roteirosDbByKey.get(key)?.corrigido;
-                            return (
-                              <Checkbox
-                                checked={isCorrigido}
-                                onCheckedChange={(checked) => {
-                                  toggleCorrigido.mutate({
-                                    mentoradoId,
-                                    guiaNumero: guiaAtiva,
-                                    ordem,
-                                    corrigido: !!checked,
-                                  });
-                                }}
-                                className={cn(
-                                  "h-5 w-5",
-                                  isCorrigido &&
-                                    "border-green-500 bg-green-500 text-white data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white"
-                                )}
-                                title={isCorrigido ? "Roteiro corrigido — clique para desmarcar" : "Marcar como corrigido"}
-                              />
-                            );
-                          })()}
                           <span className="font-poppins font-bold text-[#B8860B] text-base">
                             HEADLINE {String(ordem).padStart(2, "0")}:
                           </span>
@@ -3460,8 +3438,32 @@ export const MentoradoRoteirosView = ({
                             minHeight={60}
                           />
                         </div>
-                        <div className={cn("text-right text-xs mt-1", (roteiro.estrutura?.length || 0) > 2100 ? "text-destructive font-semibold" : "text-muted-foreground")}>
-                          {roteiro.estrutura?.length || 0} caracteres
+                        <div className="flex items-center justify-end gap-2 mt-1">
+                          {(() => {
+                            const isCorrigido = !!roteirosDbByKey.get(key)?.corrigido;
+                            return (
+                              <Checkbox
+                                checked={isCorrigido}
+                                onCheckedChange={(checked) => {
+                                  toggleCorrigido.mutate({
+                                    mentoradoId,
+                                    guiaNumero: guiaAtiva,
+                                    ordem,
+                                    corrigido: !!checked,
+                                  });
+                                }}
+                                className={cn(
+                                  "h-4 w-4",
+                                  isCorrigido &&
+                                    "border-green-500 bg-green-500 text-white data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white"
+                                )}
+                                title={isCorrigido ? "Roteiro corrigido — clique para desmarcar" : "Marcar como corrigido"}
+                              />
+                            );
+                          })()}
+                          <span className={cn("text-xs", (roteiro.estrutura?.length || 0) > 2100 ? "text-destructive font-semibold" : "text-muted-foreground")}>
+                            {roteiro.estrutura?.length || 0} caracteres
+                          </span>
                         </div>
                         
                         {/* Painel de checks do roteiro viral - agora inline como badges */}
