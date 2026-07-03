@@ -240,27 +240,13 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
                 <span
                   data-error-id={error.id}
                   className={cn(
-                    "cursor-pointer relative",
-                    "underline decoration-wavy decoration-2",
+                    "relative underline decoration-wavy decoration-2",
                     decorationClass,
                     isActiveExternal && "bg-yellow-200/50 dark:bg-yellow-500/25 rounded-sm"
                   )}
                   style={{ 
                     textDecorationSkipInk: "none",
-                    pointerEvents: "auto" 
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onErrorClick) onErrorClick(error.id);
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const containerRect = containerRef.current?.getBoundingClientRect();
-                    if (containerRect) {
-                      setPopoverPosition({
-                        top: rect.bottom - containerRect.top + 4,
-                        left: rect.left - containerRect.left,
-                      });
-                    }
-                    setActiveErrorId(error.id);
+                    pointerEvents: "none",
                   }}
                 >
                   {errorText}
