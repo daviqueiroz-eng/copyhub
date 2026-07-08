@@ -66,8 +66,16 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
             className,
           ),
           style: `min-height:${minHeight}px;line-height:1.6;`,
+          role: "textbox",
+          "aria-multiline": "true",
           spellcheck: "true",
+          autocorrect: "on",
+          autocapitalize: "sentences",
           "data-gramm": "true",
+          "data-gramm_editor": "true",
+          "data-enable-grammarly": "true",
+          "data-lt-active": "true",
+          "data-lt-force-appearance": "true",
         },
         handleKeyDown: (_view, event) => {
           if (onKeyDown) onKeyDown(event);

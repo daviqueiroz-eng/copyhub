@@ -267,9 +267,12 @@ export const InlineSpellCheckEditor = forwardRef<InlineSpellCheckEditorHandle, I
         spellCheck={true}
         autoCorrect="on"
         autoCapitalize="off"
+        aria-multiline="true"
         data-gramm="true"
         data-gramm_editor="true"
         data-enable-grammarly="true"
+        data-lt-active="true"
+        data-lt-force-appearance="true"
         onChange={(e) => {
           const cursorPos = e.target.selectionStart;
           onChange(e.target.value, cursorPos);
