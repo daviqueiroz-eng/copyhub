@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, ChevronDown, Loader2, Check, Mic } from "lucide-react";
+import { ChevronRight, ChevronDown, Loader2, Check, Mic, LayoutGrid } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import {
   useUpsertRoteiroAnotacao,
 } from "@/hooks/useRoteiroAnotacoes";
 import { useTranscricaoReferencia } from "@/contexts/TranscricaoContext";
+import { EstruturaDialog } from "./EstruturaDialog";
 
 interface RoteiroAnotacoesPanelProps {
   roteiroId: string | undefined;
@@ -40,6 +41,7 @@ export const RoteiroAnotacoesPanel = ({
   const upsert = useUpsertRoteiroAnotacao();
   const { start: startTranscricao, isPending } = useTranscricaoReferencia();
   const transcribing = roteiroId ? isPending(roteiroId) : false;
+  const [estruturaOpen, setEstruturaOpen] = useState(false);
 
   // URL detectada dentro do próprio campo de referência
   const URL_REGEX = /(https?:\/\/[^\s]+)/i;
@@ -176,6 +178,14 @@ export const RoteiroAnotacoesPanel = ({
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setEstruturaOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-colors bg-muted/20 hover:bg-muted/40"
+            >
+              <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="font-medium text-muted-foreground">Estrutura</span>
+            </button>
           </div>
           {SECOES.map((s) => {
             const isOpen = openSections[s.key];
@@ -221,6 +231,7 @@ export const RoteiroAnotacoesPanel = ({
             );
           })}
         </div>
+        <EstruturaDialog open={estruturaOpen} onOpenChange={setEstruturaOpen} />
       </TooltipProvider>
     );
   }
@@ -339,7 +350,16 @@ export const RoteiroAnotacoesPanel = ({
           </div>
         );
       })}
+      <button
+        type="button"
+        onClick={() => setEstruturaOpen(true)}
+        className="w-full flex items-center gap-1.5 px-2 py-1.5 border rounded-md bg-muted/20 hover:bg-muted/40 transition-colors"
+      >
+        <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="text-xs font-medium text-muted-foreground">Estrutura</span>
+      </button>
     </div>
+    <EstruturaDialog open={estruturaOpen} onOpenChange={setEstruturaOpen} />
     </TooltipProvider>
   );
 };

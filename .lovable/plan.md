@@ -1,72 +1,77 @@
-## Objetivo
+## Botão "Estrutura" com biblioteca de formatos e vídeos
 
-Trocar os textareas de **headline** e **estrutura** por um editor rico (TipTap) com barra de formatação funcional estilo Google Docs: estilo de parágrafo, fonte, tamanho, negrito/itálico/sublinhado, cor do texto, marca-texto, link, alinhamento, listas (bullet, numerada, check), recuo e mais.
+Novo chip **Estrutura** ao lado de "Estudos" no painel de anotações do roteiro. Ao clicar, abre um dialog grande com biblioteca global de formatos (Lista útil, Defesa, História, etc.), cada um contendo vídeos de referência com transcrição, views e favoritos por usuário.
 
-## Como vai funcionar
+### 1. Banco de dados (migration)
 
-- O campo continua salvando no banco em `headline` e `estrutura` (colunas `text`), mas agora em **HTML**.
-- Conteúdo antigo (texto puro) é tratado como HTML válido — quebras de linha `\n` viram `<br>` na renderização. Nada precisa ser migrado.
-- Para tudo que hoje depende de "texto puro" (slash commands `/3`/`/v`/`/t`, contagem de caracteres, viral check, busca/substituir, IA, copiar, corretor) eu derivo o texto plano do HTML em tempo real (`element.innerText`).
+Três tabelas novas em `public` + bucket de storage.
 
-## Componente novo: `RichTextEditor`
+**`estrutura_formatos`** (globais, gerenciados por admin)
+- `id uuid pk`, `nome text not null`, `ordem int default 0`, `created_by uuid`, `created_at timestamptz`, `updated_at timestamptz`
 
-Substitui o `InlineSpellCheckEditor` nos campos de headline e estrutura.
+**`estrutura_videos`** (vídeos dentro de cada formato)
+- `id uuid pk`, `formato_id uuid fk → estrutura_formatos(id) on delete cascade`
+- `titulo text` (opcional), `link_video text not null`, `imagem_url text` (URL pública do bucket)
+- `views bigint default 0`, `transcricao text`
+- `created_by uuid`, `created_at`, `updated_at`
 
-- Baseado em **TipTap** (`@tiptap/react`, `@tiptap/starter-kit`) + extensões: `Underline`, `TextStyle`, `Color`, `Highlight`, `FontFamily`, `TextAlign`, `Link`, `Placeholder`, `TaskList`/`TaskItem`.
-- Mantém: autosave debounced, autoresize (cresce com conteúdo), spellcheck nativo (Grammarly/QuillBot continuam funcionando, é um contenteditable), placeholder, foco programático.
-- Mantém a API atual do `InlineSpellCheckEditor` (`value`, `onChange`, `onBlur`, `onKeyDown`) — só que `value` agora é HTML. Funções dependentes recebem versão texto via util `htmlToPlain()`.
+**`estrutura_video_favoritos`** (por usuário)
+- `user_id uuid not null`, `video_id uuid fk → estrutura_videos(id) on delete cascade`, `created_at`
+- `primary key (user_id, video_id)`
 
-## Barra de formatação (DocsToolbar)
+**GRANTs + RLS:**
+- Formatos e vídeos: `SELECT` para `authenticated` (todos leem); `INSERT/UPDATE/DELETE` só para `has_role(auth.uid(),'admin')`.
+- Favoritos: `SELECT/INSERT/DELETE` do próprio usuário (`auth.uid() = user_id`).
+- Trigger `update_updated_at_column` nas duas tabelas de conteúdo.
 
-Sticky no topo do editor, igual ao print da referência:
+**Storage bucket** `estrutura-videos` (público) para as imagens/thumbnails que o admin sobe.
 
-```text
-[↶ ↷ 🖨]  | [Texto normal ▾] | [Poppins ▾] | [− 14 +] | [B I U] [A▾] [🖍▾] | [🔗 🖼] | [≣▾] [• ≡ ☑] [⇥ ⇤] | [⋯]   [Headlines x/y • Roteiros x/y] [100%]
-```
+### 2. Hooks (`src/hooks/useEstruturaFormatos.ts`)
 
-- **Estilo**: Texto normal, Título 1-3 (mapeia para `heading` níveis 1-3).
-- **Fonte**: Poppins (padrão), Inter, Arial, Georgia, Courier.
-- **Tamanho**: −/+ com input numérico (10-72), aplicado via `TextStyle` + CSS inline.
-- **B / I / U**: toggleBold / toggleItalic / toggleUnderline.
-- **Cor texto** e **marca-texto**: popover com paleta (8 cores + custom).
-- **Link**: prompt simples; **Imagem**: input file → upload no bucket `feedback-images` (já existe) e insere como `<img>`.
-- **Alinhamento**: esquerda, centro, direita, justificar.
-- **Listas**: bullet, numerada, tarefas (check).
-- **Recuo**: aumentar / diminuir.
-- **⋯**: menu com "Limpar formatação".
+- `useEstruturaFormatos()` — lista formatos ordenados
+- `useEstruturaVideos(formatoId)` — lista vídeos do formato + join com favoritos do usuário; ordena por `favorito desc, created_at desc`
+- `useEstruturaFavoritos()` — set de video_ids favoritados
+- Mutations: `useCreateFormato`, `useUpdateFormato`, `useDeleteFormato`, `useCreateVideo`, `useUpdateVideo`, `useDeleteVideo`, `useToggleFavorito`, `useUploadEstruturaImagem` (upload no bucket)
 
-Barra renderizada uma única vez no topo do `MentoradoRoteirosView` (ela observa o editor com foco atual via contexto leve `ActiveEditorContext`). Isso evita uma barra por campo e bate visualmente com Docs.
+### 3. UI
 
-## Impactos e ajustes necessários
+**`RoteiroAnotacoesPanel.tsx`**: adicionar 4º chip "Estrutura" (mesma linha, mesmo estilo) que abre `EstruturaDialog` (não é campo de texto — é um dialog).
 
-1. **Salvamento** — `headline`/`estrutura` passam a guardar HTML. Hooks de save (`useUpdateRoteiro`) seguem iguais. Adiciono sanitização leve no servidor? Não — `dangerouslySetInnerHTML` só na renderização interna; em locais públicos (`RoteiroPublico`, copiar/compartilhar) eu uso `htmlToPlain()` ou renderização sanitizada via `DOMPurify`.
-2. **Compartilhamento público / Copiar todos / Copiar com referências** — usam `htmlToPlain()` para preservar o comportamento atual de texto puro com quebras.
-3. **Slash commands** (`/3`, `/4`, `/v`, `/t`, etc.) — reescritos como extensão TipTap "SlashCommand" que escuta `/` e dispara as mesmas ações já existentes.
-4. **Corretor inline + viral check + erros wavy** — extensão TipTap "Decorations" que aplica `ProseMirror` decorations nas mesmas posições calculadas a partir do texto plano.
-5. **Localizar/substituir** — opera no texto plano; ao confirmar substituição, regenera o HTML preservando estilos em runs não afetados.
-6. **Realtime sync** — diff continua igual; o conteúdo é apenas uma string maior.
-7. **Contagem > 2100 chars (fundo vermelho)** — calcula em cima de `htmlToPlain().length`.
-8. **Teleprompter, IA, votação, comentários** — continuam recebendo texto plano via `htmlToPlain()`.
+**`src/components/mentorados/EstruturaDialog.tsx`** (novo)
+Layout inspirado no wireframe:
+- Sidebar esquerda: lista vertical de formatos (chips arredondados). Admin vê botão "+ Novo formato" + editar/excluir no hover.
+- Área direita: grid de cards de vídeo do formato selecionado. Cada card mostra: imagem (thumb), botão play (abre modal com iframe do vídeo), views, ícone estrela (favoritar), e botão "Copiar transcrição". Favoritos aparecem primeiro com badge.
+- Admin: botão "+ Adicionar vídeo" no topo do grid; hover no card mostra editar/excluir.
 
-## Entrega em fases (commits pequenos)
+**`EstruturaVideoFormDialog.tsx`** (novo, admin) — form com:
+- Link do vídeo (text)
+- Imagem (upload → bucket `estrutura-videos`, preview)
+- Número de views (number)
+- Transcrição (textarea grande)
+- Título (opcional)
 
-1. Instalar TipTap + extensões. Criar `RichTextEditor` e `DocsToolbar` isolados, com toolbar fixa no topo do `MentoradoRoteirosView`. Manter `InlineSpellCheckEditor` vivo.
-2. Trocar **estrutura** pelo `RichTextEditor` (campo maior, menos features dependentes). Validar autosave, realtime, copiar, compartilhar.
-3. Trocar **headline** pelo `RichTextEditor`. Validar viral check, votação, contagem.
-4. Reescrever slash commands como extensão TipTap.
-5. Portar corretor inline (decorations) e localizar/substituir.
-6. Remover `InlineSpellCheckEditor`.
+**`EstruturaFormatoFormDialog.tsx`** (novo, admin) — form simples: nome + ordem.
 
-## Riscos
+**`EstruturaVideoPlayerDialog.tsx`** (novo) — usa `getVideoEmbedUrl` de `src/lib/videoUtils.ts` (YouTube / Google Drive já suportados).
 
-- Conteúdo legado com caracteres especiais (`<`, `>`, `&`) precisa ser escapado ao tratar como HTML na primeira carga. Faço isso no `RichTextEditor` na hidratação.
-- Realtime: dois usuários editando ao mesmo tempo continuam com o modelo "last write wins" atual; não vou introduzir CRDT agora.
-- Aumento de payload (HTML é maior que texto puro). Aceitável.
+### 4. Cópia de transcrição
+Botão "Copiar transcrição" usa `navigator.clipboard.writeText` + toast (`sonner`) igual padrão do `Prompts.tsx`.
 
-## O que NÃO entra agora
+### 5. Detalhes técnicos
 
-- Comentários ancorados em trechos (igual Docs) — fora de escopo.
-- Histórico de versões.
-- Colaboração em tempo real com cursores (CRDT/Yjs).
+- Fonte Poppins, labels dourados (`#B8860B`) para títulos de seção conforme padrão do projeto.
+- Toasts top-right.
+- Ordenação dos vídeos: `is_favorito desc, created_at desc` (favoritos do usuário atual primeiro).
+- Admin detectado via `useUserRole() === "admin"`.
+- Imagem no bucket armazenada como `{formato_id}/{video_id}.{ext}` para facilitar limpeza.
 
-Quer que eu siga por essa abordagem em fases? Posso começar pela **fase 1 + 2** já no próximo passo.
+### Arquivos novos
+- `supabase/migrations/*_estrutura.sql`
+- `src/hooks/useEstruturaFormatos.ts`
+- `src/components/mentorados/EstruturaDialog.tsx`
+- `src/components/mentorados/EstruturaFormatoFormDialog.tsx`
+- `src/components/mentorados/EstruturaVideoFormDialog.tsx`
+- `src/components/mentorados/EstruturaVideoPlayerDialog.tsx`
+
+### Arquivos editados
+- `src/components/mentorados/RoteiroAnotacoesPanel.tsx` (novo chip "Estrutura")

@@ -673,6 +673,106 @@ export type Database = {
           },
         ]
       }
+      estrutura_formatos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      estrutura_video_favoritos: {
+        Row: {
+          created_at: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estrutura_video_favoritos_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "estrutura_videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estrutura_videos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          formato_id: string
+          id: string
+          imagem_path: string | null
+          link_video: string
+          titulo: string | null
+          transcricao: string | null
+          updated_at: string
+          views: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          formato_id: string
+          id?: string
+          imagem_path?: string | null
+          link_video: string
+          titulo?: string | null
+          transcricao?: string | null
+          updated_at?: string
+          views?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          formato_id?: string
+          id?: string
+          imagem_path?: string | null
+          link_video?: string
+          titulo?: string | null
+          transcricao?: string | null
+          updated_at?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estrutura_videos_formato_id_fkey"
+            columns: ["formato_id"]
+            isOneToOne: false
+            referencedRelation: "estrutura_formatos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flow_biblioteca_musicas: {
         Row: {
           created_at: string
