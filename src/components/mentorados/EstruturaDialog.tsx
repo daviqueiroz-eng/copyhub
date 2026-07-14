@@ -28,7 +28,6 @@ import {
 import { useUserRole } from "@/hooks/useAuth";
 import { EstruturaFormatoFormDialog } from "./EstruturaFormatoFormDialog";
 import { EstruturaVideoFormDialog } from "./EstruturaVideoFormDialog";
-import { EstruturaVideoPlayerDialog } from "./EstruturaVideoPlayerDialog";
 import { Dialog as UiDialog, DialogContent as UiDialogContent, DialogHeader as UiDialogHeader, DialogTitle as UiDialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -211,9 +210,6 @@ export const EstruturaDialog = ({ open, onOpenChange }: Props) => {
   const [videoFormOpen, setVideoFormOpen] = useState(false);
   const [editingVideo, setEditingVideo] = useState<EstruturaVideo | null>(null);
 
-  const [playerOpen, setPlayerOpen] = useState(false);
-  const [playerVideo, setPlayerVideo] = useState<EstruturaVideo | null>(null);
-
   const [confirmDelFormato, setConfirmDelFormato] = useState<EstruturaFormato | null>(null);
   const [confirmDelVideo, setConfirmDelVideo] = useState<EstruturaVideo | null>(null);
 
@@ -355,8 +351,11 @@ export const EstruturaDialog = ({ open, onOpenChange }: Props) => {
                         favorito={favoritos?.has(v.id) ?? false}
                         isAdmin={isAdmin}
                         onPlay={() => {
-                          setPlayerVideo(v);
-                          setPlayerOpen(true);
+                          if (v.link_video) {
+                            window.open(v.link_video, "_blank", "noopener,noreferrer");
+                          } else {
+                            toast.error("Sem link de vídeo");
+                          }
                         }}
                         onEdit={() => {
                           setEditingVideo(v);
