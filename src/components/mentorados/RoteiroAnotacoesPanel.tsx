@@ -42,6 +42,21 @@ export const RoteiroAnotacoesPanel = ({
   const { start: startTranscricao, isPending } = useTranscricaoReferencia();
   const transcribing = roteiroId ? isPending(roteiroId) : false;
   const [estruturaOpen, setEstruturaOpen] = useState(false);
+  const [estruturaVisited, setEstruturaVisited] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem("estrutura_visited") === "1";
+  });
+
+  const openEstrutura = () => {
+    setEstruturaOpen(true);
+    if (!estruturaVisited) {
+      window.localStorage.setItem("estrutura_visited", "1");
+      setEstruturaVisited(true);
+    }
+  };
+  const estruturaBtnClass = !estruturaVisited
+    ? "ring-2 ring-[#B8860B] shadow-[0_0_18px_rgba(184,134,11,0.75)] animate-pulse"
+    : "";
 
   // URL detectada dentro do próprio campo de referência
   const URL_REGEX = /(https?:\/\/[^\s]+)/i;
@@ -140,6 +155,31 @@ export const RoteiroAnotacoesPanel = ({
     });
   };
 
+  // Auto-transcrição: ao detectar link novo (após hidratação inicial), dispara sozinho
+  const autoTriggeredRef = useRef<Set<string>>(new Set());
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    hydratedRef.current = false;
+    autoTriggeredRef.current = new Set();
+  }, [roteiroId]);
+  useEffect(() => {
+    if (!roteiroId) return;
+    if (anotacao === undefined) return; // aguarda fetch inicial
+    if (!hydratedRef.current) {
+      hydratedRef.current = true;
+      if (linkParaTranscrever) {
+        autoTriggeredRef.current.add(`${roteiroId}:${linkParaTranscrever}`);
+      }
+      return;
+    }
+    if (!linkParaTranscrever || transcribing) return;
+    const key = `${roteiroId}:${linkParaTranscrever}`;
+    if (autoTriggeredRef.current.has(key)) return;
+    autoTriggeredRef.current.add(key);
+    handleTranscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roteiroId, linkParaTranscrever, anotacao, transcribing]);
+
   if (layout === "horizontal") {
     return (
       <TooltipProvider delayDuration={200}>
@@ -180,8 +220,11 @@ export const RoteiroAnotacoesPanel = ({
             })}
             <button
               type="button"
-              onClick={() => setEstruturaOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-colors bg-muted/20 hover:bg-muted/40"
+              onClick={openEstrutura}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-colors bg-muted/20 hover:bg-muted/40",
+                estruturaBtnClass,
+              )}
             >
               <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="font-medium text-muted-foreground">Estrutura</span>
@@ -352,8 +395,11 @@ export const RoteiroAnotacoesPanel = ({
       })}
       <button
         type="button"
-        onClick={() => setEstruturaOpen(true)}
-        className="w-full flex items-center gap-1.5 px-2 py-1.5 border rounded-md bg-muted/20 hover:bg-muted/40 transition-colors"
+        onClick={openEstrutura}
+        className={cn(
+          "w-full flex items-center gap-1.5 px-2 py-1.5 border rounded-md bg-muted/20 hover:bg-muted/40 transition-colors",
+          estruturaBtnClass,
+        )}
       >
         <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className="text-xs font-medium text-muted-foreground">Estrutura</span>
