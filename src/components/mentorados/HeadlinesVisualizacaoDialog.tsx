@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, GripVertical, Loader2, Save, Swords, X } from "lucide-react";
+import { AlertTriangle, ExternalLink, GripVertical, Loader2, Mic, Save, Swords, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -24,6 +24,17 @@ import { useTiposRoteiro } from "@/hooks/useTiposRoteiro";
 import { toast } from "@/hooks/use-toast";
 import { useDispararVotacao, useMinhasVotacoes } from "@/hooks/useHeadlineVotacoes";
 import { ResultadosVotacaoDialog } from "@/components/mentorados/ResultadosVotacaoDialog";
+import { useTranscricaoReferencia } from "@/contexts/TranscricaoContext";
+
+const normalizeLink = (url: string | null | undefined): string => {
+  if (!url) return "";
+  try {
+    const u = new URL(url.trim());
+    return `${u.origin}${u.pathname}`.toLowerCase().replace(/\/$/, "");
+  } catch {
+    return url.trim().toLowerCase();
+  }
+};
 
 export type HeadlineVisualItem = {
   ordem: number;
@@ -49,6 +60,8 @@ function SortableRow({
   onChangeHeadline,
   onDispararVotacao,
   onRemoveLink,
+  isDuplicateLink,
+  isTranscribing,
 }: {
   item: HeadlineVisualItem;
   index: number;
@@ -56,6 +69,8 @@ function SortableRow({
   onChangeHeadline?: (ordem: number, novo: string) => void;
   onDispararVotacao?: (item: HeadlineVisualItem) => void;
   onRemoveLink?: (ordem: number) => void;
+  isDuplicateLink?: boolean;
+  isTranscribing?: boolean;
 }) {
   const { data: tipos = [] } = useTiposRoteiro();
   const tipo = tipos.find((t) => t.id === item.tipo_roteiro_id);
@@ -161,6 +176,21 @@ function SortableRow({
                 </button>
               )}
             </div>
+          )}
+          {item.link_referencia && isTranscribing && (
+            <span className="mt-1 ml-1.5 inline-flex items-center gap-1 rounded-full border border-red-300 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 text-[11px] text-red-700 dark:text-red-300">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Transcrevendo...
+            </span>
+          )}
+          {item.link_referencia && isDuplicateLink && !isTranscribing && (
+            <span
+              className="mt-1 ml-1.5 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-300"
+              title="Já existe outra headline com esse mesmo link. A transcrição não será refeita."
+            >
+              <AlertTriangle className="h-3 w-3" />
+              Link parecido — transcrição já existe
+            </span>
           )}
           </>
         ) : (
