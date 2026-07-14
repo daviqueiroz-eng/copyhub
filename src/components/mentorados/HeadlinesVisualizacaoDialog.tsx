@@ -345,6 +345,10 @@ export const HeadlinesVisualizacaoPanel = ({
   const { data: minhasVotacoes = [] } = useMinhasVotacoes();
   const [resultadosOpen, setResultadosOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { start: startTranscricao, isPending: isTranscribingRoteiro } =
+    useTranscricaoReferencia();
+  const lastTranscribedRef = useRef<Map<number, string>>(new Map());
+  const roteiroIdByOrdemRef = useRef<Map<number, string>>(new Map());
   const orderedRef = useRef<HeadlineVisualItem[]>(items);
   useEffect(() => {
     orderedRef.current = ordered;
@@ -363,7 +367,7 @@ export const HeadlinesVisualizacaoPanel = ({
     const itemToSave = orderedRef.current.find((it) => it.ordem === ordem);
     try {
       markLocalWrite();
-      await upsert.mutateAsync({
+      const saved = await upsert.mutateAsync({
         mentoradoId,
         guiaNumero,
         ordem,
@@ -372,6 +376,9 @@ export const HeadlinesVisualizacaoPanel = ({
         tipoRoteiroId: itemToSave?.tipo_roteiro_id ?? null,
         linkReferencia: pending.linkReferencia,
       });
+      if (saved?.id) {
+        roteiroIdByOrdemRef.current.set(ordem, saved.id);
+      }
       // Sync the cache so the normal edit view sees the new values immediately
       queryClient.setQueryData<any[]>(
         ["mentorados_roteiros", mentoradoId],
@@ -408,6 +415,32 @@ export const HeadlinesVisualizacaoPanel = ({
       // Notify parent so it can update its local in-memory state and prevent
       // headlines from "disappearing" when switching back to the normal view.
       onItemSaved?.(ordem, pending.headline, pending.linkReferencia);
+
+      // Auto-transcrição em modo somente headline
+      const savedId = saved?.id ?? roteiroIdByOrdemRef.current.get(ordem);
+      const link = pending.linkReferencia;
+      if (savedId && link && link.trim()) {
+        const normalized = normalizeLink(link);
+        const already = lastTranscribedRef.current.get(ordem);
+        // Detectar duplicidade contra outras headlines do mesmo guia
+        const isDuplicate = orderedRef.current.some(
+          (other) =>
+            other.ordem !== ordem &&
+            normalizeLink(other.link_referencia) === normalized,
+        );
+        if (already !== normalized && !isDuplicate) {
+          lastTranscribedRef.current.set(ordem, normalized);
+          startTranscricao({
+            roteiroId: savedId,
+            headline: pending.headline,
+            linkReferencia: link,
+            mentoradoNome: undefined,
+          });
+        } else if (isDuplicate) {
+          // Marca como processado para não tentar de novo enquanto o link não mudar
+          lastTranscribedRef.current.set(ordem, normalized);
+        }
+      }
     } catch (e: any) {
       toast({
         title: "Erro ao salvar headline",
@@ -439,6 +472,28 @@ export const HeadlinesVisualizacaoPanel = ({
 
   useEffect(() => {
     setOrdered(items);
+    // Hidrata mapa de IDs a partir do cache do react-query
+    const cache = queryClient.getQueryData<any[]>([
+      "mentorados_roteiros",
+      mentoradoId,
+    ]);
+    if (Array.isArray(cache)) {
+      items.forEach((it) => {
+        const found = cache.find(
+          (r) => r.guia_numero === guiaNumero && r.ordem === it.ordem,
+        );
+        if (found?.id && !String(found.id).startsWith("temp-")) {
+          roteiroIdByOrdemRef.current.set(it.ordem, found.id);
+        }
+        if (it.link_referencia) {
+          // Considera hidratação como "já transcrito" para evitar disparos ao abrir
+          lastTranscribedRef.current.set(
+            it.ordem,
+            normalizeLink(it.link_referencia),
+          );
+        }
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length, guiaNumero]);
 
@@ -447,6 +502,21 @@ export const HeadlinesVisualizacaoPanel = ({
   );
 
   const ids = useMemo(() => ordered.map((i) => String(i.ordem)), [ordered]);
+
+  // Mapa de links normalizados -> quantidade, para marcar duplicados
+  const duplicateLinkSet = useMemo(() => {
+    const counts = new Map<string, number>();
+    ordered.forEach((it) => {
+      const n = normalizeLink(it.link_referencia);
+      if (!n) return;
+      counts.set(n, (counts.get(n) ?? 0) + 1);
+    });
+    const dup = new Set<string>();
+    counts.forEach((c, k) => {
+      if (c > 1) dup.add(k);
+    });
+    return dup;
+  }, [ordered]);
 
   const isDirty = useMemo(
     () => ordered.some((it, i) => items[i]?.ordem !== it.ordem),
@@ -619,6 +689,15 @@ export const HeadlinesVisualizacaoPanel = ({
                 onChangeHeadline={handleChangeHeadline}
                 onDispararVotacao={handleDisparar}
                 onRemoveLink={handleRemoveLink}
+                isDuplicateLink={duplicateLinkSet.has(
+                  normalizeLink(it.link_referencia),
+                )}
+                isTranscribing={
+                  !!roteiroIdByOrdemRef.current.get(it.ordem) &&
+                  isTranscribingRoteiro(
+                    roteiroIdByOrdemRef.current.get(it.ordem)!,
+                  )
+                }
               />
             ))}
           </div>
