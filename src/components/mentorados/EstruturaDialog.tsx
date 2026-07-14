@@ -10,6 +10,7 @@ import {
   Copy,
   Eye,
   Loader2,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ import { useUserRole } from "@/hooks/useAuth";
 import { EstruturaFormatoFormDialog } from "./EstruturaFormatoFormDialog";
 import { EstruturaVideoFormDialog } from "./EstruturaVideoFormDialog";
 import { EstruturaVideoPlayerDialog } from "./EstruturaVideoPlayerDialog";
+import { Dialog as UiDialog, DialogContent as UiDialogContent, DialogHeader as UiDialogHeader, DialogTitle as UiDialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,6 +70,7 @@ const VideoCard = ({
   onToggleFav: () => void;
 }) => {
   const { data: imgUrl } = useSignedImageUrl(video.imagem_path);
+  const [transcricaoOpen, setTranscricaoOpen] = useState(false);
 
   const handleCopy = () => {
     if (!video.transcricao) {
@@ -81,6 +84,7 @@ const VideoCard = ({
   };
 
   return (
+    <>
     <div className="group border rounded-lg overflow-hidden bg-card hover:shadow-md transition-shadow flex flex-col">
       <div className="relative aspect-video bg-muted cursor-pointer" onClick={onPlay}>
         {imgUrl ? (
@@ -142,18 +146,49 @@ const VideoCard = ({
         {video.titulo && (
           <div className="text-sm font-medium line-clamp-2">{video.titulo}</div>
         )}
-        <div className="flex items-center justify-between mt-auto">
+        <div className="flex items-center justify-between mt-auto gap-2">
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
             <Eye className="h-3.5 w-3.5" />
             {formatViews(video.views)} views
           </span>
-          <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={handleCopy}>
-            <Copy className="h-3 w-3" />
-            Copiar transcrição
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1.5 text-xs px-2"
+              onClick={() => setTranscricaoOpen(true)}
+              disabled={!video.transcricao}
+              title="Ver transcrição"
+            >
+              <FileText className="h-3 w-3" />
+              Ver
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={handleCopy}>
+              <Copy className="h-3 w-3" />
+              Copiar
+            </Button>
+          </div>
         </div>
       </div>
     </div>
+    <UiDialog open={transcricaoOpen} onOpenChange={setTranscricaoOpen}>
+      <UiDialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <UiDialogHeader>
+          <UiDialogTitle>{video.titulo || "Transcrição"}</UiDialogTitle>
+        </UiDialogHeader>
+        <div className="flex-1 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed p-1">
+          {video.transcricao || <span className="text-muted-foreground">Sem transcrição</span>}
+        </div>
+        {video.transcricao && (
+          <div className="pt-2 border-t flex justify-end">
+            <Button size="sm" variant="outline" onClick={handleCopy} className="gap-1.5">
+              <Copy className="h-3.5 w-3.5" /> Copiar transcrição
+            </Button>
+          </div>
+        )}
+      </UiDialogContent>
+    </UiDialog>
+    </>
   );
 };
 
@@ -357,12 +392,6 @@ export const EstruturaDialog = ({ open, onOpenChange }: Props) => {
           video={editingVideo}
         />
       )}
-      <EstruturaVideoPlayerDialog
-        open={playerOpen}
-        onOpenChange={setPlayerOpen}
-        linkVideo={playerVideo?.link_video ?? null}
-        titulo={playerVideo?.titulo}
-      />
 
       <AlertDialog open={!!confirmDelFormato} onOpenChange={(o) => !o && setConfirmDelFormato(null)}>
         <AlertDialogContent>
