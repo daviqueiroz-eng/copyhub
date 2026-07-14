@@ -180,6 +180,24 @@ export const RoteiroAnotacoesPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roteiroId, linkParaTranscrever, anotacao, transcribing]);
 
+  // Estado visual da Referência: vermelho enquanto transcreve, verde por alguns segundos após concluir
+  const [justTranscribed, setJustTranscribed] = useState(false);
+  const wasTranscribingRef = useRef(false);
+  useEffect(() => {
+    if (wasTranscribingRef.current && !transcribing) {
+      setJustTranscribed(true);
+      const t = setTimeout(() => setJustTranscribed(false), 4000);
+      wasTranscribingRef.current = false;
+      return () => clearTimeout(t);
+    }
+    if (transcribing) wasTranscribingRef.current = true;
+  }, [transcribing]);
+  const referenciaGlowClass = transcribing
+    ? "ring-2 ring-red-500 shadow-[0_0_18px_rgba(239,68,68,0.75)] animate-pulse"
+    : justTranscribed
+      ? "ring-2 ring-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.75)]"
+      : "";
+
   if (layout === "horizontal") {
     return (
       <TooltipProvider delayDuration={200}>
@@ -188,6 +206,7 @@ export const RoteiroAnotacoesPanel = ({
             {SECOES.map((s) => {
               const isOpen = openSections[s.key];
               const hasContent = (values[s.key] ?? "").trim().length > 0;
+              const isReferencia = s.key === "referencia_texto";
               return (
                 <button
                   key={s.key}
@@ -196,6 +215,7 @@ export const RoteiroAnotacoesPanel = ({
                   className={cn(
                     "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-colors",
                     isOpen ? "bg-muted border-foreground/20" : "bg-muted/20 hover:bg-muted/40",
+                    isReferencia && referenciaGlowClass,
                   )}
                 >
                   {isOpen ? (
@@ -287,7 +307,13 @@ export const RoteiroAnotacoesPanel = ({
         const hasContent = (values[s.key] ?? "").trim().length > 0;
         const isReferenciaSection = s.key === "referencia_texto";
         return (
-          <div key={s.key} className="border rounded-md bg-muted/20">
+          <div
+            key={s.key}
+            className={cn(
+              "border rounded-md bg-muted/20",
+              isReferenciaSection && referenciaGlowClass,
+            )}
+          >
             <button
               type="button"
               onClick={() => toggle(s.key)}
