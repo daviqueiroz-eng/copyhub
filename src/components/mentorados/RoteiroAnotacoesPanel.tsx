@@ -307,7 +307,13 @@ export const RoteiroAnotacoesPanel = ({
         const hasContent = (values[s.key] ?? "").trim().length > 0;
         const isReferenciaSection = s.key === "referencia_texto";
         return (
-          <div key={s.key} className="border rounded-md bg-muted/20">
+          <div
+            key={s.key}
+            className={cn(
+              "border rounded-md bg-muted/20",
+              isReferenciaSection && referenciaGlowClass,
+            )}
+          >
             <button
               type="button"
               onClick={() => toggle(s.key)}
