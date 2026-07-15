@@ -2057,7 +2057,7 @@ export const MentoradoRoteirosView = ({
     });
   }, [mentoradoNome, currentMentorado, mentoradoId, upsertRoteiro]);
 
-  const handleCreateGuia = (quantidade: number, isOverdelivery = false) => {
+  const handleCreateGuia = (quantidade: number, isOverdelivery = false, isFolhaBranco = false) => {
     const nextGuia = guias.length > 0 ? Math.max(...guias.map(g => g.numero)) + 1 : 1;
     
     // Limpar qualquer dado antigo no localStorage para esta guia
@@ -2095,16 +2095,19 @@ export const MentoradoRoteirosView = ({
       numero: nextGuia,
       quantidade: quantidade,
       is_overdelivery: isOverdelivery,
+      is_folha_branco: isFolhaBranco,
     });
     
-    setGuias((prev) => [...prev, { numero: nextGuia, quantidade, isOverdelivery }]);
+    setGuias((prev) => [...prev, { numero: nextGuia, quantidade, isOverdelivery, isFolhaBranco }]);
     setGuiaAtiva(nextGuia);
     setShowNewGuiaDialog(false);
     setQuantidadePersonalizada("");
     
     toast({
-      title: isOverdelivery ? "Overdelivery criado!" : "Guia criada!",
-      description: isOverdelivery 
+      title: isFolhaBranco ? "Folha em branco criada!" : isOverdelivery ? "Overdelivery criado!" : "Guia criada!",
+      description: isFolhaBranco
+        ? "Comece a escrever livremente."
+        : isOverdelivery
         ? `Overdelivery criado com sistema de blocos.`
         : `Guia ${nextGuia} com ${quantidade} roteiros criada.`,
     });
