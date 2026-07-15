@@ -20,6 +20,7 @@ import {
   useUpdateGuiaQuantidade,
   useUpdateGuiaNome,
   useUpdateGuiaOrdem,
+  useUpdateFolhaBrancoContent,
 } from "@/hooks/useGuiasConfig";
 import { Button } from "@/components/ui/button";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
