@@ -3973,17 +3973,30 @@ export const MentoradoRoteirosView = ({
           {/* Seção Overdelivery */}
           <div className="border-t pt-4">
             <p className="text-sm text-muted-foreground mb-3 text-center font-medium">Especial</p>
-            <Button
-              variant="outline"
-              className="w-full h-16 flex-col gap-1"
-              onClick={() => handleCreateFirstGuia(0, true)}
-            >
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                <span className="font-bold">Overdelivery</span>
-              </div>
-              <span className="text-xs text-muted-foreground">Blocos expansíveis com headlines e estruturas</span>
-            </Button>
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                variant="outline"
+                className="w-full h-16 flex-col gap-1"
+                onClick={() => handleCreateFirstGuia(0, true)}
+              >
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  <span className="font-bold">Overdelivery</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Blocos expansíveis com headlines e estruturas</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-16 flex-col gap-1"
+                onClick={() => handleCreateFirstGuia(0, false, true)}
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  <span className="font-bold">Folha em branco</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Documento livre estilo Google Docs</span>
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
