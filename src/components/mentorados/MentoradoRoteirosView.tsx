@@ -2961,6 +2961,30 @@ export const MentoradoRoteirosView = ({
                   isLoading={isLoadingOverdelivery}
                   onCheckTimer={checkAndShowTimerAlert}
                 />
+              ) : guiaAtivaConfig.isFolhaBranco ? (
+                <FolhaBrancoView
+                  content={guiasConfigDb.find(g => g.numero === guiaAtiva)?.folha_branco_content || ""}
+                  isSaving={folhaBrancoSaving}
+                  isSaved={folhaBrancoSaved}
+                  onChange={(html) => {
+                    if (folhaBrancoSaveTimerRef.current) clearTimeout(folhaBrancoSaveTimerRef.current);
+                    setFolhaBrancoSaved(false);
+                    folhaBrancoSaveTimerRef.current = setTimeout(() => {
+                      setFolhaBrancoSaving(true);
+                      updateFolhaBrancoContent.mutate(
+                        { mentorado_id: mentoradoId, numero: guiaAtiva, content: html },
+                        {
+                          onSuccess: () => {
+                            setFolhaBrancoSaving(false);
+                            setFolhaBrancoSaved(true);
+                            setTimeout(() => setFolhaBrancoSaved(false), 2000);
+                          },
+                          onError: () => setFolhaBrancoSaving(false),
+                        },
+                      );
+                    }, 800);
+                  }}
+                />
               ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
                 {showHeadlinesVisualizacao ? (
