@@ -1030,7 +1030,7 @@ export const MentoradoRoteirosView = ({
   const [celebratedMilestones, setCelebratedMilestones] = useState<Set<string>>(new Set());
 
   // Handler para criar primeira guia
-  const handleCreateFirstGuia = (quantidade: number, isOverdelivery = false) => {
+  const handleCreateFirstGuia = (quantidade: number, isOverdelivery = false, isFolhaBranco = false) => {
     // Limpar qualquer dado antigo no localStorage para guia 1
     const timerIds = ["headlines", "roteiros", "revisar"];
     timerIds.forEach((id) => {
@@ -1066,14 +1066,17 @@ export const MentoradoRoteirosView = ({
       numero: 1,
       quantidade: quantidade,
       is_overdelivery: isOverdelivery,
+      is_folha_branco: isFolhaBranco,
     });
 
-    setGuias([{ numero: 1, quantidade, isOverdelivery }]);
+    setGuias([{ numero: 1, quantidade, isOverdelivery, isFolhaBranco }]);
     setShowFirstGuiaDialog(false);
     setQuantidadePersonalizada("");
     toast({
-      title: isOverdelivery ? "Overdelivery criado!" : "Guia criada!",
-      description: isOverdelivery 
+      title: isFolhaBranco ? "Folha em branco criada!" : isOverdelivery ? "Overdelivery criado!" : "Guia criada!",
+      description: isFolhaBranco
+        ? "Comece a escrever livremente."
+        : isOverdelivery
         ? `Overdelivery criado com sistema de blocos.`
         : `Guia 1 com ${quantidade} roteiros criada.`,
     });
