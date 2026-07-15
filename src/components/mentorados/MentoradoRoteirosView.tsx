@@ -630,6 +630,10 @@ export const MentoradoRoteirosView = ({
   const upsertGuiaConfig = useUpsertGuiaConfig();
   const deleteGuiaConfig = useDeleteGuiaConfig();
   const updateGuiaQuantidade = useUpdateGuiaQuantidade();
+  const updateFolhaBrancoContent = useUpdateFolhaBrancoContent();
+  const folhaBrancoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [folhaBrancoSaving, setFolhaBrancoSaving] = useState(false);
+  const [folhaBrancoSaved, setFolhaBrancoSaved] = useState(false);
   
   // Hooks para overdelivery persistência
   const guiaAtivaParaOverdelivery = guias.find(g => g.numero === guiaAtiva)?.isOverdelivery ? guiaAtiva : 0;
