@@ -839,6 +839,7 @@ export const MentoradoRoteirosView = ({
           numero: g.numero,
           quantidade: g.quantidade,
           isOverdelivery: g.is_overdelivery,
+          isFolhaBranco: g.is_folha_branco,
           nome_customizado: g.nome_customizado,
           ordem_personalizada: g.ordem_personalizada,
         }));
