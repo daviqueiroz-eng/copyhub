@@ -266,6 +266,14 @@ const SortableGuiaItem = ({
                 {guia.nome_customizado || "Overdelivery"}
               </span>
             </>
+          ) : guia.isFolhaBranco ? (
+            <>
+              <FileText className="h-4 w-4 lg:hidden" />
+              <span className="hidden lg:inline flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                {guia.nome_customizado || `Guia ${guia.numero}`}
+              </span>
+            </>
           ) : (
             <>
               <span className="lg:hidden">{guia.numero}</span>
