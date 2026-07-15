@@ -1949,7 +1949,9 @@ export type Database = {
       mentorados_guias_config: {
         Row: {
           created_at: string | null
+          folha_branco_content: string
           id: string
+          is_folha_branco: boolean
           is_overdelivery: boolean
           mentorado_id: string
           nome_customizado: string | null
@@ -1961,7 +1963,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          folha_branco_content?: string
           id?: string
+          is_folha_branco?: boolean
           is_overdelivery?: boolean
           mentorado_id: string
           nome_customizado?: string | null
@@ -1973,7 +1977,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          folha_branco_content?: string
           id?: string
+          is_folha_branco?: boolean
           is_overdelivery?: boolean
           mentorado_id?: string
           nome_customizado?: string | null

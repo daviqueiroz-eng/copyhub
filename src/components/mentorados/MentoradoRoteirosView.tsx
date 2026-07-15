@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, EyeOff, Swords, MessageSquare, MoreVertical, Share2 } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, EyeOff, Swords, MessageSquare, MoreVertical, Share2, FileText } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -20,6 +20,7 @@ import {
   useUpdateGuiaQuantidade,
   useUpdateGuiaNome,
   useUpdateGuiaOrdem,
+  useUpdateFolhaBrancoContent,
 } from "@/hooks/useGuiasConfig";
 import { Button } from "@/components/ui/button";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
@@ -86,6 +87,7 @@ import { TipoRoteiroDialog, HeadlineComTipo } from "./TipoRoteiroDialog";
 import { SimilarHeadlinesBadge } from "./SimilarHeadlinesBadge";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
+import { FolhaBrancoView } from "./FolhaBrancoView";
 import { TeleprompterDialog } from "./TeleprompterDialog";
 import { SelectionEditDialog } from "./SelectionEditDialog";
 import { SelecionarEstruturaDialog } from "./SelecionarEstruturaDialog";
@@ -167,6 +169,7 @@ type GuiaConfigLocal = {
   numero: number;
   quantidade: number;
   isOverdelivery?: boolean;
+  isFolhaBranco?: boolean;
   nome_customizado?: string | null;
   ordem_personalizada?: number | null;
 };
@@ -261,6 +264,14 @@ const SortableGuiaItem = ({
               <span className="hidden lg:inline flex items-center gap-2">
                 <Package className="h-4 w-4" />
                 {guia.nome_customizado || "Overdelivery"}
+              </span>
+            </>
+          ) : guia.isFolhaBranco ? (
+            <>
+              <FileText className="h-4 w-4 lg:hidden" />
+              <span className="hidden lg:inline flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                {guia.nome_customizado || `Guia ${guia.numero}`}
               </span>
             </>
           ) : (
@@ -619,6 +630,10 @@ export const MentoradoRoteirosView = ({
   const upsertGuiaConfig = useUpsertGuiaConfig();
   const deleteGuiaConfig = useDeleteGuiaConfig();
   const updateGuiaQuantidade = useUpdateGuiaQuantidade();
+  const updateFolhaBrancoContent = useUpdateFolhaBrancoContent();
+  const folhaBrancoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [folhaBrancoSaving, setFolhaBrancoSaving] = useState(false);
+  const [folhaBrancoSaved, setFolhaBrancoSaved] = useState(false);
   
   // Hooks para overdelivery persistência
   const guiaAtivaParaOverdelivery = guias.find(g => g.numero === guiaAtiva)?.isOverdelivery ? guiaAtiva : 0;
@@ -836,6 +851,7 @@ export const MentoradoRoteirosView = ({
           numero: g.numero,
           quantidade: g.quantidade,
           isOverdelivery: g.is_overdelivery,
+          isFolhaBranco: g.is_folha_branco,
           nome_customizado: g.nome_customizado,
           ordem_personalizada: g.ordem_personalizada,
         }));
@@ -1014,7 +1030,7 @@ export const MentoradoRoteirosView = ({
   const [celebratedMilestones, setCelebratedMilestones] = useState<Set<string>>(new Set());
 
   // Handler para criar primeira guia
-  const handleCreateFirstGuia = (quantidade: number, isOverdelivery = false) => {
+  const handleCreateFirstGuia = (quantidade: number, isOverdelivery = false, isFolhaBranco = false) => {
     // Limpar qualquer dado antigo no localStorage para guia 1
     const timerIds = ["headlines", "roteiros", "revisar"];
     timerIds.forEach((id) => {
@@ -1050,14 +1066,17 @@ export const MentoradoRoteirosView = ({
       numero: 1,
       quantidade: quantidade,
       is_overdelivery: isOverdelivery,
+      is_folha_branco: isFolhaBranco,
     });
 
-    setGuias([{ numero: 1, quantidade, isOverdelivery }]);
+    setGuias([{ numero: 1, quantidade, isOverdelivery, isFolhaBranco }]);
     setShowFirstGuiaDialog(false);
     setQuantidadePersonalizada("");
     toast({
-      title: isOverdelivery ? "Overdelivery criado!" : "Guia criada!",
-      description: isOverdelivery 
+      title: isFolhaBranco ? "Folha em branco criada!" : isOverdelivery ? "Overdelivery criado!" : "Guia criada!",
+      description: isFolhaBranco
+        ? "Comece a escrever livremente."
+        : isOverdelivery
         ? `Overdelivery criado com sistema de blocos.`
         : `Guia 1 com ${quantidade} roteiros criada.`,
     });
@@ -2038,7 +2057,7 @@ export const MentoradoRoteirosView = ({
     });
   }, [mentoradoNome, currentMentorado, mentoradoId, upsertRoteiro]);
 
-  const handleCreateGuia = (quantidade: number, isOverdelivery = false) => {
+  const handleCreateGuia = (quantidade: number, isOverdelivery = false, isFolhaBranco = false) => {
     const nextGuia = guias.length > 0 ? Math.max(...guias.map(g => g.numero)) + 1 : 1;
     
     // Limpar qualquer dado antigo no localStorage para esta guia
@@ -2076,16 +2095,19 @@ export const MentoradoRoteirosView = ({
       numero: nextGuia,
       quantidade: quantidade,
       is_overdelivery: isOverdelivery,
+      is_folha_branco: isFolhaBranco,
     });
     
-    setGuias((prev) => [...prev, { numero: nextGuia, quantidade, isOverdelivery }]);
+    setGuias((prev) => [...prev, { numero: nextGuia, quantidade, isOverdelivery, isFolhaBranco }]);
     setGuiaAtiva(nextGuia);
     setShowNewGuiaDialog(false);
     setQuantidadePersonalizada("");
     
     toast({
-      title: isOverdelivery ? "Overdelivery criado!" : "Guia criada!",
-      description: isOverdelivery 
+      title: isFolhaBranco ? "Folha em branco criada!" : isOverdelivery ? "Overdelivery criado!" : "Guia criada!",
+      description: isFolhaBranco
+        ? "Comece a escrever livremente."
+        : isOverdelivery
         ? `Overdelivery criado com sistema de blocos.`
         : `Guia ${nextGuia} com ${quantidade} roteiros criada.`,
     });
@@ -2938,6 +2960,30 @@ export const MentoradoRoteirosView = ({
                   isSaved={overdeliverySaved}
                   isLoading={isLoadingOverdelivery}
                   onCheckTimer={checkAndShowTimerAlert}
+                />
+              ) : guiaAtivaConfig.isFolhaBranco ? (
+                <FolhaBrancoView
+                  content={guiasConfigDb.find(g => g.numero === guiaAtiva)?.folha_branco_content || ""}
+                  isSaving={folhaBrancoSaving}
+                  isSaved={folhaBrancoSaved}
+                  onChange={(html) => {
+                    if (folhaBrancoSaveTimerRef.current) clearTimeout(folhaBrancoSaveTimerRef.current);
+                    setFolhaBrancoSaved(false);
+                    folhaBrancoSaveTimerRef.current = setTimeout(() => {
+                      setFolhaBrancoSaving(true);
+                      updateFolhaBrancoContent.mutate(
+                        { mentorado_id: mentoradoId, numero: guiaAtiva, content: html },
+                        {
+                          onSuccess: () => {
+                            setFolhaBrancoSaving(false);
+                            setFolhaBrancoSaved(true);
+                            setTimeout(() => setFolhaBrancoSaved(false), 2000);
+                          },
+                          onError: () => setFolhaBrancoSaving(false),
+                        },
+                      );
+                    }, 800);
+                  }}
                 />
               ) : (
               <div className="px-4 sm:px-8 lg:px-16 py-6 lg:py-12">
@@ -3838,16 +3884,45 @@ export const MentoradoRoteirosView = ({
           {!guias.some(g => g.isOverdelivery) && (
             <div className="border-t pt-4">
               <p className="text-sm text-muted-foreground mb-3 text-center font-medium">Especial</p>
+              <div className="grid grid-cols-1 gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full h-16 flex-col gap-1"
+                  onClick={handleCreateOverdeliveryGuia}
+                >
+                  <div className="flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    <span className="font-bold">Overdelivery</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">Blocos expansíveis com headlines e estruturas</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full h-16 flex-col gap-1"
+                  onClick={() => handleCreateGuia(0, false, true)}
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    <span className="font-bold">Folha em branco</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">Documento livre estilo Google Docs</span>
+                </Button>
+              </div>
+            </div>
+          )}
+          {guias.some(g => g.isOverdelivery) && (
+            <div className="border-t pt-4">
+              <p className="text-sm text-muted-foreground mb-3 text-center font-medium">Especial</p>
               <Button
                 variant="outline"
                 className="w-full h-16 flex-col gap-1"
-                onClick={handleCreateOverdeliveryGuia}
+                onClick={() => handleCreateGuia(0, false, true)}
               >
                 <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  <span className="font-bold">Overdelivery</span>
+                  <FileText className="h-5 w-5" />
+                  <span className="font-bold">Folha em branco</span>
                 </div>
-                <span className="text-xs text-muted-foreground">Blocos expansíveis com headlines e estruturas</span>
+                <span className="text-xs text-muted-foreground">Documento livre estilo Google Docs</span>
               </Button>
             </div>
           )}
@@ -3922,17 +3997,30 @@ export const MentoradoRoteirosView = ({
           {/* Seção Overdelivery */}
           <div className="border-t pt-4">
             <p className="text-sm text-muted-foreground mb-3 text-center font-medium">Especial</p>
-            <Button
-              variant="outline"
-              className="w-full h-16 flex-col gap-1"
-              onClick={() => handleCreateFirstGuia(0, true)}
-            >
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                <span className="font-bold">Overdelivery</span>
-              </div>
-              <span className="text-xs text-muted-foreground">Blocos expansíveis com headlines e estruturas</span>
-            </Button>
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                variant="outline"
+                className="w-full h-16 flex-col gap-1"
+                onClick={() => handleCreateFirstGuia(0, true)}
+              >
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  <span className="font-bold">Overdelivery</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Blocos expansíveis com headlines e estruturas</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-16 flex-col gap-1"
+                onClick={() => handleCreateFirstGuia(0, false, true)}
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  <span className="font-bold">Folha em branco</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Documento livre estilo Google Docs</span>
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

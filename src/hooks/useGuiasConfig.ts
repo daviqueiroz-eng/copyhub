@@ -9,6 +9,8 @@ export interface GuiaConfig {
   numero: number;
   quantidade: number;
   is_overdelivery: boolean;
+  is_folha_branco: boolean;
+  folha_branco_content: string;
   nome_customizado?: string | null;
   ordem_personalizada?: number | null;
   created_at: string;
@@ -47,6 +49,7 @@ export const useUpsertGuiaConfig = () => {
       numero: number;
       quantidade: number;
       is_overdelivery: boolean;
+      is_folha_branco?: boolean;
     }) => {
       if (!user) throw new Error("Not authenticated");
 
@@ -59,11 +62,41 @@ export const useUpsertGuiaConfig = () => {
             numero: data.numero,
             quantidade: data.quantidade,
             is_overdelivery: data.is_overdelivery,
+            is_folha_branco: data.is_folha_branco ?? false,
           },
           {
             onConflict: "user_id,mentorado_id,numero",
           }
         );
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["guias-config", variables.mentorado_id],
+      });
+    },
+  });
+};
+
+export const useUpdateFolhaBrancoContent = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (data: {
+      mentorado_id: string;
+      numero: number;
+      content: string;
+    }) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("mentorados_guias_config")
+        .update({ folha_branco_content: data.content })
+        .eq("user_id", user.id)
+        .eq("mentorado_id", data.mentorado_id)
+        .eq("numero", data.numero);
 
       if (error) throw error;
     },
