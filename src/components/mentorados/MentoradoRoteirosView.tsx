@@ -169,6 +169,7 @@ type GuiaConfigLocal = {
   numero: number;
   quantidade: number;
   isOverdelivery?: boolean;
+  isFolhaBranco?: boolean;
   nome_customizado?: string | null;
   ordem_personalizada?: number | null;
 };
