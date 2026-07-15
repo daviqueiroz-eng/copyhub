@@ -387,7 +387,32 @@ export const MentoradoRoteirosView = ({
   const location = useLocation();
   const [showMentoradoCarousel, setShowMentoradoCarousel] = useState(false);
   const [previewMentorado, setPreviewMentorado] = useState<{ id: string; nome: string } | null>(null);
-  const [guiaAtiva, setGuiaAtiva] = useState(1);
+  const [guiaAtiva, setGuiaAtiva] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const g = parseInt(params.get("guia") || "", 10);
+    return Number.isFinite(g) && g > 0 ? g : 1;
+  });
+
+  // Reflect the active guia in the URL (?guia=N) so each guia has its own link.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("guia") === String(guiaAtiva)) return;
+    params.set("guia", String(guiaAtiva));
+    navigate(
+      { pathname: window.location.pathname, search: `?${params.toString()}`, hash: window.location.hash },
+      { replace: true },
+    );
+  }, [guiaAtiva, navigate]);
+
+  // Respond to URL changes (back/forward, external nav) by updating the active guia.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const g = parseInt(params.get("guia") || "", 10);
+    if (Number.isFinite(g) && g > 0 && g !== guiaAtiva) {
+      setGuiaAtiva(g);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
   const [guias, setGuias] = useState<GuiaConfigLocal[]>([]);
   const [showFirstGuiaDialog, setShowFirstGuiaDialog] = useState(true);
   const [roteirosLocais, setRoteirosLocais] = useState<Map<string, RoteiroLocal>>(new Map());
