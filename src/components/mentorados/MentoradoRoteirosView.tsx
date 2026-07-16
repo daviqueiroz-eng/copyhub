@@ -2963,6 +2963,7 @@ export const MentoradoRoteirosView = ({
                 />
               ) : guiaAtivaConfig.isFolhaBranco ? (
                 <FolhaBrancoView
+                  key={`folha-${mentoradoId}-${guiaAtiva}`}
                   content={guiasConfigDb.find(g => g.numero === guiaAtiva)?.folha_branco_content || ""}
                   isSaving={folhaBrancoSaving}
                   isSaved={folhaBrancoSaved}
