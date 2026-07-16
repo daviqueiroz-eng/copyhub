@@ -634,6 +634,19 @@ export const MentoradoRoteirosView = ({
   const folhaBrancoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [folhaBrancoSaving, setFolhaBrancoSaving] = useState(false);
   const [folhaBrancoSaved, setFolhaBrancoSaved] = useState(false);
+
+  // Cancela qualquer save pendente da folha em branco ao trocar de mentorado/guia,
+  // evitando que o conteúdo digitado para um mentorado seja salvo em outro.
+  useEffect(() => {
+    return () => {
+      if (folhaBrancoSaveTimerRef.current) {
+        clearTimeout(folhaBrancoSaveTimerRef.current);
+        folhaBrancoSaveTimerRef.current = null;
+      }
+      setFolhaBrancoSaving(false);
+      setFolhaBrancoSaved(false);
+    };
+  }, [mentoradoId, guiaAtiva]);
   
   // Hooks para overdelivery persistência
   const guiaAtivaParaOverdelivery = guias.find(g => g.numero === guiaAtiva)?.isOverdelivery ? guiaAtiva : 0;
