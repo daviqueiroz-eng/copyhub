@@ -88,6 +88,7 @@ import { SimilarHeadlinesBadge } from "./SimilarHeadlinesBadge";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
 import { FolhaBrancoView } from "./FolhaBrancoView";
+import { ConquistasSection } from "./ConquistasSection";
 import { TeleprompterDialog } from "./TeleprompterDialog";
 import { SelectionEditDialog } from "./SelectionEditDialog";
 import { SelecionarEstruturaDialog } from "./SelecionarEstruturaDialog";
@@ -2954,6 +2955,14 @@ export const MentoradoRoteirosView = ({
         <ScrollArea className="flex-1 bg-muted/20">
           <div className="flex py-4 lg:py-8 px-2 lg:px-4 pb-48 justify-center">
             <div className="mx-auto">
+            {guiaAtiva === 1 && mentoradoId && (
+              <div className="w-[816px] max-w-full mb-4">
+                <ConquistasSection
+                  mentoradoId={mentoradoId}
+                  seguidoresAtual={(currentMentorado as any)?.seguidores_atual || 0}
+                />
+              </div>
+            )}
             {/* Paper container - estilo Google Docs (página A4) */}
             <div className="w-[816px] max-w-full bg-background shadow-[0_1px_3px_rgba(60,64,67,.15),0_4px_8px_rgba(60,64,67,.15)] rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
               {/* Renderizar OverdeliveryView se for guia de overdelivery */}

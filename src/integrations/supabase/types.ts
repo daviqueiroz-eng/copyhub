@@ -1747,6 +1747,56 @@ export type Database = {
           },
         ]
       }
+      mentorado_conquistas_videos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_publicacao: string | null
+          id: string
+          link: string | null
+          mentorado_id: string
+          ordem: number
+          thumbnail_url: string | null
+          titulo: string
+          updated_at: string
+          visualizacoes: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_publicacao?: string | null
+          id?: string
+          link?: string | null
+          mentorado_id: string
+          ordem?: number
+          thumbnail_url?: string | null
+          titulo?: string
+          updated_at?: string
+          visualizacoes?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_publicacao?: string | null
+          id?: string
+          link?: string | null
+          mentorado_id?: string
+          ordem?: number
+          thumbnail_url?: string | null
+          titulo?: string
+          updated_at?: string
+          visualizacoes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorado_conquistas_videos_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorado_notas: {
         Row: {
           conteudo: string | null
@@ -1851,6 +1901,7 @@ export type Database = {
           plano: string | null
           referencias: string | null
           roteiros: string | null
+          seguidores_atual: number
           tiktok: string | null
           updated_at: string
           user_id: string
@@ -1882,6 +1933,7 @@ export type Database = {
           plano?: string | null
           referencias?: string | null
           roteiros?: string | null
+          seguidores_atual?: number
           tiktok?: string | null
           updated_at?: string
           user_id: string
@@ -1913,6 +1965,7 @@ export type Database = {
           plano?: string | null
           referencias?: string | null
           roteiros?: string | null
+          seguidores_atual?: number
           tiktok?: string | null
           updated_at?: string
           user_id?: string
