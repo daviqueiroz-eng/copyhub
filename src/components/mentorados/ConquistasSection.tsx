@@ -9,7 +9,7 @@ import {
   formatViews,
   type ConquistaVideo,
 } from "@/hooks/useMentoradoConquistas";
-import { Trophy, Target, Rocket, Gem, Plus, Play, Pencil, Trash2, ExternalLink, Upload, Star } from "lucide-react";
+import { Trophy, Target, Rocket, Gem, Plus, Play, Pencil, Trash2, ExternalLink, Upload, Star, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -103,7 +103,7 @@ export function ConquistasSection({ mentoradoId, seguidoresAtual, readOnly = fal
 
       {/* Milestones */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {MILESTONES.map((m) => {
+        {MILESTONES.map((m, idx) => {
           const Icon = iconMap[m.icon as keyof typeof iconMap];
           const current =
             m.tipo === "video"
@@ -113,6 +113,33 @@ export function ConquistasSection({ mentoradoId, seguidoresAtual, readOnly = fal
               : seguidoresAtual || 0;
           const pct = Math.min(100, Math.round((current / m.target) * 100));
           const done = current >= m.target;
+          const prev = MILESTONES[idx - 1];
+          const prevCurrent = prev
+            ? prev.tipo === "video"
+              ? videos.length > 0 ? 1 : 0
+              : seguidoresAtual || 0
+            : Infinity;
+          const locked = !!prev && prevCurrent < prev.target;
+          if (locked) {
+            return (
+              <div
+                key={m.key}
+                className="rounded-xl border bg-card p-4 flex flex-col items-center text-center gap-2 shadow-sm opacity-50 grayscale relative"
+              >
+                <Lock className="h-3.5 w-3.5 absolute top-2 right-2 text-muted-foreground" />
+                <div className="h-14 w-14 rounded-full flex items-center justify-center bg-muted">
+                  <Icon className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm font-semibold">{m.label}</p>
+                  <p className="text-xs text-muted-foreground leading-snug">{m.desc}</p>
+                </div>
+                <div className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border text-muted-foreground">
+                  <Lock className="h-3 w-3" /> Bloqueada
+                </div>
+              </div>
+            );
+          }
           return (
             <div
               key={m.key}
