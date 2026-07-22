@@ -24,8 +24,12 @@ import {
   Pencil,
   Archive,
   Reply,
+  Trophy,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { AudioPlayer } from "@/components/mentorados/AudioPlayer";
+import { ConquistasSection } from "@/components/mentorados/ConquistasSection";
 
 type Roteiro = {
   ordem: number;
