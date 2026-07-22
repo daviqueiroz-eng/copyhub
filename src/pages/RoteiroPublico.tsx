@@ -749,7 +749,7 @@ const RoteiroPublico = () => {
             <div className="flex items-center justify-between p-3 border-b">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" style={{ color: "#B8860B" }} />
-                <p className="font-semibold text-sm">Meus comentários</p>
+                <p className="font-semibold text-sm">Comentários</p>
               </div>
               <Button
                 variant="ghost"
@@ -758,6 +758,24 @@ const RoteiroPublico = () => {
                 onClick={() => setPainelAberto(false)}
               >
                 <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex gap-1 px-3 pt-2">
+              <Button
+                size="sm"
+                variant={filtroMeus ? "ghost" : "default"}
+                className="h-7 px-2 text-[11px] flex-1"
+                onClick={() => setFiltroMeus(false)}
+              >
+                Todos
+              </Button>
+              <Button
+                size="sm"
+                variant={filtroMeus ? "default" : "ghost"}
+                className="h-7 px-2 text-[11px] flex-1"
+                onClick={() => setFiltroMeus(true)}
+              >
+                Meus
               </Button>
             </div>
             <div className="p-3 border-b">
