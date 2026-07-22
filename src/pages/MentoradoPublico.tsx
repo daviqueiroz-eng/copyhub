@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ChevronRight } from "lucide-react";
+import { ConquistasSection } from "@/components/mentorados/ConquistasSection";
 
 type Guia = {
   guia_numero: number;
@@ -12,6 +13,8 @@ type Guia = {
 type Dados = {
   mentorado_nome: string;
   guias: Guia[];
+  mentorado_id?: string;
+  seguidores_atual?: number;
   error?: string;
 };
 
@@ -29,7 +32,21 @@ export default function MentoradoPublico() {
     if (error) {
       setDados({ mentorado_nome: "", guias: [], error: error.message });
     } else {
-      setDados(data as unknown as Dados);
+      const base = data as unknown as Dados;
+      // Buscar mentorado_id + seguidores para exibir conquistas
+      const first = base.guias?.[0];
+      if (first) {
+        const { data: shareRow } = await supabase
+          .from("roteiro_guia_shares")
+          .select("mentorado_id, mentorados(seguidores_atual)")
+          .eq("token", first.token)
+          .maybeSingle();
+        if (shareRow) {
+          base.mentorado_id = (shareRow as any).mentorado_id;
+          base.seguidores_atual = (shareRow as any).mentorados?.seguidores_atual || 0;
+        }
+      }
+      setDados(base);
     }
     if (showLoading) setLoading(false);
   }, [slug]);
@@ -87,6 +104,17 @@ export default function MentoradoPublico() {
             Selecione uma guia para visualizar e comentar.
           </p>
         </header>
+
+        {dados.mentorado_id && (
+          <section className="space-y-2">
+            <h2 className="text-sm font-semibold">Conquistas</h2>
+            <ConquistasSection
+              mentoradoId={dados.mentorado_id}
+              seguidoresAtual={dados.seguidores_atual || 0}
+              readOnly
+            />
+          </section>
+        )}
 
         {dados.guias.length === 0 ? (
           <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
