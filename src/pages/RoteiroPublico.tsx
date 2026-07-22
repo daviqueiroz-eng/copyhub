@@ -190,31 +190,14 @@ const RoteiroPublico = () => {
         _slug_or_token: mentoradoSlug,
       });
       if (!error && data) {
-        const d = data as { guias?: typeof guiasList };
+        const d = data as { guias?: typeof guiasList; mentorado_id?: string; seguidores_atual?: number };
         setGuiasList(d.guias ?? []);
+        if (d.mentorado_id) {
+          setMentoradoInfo({ id: d.mentorado_id, seguidores: d.seguidores_atual ?? 0 });
+        }
       }
     };
     carregarGuias();
-    // Buscar mentorado_id + seguidores para exibir Resultados
-    (async () => {
-      const { data } = await supabase.rpc("get_mentorado_publico", {
-        _slug_or_token: mentoradoSlug,
-      });
-      const first = (data as { guias?: { token: string }[] })?.guias?.[0];
-      if (first) {
-        const { data: shareRow } = await supabase
-          .from("roteiro_guia_shares")
-          .select("mentorado_id, mentorados(seguidores_atual)")
-          .eq("token", first.token)
-          .maybeSingle();
-        if (shareRow) {
-          setMentoradoInfo({
-            id: (shareRow as any).mentorado_id,
-            seguidores: (shareRow as any).mentorados?.seguidores_atual || 0,
-          });
-        }
-      }
-    })();
     const ch = supabase
       .channel(`pub-guias-${mentoradoSlug}`)
       .on(

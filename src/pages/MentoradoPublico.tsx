@@ -33,21 +33,7 @@ export default function MentoradoPublico() {
     if (error) {
       setDados({ mentorado_nome: "", guias: [], error: error.message });
     } else {
-      const base = data as unknown as Dados;
-      // Buscar mentorado_id + seguidores para exibir conquistas
-      const first = base.guias?.[0];
-      if (first) {
-        const { data: shareRow } = await supabase
-          .from("roteiro_guia_shares")
-          .select("mentorado_id, mentorados(seguidores_atual)")
-          .eq("token", first.token)
-          .maybeSingle();
-        if (shareRow) {
-          base.mentorado_id = (shareRow as any).mentorado_id;
-          base.seguidores_atual = (shareRow as any).mentorados?.seguidores_atual || 0;
-        }
-      }
-      setDados(base);
+      setDados(data as unknown as Dados);
     }
     if (showLoading) setLoading(false);
   }, [slug]);
