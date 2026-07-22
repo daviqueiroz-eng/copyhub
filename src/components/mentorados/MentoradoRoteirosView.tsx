@@ -88,6 +88,7 @@ import { SimilarHeadlinesBadge } from "./SimilarHeadlinesBadge";
 import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
 import { FolhaBrancoView } from "./FolhaBrancoView";
+import { ConquistasSection } from "./ConquistasSection";
 import { TeleprompterDialog } from "./TeleprompterDialog";
 import { SelectionEditDialog } from "./SelectionEditDialog";
 import { SelecionarEstruturaDialog } from "./SelecionarEstruturaDialog";
