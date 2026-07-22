@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useConquistasVideos,
   useUpsertConquistaVideo,
@@ -34,11 +34,17 @@ export function ConquistasSection({ mentoradoId, seguidoresAtual, readOnly = fal
 
   const [editing, setEditing] = useState<Partial<ConquistaVideo> | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [seguidoresInput, setSeguidoresInput] = useState<string>(String(seguidoresAtual || 0));
+  useEffect(() => {
+    setSeguidoresInput(String(seguidoresAtual || 0));
+  }, [seguidoresAtual]);
 
-  const maxViews = useMemo(
-    () => videos.reduce((m, v) => Math.max(m, v.visualizacoes || 0), 0),
-    [videos]
-  );
+  const saveSeguidores = () => {
+    const n = Math.max(0, Number(seguidoresInput.replace(/\D/g, "")) || 0);
+    if (n === seguidoresAtual) return;
+    updateSeg.mutate({ mentorado_id: mentoradoId, seguidores_atual: n });
+    toast.success("Seguidores atualizados");
+  };
 
   const openNew = () => setEditing({ mentorado_id: mentoradoId, titulo: "", visualizacoes: 0 });
 
@@ -71,11 +77,40 @@ export function ConquistasSection({ mentoradoId, seguidoresAtual, readOnly = fal
 
   return (
     <div className="w-full space-y-3 font-poppins">
+      {/* Seguidores */}
+      <div className="rounded-xl border bg-card p-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">Seguidores atuais</p>
+          <p className="text-xs text-muted-foreground">
+            Usado para calcular o progresso das metas de seguidores.
+          </p>
+        </div>
+        {readOnly ? (
+          <p className="text-lg font-semibold">{formatViews(seguidoresAtual || 0)}</p>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              className="h-9 w-36 text-right"
+              value={seguidoresInput}
+              onChange={(e) => setSeguidoresInput(e.target.value)}
+              onBlur={saveSeguidores}
+              onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Milestones */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {MILESTONES.map((m) => {
           const Icon = iconMap[m.icon as keyof typeof iconMap];
-          const current = m.tipo === "video" ? (videos.length > 0 ? 1 : 0) : maxViews;
+          const current =
+            m.tipo === "video"
+              ? videos.length > 0
+                ? 1
+                : 0
+              : seguidoresAtual || 0;
           const pct = Math.min(100, Math.round((current / m.target) * 100));
           const done = current >= m.target;
           return (

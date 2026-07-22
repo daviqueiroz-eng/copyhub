@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, EyeOff, Swords, MessageSquare, MoreVertical, Share2, FileText } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, EyeOff, Swords, MessageSquare, MoreVertical, Share2, FileText, Trophy } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -2701,6 +2701,19 @@ export const MentoradoRoteirosView = ({
           </div>
           <ScrollArea className="flex-1">
             <div className="p-2 lg:p-3 space-y-1">
+              {/* Aba Resultados (conquistas) */}
+              <button
+                type="button"
+                onClick={() => handleGuiaChange(-1)}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                  guiaAtiva === -1
+                    ? "bg-accent text-foreground font-semibold"
+                    : "hover:bg-accent/50 text-muted-foreground"
+                }`}
+              >
+                <Trophy className="h-4 w-4" style={{ color: "#F59E0B" }} />
+                Resultados
+              </button>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -2955,15 +2968,21 @@ export const MentoradoRoteirosView = ({
         <ScrollArea className="flex-1 bg-muted/20">
           <div className="flex py-4 lg:py-8 px-2 lg:px-4 pb-48 justify-center">
             <div className="mx-auto">
-            {guiaAtiva === 1 && mentoradoId && (
-              <div className="w-[816px] max-w-full mb-4">
+            {guiaAtiva === -1 && mentoradoId ? (
+              <div className="w-[816px] max-w-full">
+                <div className="mb-4 px-1">
+                  <h1 className="text-2xl font-semibold">Resultados</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Conquistas do mentorado e vídeos que viralizaram.
+                  </p>
+                </div>
                 <ConquistasSection
                   mentoradoId={mentoradoId}
                   seguidoresAtual={(currentMentorado as any)?.seguidores_atual || 0}
                 />
               </div>
-            )}
-            {/* Paper container - estilo Google Docs (página A4) */}
+            ) : (
+            /* Paper container - estilo Google Docs (página A4) */
             <div className="w-[816px] max-w-full bg-background shadow-[0_1px_3px_rgba(60,64,67,.15),0_4px_8px_rgba(60,64,67,.15)] rounded-sm relative" style={{ minHeight: 'calc(100vh - 250px)' }}>
               {/* Renderizar OverdeliveryView se for guia de overdelivery */}
               {guiaAtivaConfig.isOverdelivery ? (
@@ -3585,8 +3604,9 @@ export const MentoradoRoteirosView = ({
                 </>
                 )}
               </div>
-              )}
+            )}
             </div>
+            )}
             </div>
           </div>
         </ScrollArea>
