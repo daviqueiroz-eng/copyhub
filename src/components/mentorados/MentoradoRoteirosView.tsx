@@ -2701,6 +2701,19 @@ export const MentoradoRoteirosView = ({
           </div>
           <ScrollArea className="flex-1">
             <div className="p-2 lg:p-3 space-y-1">
+              {/* Aba Resultados (conquistas) */}
+              <button
+                type="button"
+                onClick={() => handleGuiaChange(-1)}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                  guiaAtiva === -1
+                    ? "bg-accent text-foreground font-semibold"
+                    : "hover:bg-accent/50 text-muted-foreground"
+                }`}
+              >
+                <Trophy className="h-4 w-4" style={{ color: "#F59E0B" }} />
+                Resultados
+              </button>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
