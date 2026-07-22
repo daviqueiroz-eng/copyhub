@@ -24,8 +24,12 @@ import {
   Pencil,
   Archive,
   Reply,
+  Trophy,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { AudioPlayer } from "@/components/mentorados/AudioPlayer";
+import { ConquistasSection } from "@/components/mentorados/ConquistasSection";
 
 type Roteiro = {
   ordem: number;
@@ -90,6 +94,9 @@ const RoteiroPublico = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [painelAberto, setPainelAberto] = useState(true);
+  const [guiasSidebarAberta, setGuiasSidebarAberta] = useState(true);
+  const [viewResultados, setViewResultados] = useState(false);
+  const [mentoradoInfo, setMentoradoInfo] = useState<{ id: string; seguidores: number } | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [contexto, setContexto] = useState<{
@@ -188,6 +195,26 @@ const RoteiroPublico = () => {
       }
     };
     carregarGuias();
+    // Buscar mentorado_id + seguidores para exibir Resultados
+    (async () => {
+      const { data } = await supabase.rpc("get_mentorado_publico", {
+        _slug_or_token: mentoradoSlug,
+      });
+      const first = (data as { guias?: { token: string }[] })?.guias?.[0];
+      if (first) {
+        const { data: shareRow } = await supabase
+          .from("roteiro_guia_shares")
+          .select("mentorado_id, mentorados(seguidores_atual)")
+          .eq("token", first.token)
+          .maybeSingle();
+        if (shareRow) {
+          setMentoradoInfo({
+            id: (shareRow as any).mentorado_id,
+            seguidores: (shareRow as any).mentorados?.seguidores_atual || 0,
+          });
+        }
+      }
+    })();
     const ch = supabase
       .channel(`pub-guias-${mentoradoSlug}`)
       .on(
@@ -602,20 +629,46 @@ const RoteiroPublico = () => {
     >
       <div className="flex">
         {/* Sidebar esquerda: guias do mentorado (igual Google Docs) */}
-        {guiasList.length > 0 && (
+        {guiasList.length > 0 && guiasSidebarAberta && (
           <aside className="hidden md:flex flex-col border-r bg-background w-60 sticky top-0 h-screen">
-            <div className="flex items-center gap-2 p-3 border-b">
+            <div className="flex items-center justify-between gap-2 p-3 border-b">
               <p className="font-semibold text-sm">Guias</p>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setGuiasSidebarAberta(false)}
+                title="Recolher"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-2 space-y-1">
+                {mentoradoInfo && (
+                  <button
+                    onClick={() => setViewResultados(true)}
+                    className={`w-full flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors ${
+                      viewResultados ? "bg-accent font-semibold" : "hover:bg-accent/50"
+                    }`}
+                  >
+                    <span
+                      className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: "#F59E0B22" }}
+                    >
+                      <Trophy className="h-3.5 w-3.5" style={{ color: "#F59E0B" }} />
+                    </span>
+                    <span className="truncate">Resultados</span>
+                  </button>
+                )}
                 {guiasList.map((g) => {
                   const target = g.slug || g.token;
-                  const ativo = target === token;
+                  const ativo = target === token && !viewResultados;
                   return (
                     <Link
                       key={g.guia_numero}
                       to={`/r/${target}?m=${encodeURIComponent(mentoradoSlug!)}`}
+                      onClick={() => setViewResultados(false)}
                       className={`flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors ${
                         ativo
                           ? "bg-accent font-semibold"
@@ -639,6 +692,18 @@ const RoteiroPublico = () => {
 
         {/* Conteúdo principal */}
         <main className="flex-1 min-w-0">
+          {guiasList.length > 0 && !guiasSidebarAberta && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="m-3 gap-2"
+              onClick={() => setGuiasSidebarAberta(true)}
+              title="Expandir guias"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+              Guias
+            </Button>
+          )}
           {!painelAberto && (
             <Button
               variant="outline"
@@ -650,6 +715,21 @@ const RoteiroPublico = () => {
               Meus comentários
             </Button>
           )}
+          {viewResultados && mentoradoInfo ? (
+            <div className="max-w-4xl mx-auto px-6 py-10">
+              <header className="mb-6">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {dados.mentorado_nome}
+                </p>
+                <h1 className="text-2xl font-semibold">Resultados</h1>
+              </header>
+              <ConquistasSection
+                mentoradoId={mentoradoInfo.id}
+                seguidoresAtual={mentoradoInfo.seguidores}
+                readOnly
+              />
+            </div>
+          ) : (
           <div className="max-w-2xl mx-auto px-6 py-10">
             <header className="mb-8">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -741,6 +821,7 @@ const RoteiroPublico = () => {
               })}
             </div>
           </div>
+          )}
         </main>
 
         {/* Painel direito: meus comentários (igual Google Docs) */}
