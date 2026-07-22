@@ -792,12 +792,107 @@ const RoteiroPublico = () => {
             </div>
             <ScrollArea className="flex-1">
               <div className="p-3 space-y-2">
-                {meusComentarios.length === 0 && (
+                {(() => {
+                  const lista = filtroMeus
+                    ? meusComentarios.filter((c) => !c.parent_id)
+                    : (dados?.comentarios ?? []).filter((c) => !c.parent_id);
+                  if (lista.length === 0) {
+                    return (
+                      <p className="text-xs text-muted-foreground text-center py-6">
+                        {filtroMeus ? "Você ainda não comentou." : "Sem comentários ainda."}
+                      </p>
+                    );
+                  }
+                  return lista.map((c) => {
+                    const respostas = respostasPorPai.get(c.id) ?? [];
+                    return (
+                      <div key={c.id} className="rounded-md border p-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold" style={{ color: "#B8860B" }}>
+                            {c.escopo === "headline"
+                              ? `Headline ${String(c.ordem).padStart(2, "0")}`
+                              : c.escopo === "estrutura"
+                              ? `Estrutura ${String(c.ordem).padStart(2, "0")}`
+                              : `Trecho — bloco ${String(c.ordem).padStart(2, "0")}`}
+                          </p>
+                          <span className="text-[10px] text-muted-foreground">{c.autor_nome}</span>
+                        </div>
+                        {c.trecho_texto && (
+                          <p className="italic text-[11px] border-l-2 pl-2 my-1 text-muted-foreground">
+                            "{c.trecho_texto}"
+                          </p>
+                        )}
+                        {editandoId === c.id ? (
+                          <div className="space-y-1 mt-1">
+                            <Textarea
+                              value={editTexto}
+                              onChange={(e) => setEditTexto(e.target.value)}
+                              rows={3}
+                              className="text-xs"
+                            />
+                            <div className="flex justify-end gap-1">
+                              <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]"
+                                onClick={() => { setEditandoId(null); setEditTexto(""); }}>
+                                Cancelar
+                              </Button>
+                              <Button size="sm" className="h-6 px-2 text-[10px]" onClick={() => salvarEdicao(c.id)}>
+                                Salvar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          c.conteudo_texto && (
+                            <p className="whitespace-pre-wrap mt-1">{c.conteudo_texto}</p>
+                          )
+                        )}
+                        {c.audio_url && (
+                          <div className="mt-1">
+                            <AudioPlayer src={c.audio_url} initialDuration={c.audio_duracao_segundos ?? null} />
+                          </div>
+                        )}
+                        {respostas.map((r) => (
+                          <div key={r.id} className="mt-2 ml-3 border-l-2 pl-2" style={{ borderColor: "#B8860B" }}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-[11px]">↳ {r.autor_nome}</span>
+                            </div>
+                            {r.conteudo_texto && (
+                              <p className="whitespace-pre-wrap text-[11px] mt-0.5">{r.conteudo_texto}</p>
+                            )}
+                            {r.audio_url && (
+                              <div className="mt-1">
+                                <AudioPlayer src={r.audio_url} initialDuration={r.audio_duracao_segundos ?? null} />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        <div className="flex justify-end gap-1 mt-1">
+                          <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] gap-1"
+                            onClick={() => abrirDialog(c.ordem, c.escopo, c.trecho_texto ?? undefined, { id: c.id, autor: c.autor_nome })}>
+                            <Reply className="h-3 w-3" /> Responder
+                          </Button>
+                          {podeEditar(c.id) && editandoId !== c.id && c.conteudo_texto && (
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]"
+                              onClick={() => { setEditandoId(c.id); setEditTexto(c.conteudo_texto ?? ""); }}>
+                              <Pencil className="h-3 w-3 mr-1" /> Editar
+                            </Button>
+                          )}
+                          {podeEditar(c.id) && (
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-destructive"
+                              title="Arquivar (não é apagado)" onClick={() => excluirMeuComentario(c.id)}>
+                              <Archive className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+                {false && (
                   <p className="text-xs text-muted-foreground text-center py-6">
                     Você ainda não comentou.
                   </p>
                 )}
-                {meusComentarios.map((c) => (
+                {false && meusComentarios.map((c) => (
                   <div key={c.id} className="rounded-md border p-2 text-xs">
                     <p className="font-semibold" style={{ color: "#B8860B" }}>
                       {c.escopo === "headline"
