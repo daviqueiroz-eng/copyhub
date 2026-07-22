@@ -94,6 +94,9 @@ const RoteiroPublico = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [painelAberto, setPainelAberto] = useState(true);
+  const [guiasSidebarAberta, setGuiasSidebarAberta] = useState(true);
+  const [viewResultados, setViewResultados] = useState(false);
+  const [mentoradoInfo, setMentoradoInfo] = useState<{ id: string; seguidores: number } | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [contexto, setContexto] = useState<{
@@ -192,6 +195,26 @@ const RoteiroPublico = () => {
       }
     };
     carregarGuias();
+    // Buscar mentorado_id + seguidores para exibir Resultados
+    (async () => {
+      const { data } = await supabase.rpc("get_mentorado_publico", {
+        _slug_or_token: mentoradoSlug,
+      });
+      const first = (data as { guias?: { token: string }[] })?.guias?.[0];
+      if (first) {
+        const { data: shareRow } = await supabase
+          .from("roteiro_guia_shares")
+          .select("mentorado_id, mentorados(seguidores_atual)")
+          .eq("token", first.token)
+          .maybeSingle();
+        if (shareRow) {
+          setMentoradoInfo({
+            id: (shareRow as any).mentorado_id,
+            seguidores: (shareRow as any).mentorados?.seguidores_atual || 0,
+          });
+        }
+      }
+    })();
     const ch = supabase
       .channel(`pub-guias-${mentoradoSlug}`)
       .on(
