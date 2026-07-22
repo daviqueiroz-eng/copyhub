@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ChevronRight } from "lucide-react";
+import { Loader2, ChevronRight, Trophy, ArrowLeft } from "lucide-react";
 import { ConquistasSection } from "@/components/mentorados/ConquistasSection";
 
 type Guia = {
@@ -22,6 +22,7 @@ export default function MentoradoPublico() {
   const { slug } = useParams<{ slug: string }>();
   const [dados, setDados] = useState<Dados | null>(null);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"guias" | "resultados">("guias");
 
   const carregar = useCallback(async (showLoading = false) => {
     if (!slug) return;
@@ -105,23 +106,45 @@ export default function MentoradoPublico() {
           </p>
         </header>
 
-        {dados.mentorado_id && (
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold">Conquistas</h2>
+        {view === "resultados" && dados.mentorado_id ? (
+          <section className="space-y-3">
+            <button
+              onClick={() => setView("guias")}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-3 w-3" /> Voltar
+            </button>
             <ConquistasSection
               mentoradoId={dados.mentorado_id}
               seguidoresAtual={dados.seguidores_atual || 0}
               readOnly
             />
           </section>
-        )}
-
-        {dados.guias.length === 0 ? (
+        ) : dados.guias.length === 0 && !dados.mentorado_id ? (
           <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
             Nenhuma guia disponível no momento.
           </div>
         ) : (
           <ul className="space-y-2">
+            {dados.mentorado_id && (
+              <li>
+                <button
+                  onClick={() => setView("resultados")}
+                  className="w-full flex items-center justify-between rounded-lg border bg-card px-4 py-3 hover:bg-accent transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="w-7 h-7 rounded-full flex items-center justify-center"
+                      style={{ background: "#F59E0B22" }}
+                    >
+                      <Trophy className="h-4 w-4" style={{ color: "#F59E0B" }} />
+                    </span>
+                    <span className="text-sm font-medium">Resultados</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </li>
+            )}
             {dados.guias.map((g) => {
               const target = g.slug || g.token;
               return (
