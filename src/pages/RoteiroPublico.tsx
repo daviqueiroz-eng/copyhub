@@ -821,6 +821,7 @@ const RoteiroPublico = () => {
               })}
             </div>
           </div>
+          )}
         </main>
 
         {/* Painel direito: meus comentários (igual Google Docs) */}
