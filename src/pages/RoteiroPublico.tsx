@@ -118,6 +118,7 @@ const RoteiroPublico = () => {
 
   // Comentários do visitante
   const [meusIds, setMeusIds] = useState<string[]>([]);
+  const [filtroMeus, setFiltroMeus] = useState(false);
   useEffect(() => {
     if (token) setMeusIds(lerMeusIds(token));
   }, [token]);
@@ -704,7 +705,7 @@ const RoteiroPublico = () => {
                         >
                           {headline}
                         </p>
-                        {renderComentariosDoBloco(r.ordem, "headline")}
+                        {/* Comentários exibidos na coluna lateral, ao lado */}
                       </div>
                     )}
                     {estrutura && (
@@ -732,7 +733,7 @@ const RoteiroPublico = () => {
                         >
                           {estrutura}
                         </p>
-                        {renderComentariosDoBloco(r.ordem, "estrutura")}
+                        {/* Comentários exibidos na coluna lateral, ao lado */}
                       </div>
                     )}
                   </section>
