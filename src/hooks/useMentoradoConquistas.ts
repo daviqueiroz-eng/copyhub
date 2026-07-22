@@ -112,9 +112,9 @@ export async function uploadConquistaThumbnail(file: File, mentoradoId: string):
 
 export const MILESTONES = [
   { key: "primeiro-viral", label: "Primeiro viral", desc: "Seu primeiro vídeo que viralizou", target: 1, tipo: "video", color: "#F59E0B", icon: "trophy" },
-  { key: "100k", label: "Bater 100k", desc: "Alcançar 100 mil visualizações", target: 100_000, tipo: "views", color: "#6366F1", icon: "target" },
-  { key: "500k", label: "Bater 500k", desc: "Alcançar 500 mil visualizações", target: 500_000, tipo: "views", color: "#10B981", icon: "rocket" },
-  { key: "1M", label: "Bater 1M", desc: "Alcançar 1 milhão de visualizações", target: 1_000_000, tipo: "views", color: "#3B82F6", icon: "gem" },
+  { key: "100k", label: "100k seguidores", desc: "Alcançar 100 mil seguidores", target: 100_000, tipo: "seguidores", color: "#6366F1", icon: "target" },
+  { key: "500k", label: "500k seguidores", desc: "Alcançar 500 mil seguidores", target: 500_000, tipo: "seguidores", color: "#10B981", icon: "rocket" },
+  { key: "1M", label: "1M seguidores", desc: "Alcançar 1 milhão de seguidores", target: 1_000_000, tipo: "seguidores", color: "#3B82F6", icon: "gem" },
 ] as const;
 
 export function formatViews(n: number): string {
