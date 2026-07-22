@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare, X, Check, Archive, Mic, Square, Send, Reply, Loader2 } from "lucide-react";
+import { MessageSquare, X, Check, Archive, Mic, Square, Send, Reply, Loader2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -43,6 +43,7 @@ export const RoteiroComentariosPanel = ({
   const mimeRef = useRef<string>("audio/webm");
   const startedAtRef = useRef<number>(0);
   const [activeOrdem, setActiveOrdem] = useState<number | null>(null);
+  const [soAbertos, setSoAbertos] = useState(false);
 
   const { pais, respostasPorPai } = useMemo(() => {
     const pais = comentarios.filter((c) => !c.parent_id);
@@ -62,9 +63,15 @@ export const RoteiroComentariosPanel = ({
     return { pais, respostasPorPai };
   }, [comentarios]);
 
+  const totalAbertos = useMemo(
+    () => pais.filter((c) => !c.resolvido).length,
+    [pais]
+  );
+
   const grupos = useMemo(() => {
     const map = new Map<string, { ordem: number; escopo: string; lista: typeof comentarios }>();
-    pais.forEach((c) => {
+    const base = soAbertos ? pais.filter((c) => !c.resolvido) : pais;
+    base.forEach((c) => {
       const label =
         c.escopo === "headline"
           ? `Headline ${String(c.ordem).padStart(2, "0")}`
@@ -76,7 +83,7 @@ export const RoteiroComentariosPanel = ({
       map.set(label, entry);
     });
     return Array.from(map.entries());
-  }, [pais]);
+  }, [pais, soAbertos]);
 
   // Mostrar todos os comentários sempre — apenas destacar o grupo da headline ativa
   const gruposVisiveis = grupos;
@@ -210,12 +217,24 @@ export const RoteiroComentariosPanel = ({
           <MessageSquare className="h-4 w-4" style={{ color: "#B8860B" }} />
           <p className="font-semibold text-sm">Comentários</p>
           <Badge variant="secondary" className="text-xs">
-            {pais.length}
+            {soAbertos ? totalAbertos : pais.length}
           </Badge>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant={soAbertos ? "default" : "ghost"}
+            size="sm"
+            className="h-7 px-2 text-[11px] gap-1"
+            onClick={() => setSoAbertos((v) => !v)}
+            title="Mostrar somente não resolvidos"
+          >
+            <Filter className="h-3 w-3" />
+            {soAbertos ? `Abertos (${totalAbertos})` : "Só abertos"}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-3 space-y-4">
