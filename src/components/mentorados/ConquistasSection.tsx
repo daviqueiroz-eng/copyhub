@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useConquistasVideos,
   useUpsertConquistaVideo,
@@ -35,9 +35,9 @@ export function ConquistasSection({ mentoradoId, seguidoresAtual, readOnly = fal
   const [editing, setEditing] = useState<Partial<ConquistaVideo> | null>(null);
   const [uploading, setUploading] = useState(false);
   const [seguidoresInput, setSeguidoresInput] = useState<string>(String(seguidoresAtual || 0));
-
-  // sync when prop updates
-  useMemo(() => setSeguidoresInput(String(seguidoresAtual || 0)), [seguidoresAtual]);
+  useEffect(() => {
+    setSeguidoresInput(String(seguidoresAtual || 0));
+  }, [seguidoresAtual]);
 
   const saveSeguidores = () => {
     const n = Math.max(0, Number(seguidoresInput.replace(/\D/g, "")) || 0);
