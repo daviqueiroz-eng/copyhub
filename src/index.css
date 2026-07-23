@@ -328,3 +328,9 @@ All colors MUST be HSL.
   height: 0;
   pointer-events: none;
 }
+
+/* Tldraw: hide style panel to save space in Mapa Mental */
+.mapa-mental-root .tlui-style-panel__wrapper,
+.mapa-mental-root .tlui-style-panel {
+  display: none !important;
+}
