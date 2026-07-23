@@ -2979,6 +2979,20 @@ export const MentoradoRoteirosView = ({
         </div>
 
         {/* Main - Documento estilo Google Docs */}
+        {guiaAtiva === -2 && mentoradoId ? (
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+            <div className="px-4 py-2 border-b bg-background flex items-center gap-2">
+              <Network className="h-4 w-4" style={{ color: "#B8860B" }} />
+              <h1 className="text-sm font-semibold">Mapa Mental</h1>
+              <span className="text-xs text-muted-foreground">
+                Crie mapas mentais, desenhe e conecte ideias. Salvo automaticamente.
+              </span>
+            </div>
+            <div className="flex-1 min-h-0">
+              <MapaMentalView mentoradoId={mentoradoId} />
+            </div>
+          </div>
+        ) : (
         <ScrollArea className="flex-1 bg-muted/20">
           <div className="flex py-4 lg:py-8 px-2 lg:px-4 pb-48 justify-center">
             <div className="mx-auto">
