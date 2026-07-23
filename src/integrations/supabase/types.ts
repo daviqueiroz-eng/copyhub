@@ -1797,6 +1797,47 @@ export type Database = {
           },
         ]
       }
+      mentorado_mapas_mentais: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          mentorado_id: string
+          nome: string
+          ordem: number
+          snapshot: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mentorado_id: string
+          nome?: string
+          ordem?: number
+          snapshot?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mentorado_id?: string
+          nome?: string
+          ordem?: number
+          snapshot?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorado_mapas_mentais_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorado_notas: {
         Row: {
           conteudo: string | null
@@ -3203,6 +3244,10 @@ export type Database = {
       excluir_comentario_publico: {
         Args: { _comentario_id: string; _slug_or_token: string }
         Returns: undefined
+      }
+      get_mapa_mental_publico: {
+        Args: { _mapa_id: string; _slug_or_token: string }
+        Returns: Json
       }
       get_mentorado_publico: { Args: { _slug_or_token: string }; Returns: Json }
       get_roteiro_publico: { Args: { _token: string }; Returns: Json }

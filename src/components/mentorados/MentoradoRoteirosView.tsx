@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, EyeOff, Swords, MessageSquare, MoreVertical, Share2, FileText, Trophy } from "lucide-react";
+import { X, Copy, Trash2, Plus, Check, Loader2, ClipboardCopy, Volume2, Square, Search, FileEdit, Instagram, ExternalLink, Undo2, Redo2, CheckSquare, RotateCcw, Package, Video, GripVertical, PanelLeftClose, PanelLeftOpen, Menu, Settings2, User, ChevronDown, ChevronUp, Pencil, LinkIcon, Eye, EyeOff, Swords, MessageSquare, MoreVertical, Share2, FileText, Trophy, Network } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -89,6 +89,7 @@ import { AnalysisHeadline } from "@/hooks/useAnalysisHeadlines";
 import { OverdeliveryView } from "./OverdeliveryView";
 import { FolhaBrancoView } from "./FolhaBrancoView";
 import { ConquistasSection } from "./ConquistasSection";
+import { MapaMentalView } from "./MapaMentalView";
 import { TeleprompterDialog } from "./TeleprompterDialog";
 import { SelectionEditDialog } from "./SelectionEditDialog";
 import { SelecionarEstruturaDialog } from "./SelecionarEstruturaDialog";
@@ -2714,6 +2715,19 @@ export const MentoradoRoteirosView = ({
                 <Trophy className="h-4 w-4" style={{ color: "#F59E0B" }} />
                 Resultados
               </button>
+              {/* Aba Mapa Mental */}
+              <button
+                type="button"
+                onClick={() => handleGuiaChange(-2)}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                  guiaAtiva === -2
+                    ? "bg-accent text-foreground font-semibold"
+                    : "hover:bg-accent/50 text-muted-foreground"
+                }`}
+              >
+                <Network className="h-4 w-4" style={{ color: "#B8860B" }} />
+                Mapa Mental
+              </button>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -2965,6 +2979,20 @@ export const MentoradoRoteirosView = ({
         </div>
 
         {/* Main - Documento estilo Google Docs */}
+        {guiaAtiva === -2 && mentoradoId ? (
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+            <div className="px-4 py-2 border-b bg-background flex items-center gap-2">
+              <Network className="h-4 w-4" style={{ color: "#B8860B" }} />
+              <h1 className="text-sm font-semibold">Mapa Mental</h1>
+              <span className="text-xs text-muted-foreground">
+                Crie mapas mentais, desenhe e conecte ideias. Salvo automaticamente.
+              </span>
+            </div>
+            <div className="flex-1 min-h-0">
+              <MapaMentalView mentoradoId={mentoradoId} />
+            </div>
+          </div>
+        ) : (
         <ScrollArea className="flex-1 bg-muted/20">
           <div className="flex py-4 lg:py-8 px-2 lg:px-4 pb-48 justify-center">
             <div className="mx-auto">
@@ -3610,6 +3638,7 @@ export const MentoradoRoteirosView = ({
             </div>
           </div>
         </ScrollArea>
+        )}
         
         {/* RevisaoInteligenrePanel removido temporariamente - será reimplementado */}
         {/* Painel de comentários (mentorado) - lado direito */}
