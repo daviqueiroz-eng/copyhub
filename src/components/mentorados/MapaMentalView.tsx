@@ -126,12 +126,17 @@ export function MapaMentalView({
       editor.updateInstanceState({ isReadonly: true });
     }
     // Initial load if we already have activeMapa
-    if (!readOnly && activeMapa?.snapshot) {
+    if (!readOnly && activeMapa) {
+      isLoadingRef.current = true;
       try {
-        editor.loadSnapshot(activeMapa.snapshot);
+        if (activeMapa.snapshot) {
+          editor.loadSnapshot(activeMapa.snapshot);
+        }
         lastLoadedIdRef.current = activeMapa.id;
       } catch {
         /* noop */
+      } finally {
+        setTimeout(() => (isLoadingRef.current = false), 100);
       }
     }
     if (readOnly && publicSnapshot) {
