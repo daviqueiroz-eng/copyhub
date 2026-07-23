@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ChevronRight, Trophy, ArrowLeft } from "lucide-react";
+import { Loader2, ChevronRight, Trophy, ArrowLeft, Network } from "lucide-react";
 import { ConquistasSection } from "@/components/mentorados/ConquistasSection";
+import { MapaMentalView } from "@/components/mentorados/MapaMentalView";
 
 type Guia = {
   guia_numero: number;
@@ -15,6 +16,7 @@ type Dados = {
   guias: Guia[];
   mentorado_id?: string;
   seguidores_atual?: number;
+  mapas_mentais?: Array<{ id: string; nome: string; ordem: number }>;
   error?: string;
 };
 
@@ -22,7 +24,7 @@ export default function MentoradoPublico() {
   const { slug } = useParams<{ slug: string }>();
   const [dados, setDados] = useState<Dados | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"guias" | "resultados">("guias");
+  const [view, setView] = useState<"guias" | "resultados" | "mapa">("guias");
 
   const carregar = useCallback(async (showLoading = false) => {
     if (!slug) return;
@@ -106,6 +108,31 @@ export default function MentoradoPublico() {
               readOnly
             />
           </section>
+        ) : view === "mapa" && dados.mentorado_id ? (
+          <section className="space-y-3">
+            <button
+              onClick={() => setView("guias")}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-3 w-3" /> Voltar
+            </button>
+            <div className="h-[80vh] border rounded-lg overflow-hidden">
+              <MapaMentalView
+                mentoradoId={dados.mentorado_id}
+                readOnly
+                initialMapas={dados.mapas_mentais ?? []}
+                publicLoadSnapshot={async (mapaId) => {
+                  const { data, error } = await supabase.rpc(
+                    "get_mapa_mental_publico",
+                    { _slug_or_token: slug!, _mapa_id: mapaId }
+                  );
+                  if (error) return null;
+                  const obj = data as any;
+                  return obj?.snapshot ?? null;
+                }}
+              />
+            </div>
+          </section>
         ) : dados.guias.length === 0 && !dados.mentorado_id ? (
           <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
             Nenhuma guia disponível no momento.
@@ -126,6 +153,25 @@ export default function MentoradoPublico() {
                       <Trophy className="h-4 w-4" style={{ color: "#F59E0B" }} />
                     </span>
                     <span className="text-sm font-medium">Resultados</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </li>
+            )}
+            {dados.mentorado_id && (dados.mapas_mentais?.length ?? 0) > 0 && (
+              <li>
+                <button
+                  onClick={() => setView("mapa")}
+                  className="w-full flex items-center justify-between rounded-lg border bg-card px-4 py-3 hover:bg-accent transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="w-7 h-7 rounded-full flex items-center justify-center"
+                      style={{ background: "#B8860B22" }}
+                    >
+                      <Network className="h-4 w-4" style={{ color: "#B8860B" }} />
+                    </span>
+                    <span className="text-sm font-medium">Mapa Mental</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </button>
