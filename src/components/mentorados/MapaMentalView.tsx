@@ -3,9 +3,15 @@ import { Tldraw, Editor } from "tldraw";
 import "tldraw/tldraw.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Trash2, Pencil, Check, Loader2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, Loader2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   useMapasMentais,
   useCreateMapaMental,
@@ -216,125 +222,113 @@ export function MapaMentalView({
   };
 
   return (
-    <div className="flex h-full min-h-0 bg-background">
-      {/* Sidebar dos mapas */}
-      <div className="w-56 shrink-0 border-r bg-muted/30 flex flex-col">
-        <div className="p-3 border-b flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#B8860B" }}>
-            Mapas
-          </span>
-          {!readOnly && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handleCreate}
-              title="Novo mapa mental"
-            >
-              <Plus className="h-4 w-4" />
+    <div className="flex flex-col h-full min-h-0 bg-background mapa-mental-root">
+      {/* Barra compacta de mapas */}
+      <div className="h-10 shrink-0 border-b bg-muted/30 flex items-center gap-2 px-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 gap-1 max-w-[240px]">
+              <span className="truncate text-sm">
+                {activeMapa?.nome ?? (readOnly ? "Nenhum mapa" : "Selecionar mapa")}
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
             </Button>
-          )}
-        </div>
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-1">
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
             {mapas.length === 0 && (
-              <p className="px-2 py-4 text-xs text-muted-foreground text-center">
+              <div className="px-2 py-3 text-xs text-muted-foreground text-center">
                 {readOnly ? "Nenhum mapa disponível" : "Crie seu primeiro mapa mental"}
-              </p>
+              </div>
             )}
             {mapas.map((m) => (
-              <div
+              <DropdownMenuItem
                 key={m.id}
-                className={cn(
-                  "group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm cursor-pointer",
-                  activeId === m.id ? "bg-accent font-medium" : "hover:bg-accent/50"
-                )}
-                onClick={() => {
+                onSelect={(e) => {
+                  e.preventDefault();
+                  if (editingNameId === m.id) return;
                   if (activeId !== m.id) {
                     lastLoadedIdRef.current = null;
                     setActiveId(m.id);
                   }
                 }}
+                className={cn(
+                  "group flex items-center gap-1",
+                  activeId === m.id && "bg-accent font-medium"
+                )}
               >
                 {editingNameId === m.id && !readOnly ? (
                   <>
                     <Input
                       autoFocus
                       value={tempName}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) => setTempName(e.target.value)}
                       onKeyDown={(e) => {
+                        e.stopPropagation();
                         if (e.key === "Enter") handleRename(m);
                         if (e.key === "Escape") setEditingNameId(null);
                       }}
                       onBlur={() => handleRename(m)}
                       className="h-7 text-sm"
                     />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRename(m);
-                      }}
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                    </Button>
                   </>
                 ) : (
                   <>
                     <span className="flex-1 truncate">{m.nome}</span>
                     {!readOnly && (
                       <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                        <button
+                          className="h-6 w-6 inline-flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-accent rounded"
                           onClick={(e) => {
                             e.stopPropagation();
+                            e.preventDefault();
                             setEditingNameId(m.id);
                             setTempName(m.nome);
                           }}
                         >
                           <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive"
+                        </button>
+                        <button
+                          className="h-6 w-6 inline-flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-accent rounded text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
+                            e.preventDefault();
                             setConfirmDelete(m);
                           }}
                         >
                           <Trash2 className="h-3 w-3" />
-                        </Button>
+                        </button>
                       </>
                     )}
                   </>
                 )}
-              </div>
+              </DropdownMenuItem>
             ))}
-          </div>
-        </ScrollArea>
-        {!readOnly && (
-          <div className="p-2 border-t text-xs text-muted-foreground flex items-center gap-1 h-8">
-            {savingState === "saving" && (
+            {!readOnly && (
               <>
-                <Loader2 className="h-3 w-3 animate-spin" /> Salvando…
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleCreate(); }}>
+                  <Plus className="h-3.5 w-3.5 mr-2" /> Novo mapa mental
+                </DropdownMenuItem>
               </>
             )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {!readOnly && (
+          <div className="ml-auto text-xs text-muted-foreground flex items-center gap-1 pr-2">
+            {savingState === "saving" && (
+              <><Loader2 className="h-3 w-3 animate-spin" /> Salvando…</>
+            )}
             {savingState === "saved" && (
-              <>
-                <Check className="h-3 w-3 text-green-600" /> Salvo
-              </>
+              <><Check className="h-3 w-3 text-green-600" /> Salvo</>
             )}
           </div>
         )}
       </div>
 
       {/* Canvas */}
-      <div className="flex-1 min-w-0 relative">
+      <div className="flex-1 min-w-0 min-h-0 relative">
         {mapas.length === 0 ? (
           <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
             {readOnly
