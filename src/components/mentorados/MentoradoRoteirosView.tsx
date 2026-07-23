@@ -2715,6 +2715,19 @@ export const MentoradoRoteirosView = ({
                 <Trophy className="h-4 w-4" style={{ color: "#F59E0B" }} />
                 Resultados
               </button>
+              {/* Aba Mapa Mental */}
+              <button
+                type="button"
+                onClick={() => handleGuiaChange(-2)}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                  guiaAtiva === -2
+                    ? "bg-accent text-foreground font-semibold"
+                    : "hover:bg-accent/50 text-muted-foreground"
+                }`}
+              >
+                <Network className="h-4 w-4" style={{ color: "#B8860B" }} />
+                Mapa Mental
+              </button>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
