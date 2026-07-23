@@ -3638,6 +3638,7 @@ export const MentoradoRoteirosView = ({
             </div>
           </div>
         </ScrollArea>
+        )}
         
         {/* RevisaoInteligenrePanel removido temporariamente - será reimplementado */}
         {/* Painel de comentários (mentorado) - lado direito */}
