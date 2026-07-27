@@ -850,6 +850,18 @@ const RoteiroPublico = () => {
                             >
                               HEADLINE {String(r.ordem).padStart(2, "0")}
                             </p>
+                            {contarComentariosBloco(r.ordem, "headline") > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setMobileComentariosAberto(true)}
+                                className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium hover:bg-accent"
+                                style={{ color: "#B8860B", borderColor: "#B8860B55" }}
+                                title="Ver comentários"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                                {contarComentariosBloco(r.ordem, "headline")}
+                              </button>
+                            )}
                             {r.headline_audio_url && (
                               <div className="flex items-center gap-2">
                                 <span
@@ -884,12 +896,26 @@ const RoteiroPublico = () => {
                     {estrutura && (
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <p
-                            className="text-xs font-bold tracking-wide"
-                            style={{ color: "#B8860B" }}
-                          >
-                            ESTRUTURA {String(r.ordem).padStart(2, "0")}
-                          </p>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <p
+                              className="text-xs font-bold tracking-wide"
+                              style={{ color: "#B8860B" }}
+                            >
+                              ESTRUTURA {String(r.ordem).padStart(2, "0")}
+                            </p>
+                            {contarComentariosBloco(r.ordem, "estrutura") > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setMobileComentariosAberto(true)}
+                                className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium hover:bg-accent"
+                                style={{ color: "#B8860B", borderColor: "#B8860B55" }}
+                                title="Ver comentários"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                                {contarComentariosBloco(r.ordem, "estrutura")}
+                              </button>
+                            )}
+                          </div>
                           <Button
                             variant="ghost"
                             size="sm"
