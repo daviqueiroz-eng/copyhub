@@ -511,6 +511,18 @@ const RoteiroPublico = () => {
     return { paisPorChave: pais, respostasPorPai: resp };
   }, [dados]);
 
+  const totalComentarios = useMemo(
+    () => (dados?.comentarios ?? []).filter((c) => !c.parent_id).length,
+    [dados]
+  );
+
+  const contarComentariosBloco = (ordem: number, escopo: "headline" | "estrutura") => {
+    const base = (paisPorChave.get(`${ordem}|${escopo}`) ?? []).length;
+    const extras =
+      escopo === "estrutura" ? (paisPorChave.get(`${ordem}|selecao`) ?? []).length : 0;
+    return base + extras;
+  };
+
   const renderComentariosDoBloco = (ordem: number, escopo: "headline" | "estrutura") => {
     const lista = paisPorChave.get(`${ordem}|${escopo}`) ?? [];
     // também trechos selecionados desse bloco
