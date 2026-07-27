@@ -96,6 +96,7 @@ const RoteiroPublico = () => {
   const [nome, setNome] = useState("");
   const [painelAberto, setPainelAberto] = useState(true);
   const [mobileComentariosAberto, setMobileComentariosAberto] = useState(false);
+  const [focoBloco, setFocoBloco] = useState<{ ordem: number; escopo: "headline" | "estrutura" } | null>(null);
   const [guiasSidebarAberta, setGuiasSidebarAberta] = useState(true);
   const [viewResultados, setViewResultados] = useState(false);
   const [mentoradoInfo, setMentoradoInfo] = useState<{ id: string; seguidores: number } | null>(null);
@@ -603,10 +604,17 @@ const RoteiroPublico = () => {
 
   const podeEditar = (id: string) => meusIds.includes(id);
 
-  const renderListaComentarios = () => {
-    const lista = filtroMeus
+  const renderListaComentarios = (foco?: { ordem: number; escopo: "headline" | "estrutura" } | null) => {
+    const base = filtroMeus
       ? meusComentarios.filter((c) => !c.parent_id)
       : (dados?.comentarios ?? []).filter((c) => !c.parent_id);
+    const lista = foco
+      ? base.filter((c) => {
+          if (c.ordem !== foco.ordem) return false;
+          if (foco.escopo === "estrutura") return c.escopo === "estrutura" || c.escopo === "selecao";
+          return c.escopo === "headline";
+        })
+      : base;
     if (lista.length === 0) {
       return (
         <p className="text-xs text-muted-foreground text-center py-6">
