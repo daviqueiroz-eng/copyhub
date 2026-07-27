@@ -999,11 +999,75 @@ const RoteiroPublico = () => {
         )}
       </div>
 
+      {/* Mobile: botão flutuante de comentários */}
+      <button
+        type="button"
+        onClick={() => setMobileComentariosAberto(true)}
+        className="md:hidden fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full shadow-lg flex items-center justify-center text-white"
+        style={{ background: "#6366F1" }}
+        aria-label="Abrir comentários"
+      >
+        <MessageSquare className="h-6 w-6" />
+        {totalComentarios > 0 && (
+          <span
+            className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full text-[11px] font-bold flex items-center justify-center border-2 border-background"
+            style={{ background: "#F59E0B", color: "#fff" }}
+          >
+            {totalComentarios}
+          </span>
+        )}
+      </button>
+
+      {/* Mobile: bottom sheet de comentários */}
+      <Sheet open={mobileComentariosAberto} onOpenChange={setMobileComentariosAberto}>
+        <SheetContent
+          side="bottom"
+          className="md:hidden h-[85vh] flex flex-col p-0 rounded-t-2xl"
+          style={{ fontFamily: "'Poppins', system-ui, sans-serif" }}
+        >
+          <SheetHeader className="p-4 pb-2 text-left">
+            <SheetTitle>Comentários</SheetTitle>
+            <p className="text-xs text-muted-foreground">
+              {totalComentarios} comentário{totalComentarios === 1 ? "" : "s"} neste roteiro
+            </p>
+          </SheetHeader>
+          <div className="px-4 pb-2">
+            <label className="text-xs text-muted-foreground">Seu nome</label>
+            <Input
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              onBlur={() =>
+                token && localStorage.setItem(NOME_KEY_PREFIX + token, nome.trim())
+              }
+              placeholder="Digite seu nome"
+              className="mt-1 h-9 text-sm"
+            />
+          </div>
+          <div className="flex gap-1 px-4 pt-1 pb-2">
+            <Button
+              size="sm"
+              variant={filtroMeus ? "ghost" : "default"}
+              className="h-7 px-2 text-[11px] flex-1"
+              onClick={() => setFiltroMeus(false)}
+            >
+              Todos
+            </Button>
+            <Button
+              size="sm"
+              variant={filtroMeus ? "default" : "ghost"}
+              className="h-7 px-2 text-[11px] flex-1"
+              onClick={() => setFiltroMeus(true)}
+            >
+              Meus
+            </Button>
+          </div>
+          <ScrollArea className="flex-1">
+            <div className="p-4 pt-2 space-y-2">{renderListaComentarios()}</div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
       {/* Popover flutuante de seleção */}
-      {selecao && (
-        <>
-        </>
-      )}
       {selecao && (
         <div
           className="fixed z-50 -translate-x-1/2 -translate-y-full"
