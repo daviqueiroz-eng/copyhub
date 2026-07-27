@@ -1001,6 +1001,10 @@ const RoteiroPublico = () => {
 
       {/* Popover flutuante de seleção */}
       {selecao && (
+        <>
+        </>
+      )}
+      {selecao && (
         <div
           className="fixed z-50 -translate-x-1/2 -translate-y-full"
           style={{ left: selecao.x, top: selecao.y }}
