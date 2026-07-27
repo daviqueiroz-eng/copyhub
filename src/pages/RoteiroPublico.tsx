@@ -1016,7 +1016,10 @@ const RoteiroPublico = () => {
       {/* Mobile: botão flutuante de comentários */}
       <button
         type="button"
-        onClick={() => setMobileComentariosAberto(true)}
+        onClick={() => {
+          setFocoBloco(null);
+          setMobileComentariosAberto(true);
+        }}
         className="md:hidden fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full shadow-lg flex items-center justify-center text-white"
         style={{ background: "#6366F1" }}
         aria-label="Abrir comentários"
@@ -1033,7 +1036,13 @@ const RoteiroPublico = () => {
       </button>
 
       {/* Mobile: bottom sheet de comentários */}
-      <Sheet open={mobileComentariosAberto} onOpenChange={setMobileComentariosAberto}>
+      <Sheet
+        open={mobileComentariosAberto}
+        onOpenChange={(v) => {
+          setMobileComentariosAberto(v);
+          if (!v) setFocoBloco(null);
+        }}
+      >
         <SheetContent
           side="bottom"
           className="md:hidden h-[85vh] flex flex-col p-0 rounded-t-2xl"
@@ -1041,9 +1050,26 @@ const RoteiroPublico = () => {
         >
           <SheetHeader className="p-4 pb-2 text-left">
             <SheetTitle>Comentários</SheetTitle>
-            <p className="text-xs text-muted-foreground">
-              {totalComentarios} comentário{totalComentarios === 1 ? "" : "s"} neste roteiro
-            </p>
+            {focoBloco ? (
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs" style={{ color: "#B8860B" }}>
+                  {focoBloco.escopo === "headline" ? "Headline" : "Estrutura"}{" "}
+                  {String(focoBloco.ordem).padStart(2, "0")}
+                </p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => setFocoBloco(null)}
+                >
+                  Ver todos
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {totalComentarios} comentário{totalComentarios === 1 ? "" : "s"} neste roteiro
+              </p>
+            )}
           </SheetHeader>
           <div className="px-4 pb-2">
             <label className="text-xs text-muted-foreground">Seu nome</label>
@@ -1076,7 +1102,7 @@ const RoteiroPublico = () => {
             </Button>
           </div>
           <ScrollArea className="flex-1">
-            <div className="p-4 pt-2 space-y-2">{renderListaComentarios()}</div>
+            <div className="p-4 pt-2 space-y-2">{renderListaComentarios(focoBloco)}</div>
           </ScrollArea>
         </SheetContent>
       </Sheet>
