@@ -96,6 +96,7 @@ const RoteiroPublico = () => {
   const [nome, setNome] = useState("");
   const [painelAberto, setPainelAberto] = useState(true);
   const [mobileComentariosAberto, setMobileComentariosAberto] = useState(false);
+  const [focoBloco, setFocoBloco] = useState<{ ordem: number; escopo: "headline" | "estrutura" } | null>(null);
   const [guiasSidebarAberta, setGuiasSidebarAberta] = useState(true);
   const [viewResultados, setViewResultados] = useState(false);
   const [mentoradoInfo, setMentoradoInfo] = useState<{ id: string; seguidores: number } | null>(null);
@@ -603,10 +604,17 @@ const RoteiroPublico = () => {
 
   const podeEditar = (id: string) => meusIds.includes(id);
 
-  const renderListaComentarios = () => {
-    const lista = filtroMeus
+  const renderListaComentarios = (foco?: { ordem: number; escopo: "headline" | "estrutura" } | null) => {
+    const base = filtroMeus
       ? meusComentarios.filter((c) => !c.parent_id)
       : (dados?.comentarios ?? []).filter((c) => !c.parent_id);
+    const lista = foco
+      ? base.filter((c) => {
+          if (c.ordem !== foco.ordem) return false;
+          if (foco.escopo === "estrutura") return c.escopo === "estrutura" || c.escopo === "selecao";
+          return c.escopo === "headline";
+        })
+      : base;
     if (lista.length === 0) {
       return (
         <p className="text-xs text-muted-foreground text-center py-6">
@@ -853,7 +861,10 @@ const RoteiroPublico = () => {
                             {contarComentariosBloco(r.ordem, "headline") > 0 && (
                               <button
                                 type="button"
-                                onClick={() => setMobileComentariosAberto(true)}
+                                onClick={() => {
+                                  setFocoBloco({ ordem: r.ordem, escopo: "headline" });
+                                  setMobileComentariosAberto(true);
+                                }}
                                 className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium hover:bg-accent"
                                 style={{ color: "#B8860B", borderColor: "#B8860B55" }}
                                 title="Ver comentários"
@@ -906,7 +917,10 @@ const RoteiroPublico = () => {
                             {contarComentariosBloco(r.ordem, "estrutura") > 0 && (
                               <button
                                 type="button"
-                                onClick={() => setMobileComentariosAberto(true)}
+                                onClick={() => {
+                                  setFocoBloco({ ordem: r.ordem, escopo: "estrutura" });
+                                  setMobileComentariosAberto(true);
+                                }}
                                 className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium hover:bg-accent"
                                 style={{ color: "#B8860B", borderColor: "#B8860B55" }}
                                 title="Ver comentários"
@@ -1002,7 +1016,10 @@ const RoteiroPublico = () => {
       {/* Mobile: botão flutuante de comentários */}
       <button
         type="button"
-        onClick={() => setMobileComentariosAberto(true)}
+        onClick={() => {
+          setFocoBloco(null);
+          setMobileComentariosAberto(true);
+        }}
         className="md:hidden fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full shadow-lg flex items-center justify-center text-white"
         style={{ background: "#6366F1" }}
         aria-label="Abrir comentários"
@@ -1019,7 +1036,13 @@ const RoteiroPublico = () => {
       </button>
 
       {/* Mobile: bottom sheet de comentários */}
-      <Sheet open={mobileComentariosAberto} onOpenChange={setMobileComentariosAberto}>
+      <Sheet
+        open={mobileComentariosAberto}
+        onOpenChange={(v) => {
+          setMobileComentariosAberto(v);
+          if (!v) setFocoBloco(null);
+        }}
+      >
         <SheetContent
           side="bottom"
           className="md:hidden h-[85vh] flex flex-col p-0 rounded-t-2xl"
@@ -1027,9 +1050,26 @@ const RoteiroPublico = () => {
         >
           <SheetHeader className="p-4 pb-2 text-left">
             <SheetTitle>Comentários</SheetTitle>
-            <p className="text-xs text-muted-foreground">
-              {totalComentarios} comentário{totalComentarios === 1 ? "" : "s"} neste roteiro
-            </p>
+            {focoBloco ? (
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs" style={{ color: "#B8860B" }}>
+                  {focoBloco.escopo === "headline" ? "Headline" : "Estrutura"}{" "}
+                  {String(focoBloco.ordem).padStart(2, "0")}
+                </p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => setFocoBloco(null)}
+                >
+                  Ver todos
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {totalComentarios} comentário{totalComentarios === 1 ? "" : "s"} neste roteiro
+              </p>
+            )}
           </SheetHeader>
           <div className="px-4 pb-2">
             <label className="text-xs text-muted-foreground">Seu nome</label>
@@ -1062,7 +1102,7 @@ const RoteiroPublico = () => {
             </Button>
           </div>
           <ScrollArea className="flex-1">
-            <div className="p-4 pt-2 space-y-2">{renderListaComentarios()}</div>
+            <div className="p-4 pt-2 space-y-2">{renderListaComentarios(focoBloco)}</div>
           </ScrollArea>
         </SheetContent>
       </Sheet>
