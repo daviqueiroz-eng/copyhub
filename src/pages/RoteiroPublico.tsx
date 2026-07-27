@@ -861,7 +861,10 @@ const RoteiroPublico = () => {
                             {contarComentariosBloco(r.ordem, "headline") > 0 && (
                               <button
                                 type="button"
-                                onClick={() => setMobileComentariosAberto(true)}
+                                onClick={() => {
+                                  setFocoBloco({ ordem: r.ordem, escopo: "headline" });
+                                  setMobileComentariosAberto(true);
+                                }}
                                 className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium hover:bg-accent"
                                 style={{ color: "#B8860B", borderColor: "#B8860B55" }}
                                 title="Ver comentários"
@@ -914,7 +917,10 @@ const RoteiroPublico = () => {
                             {contarComentariosBloco(r.ordem, "estrutura") > 0 && (
                               <button
                                 type="button"
-                                onClick={() => setMobileComentariosAberto(true)}
+                                onClick={() => {
+                                  setFocoBloco({ ordem: r.ordem, escopo: "estrutura" });
+                                  setMobileComentariosAberto(true);
+                                }}
                                 className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium hover:bg-accent"
                                 style={{ color: "#B8860B", borderColor: "#B8860B55" }}
                                 title="Ver comentários"
