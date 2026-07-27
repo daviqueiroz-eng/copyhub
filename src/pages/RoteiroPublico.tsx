@@ -95,6 +95,7 @@ const RoteiroPublico = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [painelAberto, setPainelAberto] = useState(true);
+  const [mobileComentariosAberto, setMobileComentariosAberto] = useState(false);
   const [guiasSidebarAberta, setGuiasSidebarAberta] = useState(true);
   const [viewResultados, setViewResultados] = useState(false);
   const [mentoradoInfo, setMentoradoInfo] = useState<{ id: string; seguidores: number } | null>(null);
