@@ -1244,6 +1244,56 @@ const RoteiroPublico = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Diálogo inicial: pergunta o nome uma única vez */}
+      <Dialog
+        open={nomeDialogOpen}
+        onOpenChange={(v) => {
+          // Só permite fechar se já houver um nome salvo
+          if (!v && !nome.trim()) return;
+          setNomeDialogOpen(v);
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-sm"
+          style={{ fontFamily: "'Poppins', system-ui, sans-serif" }}
+        >
+          <DialogHeader>
+            <DialogTitle>Como podemos te chamar?</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Seu nome será mostrado nos comentários. Você só precisa preencher uma vez.
+          </p>
+          <Input
+            autoFocus
+            value={nomeTemp}
+            onChange={(e) => setNomeTemp(e.target.value)}
+            placeholder="Digite seu nome"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && nomeTemp.trim() && token) {
+                const v = nomeTemp.trim();
+                localStorage.setItem(NOME_KEY_PREFIX + token, v);
+                setNome(v);
+                setNomeDialogOpen(false);
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                const v = nomeTemp.trim();
+                if (!v || !token) return;
+                localStorage.setItem(NOME_KEY_PREFIX + token, v);
+                setNome(v);
+                setNomeDialogOpen(false);
+              }}
+              disabled={!nomeTemp.trim()}
+            >
+              Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
