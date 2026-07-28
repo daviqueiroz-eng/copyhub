@@ -1156,15 +1156,20 @@ const RoteiroPublico = () => {
             </p>
           )}
           <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground">Seu nome</label>
-              <Input
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Digite seu nome"
-                className="mt-1"
-              />
-            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Comentando como <span className="font-semibold text-foreground">{nome || "—"}</span>
+              {" · "}
+              <button
+                type="button"
+                className="underline hover:text-foreground"
+                onClick={() => {
+                  setNomeTemp(nome);
+                  setNomeDialogOpen(true);
+                }}
+              >
+                trocar
+              </button>
+            </p>
             <Textarea
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
