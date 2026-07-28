@@ -102,6 +102,8 @@ const RoteiroPublico = () => {
   const [mentoradoInfo, setMentoradoInfo] = useState<{ id: string; seguidores: number } | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [nomeDialogOpen, setNomeDialogOpen] = useState(false);
+  const [nomeTemp, setNomeTemp] = useState("");
   const [contexto, setContexto] = useState<{
     ordem: number;
     escopo: "headline" | "estrutura" | "selecao";
@@ -138,9 +140,9 @@ const RoteiroPublico = () => {
   const [editTexto, setEditTexto] = useState("");
 
   // Carrega dados
-  const carregar = async () => {
+  const carregar = async (opts: { initial?: boolean } = {}) => {
     if (!token) return;
-    setLoading(true);
+    if (opts.initial) setLoading(true);
     const { data, error } = await supabase.rpc("get_roteiro_publico_v2", {
       _slug_or_token: token,
     });
@@ -154,11 +156,11 @@ const RoteiroPublico = () => {
         setDados(d);
       }
     }
-    setLoading(false);
+    if (opts.initial) setLoading(false);
   };
 
   useEffect(() => {
-    carregar();
+    carregar({ initial: true });
     // realtime: novos comentários
     if (!token) return;
     const ch = supabase
@@ -179,7 +181,12 @@ const RoteiroPublico = () => {
   useEffect(() => {
     if (!token) return;
     const saved = localStorage.getItem(NOME_KEY_PREFIX + token);
-    if (saved) setNome(saved);
+    if (saved) {
+      setNome(saved);
+    } else {
+      setNomeTemp("");
+      setNomeDialogOpen(true);
+    }
   }, [token]);
 
   // Fetch sibling guias quando vier do link do mentorado (?m=slug)
