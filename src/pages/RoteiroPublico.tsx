@@ -102,6 +102,8 @@ const RoteiroPublico = () => {
   const [mentoradoInfo, setMentoradoInfo] = useState<{ id: string; seguidores: number } | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [nomeDialogOpen, setNomeDialogOpen] = useState(false);
+  const [nomeTemp, setNomeTemp] = useState("");
   const [contexto, setContexto] = useState<{
     ordem: number;
     escopo: "headline" | "estrutura" | "selecao";
@@ -138,9 +140,9 @@ const RoteiroPublico = () => {
   const [editTexto, setEditTexto] = useState("");
 
   // Carrega dados
-  const carregar = async () => {
+  const carregar = async (opts: { initial?: boolean } = {}) => {
     if (!token) return;
-    setLoading(true);
+    if (opts.initial) setLoading(true);
     const { data, error } = await supabase.rpc("get_roteiro_publico_v2", {
       _slug_or_token: token,
     });
@@ -154,11 +156,11 @@ const RoteiroPublico = () => {
         setDados(d);
       }
     }
-    setLoading(false);
+    if (opts.initial) setLoading(false);
   };
 
   useEffect(() => {
-    carregar();
+    carregar({ initial: true });
     // realtime: novos comentários
     if (!token) return;
     const ch = supabase
@@ -179,7 +181,12 @@ const RoteiroPublico = () => {
   useEffect(() => {
     if (!token) return;
     const saved = localStorage.getItem(NOME_KEY_PREFIX + token);
-    if (saved) setNome(saved);
+    if (saved) {
+      setNome(saved);
+    } else {
+      setNomeTemp("");
+      setNomeDialogOpen(true);
+    }
   }, [token]);
 
   // Fetch sibling guias quando vier do link do mentorado (?m=slug)
@@ -993,16 +1000,20 @@ const RoteiroPublico = () => {
               </Button>
             </div>
             <div className="p-3 border-b">
-              <label className="text-xs text-muted-foreground">Seu nome</label>
-              <Input
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                onBlur={() =>
-                  token && localStorage.setItem(NOME_KEY_PREFIX + token, nome.trim())
-                }
-                placeholder="Digite seu nome"
-                className="mt-1 h-8 text-sm"
-              />
+              <p className="text-[11px] text-muted-foreground">
+                Comentando como{" "}
+                <span className="font-semibold text-foreground">{nome || "—"}</span>
+              </p>
+              <button
+                type="button"
+                className="text-[11px] underline text-muted-foreground hover:text-foreground mt-1"
+                onClick={() => {
+                  setNomeTemp(nome);
+                  setNomeDialogOpen(true);
+                }}
+              >
+                Trocar nome
+              </button>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-3 space-y-2">
@@ -1072,16 +1083,21 @@ const RoteiroPublico = () => {
             )}
           </SheetHeader>
           <div className="px-4 pb-2">
-            <label className="text-xs text-muted-foreground">Seu nome</label>
-            <Input
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              onBlur={() =>
-                token && localStorage.setItem(NOME_KEY_PREFIX + token, nome.trim())
-              }
-              placeholder="Digite seu nome"
-              className="mt-1 h-9 text-sm"
-            />
+            <p className="text-[11px] text-muted-foreground">
+              Comentando como{" "}
+              <span className="font-semibold text-foreground">{nome || "—"}</span>{" "}
+              ·{" "}
+              <button
+                type="button"
+                className="underline hover:text-foreground"
+                onClick={() => {
+                  setNomeTemp(nome);
+                  setNomeDialogOpen(true);
+                }}
+              >
+                trocar
+              </button>
+            </p>
           </div>
           <div className="flex gap-1 px-4 pt-1 pb-2">
             <Button
@@ -1149,15 +1165,20 @@ const RoteiroPublico = () => {
             </p>
           )}
           <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground">Seu nome</label>
-              <Input
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Digite seu nome"
-                className="mt-1"
-              />
-            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Comentando como <span className="font-semibold text-foreground">{nome || "—"}</span>
+              {" · "}
+              <button
+                type="button"
+                className="underline hover:text-foreground"
+                onClick={() => {
+                  setNomeTemp(nome);
+                  setNomeDialogOpen(true);
+                }}
+              >
+                trocar
+              </button>
+            </p>
             <Textarea
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
@@ -1219,6 +1240,56 @@ const RoteiroPublico = () => {
             <Button onClick={enviar} disabled={enviando} className="gap-1">
               <Send className="h-4 w-4" />
               Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo inicial: pergunta o nome uma única vez */}
+      <Dialog
+        open={nomeDialogOpen}
+        onOpenChange={(v) => {
+          // Só permite fechar se já houver um nome salvo
+          if (!v && !nome.trim()) return;
+          setNomeDialogOpen(v);
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-sm"
+          style={{ fontFamily: "'Poppins', system-ui, sans-serif" }}
+        >
+          <DialogHeader>
+            <DialogTitle>Como podemos te chamar?</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Seu nome será mostrado nos comentários. Você só precisa preencher uma vez.
+          </p>
+          <Input
+            autoFocus
+            value={nomeTemp}
+            onChange={(e) => setNomeTemp(e.target.value)}
+            placeholder="Digite seu nome"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && nomeTemp.trim() && token) {
+                const v = nomeTemp.trim();
+                localStorage.setItem(NOME_KEY_PREFIX + token, v);
+                setNome(v);
+                setNomeDialogOpen(false);
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                const v = nomeTemp.trim();
+                if (!v || !token) return;
+                localStorage.setItem(NOME_KEY_PREFIX + token, v);
+                setNome(v);
+                setNomeDialogOpen(false);
+              }}
+              disabled={!nomeTemp.trim()}
+            >
+              Continuar
             </Button>
           </DialogFooter>
         </DialogContent>
