@@ -1000,16 +1000,20 @@ const RoteiroPublico = () => {
               </Button>
             </div>
             <div className="p-3 border-b">
-              <label className="text-xs text-muted-foreground">Seu nome</label>
-              <Input
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                onBlur={() =>
-                  token && localStorage.setItem(NOME_KEY_PREFIX + token, nome.trim())
-                }
-                placeholder="Digite seu nome"
-                className="mt-1 h-8 text-sm"
-              />
+              <p className="text-[11px] text-muted-foreground">
+                Comentando como{" "}
+                <span className="font-semibold text-foreground">{nome || "—"}</span>
+              </p>
+              <button
+                type="button"
+                className="text-[11px] underline text-muted-foreground hover:text-foreground mt-1"
+                onClick={() => {
+                  setNomeTemp(nome);
+                  setNomeDialogOpen(true);
+                }}
+              >
+                Trocar nome
+              </button>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-3 space-y-2">
@@ -1079,16 +1083,21 @@ const RoteiroPublico = () => {
             )}
           </SheetHeader>
           <div className="px-4 pb-2">
-            <label className="text-xs text-muted-foreground">Seu nome</label>
-            <Input
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              onBlur={() =>
-                token && localStorage.setItem(NOME_KEY_PREFIX + token, nome.trim())
-              }
-              placeholder="Digite seu nome"
-              className="mt-1 h-9 text-sm"
-            />
+            <p className="text-[11px] text-muted-foreground">
+              Comentando como{" "}
+              <span className="font-semibold text-foreground">{nome || "—"}</span>{" "}
+              ·{" "}
+              <button
+                type="button"
+                className="underline hover:text-foreground"
+                onClick={() => {
+                  setNomeTemp(nome);
+                  setNomeDialogOpen(true);
+                }}
+              >
+                trocar
+              </button>
+            </p>
           </div>
           <div className="flex gap-1 px-4 pt-1 pb-2">
             <Button
