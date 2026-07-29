@@ -88,9 +88,8 @@ export const useUpdateMapaMental = () => {
       if (error) throw error;
     },
     onSuccess: (_d, vars) => {
-      // Skip refetch for snapshot autosaves — avoids race conditions where
-      // an older server response overwrites newer local edits.
-      if (vars.silent) return;
+      // Keep the local snapshot current without refetching, so switching maps
+      // never reloads an old cached version over the user's latest edits.
       qc.setQueryData<MapaMental[]>(["mapas-mentais", vars.mentorado_id], (old = []) =>
         sortMapasMentais(old.map((mapa) => (mapa.id === vars.id ? { ...mapa, ...vars.patch } : mapa)))
       );
