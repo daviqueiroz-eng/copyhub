@@ -62,10 +62,31 @@ export function MapaMentalView({
   const [publicSnapshot, setPublicSnapshot] = useState<any>(null);
   const [publicLoading, setPublicLoading] = useState(false);
 
+  const pendingActiveIdRef = useRef<string | null>(null);
+  const creatingRef = useRef(false);
+
   useEffect(() => {
-    if (!activeId && mapas.length > 0) setActiveId(mapas[0].id);
-    if (activeId && !mapas.find((m) => m.id === activeId)) {
-      setActiveId(mapas[0]?.id ?? null);
+    if (mapas.length === 0) {
+      if (activeId) setActiveId(null);
+      return;
+    }
+
+    const pendingId = pendingActiveIdRef.current;
+    if (pendingId) {
+      if (mapas.some((m) => m.id === pendingId)) {
+        pendingActiveIdRef.current = null;
+        if (activeId !== pendingId) setActiveId(pendingId);
+      }
+      return;
+    }
+
+    if (!activeId) {
+      setActiveId(mapas[0].id);
+      return;
+    }
+
+    if (!mapas.some((m) => m.id === activeId)) {
+      setActiveId(mapas[0].id);
     }
   }, [mapas, activeId]);
 
@@ -87,55 +108,76 @@ export function MapaMentalView({
   const lastLoadedIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
   const savingInFlightRef = useRef(false);
-  const pendingSaveRef = useRef(false);
+  const queuedSaveRef = useRef<{ id: string; snapshot: ReturnType<Editor["getSnapshot"]> } | null>(null);
   const saveSeqRef = useRef(0);
 
-  const runSave = () => {
-    const ed = editorRef.current;
-    const currentId = lastLoadedIdRef.current;
-    if (!ed || !currentId) return;
+  const processSaveQueue = () => {
     if (savingInFlightRef.current) {
-      pendingSaveRef.current = true;
       return;
     }
+    const nextSave = queuedSaveRef.current;
+    if (!nextSave) return;
+
+    queuedSaveRef.current = null;
     savingInFlightRef.current = true;
     const seq = ++saveSeqRef.current;
     setSavingState("saving");
-    const snap = ed.getSnapshot();
     updateMapa.mutate(
-      { id: currentId, mentorado_id: mentoradoId, patch: { snapshot: snap as any }, silent: true },
+      { id: nextSave.id, mentorado_id: mentoradoId, patch: { snapshot: nextSave.snapshot as any }, silent: true },
       {
         onSuccess: () => {
           savingInFlightRef.current = false;
-          if (seq === saveSeqRef.current) {
+          if (seq === saveSeqRef.current && !queuedSaveRef.current) {
             setSavingState("saved");
             setTimeout(
               () => setSavingState((s) => (s === "saved" ? "idle" : s)),
               1500
             );
           }
-          if (pendingSaveRef.current) {
-            pendingSaveRef.current = false;
-            runSave();
-          }
+          processSaveQueue();
         },
         onError: () => {
           savingInFlightRef.current = false;
-          setSavingState("idle");
-          if (pendingSaveRef.current) {
-            pendingSaveRef.current = false;
-            runSave();
-          }
+          if (!queuedSaveRef.current) setSavingState("idle");
+          processSaveQueue();
         },
       }
     );
   };
+
+  const queueCurrentSave = () => {
+    const ed = editorRef.current;
+    const currentId = lastLoadedIdRef.current;
+    if (!ed || !currentId) return;
+    queuedSaveRef.current = { id: currentId, snapshot: ed.getSnapshot() };
+    processSaveQueue();
+  };
+
+  const prepareForMapaChange = () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      queueCurrentSave();
+    }
+    lastLoadedIdRef.current = null;
+    isLoadingRef.current = true;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
 
   // Load snapshot when active mapa changes (edit mode)
   useEffect(() => {
     const ed = editorRef.current;
     if (!ed || !activeMapa || readOnly) return;
     if (lastLoadedIdRef.current === activeMapa.id) return;
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
     isLoadingRef.current = true;
     try {
       if (activeMapa.snapshot) {
@@ -200,22 +242,42 @@ export function MapaMentalView({
         if (!lastLoadedIdRef.current) return;
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         setSavingState("saving");
-        saveTimerRef.current = setTimeout(runSave, 1500);
+        saveTimerRef.current = setTimeout(() => {
+          saveTimerRef.current = null;
+          queueCurrentSave();
+        }, 1500);
       },
       { source: "user", scope: "document" }
     );
   };
 
   const handleCreate = () => {
+    if (creatingRef.current || createMapa.isPending || readOnly) return;
+    creatingRef.current = true;
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      queueCurrentSave();
+    }
+    const nextOrder = mapas.reduce((max, mapa) => Math.max(max, mapa.ordem ?? 0), 0) + 1;
     createMapa.mutate(
-      { mentorado_id: mentoradoId, nome: `Mapa mental ${mapas.length + 1}` },
+      { mentorado_id: mentoradoId, nome: `Mapa mental ${mapas.length + 1}`, ordem: nextOrder },
       {
         onSuccess: (novo) => {
+          pendingActiveIdRef.current = novo.id;
+          isLoadingRef.current = true;
           setActiveId(novo.id);
           lastLoadedIdRef.current = null;
           toast.success("Mapa mental criado");
         },
-        onError: (e: any) => toast.error(e.message || "Erro ao criar"),
+        onError: (e: any) => {
+          isLoadingRef.current = false;
+          if (activeId) lastLoadedIdRef.current = activeId;
+          toast.error(e.message || "Erro ao criar");
+        },
+        onSettled: () => {
+          creatingRef.current = false;
+        },
       }
     );
   };
@@ -279,7 +341,8 @@ export function MapaMentalView({
                   e.preventDefault();
                   if (editingNameId === m.id) return;
                   if (activeId !== m.id) {
-                    lastLoadedIdRef.current = null;
+                    pendingActiveIdRef.current = m.id;
+                    prepareForMapaChange();
                     setActiveId(m.id);
                   }
                 }}
@@ -339,8 +402,16 @@ export function MapaMentalView({
             {!readOnly && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleCreate(); }}>
-                  <Plus className="h-3.5 w-3.5 mr-2" /> Novo mapa mental
+                <DropdownMenuItem
+                  disabled={createMapa.isPending}
+                  onSelect={(e) => { e.preventDefault(); handleCreate(); }}
+                >
+                  {createMapa.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5 mr-2" />
+                  )}
+                  Novo mapa mental
                 </DropdownMenuItem>
               </>
             )}
@@ -367,13 +438,17 @@ export function MapaMentalView({
               ? "Nenhum mapa mental foi criado ainda."
               : "Clique em + para criar seu primeiro mapa mental."}
           </div>
+        ) : !activeMapa ? (
+          <div className="h-full flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
         ) : publicLoading ? (
           <div className="h-full flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <Tldraw
-            key={activeId ?? "empty"}
+            key={activeMapa.id}
             onMount={handleMount}
             hideUi={false}
           />
