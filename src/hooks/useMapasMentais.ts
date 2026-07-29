@@ -56,10 +56,12 @@ export const useUpdateMapaMental = () => {
       id,
       mentorado_id,
       patch,
+      silent: _silent,
     }: {
       id: string;
       mentorado_id: string;
       patch: Partial<Pick<MapaMental, "nome" | "snapshot" | "ordem">>;
+      silent?: boolean;
     }) => {
       const { error } = await supabase
         .from("mentorado_mapas_mentais" as any)
@@ -68,6 +70,9 @@ export const useUpdateMapaMental = () => {
       if (error) throw error;
     },
     onSuccess: (_d, vars) => {
+      // Skip refetch for snapshot autosaves — avoids race conditions where
+      // an older server response overwrites newer local edits.
+      if (vars.silent) return;
       qc.invalidateQueries({ queryKey: ["mapas-mentais", vars.mentorado_id] });
     },
   });
