@@ -86,6 +86,50 @@ export function MapaMentalView({
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastLoadedIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
+  const savingInFlightRef = useRef(false);
+  const pendingSaveRef = useRef(false);
+  const saveSeqRef = useRef(0);
+
+  const runSave = () => {
+    const ed = editorRef.current;
+    const currentId = lastLoadedIdRef.current;
+    if (!ed || !currentId) return;
+    if (savingInFlightRef.current) {
+      pendingSaveRef.current = true;
+      return;
+    }
+    savingInFlightRef.current = true;
+    const seq = ++saveSeqRef.current;
+    setSavingState("saving");
+    const snap = ed.getSnapshot();
+    updateMapa.mutate(
+      { id: currentId, mentorado_id: mentoradoId, patch: { snapshot: snap as any }, silent: true },
+      {
+        onSuccess: () => {
+          savingInFlightRef.current = false;
+          if (seq === saveSeqRef.current) {
+            setSavingState("saved");
+            setTimeout(
+              () => setSavingState((s) => (s === "saved" ? "idle" : s)),
+              1500
+            );
+          }
+          if (pendingSaveRef.current) {
+            pendingSaveRef.current = false;
+            runSave();
+          }
+        },
+        onError: () => {
+          savingInFlightRef.current = false;
+          setSavingState("idle");
+          if (pendingSaveRef.current) {
+            pendingSaveRef.current = false;
+            runSave();
+          }
+        },
+      }
+    );
+  };
 
   // Load snapshot when active mapa changes (edit mode)
   useEffect(() => {
@@ -153,27 +197,10 @@ export function MapaMentalView({
     editor.store.listen(
       () => {
         if (isLoadingRef.current) return;
-        if (!activeMapa) return;
-        setSavingState("saving");
+        if (!lastLoadedIdRef.current) return;
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => {
-          const currentId = lastLoadedIdRef.current;
-          if (!currentId) return;
-          const snap = editor.getSnapshot();
-          updateMapa.mutate(
-            { id: currentId, mentorado_id: mentoradoId, patch: { snapshot: snap as any } },
-            {
-              onSuccess: () => {
-                setSavingState("saved");
-                setTimeout(
-                  () => setSavingState((s) => (s === "saved" ? "idle" : s)),
-                  1500
-                );
-              },
-              onError: () => setSavingState("idle"),
-            }
-          );
-        }, 1500);
+        setSavingState("saving");
+        saveTimerRef.current = setTimeout(runSave, 1500);
       },
       { source: "user", scope: "document" }
     );
