@@ -254,18 +254,27 @@ export function MapaMentalView({
   const handleCreate = () => {
     if (creatingRef.current || createMapa.isPending || readOnly) return;
     creatingRef.current = true;
-    prepareForMapaChange();
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      queueCurrentSave();
+    }
     const nextOrder = mapas.reduce((max, mapa) => Math.max(max, mapa.ordem ?? 0), 0) + 1;
     createMapa.mutate(
       { mentorado_id: mentoradoId, nome: `Mapa mental ${mapas.length + 1}`, ordem: nextOrder },
       {
         onSuccess: (novo) => {
           pendingActiveIdRef.current = novo.id;
+          isLoadingRef.current = true;
           setActiveId(novo.id);
           lastLoadedIdRef.current = null;
           toast.success("Mapa mental criado");
         },
-        onError: (e: any) => toast.error(e.message || "Erro ao criar"),
+        onError: (e: any) => {
+          isLoadingRef.current = false;
+          if (activeId) lastLoadedIdRef.current = activeId;
+          toast.error(e.message || "Erro ao criar");
+        },
         onSettled: () => {
           creatingRef.current = false;
         },
