@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Tldraw, Editor } from "tldraw";
+import { Tldraw, Editor, TLComponents } from "tldraw";
 import "tldraw/tldraw.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,16 @@ interface Props {
   initialMapas?: Array<Pick<MapaMental, "id" | "nome">>;
   publicLoadSnapshot?: (mapaId: string) => Promise<any>;
 }
+
+// A map is the document itself. tldraw's internal pages are intentionally
+// disabled so users cannot accidentally create a second canvas inside a map.
+const MAPA_MENTAL_COMPONENTS: TLComponents = {
+  PageMenu: null,
+};
+
+const MAPA_MENTAL_OPTIONS = {
+  maxPages: 1,
+};
 
 export function MapaMentalView({
   mentoradoId,
@@ -451,6 +461,8 @@ export function MapaMentalView({
             key={activeMapa.id}
             onMount={handleMount}
             hideUi={false}
+            components={MAPA_MENTAL_COMPONENTS}
+            options={MAPA_MENTAL_OPTIONS}
           />
         )}
       </div>
