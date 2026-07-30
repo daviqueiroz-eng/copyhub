@@ -86,7 +86,9 @@ export function MapaMentalView({
 
   useEffect(() => {
     if (mapas.length === 0) {
-      if (activeId) setActiveId(null);
+      if ((readOnly || (query.isSuccess && !query.isFetching)) && activeId) {
+        setActiveId(null);
+      }
       return;
     }
 
@@ -126,7 +128,7 @@ export function MapaMentalView({
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storeUnlistenRef = useRef<(() => void) | null>(null);
   const lastLoadedIdRef = useRef<string | null>(null);
-  const isLoadingRef = useRef(false);
+  const mountedRef = useRef(true);
   const savingInFlightRef = useRef(false);
   const queuedSaveRef = useRef<{ id: string; snapshot: ReturnType<Editor["getSnapshot"]> } | null>(null);
   const saveSeqRef = useRef(0);
@@ -141,16 +143,20 @@ export function MapaMentalView({
     queuedSaveRef.current = null;
     savingInFlightRef.current = true;
     const seq = ++saveSeqRef.current;
-    setSavingState("saving");
+    if (mountedRef.current) setSavingState("saving");
     updateMapa.mutate(
       { id: nextSave.id, mentorado_id: mentoradoId, patch: { snapshot: nextSave.snapshot as any }, silent: true },
       {
         onSuccess: () => {
           savingInFlightRef.current = false;
-          if (seq === saveSeqRef.current && !queuedSaveRef.current) {
+          if (mountedRef.current && seq === saveSeqRef.current && !queuedSaveRef.current) {
             setSavingState("saved");
             setTimeout(
-              () => setSavingState((s) => (s === "saved" ? "idle" : s)),
+              () => {
+                if (mountedRef.current) {
+                  setSavingState((s) => (s === "saved" ? "idle" : s));
+                }
+              },
               1500
             );
           }
@@ -158,8 +164,9 @@ export function MapaMentalView({
         },
         onError: () => {
           savingInFlightRef.current = false;
-          if (!queuedSaveRef.current) setSavingState("idle");
-          processSaveQueue();
+          if (!queuedSaveRef.current) queuedSaveRef.current = nextSave;
+          if (mountedRef.current) setSavingState("saving");
+          setTimeout(processSaveQueue, 2000);
         },
       }
     );
@@ -186,12 +193,17 @@ export function MapaMentalView({
       queueCurrentSave();
     }
     lastLoadedIdRef.current = null;
-    isLoadingRef.current = true;
   };
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      mountedRef.current = false;
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+        queueCurrentSave();
+      }
       storeUnlistenRef.current?.();
       storeUnlistenRef.current = null;
     };
@@ -202,7 +214,7 @@ export function MapaMentalView({
     const ed = editorRef.current;
     if (!ed || !readOnly || !publicSnapshot) return;
     try {
-      ed.loadSnapshot(publicSnapshot);
+      ed.store.mergeRemoteChanges(() => ed.loadSnapshot(publicSnapshot));
       ed.updateInstanceState({ isReadonly: true });
     } catch {
       /* noop */
@@ -218,22 +230,19 @@ export function MapaMentalView({
     }
     // Initial load if we already have activeMapa
     if (!readOnly && activeMapa) {
-      isLoadingRef.current = true;
       try {
         const snapshotToLoad = getLocalMapaSnapshot(activeMapa.id) ?? activeMapa.snapshot;
         if (snapshotToLoad) {
-          editor.loadSnapshot(snapshotToLoad);
+          editor.store.mergeRemoteChanges(() => editor.loadSnapshot(snapshotToLoad));
         }
         lastLoadedIdRef.current = activeMapa.id;
       } catch {
         /* noop */
-      } finally {
-        setTimeout(() => (isLoadingRef.current = false), 100);
       }
     }
     if (readOnly && publicSnapshot) {
       try {
-        editor.loadSnapshot(publicSnapshot);
+        editor.store.mergeRemoteChanges(() => editor.loadSnapshot(publicSnapshot));
       } catch {
         /* noop */
       }
@@ -244,7 +253,6 @@ export function MapaMentalView({
     // Autosave on any store change (debounced)
     storeUnlistenRef.current = editor.store.listen(
       () => {
-        if (isLoadingRef.current) return;
         if (!lastLoadedIdRef.current) return;
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         setSavingState("saving");
