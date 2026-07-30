@@ -288,13 +288,11 @@ export function MapaMentalView({
       {
         onSuccess: (novo) => {
           pendingActiveIdRef.current = novo.id;
-          isLoadingRef.current = true;
           setActiveId(novo.id);
           lastLoadedIdRef.current = null;
           toast.success("Mapa mental criado");
         },
         onError: (e: any) => {
-          isLoadingRef.current = false;
           if (activeId) lastLoadedIdRef.current = activeId;
           toast.error(e.message || "Erro ao criar");
         },
