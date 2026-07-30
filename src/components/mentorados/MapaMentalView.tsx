@@ -115,6 +115,7 @@ export function MapaMentalView({
 
   const editorRef = useRef<Editor | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const storeUnlistenRef = useRef<(() => void) | null>(null);
   const lastLoadedIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
   const savingInFlightRef = useRef(false);
@@ -159,7 +160,13 @@ export function MapaMentalView({
     const ed = editorRef.current;
     const currentId = lastLoadedIdRef.current;
     if (!ed || !currentId) return;
-    queuedSaveRef.current = { id: currentId, snapshot: ed.getSnapshot() };
+    const snapshot = ed.getSnapshot();
+    queuedSaveRef.current = { id: currentId, snapshot };
+    try {
+      localStorage.setItem(`mapa-mental-backup:${currentId}`, JSON.stringify(snapshot));
+    } catch {
+      // The database remains the primary persistence when local storage is unavailable.
+    }
     processSaveQueue();
   };
 
@@ -176,6 +183,8 @@ export function MapaMentalView({
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      storeUnlistenRef.current?.();
+      storeUnlistenRef.current = null;
     };
   }, []);
 
@@ -190,8 +199,10 @@ export function MapaMentalView({
     }
     isLoadingRef.current = true;
     try {
-      if (activeMapa.snapshot) {
-        ed.loadSnapshot(activeMapa.snapshot);
+      const localBackup = localStorage.getItem(`mapa-mental-backup:${activeMapa.id}`);
+      const snapshotToLoad = localBackup ? JSON.parse(localBackup) : activeMapa.snapshot;
+      if (snapshotToLoad) {
+        ed.loadSnapshot(snapshotToLoad);
       } else {
         // Clear canvas for a fresh empty mapa
         const allShapes = ed.getCurrentPageShapes().map((s) => s.id);
@@ -217,6 +228,8 @@ export function MapaMentalView({
   }, [publicSnapshot, readOnly]);
 
   const handleMount = (editor: Editor) => {
+    storeUnlistenRef.current?.();
+    storeUnlistenRef.current = null;
     editorRef.current = editor;
     if (readOnly) {
       editor.updateInstanceState({ isReadonly: true });
@@ -225,8 +238,10 @@ export function MapaMentalView({
     if (!readOnly && activeMapa) {
       isLoadingRef.current = true;
       try {
-        if (activeMapa.snapshot) {
-          editor.loadSnapshot(activeMapa.snapshot);
+        const localBackup = localStorage.getItem(`mapa-mental-backup:${activeMapa.id}`);
+        const snapshotToLoad = localBackup ? JSON.parse(localBackup) : activeMapa.snapshot;
+        if (snapshotToLoad) {
+          editor.loadSnapshot(snapshotToLoad);
         }
         lastLoadedIdRef.current = activeMapa.id;
       } catch {
@@ -246,12 +261,21 @@ export function MapaMentalView({
     if (readOnly) return;
 
     // Autosave on any store change (debounced)
-    editor.store.listen(
+    storeUnlistenRef.current = editor.store.listen(
       () => {
         if (isLoadingRef.current) return;
         if (!lastLoadedIdRef.current) return;
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         setSavingState("saving");
+        const currentId = lastLoadedIdRef.current;
+        try {
+          localStorage.setItem(
+            `mapa-mental-backup:${currentId}`,
+            JSON.stringify(editor.getSnapshot())
+          );
+        } catch {
+          // Continue with the debounced database save.
+        }
         saveTimerRef.current = setTimeout(() => {
           saveTimerRef.current = null;
           queueCurrentSave();

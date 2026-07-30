@@ -24,6 +24,9 @@ export const useMapasMentais = (mentoradoId: string | undefined) => {
   return useQuery({
     queryKey: ["mapas-mentais", mentoradoId],
     enabled: !!mentoradoId,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       if (!mentoradoId) return [];
       const { data, error } = await supabase
