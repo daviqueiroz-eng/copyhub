@@ -49,6 +49,15 @@ const MAPA_MENTAL_OPTIONS = {
   maxPages: 1,
 };
 
+const getLocalMapaSnapshot = (mapaId: string) => {
+  try {
+    const saved = localStorage.getItem(`mapa-mental-backup:${mapaId}`);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+};
+
 export function MapaMentalView({
   mentoradoId,
   readOnly = false,
@@ -188,33 +197,6 @@ export function MapaMentalView({
     };
   }, []);
 
-  // Load snapshot when active mapa changes (edit mode)
-  useEffect(() => {
-    const ed = editorRef.current;
-    if (!ed || !activeMapa || readOnly) return;
-    if (lastLoadedIdRef.current === activeMapa.id) return;
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
-    isLoadingRef.current = true;
-    try {
-      const localBackup = localStorage.getItem(`mapa-mental-backup:${activeMapa.id}`);
-      const snapshotToLoad = localBackup ? JSON.parse(localBackup) : activeMapa.snapshot;
-      if (snapshotToLoad) {
-        ed.loadSnapshot(snapshotToLoad);
-      } else {
-        // Clear canvas for a fresh empty mapa
-        const allShapes = ed.getCurrentPageShapes().map((s) => s.id);
-        if (allShapes.length > 0) ed.deleteShapes(allShapes);
-      }
-      lastLoadedIdRef.current = activeMapa.id;
-    } finally {
-      // Allow one microtask before re-enabling autosave
-      setTimeout(() => (isLoadingRef.current = false), 100);
-    }
-  }, [activeMapa, readOnly]);
-
   // Public snapshot load
   useEffect(() => {
     const ed = editorRef.current;
@@ -238,8 +220,7 @@ export function MapaMentalView({
     if (!readOnly && activeMapa) {
       isLoadingRef.current = true;
       try {
-        const localBackup = localStorage.getItem(`mapa-mental-backup:${activeMapa.id}`);
-        const snapshotToLoad = localBackup ? JSON.parse(localBackup) : activeMapa.snapshot;
+        const snapshotToLoad = getLocalMapaSnapshot(activeMapa.id) ?? activeMapa.snapshot;
         if (snapshotToLoad) {
           editor.loadSnapshot(snapshotToLoad);
         }
